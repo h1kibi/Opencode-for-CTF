@@ -22,7 +22,7 @@
       "environment": {
         "GHIDRA_INSTALL_DIR": "C:\\Program Files\\ghidra_12.0.4_PUBLIC"
       },
-      "enabled": true,
+      "enabled": false,
       "timeout": 60000
     },
     "ida-pro": {
@@ -35,7 +35,7 @@
       "environment": {
         "IDA_PATH": "C:\\Tools\\IDA Professional 9.2"
       },
-      "enabled": true,
+      "enabled": false,
       "timeout": 60000
     },
     "radare2": {
@@ -45,7 +45,7 @@
         "C:\\Tools\\Agent\\security_mcp_wrappers.py",
         "radare2"
       ],
-      "enabled": true,
+      "enabled": false,
       "timeout": 30000
     },
     "git": {
@@ -64,7 +64,7 @@
         "npx",
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "C:\\\\Tools\\\\Agent"
+        "C:\\\\Tools\\\\Agent\\\\ctf-workspace"
       ],
       "enabled": true
     },
@@ -74,7 +74,7 @@
         "python",
         "C:\\Users\\Administrator\\vmprotect_mcp.py"
       ],
-      "enabled": true,
+      "enabled": false,
       "timeout": 30000
     },
     "shodan": {
@@ -87,7 +87,7 @@
       "environment": {
         "SHODAN_API_KEY": "${SHODAN_API_KEY}"
       },
-      "enabled": true,
+      "enabled": false,
       "timeout": 30000
     },
     "frida": {
@@ -97,7 +97,7 @@
         "-m",
         "frida_mcp.cli"
       ],
-      "enabled": true,
+      "enabled": false,
       "timeout": 30000
     },
     "jadx": {
@@ -107,7 +107,7 @@
         "C:\\Tools\\Agent\\security_mcp_wrappers.py",
         "jadx"
       ],
-      "enabled": true,
+      "enabled": false,
       "timeout": 30000
     },
     "volatility": {
@@ -117,7 +117,7 @@
         "C:\\Tools\\Agent\\security_mcp_wrappers.py",
         "volatility"
       ],
-      "enabled": true,
+      "enabled": false,
       "timeout": 60000
     },
     "yara": {
@@ -127,7 +127,7 @@
         "C:\\Tools\\Agent\\security_mcp_wrappers.py",
         "yara"
       ],
-      "enabled": true,
+      "enabled": false,
       "timeout": 30000
     },
     "nmap": {
@@ -137,7 +137,7 @@
         "-y",
         "@ebowwa/mcp-nmap"
       ],
-      "enabled": true,
+      "enabled": false,
       "timeout": 60000
     }
   },
@@ -225,10 +225,10 @@
     "word_*": "ask",
     "external_directory": {
       "*": "deny",
-      "C:\\\\Tools\\\\Agent": "allow",
-      "C:\\\\Tools\\\\Agent\\\\**": "allow",
-      "C:/Tools/Agent": "allow",
-      "C:/Tools/Agent/**": "allow"
+      "C:\\\\Tools\\\\Agent\\\\ctf-workspace": "allow",
+      "C:\\\\Tools\\\\Agent\\\\ctf-workspace\\\\**": "allow",
+      "C:/Tools/Agent/ctf-workspace": "allow",
+      "C:/Tools/Agent/ctf-workspace/**": "allow"
     }
   },
   "agent": {
@@ -257,7 +257,13 @@
           "nmap localhost*": "ask",
           "rm -rf *": "deny",
           "ssh *": "deny",
-          "scp *": "deny"
+          "scp *": "deny",
+          "rm *": "deny",
+          "del *": "deny",
+          "rmdir *": "deny",
+          "Remove-Item *": "deny",
+          "powershell Remove-Item *": "deny",
+          "pwsh Remove-Item *": "deny"
         },
         "edit": {
           "*": "ask",
@@ -314,7 +320,13 @@
           "nc localhost*": "ask",
           "rm -rf *": "deny",
           "ssh *": "deny",
-          "scp *": "deny"
+          "scp *": "deny",
+          "rm *": "deny",
+          "del *": "deny",
+          "rmdir *": "deny",
+          "Remove-Item *": "deny",
+          "powershell Remove-Item *": "deny",
+          "pwsh Remove-Item *": "deny"
         },
         "edit": {
           "*": "ask",
@@ -368,7 +380,13 @@
           "adb *": "ask",
           "rm -rf *": "deny",
           "ssh *": "deny",
-          "scp *": "deny"
+          "scp *": "deny",
+          "rm *": "deny",
+          "del *": "deny",
+          "rmdir *": "deny",
+          "Remove-Item *": "deny",
+          "powershell Remove-Item *": "deny",
+          "pwsh Remove-Item *": "deny"
         },
         "edit": {
           "*": "ask",
@@ -416,7 +434,13 @@
           "node *": "allow",
           "rm -rf *": "deny",
           "ssh *": "deny",
-          "scp *": "deny"
+          "scp *": "deny",
+          "rm *": "deny",
+          "del *": "deny",
+          "rmdir *": "deny",
+          "Remove-Item *": "deny",
+          "powershell Remove-Item *": "deny",
+          "pwsh Remove-Item *": "deny"
         },
         "edit": {
           "*": "ask",
@@ -472,7 +496,13 @@
           "yara *": "ask",
           "rm -rf *": "deny",
           "ssh *": "deny",
-          "scp *": "deny"
+          "scp *": "deny",
+          "rm *": "deny",
+          "del *": "deny",
+          "rmdir *": "deny",
+          "Remove-Item *": "deny",
+          "powershell Remove-Item *": "deny",
+          "pwsh Remove-Item *": "deny"
         },
         "edit": {
           "*": "ask",
@@ -529,7 +559,13 @@
           "docker compose down*": "ask",
           "rm -rf *": "deny",
           "ssh *": "deny",
-          "scp *": "deny"
+          "scp *": "deny",
+          "rm *": "deny",
+          "del *": "deny",
+          "rmdir *": "deny",
+          "Remove-Item *": "deny",
+          "powershell Remove-Item *": "deny",
+          "pwsh Remove-Item *": "deny"
         },
         "edit": {
           "*": "ask",
