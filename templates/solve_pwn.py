@@ -30,20 +30,26 @@ def solve(args) -> None:
 
     # TODO: exploit steps.
     # io.sendline(...)
-    # data = io.recvall(timeout=2)
-    # flag = extract_flag(data)
-    # if flag:
-    #     write_flag(flag)
-    #     return
 
-    # Use interactive mode only for manual debugging, not final benchmark solvers.
-    io.interactive()
+    if args.interactive:
+        io.interactive()
+        return
+
+    data = io.recvall(timeout=2)
+    flag = extract_flag(data)
+    if flag:
+        write_flag(flag)
+        return
+
+    log.warning("No flag found in output. Use --interactive manually only for debugging.")
+    print(data.decode(errors="replace"))
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--binary", default="./chall")
     parser.add_argument("--remote", help="host:port")
+    parser.add_argument("--interactive", action="store_true")
     args = parser.parse_args()
     solve(args)
 

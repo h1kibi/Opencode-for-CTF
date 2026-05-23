@@ -33,6 +33,17 @@ Collect:
 7. Determine extraction goal: bypass, table/column discovery, single secret extraction, or flag row retrieval.
 8. Build `solve.py` using reproducible HTTP requests.
 
+## DBMS Checklist
+
+Use evidence before DB-specific probes:
+
+- SQLite: local `.db`, `sqlite3`, file-backed DB, Flask/Django default dev artifacts.
+- MySQL/MariaDB: `mysql`, `mysqli`, `pymysql`, `mysql2`, port 3306, backtick identifiers.
+- PostgreSQL: `psycopg`, `pg`, port 5432, dollar quoting, `RETURNING`, `::type` casts.
+- MSSQL: `pyodbc`, `tedious`, port 1433, bracket identifiers, stacked query behavior.
+- ORM/raw SQL: check string concatenation, raw query APIs, order/filter params, search boxes, and GraphQL resolvers.
+- Blind conditions: compare response length, status, timing, redirect target, row count, and auth state.
+
 ## Tool Discipline
 
 - Prefer manual, minimal probes before sqlmap-style automation.

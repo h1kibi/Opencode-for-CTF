@@ -33,6 +33,22 @@ Collect:
 7. Escalate from expression evaluation to controlled file read or command execution only when required for the flag.
 8. Build a deterministic solver request sequence.
 
+## Engine Fingerprint Checklist
+
+- Flask/Jinja2: Flask imports, Jinja errors, `render_template_string`, `{{7*7}}` style arithmetic.
+- Twig/Smarty: PHP/Symfony/Twig errors, `.twig`, Smarty delimiters, PHP template stack traces.
+- Freemarker/Velocity/Thymeleaf: Java/Spring stack traces, `.ftl`, `.vm`, `.html` templates, expression syntax errors.
+- EJS/Pug/Handlebars: Express view engine, `.ejs`, `.pug`, `.hbs`, server-side render calls.
+- Go templates: `html/template`, `text/template`, Go error strings, `{{printf ...}}` behavior.
+- ERB/Ruby: Rails/Sinatra templates, `.erb`, Ruby exception names.
+
+## Context And Filter Checklist
+
+- Reflection context: text, attribute, script, JSON, URL, template file, or error page.
+- Escaping: HTML entities, quotes, braces, percent encoding, slash escaping.
+- Blocked characters: braces, quotes, underscores, dots, brackets, pipes, spaces, keywords.
+- Output transformation: truncation, lowercasing, normalization, markdown, sanitizer, or template autoescape.
+
 ## Tool Discipline
 
 - Do not start with destructive RCE payloads.

@@ -89,6 +89,20 @@ This repository intentionally omits provider API keys and private tokens.
 
 If you need API keys for MCP servers or providers, keep them in environment variables or a private local config such as `opencode.local.jsonc`.
 
+The public `opencode.jsonc` uses environment variables for machine-specific paths:
+
+```text
+CTF_WORKSPACE
+PUPPETEER_EXECUTABLE_PATH
+GHIDRA_INSTALL_DIR
+IDA_PATH
+SECURITY_MCP_WRAPPERS
+VMPROTECT_MCP
+SHODAN_API_KEY
+```
+
+Copy `.env.example` to your own shell/profile or private config and adjust paths for your machine.
+
 ## Safety Scope
 
 These skills are for authorized use only:

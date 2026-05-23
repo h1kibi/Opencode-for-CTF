@@ -32,6 +32,21 @@ Collect:
 6. Retrieve the intended flag/admin/internal resource.
 7. Write a solver that reproduces the minimal request chain.
 
+## URL Parser Checklist
+
+Check validation/fetch parser differences only when a filter exists:
+
+- Scheme normalization and scheme allowlists.
+- Hostname case folding and trailing dots.
+- Embedded credentials such as `user@host`.
+- Percent encoding and double encoding.
+- IPv4 decimal, octal, hex, and mixed notation.
+- IPv6 localhost and IPv4-mapped IPv6.
+- Redirect handling and redirect method preservation.
+- DNS resolution timing and rebinding only in explicit lab scope.
+- Path, query, and fragment handling differences.
+- Parser differences between frontend validation and backend fetch library.
+
 ## Tool Discipline
 
 - Avoid broad port scans through SSRF.

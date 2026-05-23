@@ -9,7 +9,7 @@
         "@modelcontextprotocol/server-puppeteer"
       ],
       "environment": {
-        "PUPPETEER_EXECUTABLE_PATH": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+        "PUPPETEER_EXECUTABLE_PATH": "${PUPPETEER_EXECUTABLE_PATH}"
       },
       "enabled": true,
       "timeout": 30000
@@ -20,7 +20,7 @@
         "mcp-reva"
       ],
       "environment": {
-        "GHIDRA_INSTALL_DIR": "C:\\Program Files\\ghidra_12.0.4_PUBLIC"
+        "GHIDRA_INSTALL_DIR": "${GHIDRA_INSTALL_DIR}"
       },
       "enabled": false,
       "timeout": 60000
@@ -33,7 +33,7 @@
         "ida_pro_mcp"
       ],
       "environment": {
-        "IDA_PATH": "C:\\Tools\\IDA Professional 9.2"
+        "IDA_PATH": "${IDA_PATH}"
       },
       "enabled": false,
       "timeout": 60000
@@ -42,7 +42,7 @@
       "type": "local",
       "command": [
         "python",
-        "C:\\Tools\\Agent\\security_mcp_wrappers.py",
+        "${SECURITY_MCP_WRAPPERS}",
         "radare2"
       ],
       "enabled": false,
@@ -64,7 +64,7 @@
         "npx",
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "C:\\Tools\\Agent\\ctf-workspace"
+        "${CTF_WORKSPACE}"
       ],
       "enabled": true
     },
@@ -72,7 +72,7 @@
       "type": "local",
       "command": [
         "python",
-        "C:\\Users\\Administrator\\vmprotect_mcp.py"
+        "${VMPROTECT_MCP}"
       ],
       "enabled": false,
       "timeout": 30000
@@ -81,7 +81,7 @@
       "type": "local",
       "command": [
         "python",
-        "C:\\Tools\\Agent\\security_mcp_wrappers.py",
+        "${SECURITY_MCP_WRAPPERS}",
         "shodan"
       ],
       "environment": {
@@ -104,7 +104,7 @@
       "type": "local",
       "command": [
         "python",
-        "C:\\Tools\\Agent\\security_mcp_wrappers.py",
+        "${SECURITY_MCP_WRAPPERS}",
         "jadx"
       ],
       "enabled": false,
@@ -114,7 +114,7 @@
       "type": "local",
       "command": [
         "python",
-        "C:\\Tools\\Agent\\security_mcp_wrappers.py",
+        "${SECURITY_MCP_WRAPPERS}",
         "volatility"
       ],
       "enabled": false,
@@ -124,7 +124,7 @@
       "type": "local",
       "command": [
         "python",
-        "C:\\Tools\\Agent\\security_mcp_wrappers.py",
+        "${SECURITY_MCP_WRAPPERS}",
         "yara"
       ],
       "enabled": false,
@@ -224,10 +224,8 @@
     "word_*": "ask",
     "external_directory": {
       "*": "deny",
-      "C:\\Tools\\Agent\\ctf-workspace": "allow",
-      "C:\\Tools\\Agent\\ctf-workspace\\\\**": "allow",
-      "C:/Tools/Agent/ctf-workspace": "allow",
-      "C:/Tools/Agent/ctf-workspace/**": "allow"
+      "${CTF_WORKSPACE}": "allow",
+      "${CTF_WORKSPACE}/**": "allow"
     }
   },
   "agent": {

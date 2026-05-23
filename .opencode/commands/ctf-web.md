@@ -3,7 +3,18 @@ description: Start a structured Web CTF solve
 agent: ctf-web
 ---
 
-Use `ctf-common`, `ctf-terminal`, and `ctf-web` skills. Load `ctf-web-sqli`, `ctf-web-ssti`, or `ctf-web-ssrf` when evidence points to that bug class.
+Use `ctf-common`, `ctf-terminal`, and `ctf-web` skills.
+
+Load specialized Web skills when evidence points to them:
+
+- SQL query construction or database errors: `ctf-web-sqli`.
+- Template rendering of user input: `ctf-web-ssti`.
+- Server-side URL fetch: `ctf-web-ssrf`.
+- File path, download, include, traversal: `ctf-web-lfi`.
+- Upload validation, storage, archive extraction: `ctf-web-upload`.
+- Browser execution, reflection, DOM sink, admin bot: `ctf-web-xss`.
+- Object ownership, tenant boundary, predictable IDs: `ctf-web-idor`.
+- JWT, session token, bearer token logic: `ctf-web-jwt`.
 
 Challenge/target:
 $ARGUMENTS
