@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pwn import *
 import argparse
+import re
 
 
 context.log_level = "info"
@@ -13,13 +14,29 @@ def start(args):
     return process(args.binary)
 
 
+def extract_flag(data: bytes) -> str | None:
+    match = re.search(rb"(?:flag|ctf|csaw|nyu|uiuctf|ictf)\{[^\r\n}]+\}", data, re.I)
+    return match.group(0).decode() if match else None
+
+
+def write_flag(flag: str) -> None:
+    print(flag)
+    with open("agent_flag.txt", "w", encoding="utf-8") as handle:
+        handle.write(flag.strip() + "\n")
+
+
 def solve(args) -> None:
     io = start(args)
 
     # TODO: exploit steps.
     # io.sendline(...)
-    # flag = io.recvline_contains(b"flag")
+    # data = io.recvall(timeout=2)
+    # flag = extract_flag(data)
+    # if flag:
+    #     write_flag(flag)
+    #     return
 
+    # Use interactive mode only for manual debugging, not final benchmark solvers.
     io.interactive()
 
 

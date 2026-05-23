@@ -24,6 +24,21 @@ Use when users can upload files or archives. Identify validation layers, storage
 5. Verify impact: source disclosure, stored XSS, SSRF/XXE through SVG/XML, file overwrite, or code execution only if challenge requires it.
 6. Write a reproducible upload and retrieval script.
 
+## Bypass Checklist
+
+Check only layers supported by source or observed behavior:
+
+- Extension allowlist and denylist order.
+- Case variation and trailing dots/spaces.
+- Double extensions and server parsing rules.
+- MIME type vs magic bytes.
+- Image parser transformations and metadata stripping.
+- SVG/XML parser behavior and external entity handling.
+- Archive extraction paths and zip slip.
+- Filename normalization and path separators.
+- Storage path predictability and retrieval controls.
+- Execution policy for uploaded extensions.
+
 ## Evidence Requirements
 
 - Upload request and server response.

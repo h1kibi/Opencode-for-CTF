@@ -27,6 +27,21 @@ Use when Web input may influence a file path. Focus on source review, minimal tr
 6. Retrieve only challenge-relevant files: source, config, flag path hinted by challenge, logs, or environment files when in scope.
 7. Write `solve.py` with final request sequence.
 
+## Bypass Checklist
+
+Check only when evidence suggests filtering:
+
+- URL encoding and double encoding.
+- Mixed separators: `/`, `\\`, `%2f`, `%5c`.
+- Prefix and suffix checks.
+- Extension appending and alternate extensions.
+- Absolute vs relative paths.
+- Symlink and static-root assumptions.
+- Archive extraction paths.
+- Framework static file helpers.
+- Windows drive paths if the target is Windows.
+- Null byte behavior only for old/runtime-specific stacks where it is plausible.
+
 ## Evidence Requirements
 
 - Input parameter and sink.

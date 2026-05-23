@@ -27,6 +27,21 @@ Use when authentication or authorization depends on JWTs or structured bearer/se
 6. Forge the minimal token needed for the challenge goal.
 7. Write `solve.py` that creates the token and performs the verifying request.
 
+## JWT Checklist
+
+Check in this order:
+
+1. Decode header and claims.
+2. Identify algorithm and verification code.
+3. Check `alg:none` only if library/config suggests it.
+4. Check HS/RS confusion only if asymmetric keys are used.
+5. Check weak secret only if HMAC is used and scope allows bounded testing.
+6. Check `kid` file/path/key lookup.
+7. Check `jku`/`x5u` remote key trust only in lab scope.
+8. Check missing `exp`, `aud`, `iss`, or role validation.
+9. Check claim type confusion such as string vs array, bool vs string, or numeric user IDs.
+10. Check custom token parsing before assuming JWT library behavior.
+
 ## Evidence Requirements
 
 - Original token structure.

@@ -26,6 +26,20 @@ Use when access control may depend on user-controlled object identifiers or miss
 6. If source exists, locate missing owner/tenant check.
 7. Retrieve only challenge-relevant object or flag.
 
+## Access-Control Checklist
+
+Use one minimal check per hypothesis:
+
+- Horizontal IDOR: same role, different object owner.
+- Vertical IDOR: lower role accessing higher role endpoint.
+- Tenant boundary: organization, team, workspace, or project ID.
+- Hidden field trust: user ID, role, price, owner, or status in client-controlled fields.
+- GraphQL object ID or global ID decoding.
+- UUID predictability only when source, logs, or adjacent leaks support it.
+- Cache or static file exposure after object creation.
+- Method confusion: GET vs POST vs PUT vs DELETE.
+- Mass assignment changing owner, role, or visibility.
+
 ## Evidence Requirements
 
 - Auth context.

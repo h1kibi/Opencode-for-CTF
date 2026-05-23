@@ -73,7 +73,7 @@ Collect these before acting:
 
 When giving up or timing out, create `failure_report.md`:
 
-```markdown
+````markdown
 # Failure Report
 
 ## Challenge
@@ -102,7 +102,7 @@ When giving up or timing out, create `failure_report.md`:
 ```markdown
 ...
 ```
-```
+````
 
 ## Evidence Requirements
 
@@ -125,6 +125,8 @@ Maintain these when useful:
 - `notes.md`: observations, hypotheses, commands, outputs, failures, next steps.
 - `solve.py`, `solve.js`, `solve.sage`, or `exploit.py`: reproducible solver.
 - `agent_flag.txt`: exact final verified flag only.
+
+When a matching file exists under `templates/`, copy it as the starting point instead of writing a solver from scratch.
 
 When solved, summarize root cause, exploit path, verification evidence, and the solver entry point.
 

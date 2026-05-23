@@ -27,6 +27,33 @@ Use when user input may execute in a browser context. Prioritize context discove
 6. For admin-bot tasks, prove the bot visit path and exfiltrate only the challenge flag/token to an allowed local/challenge endpoint.
 7. Write a reproducible request/browser script.
 
+## Context Checklist
+
+Pick payload shape from context, not from a generic list:
+
+- HTML text context.
+- HTML attribute, quoted or unquoted.
+- JavaScript string, template literal, object, or function argument.
+- URL context such as `href`, redirect, or `src`.
+- Markdown or sanitizer output.
+- SVG/XML context.
+- DOM sink and source pair.
+- CSP restrictions and nonce/hash behavior.
+- Stored vs reflected vs DOM vs blind/admin-bot path.
+
+## Bypass Checklist
+
+Try only when the context supports it:
+
+- Entity, URL, and JavaScript escaping differences.
+- Attribute breakout.
+- Event handlers on allowed tags.
+- SVG/MathML parser differences.
+- Markdown link/image handling.
+- Sanitizer mXSS or mutation behavior.
+- CSP allowed origins, JSONP, nonce reuse, or unsafe-inline.
+- DOM clobbering only if source uses clobberable globals.
+
 ## Evidence Requirements
 
 - Input location and rendered context.

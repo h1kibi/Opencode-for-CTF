@@ -1,21 +1,24 @@
 ---
-description: Route and solve an authorized CTF challenge
+description: Route an authorized CTF challenge and recommend the next command
 agent: ctf-misc
 ---
 
-Use `ctf-router` first.
+Use `ctf-router`.
 
 Challenge info:
 $ARGUMENTS
 
-Required workflow:
+Route-only workflow:
 1. Classify the challenge.
-2. Load the relevant `ctf-*` skills.
-3. Create or update `notes.md`.
-4. Choose the smallest useful toolset.
-5. Execute only verified next steps.
-6. Write a reproducible solver if possible.
-7. Write the verified final flag to `agent_flag.txt` only after proof.
+2. Create or update the triage section in `notes.md`.
+3. Recommend exactly one next command:
+   - `/ctf-web ...`
+   - `/ctf-pwn ...`
+   - `/ctf-rev ...`
+   - `/ctf-crypto ...`
+   - `/ctf-forensics ...`
+   - `/ctf-misc ...`
+4. Do not deeply solve unless the category is truly misc or ambiguous.
 
 Timebox strategy:
 - First 3 minutes: classify category and inventory files/services.

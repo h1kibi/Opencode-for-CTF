@@ -64,7 +64,7 @@
         "npx",
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "C:\\\\Tools\\\\Agent\\\\ctf-workspace"
+        "C:\\Tools\\Agent\\ctf-workspace"
       ],
       "enabled": true
     },
@@ -213,7 +213,6 @@
     "nmap_*": "ask",
     "mysql_*": "ask",
     "puppeteer_*": "ask",
-    "playwright_*": "ask",
     "ida-pro_*": "ask",
     "radare2_*": "ask",
     "jadx_*": "ask",
@@ -225,8 +224,8 @@
     "word_*": "ask",
     "external_directory": {
       "*": "deny",
-      "C:\\\\Tools\\\\Agent\\\\ctf-workspace": "allow",
-      "C:\\\\Tools\\\\Agent\\\\ctf-workspace\\\\**": "allow",
+      "C:\\Tools\\Agent\\ctf-workspace": "allow",
+      "C:\\Tools\\Agent\\ctf-workspace\\\\**": "allow",
       "C:/Tools/Agent/ctf-workspace": "allow",
       "C:/Tools/Agent/ctf-workspace/**": "allow"
     }
@@ -279,7 +278,6 @@
         "filesystem_*": "ask",
         "git_*": "ask",
         "puppeteer_*": "ask",
-        "playwright_*": "ask",
         "mysql_*": "ask",
         "nmap_*": "ask",
         "shodan_*": "deny",
@@ -345,7 +343,6 @@
         "nmap_*": "ask",
         "shodan_*": "deny",
         "puppeteer_*": "deny",
-        "playwright_*": "deny",
         "mysql_*": "deny",
         "ida-pro_*": "deny",
         "jadx_*": "deny",
@@ -408,7 +405,6 @@
         "vmprotect_*": "ask",
         "shodan_*": "deny",
         "puppeteer_*": "deny",
-        "playwright_*": "deny",
         "mysql_*": "deny",
         "nmap_*": "deny",
         "volatility_*": "deny",
@@ -459,7 +455,6 @@
         "nmap_*": "deny",
         "mysql_*": "deny",
         "puppeteer_*": "deny",
-        "playwright_*": "deny",
         "ida-pro_*": "deny",
         "radare2_*": "deny",
         "jadx_*": "deny",
@@ -523,7 +518,6 @@
         "nmap_*": "deny",
         "mysql_*": "deny",
         "puppeteer_*": "deny",
-        "playwright_*": "deny",
         "ida-pro_*": "deny",
         "radare2_*": "deny",
         "jadx_*": "deny",
@@ -581,7 +575,6 @@
         "filesystem_*": "ask",
         "git_*": "ask",
         "puppeteer_*": "ask",
-        "playwright_*": "ask",
         "radare2_*": "ask",
         "yara_*": "ask",
         "word_*": "ask",

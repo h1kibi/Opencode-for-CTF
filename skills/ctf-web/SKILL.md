@@ -37,10 +37,11 @@ Collect:
    - SQL query construction or DB errors: `ctf-web-sqli`.
    - Template rendering of user input: `ctf-web-ssti`.
    - Server-side URL fetch: `ctf-web-ssrf`.
-   - File path input: LFI/path traversal workflow in this skill until a dedicated skill exists.
-   - Browser execution/reflection: XSS workflow in this skill until a dedicated skill exists.
-   - Object ownership or numeric IDs: IDOR workflow in this skill until a dedicated skill exists.
-   - JWT/session/token logic: token workflow in this skill until a dedicated skill exists.
+   - File path input, download, include, traversal: `ctf-web-lfi`.
+   - Upload validation, storage, archive extraction: `ctf-web-upload`.
+   - Browser execution, reflection, DOM sink, admin bot: `ctf-web-xss`.
+   - Object ownership, tenant boundary, numeric IDs: `ctf-web-idor`.
+   - JWT, session token, bearer token logic: `ctf-web-jwt`.
 8. Write a deterministic `solve.py` or `solve.js` with target URL as an argument or variable.
 
 ## Tool Discipline
