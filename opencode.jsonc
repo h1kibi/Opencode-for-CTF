@@ -1,0 +1,545 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "puppeteer": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-puppeteer"
+      ],
+      "environment": {
+        "PUPPETEER_EXECUTABLE_PATH": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+      },
+      "enabled": true,
+      "timeout": 30000
+    },
+    "ReVa": {
+      "type": "local",
+      "command": [
+        "mcp-reva"
+      ],
+      "environment": {
+        "GHIDRA_INSTALL_DIR": "C:\\Program Files\\ghidra_12.0.4_PUBLIC"
+      },
+      "enabled": true,
+      "timeout": 60000
+    },
+    "ida-pro": {
+      "type": "local",
+      "command": [
+        "python",
+        "-m",
+        "ida_pro_mcp"
+      ],
+      "environment": {
+        "IDA_PATH": "C:\\Tools\\IDA Professional 9.2"
+      },
+      "enabled": true,
+      "timeout": 60000
+    },
+    "radare2": {
+      "type": "local",
+      "command": [
+        "python",
+        "C:\\Tools\\Agent\\security_mcp_wrappers.py",
+        "radare2"
+      ],
+      "enabled": true,
+      "timeout": 30000
+    },
+    "git": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@cyanheads/git-mcp-server"
+      ],
+      "enabled": true,
+      "timeout": 30000
+    },
+    "filesystem": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:\\"
+      ],
+      "enabled": true
+    },
+    "vmprotect": {
+      "type": "local",
+      "command": [
+        "python",
+        "C:\\Users\\Administrator\\vmprotect_mcp.py"
+      ],
+      "enabled": true,
+      "timeout": 30000
+    },
+    "shodan": {
+      "type": "local",
+      "command": [
+        "python",
+        "C:\\Tools\\Agent\\security_mcp_wrappers.py",
+        "shodan"
+      ],
+      "environment": {
+        "SHODAN_API_KEY": "${SHODAN_API_KEY}"
+      },
+      "enabled": true,
+      "timeout": 30000
+    },
+    "frida": {
+      "type": "local",
+      "command": [
+        "python",
+        "-m",
+        "frida_mcp.cli"
+      ],
+      "enabled": true,
+      "timeout": 30000
+    },
+    "jadx": {
+      "type": "local",
+      "command": [
+        "python",
+        "C:\\Tools\\Agent\\security_mcp_wrappers.py",
+        "jadx"
+      ],
+      "enabled": true,
+      "timeout": 30000
+    },
+    "volatility": {
+      "type": "local",
+      "command": [
+        "python",
+        "C:\\Tools\\Agent\\security_mcp_wrappers.py",
+        "volatility"
+      ],
+      "enabled": true,
+      "timeout": 60000
+    },
+    "yara": {
+      "type": "local",
+      "command": [
+        "python",
+        "C:\\Tools\\Agent\\security_mcp_wrappers.py",
+        "yara"
+      ],
+      "enabled": true,
+      "timeout": 30000
+    },
+    "nmap": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@ebowwa/mcp-nmap"
+      ],
+      "enabled": true,
+      "timeout": 60000
+    }
+  },
+  "tool_output": {
+    "max_lines": 800,
+    "max_bytes": 30000
+  },
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "tail_turns": 4,
+    "reserved": 10000
+  },
+  "plugin": [
+    "opencode-shell-strategy"
+  ],
+  "permission": {
+    "*": "ask",
+    "read": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "*.env.example": "allow"
+    },
+    "edit": {
+      "*": "ask",
+      "notes.md": "allow",
+      "solve.py": "allow",
+      "solve.js": "allow",
+      "exploit.py": "allow",
+      "agent_flag.txt": "allow"
+    },
+    "bash": {
+      "*": "ask",
+      "python *": "allow",
+      "python3 *": "allow",
+      "node *": "allow",
+      "file *": "allow",
+      "strings *": "allow",
+      "xxd *": "allow",
+      "readelf *": "allow",
+      "objdump *": "allow",
+      "checksec *": "allow",
+      "curl http://127.0.0.1*": "allow",
+      "curl http://localhost*": "allow",
+      "nc 127.0.0.1*": "ask",
+      "nc localhost*": "ask",
+      "docker ps*": "allow",
+      "docker logs*": "allow",
+      "docker compose up*": "ask",
+      "docker compose down*": "ask",
+      "gdb *": "ask",
+      "sage *": "ask",
+      "openssl *": "ask",
+      "rm -rf *": "deny",
+      "ssh *": "deny",
+      "scp *": "deny"
+    },
+    "webfetch": "ask",
+    "websearch": "deny",
+    "skill": {
+      "*": "ask",
+      "ctf-*": "allow"
+    },
+    "shodan_*": "deny",
+    "navicat_*": "deny",
+    "nmap_*": "ask",
+    "mysql_*": "ask",
+    "puppeteer_*": "ask",
+    "playwright_*": "ask",
+    "ida-pro_*": "ask",
+    "radare2_*": "ask",
+    "jadx_*": "ask",
+    "frida_*": "ask",
+    "ReVa_*": "ask",
+    "vmprotect_*": "ask",
+    "volatility_*": "ask",
+    "yara_*": "ask",
+    "word_*": "ask"
+  },
+  "agent": {
+    "ctf-web": {
+      "description": "Solve authorized Web CTF challenges using source review, browser interaction, HTTP probing, local reproduction, and exploit scripting.",
+      "mode": "primary",
+      "temperature": 0.1,
+      "steps": 80,
+      "permission": {
+        "websearch": "deny",
+        "webfetch": "ask",
+        "bash": {
+          "*": "ask",
+          "python *": "allow",
+          "python3 *": "allow",
+          "node *": "allow",
+          "npm test*": "allow",
+          "pytest *": "allow",
+          "curl http://127.0.0.1*": "allow",
+          "curl http://localhost*": "allow",
+          "docker ps*": "allow",
+          "docker logs*": "allow",
+          "docker compose up*": "ask",
+          "docker compose down*": "ask",
+          "nmap 127.0.0.1*": "ask",
+          "nmap localhost*": "ask",
+          "rm -rf *": "deny",
+          "ssh *": "deny",
+          "scp *": "deny"
+        },
+        "edit": {
+          "*": "ask",
+          "notes.md": "allow",
+          "solve.py": "allow",
+          "solve.js": "allow",
+          "agent_flag.txt": "allow"
+        },
+        "skill": {
+          "*": "ask",
+          "ctf-*": "allow"
+        },
+        "filesystem_*": "ask",
+        "git_*": "ask",
+        "puppeteer_*": "ask",
+        "playwright_*": "ask",
+        "mysql_*": "ask",
+        "nmap_*": "ask",
+        "shodan_*": "deny",
+        "ida-pro_*": "deny",
+        "radare2_*": "deny",
+        "jadx_*": "deny",
+        "frida_*": "deny",
+        "ReVa_*": "deny",
+        "vmprotect_*": "deny",
+        "volatility_*": "deny",
+        "yara_*": "deny",
+        "word_*": "deny"
+      },
+      "prompt": "You are a legal CTF Web challenge solver. Work only on authorized local, lab, or CTF targets. Use the relevant ctf-* skill when available. Keep notes.md, map routes and inputs, identify likely bug classes, test minimal payloads, write reproducible solve.py or solve.js, and write the verified final flag to agent_flag.txt."
+    },
+    "ctf-pwn": {
+      "description": "Solve authorized binary exploitation CTF challenges using local analysis, debugging, exploit development, and pwntools scripts.",
+      "mode": "primary",
+      "temperature": 0.1,
+      "steps": 100,
+      "permission": {
+        "webfetch": "deny",
+        "websearch": "deny",
+        "bash": {
+          "*": "ask",
+          "file *": "allow",
+          "strings *": "allow",
+          "xxd *": "allow",
+          "checksec *": "allow",
+          "readelf *": "allow",
+          "objdump *": "allow",
+          "python *": "allow",
+          "python3 *": "allow",
+          "gdb *": "ask",
+          "ROPgadget *": "ask",
+          "one_gadget *": "ask",
+          "nc 127.0.0.1*": "ask",
+          "nc localhost*": "ask",
+          "rm -rf *": "deny",
+          "ssh *": "deny",
+          "scp *": "deny"
+        },
+        "edit": {
+          "*": "ask",
+          "notes.md": "allow",
+          "solve.py": "allow",
+          "exploit.py": "allow",
+          "agent_flag.txt": "allow"
+        },
+        "skill": {
+          "*": "ask",
+          "ctf-*": "allow"
+        },
+        "filesystem_*": "ask",
+        "git_*": "ask",
+        "radare2_*": "ask",
+        "nmap_*": "ask",
+        "shodan_*": "deny",
+        "puppeteer_*": "deny",
+        "playwright_*": "deny",
+        "mysql_*": "deny",
+        "ida-pro_*": "deny",
+        "jadx_*": "deny",
+        "frida_*": "deny",
+        "ReVa_*": "deny",
+        "vmprotect_*": "deny",
+        "volatility_*": "deny",
+        "yara_*": "deny",
+        "word_*": "deny"
+      },
+      "prompt": "You are a legal pwn CTF solver. Work locally first. Identify binary protections, crash primitive, control primitive, leak primitive, exploit strategy, and produce a reproducible pwntools solve script."
+    },
+    "ctf-rev": {
+      "description": "Solve authorized reverse engineering and mobile CTF challenges using static analysis, decompilation, tracing, and controlled dynamic instrumentation.",
+      "mode": "primary",
+      "temperature": 0.1,
+      "steps": 100,
+      "permission": {
+        "webfetch": "deny",
+        "websearch": "deny",
+        "bash": {
+          "*": "ask",
+          "file *": "allow",
+          "strings *": "allow",
+          "xxd *": "allow",
+          "objdump *": "allow",
+          "readelf *": "allow",
+          "python *": "allow",
+          "python3 *": "allow",
+          "jadx *": "ask",
+          "frida *": "ask",
+          "adb *": "ask",
+          "rm -rf *": "deny",
+          "ssh *": "deny",
+          "scp *": "deny"
+        },
+        "edit": {
+          "*": "ask",
+          "notes.md": "allow",
+          "solve.py": "allow",
+          "agent_flag.txt": "allow"
+        },
+        "skill": {
+          "*": "ask",
+          "ctf-*": "allow"
+        },
+        "filesystem_*": "ask",
+        "git_*": "ask",
+        "ida-pro_*": "ask",
+        "radare2_*": "ask",
+        "jadx_*": "ask",
+        "frida_*": "ask",
+        "ReVa_*": "ask",
+        "vmprotect_*": "ask",
+        "shodan_*": "deny",
+        "puppeteer_*": "deny",
+        "playwright_*": "deny",
+        "mysql_*": "deny",
+        "nmap_*": "deny",
+        "volatility_*": "deny",
+        "yara_*": "deny",
+        "word_*": "deny"
+      },
+      "prompt": "You are a legal CTF reverse engineering solver. Prefer static analysis first, then controlled dynamic analysis. Keep notes.md, document functions, constants, encodings, anti-debug checks, and produce a reproducible solve script."
+    },
+    "ctf-crypto": {
+      "description": "Solve authorized cryptography CTF challenges using math reasoning, Python, Sage, protocol analysis, and reproducible attacks.",
+      "mode": "primary",
+      "temperature": 0.1,
+      "steps": 80,
+      "permission": {
+        "webfetch": "deny",
+        "websearch": "deny",
+        "bash": {
+          "*": "ask",
+          "python *": "allow",
+          "python3 *": "allow",
+          "sage *": "ask",
+          "openssl *": "ask",
+          "node *": "allow",
+          "rm -rf *": "deny",
+          "ssh *": "deny",
+          "scp *": "deny"
+        },
+        "edit": {
+          "*": "ask",
+          "notes.md": "allow",
+          "solve.py": "allow",
+          "solve.sage": "allow",
+          "agent_flag.txt": "allow"
+        },
+        "skill": {
+          "*": "ask",
+          "ctf-*": "allow"
+        },
+        "filesystem_*": "ask",
+        "git_*": "ask",
+        "shodan_*": "deny",
+        "nmap_*": "deny",
+        "mysql_*": "deny",
+        "puppeteer_*": "deny",
+        "playwright_*": "deny",
+        "ida-pro_*": "deny",
+        "radare2_*": "deny",
+        "jadx_*": "deny",
+        "frida_*": "deny",
+        "ReVa_*": "deny",
+        "vmprotect_*": "deny",
+        "volatility_*": "deny",
+        "yara_*": "deny",
+        "word_*": "deny"
+      },
+      "prompt": "You are a legal crypto CTF solver. Identify the primitive, assumptions, weakness, attack path, and write a reproducible solve script. Do not guess flags."
+    },
+    "ctf-forensics": {
+      "description": "Solve authorized forensics CTF challenges involving files, memory images, packet captures, documents, archives, malware indicators, and steganography.",
+      "mode": "primary",
+      "temperature": 0.1,
+      "steps": 80,
+      "permission": {
+        "webfetch": "deny",
+        "websearch": "deny",
+        "bash": {
+          "*": "ask",
+          "file *": "allow",
+          "strings *": "allow",
+          "xxd *": "allow",
+          "python *": "allow",
+          "python3 *": "allow",
+          "binwalk *": "ask",
+          "foremost *": "ask",
+          "exiftool *": "ask",
+          "tshark *": "ask",
+          "volatility *": "ask",
+          "vol.py *": "ask",
+          "yara *": "ask",
+          "rm -rf *": "deny",
+          "ssh *": "deny",
+          "scp *": "deny"
+        },
+        "edit": {
+          "*": "ask",
+          "notes.md": "allow",
+          "solve.py": "allow",
+          "agent_flag.txt": "allow"
+        },
+        "skill": {
+          "*": "ask",
+          "ctf-*": "allow"
+        },
+        "filesystem_*": "ask",
+        "git_*": "ask",
+        "volatility_*": "ask",
+        "yara_*": "ask",
+        "word_*": "ask",
+        "shodan_*": "deny",
+        "nmap_*": "deny",
+        "mysql_*": "deny",
+        "puppeteer_*": "deny",
+        "playwright_*": "deny",
+        "ida-pro_*": "deny",
+        "radare2_*": "deny",
+        "jadx_*": "deny",
+        "frida_*": "deny",
+        "ReVa_*": "deny",
+        "vmprotect_*": "deny"
+      },
+      "prompt": "You are a legal forensics CTF solver. Preserve evidence, avoid destructive operations, keep notes.md, enumerate file type, metadata, embedded files, encodings, packet artifacts, memory processes, and produce reproducible extraction steps."
+    },
+    "ctf-misc": {
+      "description": "Solve authorized miscellaneous CTF challenges using scripting, file analysis, protocol reasoning, light reversing, and local experimentation.",
+      "mode": "primary",
+      "temperature": 0.1,
+      "steps": 80,
+      "permission": {
+        "webfetch": "ask",
+        "websearch": "deny",
+        "bash": {
+          "*": "ask",
+          "python *": "allow",
+          "python3 *": "allow",
+          "node *": "allow",
+          "file *": "allow",
+          "strings *": "allow",
+          "xxd *": "allow",
+          "curl http://127.0.0.1*": "allow",
+          "curl http://localhost*": "allow",
+          "nc 127.0.0.1*": "ask",
+          "nc localhost*": "ask",
+          "docker ps*": "allow",
+          "docker logs*": "allow",
+          "docker compose up*": "ask",
+          "docker compose down*": "ask",
+          "rm -rf *": "deny",
+          "ssh *": "deny",
+          "scp *": "deny"
+        },
+        "edit": {
+          "*": "ask",
+          "notes.md": "allow",
+          "solve.py": "allow",
+          "solve.js": "allow",
+          "agent_flag.txt": "allow"
+        },
+        "skill": {
+          "*": "ask",
+          "ctf-*": "allow"
+        },
+        "filesystem_*": "ask",
+        "git_*": "ask",
+        "puppeteer_*": "ask",
+        "playwright_*": "ask",
+        "radare2_*": "ask",
+        "yara_*": "ask",
+        "word_*": "ask",
+        "shodan_*": "deny",
+        "navicat_*": "deny"
+      },
+      "prompt": "You are a legal miscellaneous CTF solver. Classify the challenge first, then choose the smallest useful toolset. Prefer local scripts and reproducible steps. Keep notes.md and write the verified final flag to agent_flag.txt."
+    }
+  }
+}

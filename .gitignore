@@ -1,0 +1,13 @@
+node_modules/
+*.log
+*.bak
+*.tmp
+.env
+.env.*
+!.env.example
+opencode.local.jsonc
+agent_flag.txt
+notes.md
+solve.py
+solve.js
+exploit.py
