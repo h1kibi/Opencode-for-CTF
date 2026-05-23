@@ -64,7 +64,7 @@
         "npx",
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "C:\\"
+        "C:\\\\Tools\\\\Agent"
       ],
       "enabled": true
     },
@@ -194,7 +194,13 @@
       "openssl *": "ask",
       "rm -rf *": "deny",
       "ssh *": "deny",
-      "scp *": "deny"
+      "scp *": "deny",
+      "rm *": "deny",
+      "del *": "deny",
+      "rmdir *": "deny",
+      "Remove-Item *": "deny",
+      "powershell Remove-Item *": "deny",
+      "pwsh Remove-Item *": "deny"
     },
     "webfetch": "ask",
     "websearch": "deny",
@@ -216,7 +222,14 @@
     "vmprotect_*": "ask",
     "volatility_*": "ask",
     "yara_*": "ask",
-    "word_*": "ask"
+    "word_*": "ask",
+    "external_directory": {
+      "*": "deny",
+      "C:\\\\Tools\\\\Agent": "allow",
+      "C:\\\\Tools\\\\Agent\\\\**": "allow",
+      "C:/Tools/Agent": "allow",
+      "C:/Tools/Agent/**": "allow"
+    }
   },
   "agent": {
     "ctf-web": {
@@ -541,5 +554,11 @@
       },
       "prompt": "You are a legal miscellaneous CTF solver. Classify the challenge first, then choose the smallest useful toolset. Prefer local scripts and reproducible steps. Keep notes.md and write the verified final flag to agent_flag.txt."
     }
+  },
+  "share": "disabled",
+  "skills": {
+    "paths": [
+      "./skills"
+    ]
   }
 }
