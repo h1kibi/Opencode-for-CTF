@@ -36,6 +36,29 @@ Collect:
 8. Test locally under the same Docker/libc conditions when possible.
 9. Only then adapt to remote host/port.
 
+## Exploit Decision Tree
+
+1. Run `file` and `checksec`.
+2. If no crash, identify input surface, protocol state, length checks, and logic bugs.
+3. If crash exists, confirm whether control is possible with debugger evidence.
+4. If RIP/EIP is controlled:
+   - NX off: consider shellcode.
+   - NX on and PIE off: consider ROP, ret2win, or ret2csu.
+   - NX on and PIE on: find an info leak before building final ROP.
+5. If format string exists:
+   - Find offset.
+   - Leak address.
+   - Check RELRO.
+   - Decide read/write target.
+6. If heap bug exists:
+   - Identify allocator and libc.
+   - Reproduce UAF, double-free, overflow, or off-by-one.
+   - Choose tcache, fastbin, unsorted bin, or house technique based on version.
+7. If seccomp exists:
+   - Inspect allowed syscalls before choosing shell, open-read-write, or ORW ROP.
+8. If source exists and memory corruption is unclear:
+   - Audit parsing, integer math, array bounds, format strings, and object lifetimes.
+
 ## Tool Discipline
 
 - Use scripted `gdb` or batch commands when possible.

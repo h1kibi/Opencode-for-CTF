@@ -52,6 +52,58 @@ Collect these before acting:
 - For interactive tools, use `ctf-terminal`.
 - Do not use hidden evaluator metadata, answer files, or ground-truth fields as the solution when the harness intends them to be hidden.
 
+## Accuracy Rules
+
+- Never write `agent_flag.txt` from a guess.
+- A flag is verified only if it appears in a challenge response, a file extracted by a justified path, solver output, debugger/program output, or official local service output.
+- If two hypotheses conflict, prefer the one supported by command output or source code.
+- Prefer one minimal confirming test over five speculative tests.
+- When stuck, summarize evidence before trying a new class of attack.
+- Do not repeat a failed payload family without changing the hypothesis.
+- Treat metadata flags, answer files, and benchmark ground truth as out of scope unless the task explicitly asks for evaluator maintenance.
+
+## Timebox Strategy
+
+- First 3 minutes: classify category and inventory files/services.
+- Next 7 minutes: test top 3 hypotheses only.
+- If no progress after 10 minutes: write a stuck summary and choose a new branch.
+- If no progress after 20 minutes: generate `failure_report.md` with missing signals and likely skill gaps.
+
+## Failure Report
+
+When giving up or timing out, create `failure_report.md`:
+
+```markdown
+# Failure Report
+
+## Challenge
+- Name:
+- Category:
+- Files:
+- Target:
+
+## What worked
+-
+
+## What failed
+| Attempt | Reason | Evidence |
+|---|---|---|
+
+## Missed signals
+-
+
+## Likely category
+-
+
+## Skill gaps
+-
+
+## Proposed skill patch
+```markdown
+...
+```
+```
+
 ## Evidence Requirements
 
 Do not claim a result unless it is supported by at least one of:

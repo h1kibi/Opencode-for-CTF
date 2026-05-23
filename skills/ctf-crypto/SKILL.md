@@ -32,6 +32,23 @@ Collect:
 6. Implement deterministic recovery in Python first; use Sage for algebra, lattices, number fields, or elliptic curves.
 7. Verify plaintext, key, or forged value against the challenge constraints.
 
+## Primitive Decision Tree
+
+1. Is it RSA?
+   - Check `n/e/c`, multiple ciphertexts, shared modulus, small exponent, close primes, leaked `dp/dq`, partial `p/q`, textbook RSA, common modulus, and padding misuse.
+2. Is it ECC?
+   - Check curve parameters, invalid curve, small subgroup, reused nonce, biased nonce, custom curve arithmetic, and signature nonce leakage.
+3. Is it symmetric crypto?
+   - Check mode, IV/nonce reuse, ECB patterns, CTR keystream reuse, CBC bit flipping, padding oracle, custom padding, and MAC-then-encrypt mistakes.
+4. Is it a PRNG challenge?
+   - Check LCG, MT19937, time seed, low entropy seed, modulo bias, partial output leakage, and state recovery.
+5. Is it hash/MAC/signature logic?
+   - Check length extension, weak compare, truncation, custom hash, HMAC misuse, and signature malleability.
+6. Is it classical/encoding/compression?
+   - Check XOR, known plaintext, repeated key, substitution, transposition, base encodings, compression, and layered transforms.
+
+Pick the first branch supported by parameters or source. If a branch fails, record why before switching.
+
 ## Tool Discipline
 
 - Do not brute force without bounding search space and runtime.

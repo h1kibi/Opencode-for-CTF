@@ -35,6 +35,23 @@ Collect:
 7. For mobile, inspect Java/Kotlin, native libraries, assets, reflection, dynamic loading, and network behavior.
 8. Verify recovered input or flag against the program/app when possible.
 
+## Validation Discovery Tree
+
+Look for these in order:
+
+1. Success and failure strings.
+2. Flag format literals or partial flag fragments.
+3. Input length checks and character constraints.
+4. `strcmp`, `strncmp`, `memcmp`, hashing, crypto, or custom compare loops.
+5. Lookup tables, constants, S-boxes, and encoded byte arrays.
+6. Encoders, decoders, compression, base conversion, and XOR loops.
+7. Anti-debug, anti-VM, timing, exception, or self-modifying code.
+8. License/key verification and serial generation logic.
+9. JNI/native calls, dynamic loading, reflection, and asset decryption in APKs.
+10. Network or file dependencies that feed validation state.
+
+If static analysis stalls, use dynamic analysis to confirm one specific hypothesis at a time.
+
 ## Tool Discipline
 
 - Prefer static analysis first.
