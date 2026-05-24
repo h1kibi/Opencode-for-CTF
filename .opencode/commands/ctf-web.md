@@ -5,7 +5,19 @@ agent: ctf-web
 
 Use `ctf-common`, `ctf-terminal`, and `ctf-web` skills.
 
-Load specialized Web skills when evidence points to them:
+Start every Web challenge by entering the solve state machine: recon → attack-queue → focused-probe → primitive-lock → control-plane → final-chain → retro.
+
+### Phase dispatch:
+
+- recon: `ctf-web-recon` + `ctf-web-source-map` (if source available).
+- attack-queue: `ctf-web-attack-queue`.
+- focused-probe: vulnerability-specific skill (see below).
+- primitive-lock: `ctf-web-primitive-lock`.
+- control-plane: `ctf-web-control-plane`.
+- final-chain: `ctf-web-exploit-chain` + `ctf-web-stability-guard`.
+- retro: `ctf-web-retro`.
+
+### Vulnerability skills:
 
 - SQL query construction or database errors: `ctf-web-sqli`.
 - Template rendering of user input: `ctf-web-ssti`.
@@ -22,7 +34,7 @@ $ARGUMENTS
 Rules:
 - Work only on authorized CTF, lab, benchmark, or local targets.
 - Create or update `notes.md`.
-- Start in recon phase, not exploit phase.
+- Start in recon phase, not exploit phase. Do not deeply exploit the first visible vulnerability.
 - Before deeply exploiting any one bug class, build an attack surface table and candidate attack queue.
 - Rank candidate paths by value, verification cost, risk, stability, and confidence.
 - Try high-value, low-cost, low-risk candidates before long or fragile chains.
@@ -30,7 +42,6 @@ Rules:
 - Use focused probes with an explicit attempt budget.
 - Treat wordlist fuzzing, repeated bot triggers, repeated uploads, file overwrites, SQL dump automation, and high-concurrency loops as high-risk actions.
 - Before high-risk actions, write a High-Risk Action Plan and prefer a safer verification step.
-- Use minimal probes and record evidence.
 - Maintain a Primitive Ledger after the first non-trivial finding.
 - If one critical primitive or two high primitives are confirmed, stop broad probing and switch to Primitive Lock mode.
 - Before final exploitation, choose a stable control plane.
