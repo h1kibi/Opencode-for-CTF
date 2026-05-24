@@ -93,7 +93,7 @@ After budget exhaustion, return to attack-queue. Do not continue because the pat
 
 - Load `ctf-web-control-plane`.
 - Select the most stable challenge-local channel for output/exfiltration.
-- If file write is involved, load `ctf-web-upload` for the file write matrix.
+- If file write or overwrite is involved, load `ctf-web-file-write` for the file write matrix. Use `ctf-web-upload` only for upload validation, storage, archive extraction, and upload-to-execute behavior.
 - Transition to final-chain when canary succeeds and path is reproducible.
 
 ### Phase: final-chain

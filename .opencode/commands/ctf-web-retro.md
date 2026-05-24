@@ -36,9 +36,9 @@ Workflow:
    - unstable control plane
    - unsafe or damaging action
 4. Produce:
-   - `retro.md`
-   - lessons learned
-   - skill patch proposals
+   - `retros/<challenge-or-date>.md`
+   - `lessons/web-<pattern>.md`
+   - `patches/<target-skill>-<short-label>.md`
 5. Do not directly modify core skills.
 
 Output format:

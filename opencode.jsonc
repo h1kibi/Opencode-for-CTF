@@ -368,7 +368,10 @@
           "notes.md": "allow",
           "solve.py": "allow",
           "solve.js": "allow",
-          "agent_flag.txt": "allow"
+          "agent_flag.txt": "allow",
+          "retros/*.md": "allow",
+          "lessons/*.md": "allow",
+          "patches/*.md": "allow"
         },
         "skill": {
           "*": "ask",
@@ -380,6 +383,7 @@
         "mysql_*": "ask",
         "nmap_*": "ask",
         "ctf-web-probe": "allow",
+        "ctf-java-map": "allow",
         "shodan_*": "deny",
         "ida-pro_*": "deny",
         "radare2_*": "deny",

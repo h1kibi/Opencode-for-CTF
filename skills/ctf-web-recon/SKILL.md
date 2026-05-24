@@ -89,7 +89,7 @@ Write this to `notes.md`:
 # Recon Map
 
 | Surface | Evidence | Inputs | Auth Needed | Source/Sink | Candidate Bug | Value | Cost | Risk | Stability | Next Safe Check |
-|---|---|---|---|---|---|
+|---|---|---|---|---|---|---:|---:|---:|---:|---|
 
 # Framework Fingerprint
 

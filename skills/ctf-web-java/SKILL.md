@@ -12,6 +12,8 @@ Use when Web challenge evidence includes `.java`, `.jsp`, `.jar`, `.war`, `pom.x
 
 ## First Pass
 
+When Java source, `.jar`, `.war`, `pom.xml`, or `build.gradle` is available, run `ctf-java-map` before manual review. Use its output to seed the Java Web Map, route table, sink table, and attack queue.
+
 1. Identify packaging:
    - source tree
    - jar
@@ -79,7 +81,7 @@ Use when Web challenge evidence includes `.java`, `.jsp`, `.jar`, `.war`, `pom.x
 ## Java Sinks
 
 | File | Method | Sink | Input Source | Candidate Primitive |
-|---|---|---|---|---|---|
+|---|---|---|---|---|
 
 ## Dependencies of Interest
 
