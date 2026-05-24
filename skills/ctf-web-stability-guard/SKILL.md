@@ -27,6 +27,21 @@ Treat these as high-risk actions:
 - Large payloads.
 - Race-condition loops.
 - Long-running timing probes.
+- Custom Python, Node, Bash, or browser-automation scripts.
+
+This gate also applies to custom scripts.
+
+A custom script is high-risk if it:
+- Sends more than 20 HTTP requests.
+- Uses concurrency.
+- Repeatedly triggers bots.
+- Repeatedly uploads files.
+- Attempts SQL dumping.
+- Mutates backend state.
+- Performs file write or overwrite.
+- Performs long-running timing probes.
+
+Such scripts require a High-Risk Action Plan before execution.
 
 Before any high-risk action, write this plan in `notes.md`:
 

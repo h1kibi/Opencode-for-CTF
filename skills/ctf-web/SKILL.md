@@ -44,6 +44,16 @@ Next required action:
 - Output a Recon Map with candidate attack directions.
 - Transition to attack-queue when recon map exists.
 
+Recon is incomplete until these are recorded:
+- At least one route/input map entry.
+- Auth/session status.
+- Framework/language guess.
+- Admin/debug/upload/API/bot surface status, even if absent.
+- At least two candidate attack directions, unless only one surface exists.
+- A first safe check for every candidate.
+
+Do not enter focused-probe directly from recon. Always pass through attack-queue unless source code proves one critical primitive with trivial low-risk verification.
+
 ### Phase: attack-queue
 
 - Load `ctf-web-attack-queue`.
@@ -57,6 +67,18 @@ Next required action:
 - Load the vulnerability-specific skill for the selected candidate.
 - Use minimal probes with an explicit attempt budget.
 - Do not try more than 3 variants of the same payload family unless the hypothesis changed.
+
+Focused-probe budget:
+- SQLi without source evidence: 3 minimal probes.
+- XSS without bot: 2 payloads.
+- XSS with bot: 2 ES5/XHR payloads before reassessing runtime.
+- SSRF without internal target map: 2 probes.
+- Upload/write: 2 canary checks before matrix.
+- File overwrite: 1 reversible canary before reassessment.
+- Race/concurrency: disabled unless attack-queue selects race as the top candidate.
+- Wordlist fuzzing and sqlmap are never initial focused probes.
+
+After budget exhaustion, return to attack-queue. Do not continue because the path is "interesting."
 - If a critical primitive or two high primitives are confirmed, transition to primitive-lock.
 - If the budget is exhausted without confirmation, return to attack-queue.
 
@@ -118,6 +140,19 @@ Route to these when focused-probe selects a specific bug class:
 | Browser execution, reflection, DOM sink, admin bot | `ctf-web-xss` |
 | Object ownership, tenant boundary, numeric IDs | `ctf-web-idor` |
 | JWT, session token, bearer token logic | `ctf-web-jwt` |
+| Java, Spring, Servlet, JSP, Tomcat, Shiro, Struts, MyBatis | `ctf-web-java` |
+| API endpoints, Swagger/OpenAPI, JSON REST | `ctf-web-api` |
+| GraphQL endpoint, introspection, resolver behavior | `ctf-web-graphql` |
+| XML, SVG, SOAP, SAML, Office XML parser | `ctf-web-xxe` |
+| Serialized blob, base64 object, Java/PHP/Python/.NET object token | `ctf-web-deser` |
+| Shell command wrapper, ping/nslookup/convert/tool parameter | `ctf-web-command-injection` |
+| Login/register/reset/password/MFA flow | `ctf-web-auth` |
+| Cookie/session/signature/CSRF/session fixation | `ctf-web-session` |
+| Explicit server-side write or overwrite primitive | `ctf-web-file-write` |
+| Order/payment/coupon/points/workflow state | `ctf-web-logic` |
+| One-time token, limit, inventory, repeated action, concurrency clue | `ctf-web-race` |
+| Cache headers, CDN/proxy, cache key behavior | `ctf-web-cache` |
+| Mongo/Elastic/JSON operator query behavior | `ctf-web-nosql` |
 
 ## Tool Discipline
 

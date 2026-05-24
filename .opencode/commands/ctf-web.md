@@ -27,6 +27,19 @@ Start every Web challenge by entering the solve state machine: recon → attack-
 - Browser execution, reflection, DOM sink, admin bot: `ctf-web-xss`.
 - Object ownership, tenant boundary, predictable IDs: `ctf-web-idor`.
 - JWT, session token, bearer token logic: `ctf-web-jwt`.
+- Java, Spring, Servlet, JSP, Tomcat, Shiro, Struts, MyBatis: `ctf-web-java`.
+- API endpoints, Swagger/OpenAPI, JSON REST: `ctf-web-api`.
+- GraphQL endpoint, introspection, resolver behavior: `ctf-web-graphql`.
+- XML, SVG, SOAP, SAML, Office XML parser: `ctf-web-xxe`.
+- Serialized blob, base64 object, object token: `ctf-web-deser`.
+- Shell command wrapper, ping/nslookup/convert/tool parameter: `ctf-web-command-injection`.
+- Login/register/reset/password/MFA flow: `ctf-web-auth`.
+- Cookie/session/signature/CSRF/session fixation: `ctf-web-session`.
+- Explicit server-side write or overwrite primitive: `ctf-web-file-write`.
+- Order/payment/coupon/points/workflow state: `ctf-web-logic`.
+- One-time token, limit, inventory, concurrency clue: `ctf-web-race`.
+- Cache headers, CDN/proxy, cache key behavior: `ctf-web-cache`.
+- Mongo/Elastic/JSON operator query behavior: `ctf-web-nosql`.
 
 Challenge/target:
 $ARGUMENTS
@@ -50,3 +63,4 @@ Rules:
 - Do not try more than 3 variants of the same payload family unless the hypothesis changed.
 - Write `solve.py` or `solve.js` when practical.
 - Write only the verified final flag to `agent_flag.txt`.
+- Custom Python/Node/Bash/browser scripts are high-risk if they send more than 20 requests, use concurrency, repeatedly trigger bots, repeatedly upload files, dump data, mutate backend state, or write/overwrite files.

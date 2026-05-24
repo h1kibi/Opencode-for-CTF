@@ -92,14 +92,18 @@ Use: `ctf-common`, `ctf-terminal`, `ctf-misc`.
 
 Prefer the category with the strongest evidence and cheapest next verification step. Do not load heavy tools or high-risk MCP servers just to classify.
 
-For Web challenges, do not only classify the bug class. Also classify the exploitation phase:
+For Web challenges, classify the exploitation phase:
 
-- discovery phase: no high primitive confirmed
+- recon phase: target exists but route/input/auth/source map is incomplete
+- attack-queue phase: attack surface is mapped and candidates need ranking
+- focused-probe phase: one candidate is selected with a budget
 - primitive-lock phase: one critical or two high primitives confirmed
-- control-plane phase: admin/backend/database/file-write surface available
+- control-plane phase: admin/backend/database/file/debug surface available
 - final-chain phase: stable exploit path identified
+- retro phase: challenge solved or timed out and needs lesson extraction
 
-If the challenge is already in primitive-lock, control-plane, or final-chain phase, do not route back to broad reconnaissance.
+If no high primitive is confirmed, route to recon or attack-queue, not primitive-lock.
+If exploit-chain signals are already present, route to `ctf-web` with the current phase explicitly stated.
 
 When two categories are close, choose the action that increases information across both branches, such as source route mapping for Web plus Crypto, `file`/`strings` for Rev plus Crypto, or archive listing for Forensics plus Rev.
 

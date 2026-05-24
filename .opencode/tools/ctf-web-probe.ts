@@ -53,6 +53,42 @@ export default tool({
     if (/sessionid|csrftoken|django/i.test(combinedText)) hints.add("django/session")
     if (/phantomjs/i.test(combinedText)) hints.add("phantomjs-legacy-js")
 
+    const primitiveCandidates: string[] = []
+    const phaseSuggestions: string[] = []
+    const recommendedNext: string[] = []
+    const riskWarnings: string[] = []
+    const attackQueueSeed: string[] = []
+
+    if (hints.has("admin-bot/browser")) {
+      primitiveCandidates.push("admin bot: high candidate")
+      attackQueueSeed.push("admin-bot path | expected primitive: privileged browser execution | value 3 | cost 3 | risk 3 | stability 3")
+      recommendedNext.push("identify bot runtime; use one low-risk ES5/XHR proof only")
+      riskWarnings.push("avoid repeated bot-triggering payloads")
+    }
+
+    if (hints.has("editor/file-write candidates")) {
+      primitiveCandidates.push("editor/file-write: high or critical candidate")
+      attackQueueSeed.push("editor/file-write path | expected primitive: server-side file write | value 5 | cost 2 | risk 4 | stability 4")
+      recommendedNext.push("do not overwrite files yet; build a file-write matrix and use canary checks")
+      riskWarnings.push("file overwrite is high risk until create/overwrite behavior is known")
+    }
+
+    if (hints.has("debug/source-leak")) {
+      primitiveCandidates.push("debug/source leak: high candidate")
+      attackQueueSeed.push("debug/source-leak path | expected primitive: path/config/source disclosure | value 4 | cost 1 | risk 1 | stability 5")
+      recommendedNext.push("prefer source/path/config mapping before payload fuzzing")
+    }
+
+    if (hints.has("java-web")) {
+      primitiveCandidates.push("java-web framework: source/sink triage candidate")
+      recommendedNext.push("use Java Web source/framework triage if source, jar, war, pom.xml, or stack traces are available")
+    }
+
+    if (primitiveCandidates.length > 0) {
+      phaseSuggestions.push("stay in recon or attack-queue until candidates are ranked")
+      phaseSuggestions.push("enter primitive-lock only after one critical or two high primitives are confirmed")
+    }
+
     const robotsUrl = new URL("/robots.txt", base)
     const sitemapUrl = new URL("/sitemap.xml", base)
     const extras: string[] = []
@@ -82,6 +118,16 @@ export default tool({
       `hints: ${Array.from(hints).join(", ") || "none"}`,
       "extras:",
       ...extras,
+      "primitive candidates:",
+      ...(primitiveCandidates.length ? primitiveCandidates.map((x) => `- ${x}`) : ["- none"]),
+      "attack queue seed:",
+      ...(attackQueueSeed.length ? attackQueueSeed.map((x) => `- ${x}`) : ["- none"]),
+      "phase suggestions:",
+      ...(phaseSuggestions.length ? phaseSuggestions.map((x) => `- ${x}`) : ["- stay in recon until map is complete"]),
+      "recommended next:",
+      ...(recommendedNext.length ? recommendedNext.map((x) => `- ${x}`) : ["- build route/input/auth map and attack queue"]),
+      "risk warnings:",
+      ...(riskWarnings.length ? riskWarnings.map((x) => `- ${x}`) : ["- none"]),
     ].join("\n")
   },
 })

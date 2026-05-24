@@ -88,7 +88,7 @@ Write this to `notes.md`:
 ```markdown
 # Recon Map
 
-| Surface | Evidence | Inputs | Auth Needed | Source/Sink | Candidate Bug |
+| Surface | Evidence | Inputs | Auth Needed | Source/Sink | Candidate Bug | Value | Cost | Risk | Stability | Next Safe Check |
 |---|---|---|---|---|---|
 
 # Framework Fingerprint
@@ -97,8 +97,11 @@ Write this to `notes.md`:
 - Framework signals:
 - Language signals:
 - Debug/error evidence:
+- Admin/debug/upload/editor surfaces:
+- Bot/headless browser signals:
 
-# Candidate Attack Queue
+# Candidate Attack Queue Seed
 
-List promising attack directions before scoring.
+| Candidate | Evidence | Expected Primitive | Why Promising | First Safe Check |
+|---|---|---|---|---|
 ```

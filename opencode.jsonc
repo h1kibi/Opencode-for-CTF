@@ -379,6 +379,7 @@
         "puppeteer_*": "ask",
         "mysql_*": "ask",
         "nmap_*": "ask",
+        "ctf-web-probe": "allow",
         "shodan_*": "deny",
         "ida-pro_*": "deny",
         "radare2_*": "deny",
