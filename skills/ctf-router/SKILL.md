@@ -37,6 +37,27 @@ Signals: URL, HTTP service, HTML/JS/CSS, Flask/Django/Express/PHP/Spring, routes
 
 Use: `ctf-common`, `ctf-terminal`, `ctf-web`.
 
+### Web Exploit-Chain Signals
+
+If any of these combinations appear, route to `ctf-web` and instruct it to use Primitive Lock mode immediately:
+
+- stored XSS + admin bot
+- admin bot + session/cookie leak
+- debug page + source path leak
+- upload/editor endpoint + server-side file path
+- arbitrary/overwrite file write + framework reload/import behavior
+- SSRF + internal admin/debug endpoint
+- admin session + backend editor/upload/API
+- source code + dangerous sink with reachable route
+
+For these combinations, the first objective is not more enumeration. The first objective is to identify:
+
+1. strongest confirmed primitive
+2. stable control plane
+3. lowest-risk final chain
+4. reversible canary test
+5. deterministic solver path
+
 ### Pwn
 
 Signals: ELF/PE binary, libc, Docker remote service, `nc host port`, `checksec`, buffer input, crashable service.
@@ -70,6 +91,15 @@ Use: `ctf-common`, `ctf-terminal`, `ctf-misc`.
 ## Decision Rule
 
 Prefer the category with the strongest evidence and cheapest next verification step. Do not load heavy tools or high-risk MCP servers just to classify.
+
+For Web challenges, do not only classify the bug class. Also classify the exploitation phase:
+
+- discovery phase: no high primitive confirmed
+- primitive-lock phase: one critical or two high primitives confirmed
+- control-plane phase: admin/backend/database/file-write surface available
+- final-chain phase: stable exploit path identified
+
+If the challenge is already in primitive-lock, control-plane, or final-chain phase, do not route back to broad reconnaissance.
 
 When two categories are close, choose the action that increases information across both branches, such as source route mapping for Web plus Crypto, `file`/`strings` for Rev plus Crypto, or archive listing for Forensics plus Rev.
 

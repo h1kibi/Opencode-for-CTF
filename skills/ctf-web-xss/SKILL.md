@@ -27,6 +27,29 @@ Use when user input may execute in a browser context. Prioritize context discove
 6. For admin-bot tasks, prove the bot visit path and exfiltrate only the challenge flag/token to an allowed local/challenge endpoint.
 7. Write a reproducible request/browser script.
 
+## Admin Bot Runtime Rule
+
+When an admin bot exists, identify or infer the browser runtime before designing payloads.
+
+If the bot is PhantomJS, old WebKit, legacy Selenium, or unknown:
+
+- Use ES5 syntax.
+- Prefer `XMLHttpRequest` over `fetch`.
+- Avoid `async` / `await`.
+- Avoid arrow functions.
+- Avoid template literals.
+- Avoid `let` and `const`.
+- Avoid long Promise chains.
+- Avoid complex DOM APIs.
+- Keep payloads short and single-shot.
+- Use explicit timeouts.
+- Avoid synchronous XHR to localhost or single-threaded dev servers.
+
+Decision rule:
+
+- If the exploit idea is logically sound but the payload does not execute, test runtime compatibility before changing the vulnerability hypothesis.
+- If stored XSS + admin bot are confirmed, prioritize stealing/reusing admin session or making admin-side state changes over building blind callback variants.
+
 ## Context Checklist
 
 Pick payload shape from context, not from a generic list:

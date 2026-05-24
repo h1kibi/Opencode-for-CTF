@@ -24,6 +24,31 @@ Use when users can upload files or archives. Identify validation layers, storage
 5. Verify impact: source disclosure, stored XSS, SSRF/XXE through SVG/XML, file overwrite, or code execution only if challenge requires it.
 6. Write a reproducible upload and retrieval script.
 
+## File Write Matrix
+
+When an upload/editor/import endpoint can write server-side files, build a write matrix before guessing exploit paths.
+
+Track this in `notes.md`:
+
+| Path | Exists | Writable | Create New | Overwrite Existing | Reloaded/Imported/Served | Risk | Result |
+|---|---|---|---|---|---|---:|---|
+| package `__init__.py` | yes/no | yes/no | yes/no | yes/no | yes/no | medium | |
+| template file | yes/no | yes/no | yes/no | yes/no | yes/no | medium | |
+| static file | yes/no | yes/no | yes/no | yes/no | yes/no | medium | |
+| view/controller file | yes/no | yes/no | yes/no | yes/no | yes/no | high | |
+| config/settings file | yes/no | yes/no | yes/no | yes/no | yes/no | high | |
+| log/debug-visible file | yes/no | yes/no | yes/no | yes/no | yes/no | medium | |
+
+Rules:
+
+- Distinguish arbitrary create from overwrite-only behavior.
+- Test low-risk canary writes first.
+- Prefer files that already exist.
+- Prefer files that are imported, rendered, or served naturally.
+- Prefer non-core files before route/controller/config files.
+- Do not overwrite core app files until the final chain is locked.
+- If direct HTTP echo is unstable, write output into an existing stable control plane such as a database-backed profile/admin field, log, or rendered page.
+
 ## Bypass Checklist
 
 Check only layers supported by source or observed behavior:

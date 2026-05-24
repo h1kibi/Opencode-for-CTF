@@ -44,6 +44,37 @@ Collect these before acting:
 7. Produce a reproducible solver or exploit script when practical.
 8. Verify the flag from challenge behavior or artifact evidence before finalizing.
 
+## Convergence Checkpoint
+
+After every meaningful observation, decide whether to continue exploring or lock the current best path.
+
+Update this table in `notes.md`:
+
+| Hypothesis | Evidence | Cost to Verify | Risk | Expected Gain | Keep/Drop |
+|---|---|---:|---:|---:|---|
+
+Lock the current path when:
+
+- A critical primitive is confirmed.
+- Two high-value primitives can be composed.
+- Further probing would only produce equivalent payload variants.
+- A stable control plane is available.
+- The next exploratory branch has higher risk than the current exploit path.
+
+Drop a branch when:
+
+- Three variants fail without changing the hypothesis.
+- The branch requires unstable state changes while a safer chain exists.
+- The branch depends on browser/runtime behavior that is incompatible with observed bot environment.
+- The branch needs external infrastructure when a challenge-local channel exists.
+- The branch only improves convenience, not exploitability.
+
+Before switching branches, write one sentence:
+
+`Switching because: <old branch failed due to X>; <new branch has stronger evidence Y>.`
+
+Do not branch-hop silently.
+
 ## Tool Discipline
 
 - State the purpose before running non-trivial commands.
