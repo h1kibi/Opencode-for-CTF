@@ -24,5 +24,11 @@ Rules:
 - Create or update `notes.md`.
 - Prefer source review before blind probing.
 - Use minimal probes and record evidence.
+- Maintain a Primitive Ledger after the first non-trivial finding.
+- If one critical primitive or two high primitives are confirmed, stop broad probing and switch to Primitive Lock mode.
+- Before final exploitation, choose a stable control plane.
+- Prefer admin session, backend endpoint, DB-backed field, reloadable/imported file, or debug/log view over blind callback.
+- Before any state-changing write/overwrite/restart action, perform a low-risk canary and record the stability guard.
+- Do not try more than 3 variants of the same payload family unless the hypothesis changed.
 - Write `solve.py` or `solve.js` when practical.
 - Write only the verified final flag to `agent_flag.txt`.

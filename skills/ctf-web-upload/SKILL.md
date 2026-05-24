@@ -46,6 +46,9 @@ Rules:
 - Prefer files that already exist.
 - Prefer files that are imported, rendered, or served naturally.
 - Prefer non-core files before route/controller/config files.
+- Before overwrite tests, read or recover the original content when possible.
+- Record whether the write is reversible.
+- If the original content cannot be recovered, treat the action as high risk.
 - Do not overwrite core app files until the final chain is locked.
 - If direct HTTP echo is unstable, write output into an existing stable control plane such as a database-backed profile/admin field, log, or rendered page.
 

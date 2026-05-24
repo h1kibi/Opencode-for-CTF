@@ -91,7 +91,7 @@ Maintain this table in `notes.md` for every Web challenge once any non-trivial b
 | debug page/source leak | stack trace/debug page/source path | high | path discovery, config leak, session leak | yes/no |
 | arbitrary file write | endpoint/source/effect | critical | code execution, template/static overwrite | yes/no |
 | overwrite-only file write | failed create + successful overwrite | high | replace existing reloadable/imported file | yes/no |
-| local file read | response/source/effect | high | flag/config/source read | yes/no |
+| arbitrary/local file read | response/source/effect | critical/high | flag/config/source read | yes/no |
 | SSRF | server-side request effect | high/medium | internal admin/debug access | yes/no |
 | template/expression eval | rendered calculation/error/source | critical/high | code execution or file read | yes/no |
 | SQL injection | DB error/timing/boolean/source | high | auth bypass, data read/write | yes/no |
@@ -100,9 +100,34 @@ Maintain this table in `notes.md` for every Web challenge once any non-trivial b
 Strength rules:
 
 - critical: directly gives code execution, arbitrary server file write, admin session, or arbitrary file read.
+- Treat file read as critical when it can read arbitrary absolute paths, flag locations, secrets, source, or config.
 - high: gives privileged context, durable stored execution, debug/source leak, SSRF to internal control surface, or database control.
+- Treat file read as high when it is constrained to a narrow non-sensitive directory.
 - medium: useful but requires another primitive.
 - low: only informational or unreliable.
+
+## Web Solve State Machine
+
+Track current phase in `notes.md`:
+
+```markdown
+# Web Phase
+Current phase: discovery | primitive-lock | control-plane | final-chain
+Reason:
+Next required action:
+```
+
+Transitions:
+
+- discovery -> primitive-lock: one critical primitive confirmed, or two high primitives confirmed.
+- primitive-lock -> control-plane: a stable admin/backend/database/file/debug surface is identified.
+- control-plane -> final-chain: output channel is selected, canary succeeds, and exploit path is reproducible.
+
+Rules:
+
+- In primitive-lock phase, do not run broad route fuzzing or unrelated payload families.
+- In control-plane phase, do not search for new bug classes unless the selected control plane fails.
+- In final-chain phase, only perform actions required to reproduce and verify the chain.
 
 Primitive lock rule:
 
@@ -170,6 +195,14 @@ Rules:
 - Do not overwrite app core files until the final exploit path is locked.
 - If an action may crash the instance, first write down why it is necessary, what evidence supports it, how to recover or restart, and what lower-risk probe was tried first.
 
+Before overwriting any existing file:
+
+1. Read and save the original content when possible.
+2. Record the original hash or length.
+3. Use a unique marker canary first.
+4. Prefer appending only if semantics are known safe.
+5. Do not overwrite core files unless the final chain is locked.
+
 ## Tool Discipline
 
 - Use `curl` for reproducible HTTP requests.
@@ -201,6 +234,11 @@ Web findings require:
 For Web challenges, maintain these sections:
 
 ```markdown
+# Web Phase
+Current phase: discovery | primitive-lock | control-plane | final-chain
+Reason:
+Next required action:
+
 # Primitive Ledger
 
 | Primitive | Evidence | Strength | Best Use | Confirmed |
