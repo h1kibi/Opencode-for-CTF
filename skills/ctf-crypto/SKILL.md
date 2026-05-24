@@ -14,6 +14,8 @@ Use this skill to turn challenge parameters and oracle behavior into a mathemati
 
 Use only on provided CTF/lab crypto material or explicitly authorized services.
 
+For RSA challenges, load `references/rsa.md` and prefer `ctf-rsa-probe` before writing attacks.
+
 ## Inputs
 
 Collect:

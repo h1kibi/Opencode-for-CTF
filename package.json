@@ -1,6 +1,10 @@
 {
   "private": true,
   "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "list": "git ls-files .opencode/tools skills .opencode/commands"
+  },
   "dependencies": {
     "@opencode-ai/plugin": "1.14.23"
   },

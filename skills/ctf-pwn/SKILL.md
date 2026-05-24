@@ -12,6 +12,10 @@ Use this skill for binary exploitation. It structures triage, crash reproduction
 
 Always combine this with `ctf-terminal` for real-output command discipline.
 
+For format string challenges, load `references/format-string.md`.
+
+For heap or tcache challenges, load `references/heap-tcache.md`.
+
 ## Scope
 
 Use only on provided challenge binaries, local services, Dockerized tasks, or explicitly authorized CTF endpoints.

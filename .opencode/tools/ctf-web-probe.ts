@@ -9,6 +9,19 @@ function sameOrigin(base: URL, candidate: string) {
   }
 }
 
+async function fetchWithTimeout(url: URL, ms = 8000) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ms)
+  try {
+    return await fetch(url, {
+      redirect: "manual",
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export default tool({
   description: "CTF web probe: fetch one explicit URL plus robots.txt and sitemap.xml, summarize status, headers, cookies, forms, links, scripts, and likely bug-class hints.",
   args: {
@@ -16,7 +29,7 @@ export default tool({
   },
   async execute(args) {
     const base = new URL(args.url)
-    const response = await fetch(base, { redirect: "manual" })
+    const response = await fetchWithTimeout(base)
     const text = await response.text()
     const headers = Array.from(response.headers.entries())
     const cookies = headers.filter(([k]) => k.toLowerCase() === "set-cookie").map(([, v]) => v)
@@ -37,7 +50,7 @@ export default tool({
     const extras: string[] = []
     for (const extra of [robotsUrl, sitemapUrl]) {
       try {
-        const r = await fetch(extra, { redirect: "manual" })
+        const r = await fetchWithTimeout(extra)
         extras.push(`${extra.pathname}: ${r.status} ${(await r.text()).slice(0, 1000).replace(/\s+$/g, "")}`)
       } catch (err) {
         extras.push(`${extra.pathname}: fetch failed: ${err}`)

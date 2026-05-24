@@ -85,7 +85,7 @@ The public upload version restricts OpenCode external-directory access and the f
 C:\Tools\Agent\ctf-workspace
 ```
 
-Keep challenge files inside that directory when using this repository as-is. If you need a different workspace, adjust `opencode.jsonc` locally and do not commit private machine-specific changes.
+Keep challenge files inside that directory when using this repository as-is. `CTF_WORKSPACE` is documented in `.env.example`, but the public config intentionally hardcodes `C:\Tools\Agent\ctf-workspace` for safety. If you need a different workspace, adjust both the filesystem MCP path and `permission.external_directory` locally, and do not commit private machine-specific changes.
 
 ## Install Globally
 
@@ -112,7 +112,7 @@ This repository intentionally omits provider API keys and private tokens.
 
 If you need API keys for MCP servers or providers, keep them in environment variables or a private local config such as `opencode.local.jsonc`.
 
-The public `opencode.jsonc` uses OpenCode `{env:VAR}` placeholders for machine-specific tool paths:
+The public `opencode.jsonc` uses OpenCode `{env:VAR}` placeholders for machine-specific tool paths except the intentionally hardcoded CTF workspace scope:
 
 ```text
 CTF_WORKSPACE
@@ -125,6 +125,21 @@ SHODAN_API_KEY
 ```
 
 Copy `.env.example` to your own shell/profile or private config and adjust paths for your machine.
+
+## Validate
+
+Run the TypeScript tool check after editing custom tools:
+
+```powershell
+npm install
+npm run check
+```
+
+List the tracked OpenCode commands, skills, and tools:
+
+```powershell
+npm run list
+```
 
 ## Safety Scope
 

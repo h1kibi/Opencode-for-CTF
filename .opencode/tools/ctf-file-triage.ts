@@ -1,7 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
 import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
-import { lstat, readdir, readFile } from "node:fs/promises"
+import { lstat, open, readdir } from "node:fs/promises"
 import path from "node:path"
 
 const SAMPLE_BYTES = 1024 * 1024
@@ -47,6 +47,17 @@ async function sha256File(target: string) {
   return hash.digest("hex")
 }
 
+async function readSample(target: string, maxBytes = SAMPLE_BYTES) {
+  const fd = await open(target, "r")
+  try {
+    const buf = Buffer.alloc(maxBytes)
+    const { bytesRead } = await fd.read(buf, 0, maxBytes, 0)
+    return buf.subarray(0, bytesRead)
+  } finally {
+    await fd.close()
+  }
+}
+
 export default tool({
   description: "CTF file triage: report type hints, size, sha256, magic bytes, entropy, strings highlights, embedded URLs/emails/IPs, directory/archive listing hints, and likely CTF routing.",
   args: {
@@ -60,8 +71,7 @@ export default tool({
       return entries.slice(0, 200).map((entry) => `${entry.isDirectory() ? "dir " : "file"}\t${entry.name}`).join("\n")
     }
 
-    const handle = await readFile(target, { encoding: null, flag: "r" })
-    const sample = handle.subarray(0, Math.min(handle.length, SAMPLE_BYTES))
+    const sample = await readSample(target)
     const strings = printableStrings(sample)
     const urls = Array.from(new Set(strings.join("\n").match(/https?:\/\/[^\s"'<>]+/g) ?? [])).slice(0, 30)
     const emails = Array.from(new Set(strings.join("\n").match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) ?? [])).slice(0, 30)
