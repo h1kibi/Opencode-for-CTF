@@ -22,7 +22,14 @@ $ARGUMENTS
 Rules:
 - Work only on authorized CTF, lab, benchmark, or local targets.
 - Create or update `notes.md`.
-- Prefer source review before blind probing.
+- Start in recon phase, not exploit phase.
+- Before deeply exploiting any one bug class, build an attack surface table and candidate attack queue.
+- Rank candidate paths by value, verification cost, risk, stability, and confidence.
+- Try high-value, low-cost, low-risk candidates before long or fragile chains.
+- Do not select a path only because it was discovered first.
+- Use focused probes with an explicit attempt budget.
+- Treat wordlist fuzzing, repeated bot triggers, repeated uploads, file overwrites, SQL dump automation, and high-concurrency loops as high-risk actions.
+- Before high-risk actions, write a High-Risk Action Plan and prefer a safer verification step.
 - Use minimal probes and record evidence.
 - Maintain a Primitive Ledger after the first non-trivial finding.
 - If one critical primitive or two high primitives are confirmed, stop broad probing and switch to Primitive Lock mode.

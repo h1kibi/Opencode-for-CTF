@@ -199,15 +199,24 @@
       "gdb *": "ask",
       "sage *": "ask",
       "openssl *": "ask",
-      "rm -rf *": "deny",
-      "ssh *": "deny",
-      "scp *": "deny",
-      "rm *": "deny",
-      "del *": "deny",
-      "rmdir *": "deny",
-      "Remove-Item *": "deny",
-      "powershell Remove-Item *": "deny",
-      "pwsh Remove-Item *": "deny"
+          "rm -rf *": "deny",
+          "ssh *": "deny",
+          "scp *": "deny",
+          "rm *": "deny",
+          "del *": "deny",
+          "rmdir *": "deny",
+          "Remove-Item *": "deny",
+          "powershell Remove-Item *": "deny",
+          "pwsh Remove-Item *": "deny",
+          "ffuf *": "ask",
+          "gobuster *": "ask",
+          "feroxbuster *": "ask",
+          "dirsearch *": "ask",
+          "wfuzz *": "ask",
+          "sqlmap *": "ask",
+          "hydra *": "deny",
+          "ab *": "ask",
+          "hey *": "ask"
     },
     "webfetch": "ask",
     "websearch": "deny",
@@ -343,7 +352,16 @@
           "rmdir *": "deny",
           "Remove-Item *": "deny",
           "powershell Remove-Item *": "deny",
-          "pwsh Remove-Item *": "deny"
+          "pwsh Remove-Item *": "deny",
+          "ffuf *": "ask",
+          "gobuster *": "ask",
+          "feroxbuster *": "ask",
+          "dirsearch *": "ask",
+          "wfuzz *": "ask",
+          "sqlmap *": "ask",
+          "hydra *": "deny",
+          "ab *": "ask",
+          "hey *": "ask"
         },
         "edit": {
           "*": "ask",
@@ -372,7 +390,7 @@
         "yara_*": "deny",
         "word_*": "deny"
       },
-      "prompt": "You are a legal CTF Web challenge solver. Work only on authorized local, lab, or CTF targets. Use ctf-common and ctf-web. Optimize for primitive convergence, stable control plane selection, and instance stability. Maintain a compact Primitive Ledger in notes.md once non-trivial behavior appears. Once one critical primitive or two high primitives are confirmed, stop broad probing and build the shortest stable exploit chain. Prefer admin sessions, backend endpoints, database-backed fields, reloadable/imported files, and debug/log views over blind callbacks or new routes. Before destructive or state-changing actions, run a low-risk canary and record the rollback/recovery plan. Write reproducible solve.py or solve.js and write only the verified final flag to agent_flag.txt."
+      "prompt": "You are a legal CTF Web challenge solver. Work only on authorized local, lab, or CTF targets. Use ctf-common and ctf-web. Start in recon phase: map routes, inputs, auth/session boundaries, source/sink behavior, debug/admin/upload/editor surfaces, and bot behavior before deeply exploiting any one bug class. Build an attack queue ranked by value, verification cost, risk, stability, and confidence; do not pursue the first visible vulnerability just because it appears first. Prefer high-value, low-cost, low-risk, source-backed checks. Maintain a compact Primitive Ledger in notes.md once non-trivial behavior appears. Once one critical primitive or two high primitives are confirmed, stop broad probing and build the shortest stable exploit chain. Prefer admin sessions, backend endpoints, database-backed fields, reloadable/imported files, and debug/log views over blind callbacks or new routes. Before destructive, batch, high-concurrency, repeated bot-triggering, upload/write/overwrite, or state-changing actions, run a low-risk canary, record the risk plan, and obey a strict attempt budget. Write reproducible solve.py or solve.js and write only the verified final flag to agent_flag.txt."
     },
     "ctf-pwn": {
       "description": "Solve authorized binary exploitation CTF challenges using local analysis, debugging, exploit development, and pwntools scripts.",
