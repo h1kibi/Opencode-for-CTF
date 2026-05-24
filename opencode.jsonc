@@ -9,9 +9,9 @@
         "@modelcontextprotocol/server-puppeteer"
       ],
       "environment": {
-        "PUPPETEER_EXECUTABLE_PATH": "${PUPPETEER_EXECUTABLE_PATH}"
+        "PUPPETEER_EXECUTABLE_PATH": "{env:PUPPETEER_EXECUTABLE_PATH}"
       },
-      "enabled": true,
+      "enabled": false,
       "timeout": 30000
     },
     "ReVa": {
@@ -20,7 +20,7 @@
         "mcp-reva"
       ],
       "environment": {
-        "GHIDRA_INSTALL_DIR": "${GHIDRA_INSTALL_DIR}"
+        "GHIDRA_INSTALL_DIR": "{env:GHIDRA_INSTALL_DIR}"
       },
       "enabled": false,
       "timeout": 60000
@@ -33,7 +33,7 @@
         "ida_pro_mcp"
       ],
       "environment": {
-        "IDA_PATH": "${IDA_PATH}"
+        "IDA_PATH": "{env:IDA_PATH}"
       },
       "enabled": false,
       "timeout": 60000
@@ -42,7 +42,7 @@
       "type": "local",
       "command": [
         "python",
-        "${SECURITY_MCP_WRAPPERS}",
+        "{env:SECURITY_MCP_WRAPPERS}",
         "radare2"
       ],
       "enabled": false,
@@ -55,7 +55,7 @@
         "-y",
         "@cyanheads/git-mcp-server"
       ],
-      "enabled": true,
+      "enabled": false,
       "timeout": 30000
     },
     "filesystem": {
@@ -64,7 +64,7 @@
         "npx",
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "${CTF_WORKSPACE}"
+        "C:\\Tools\\Agent\\ctf-workspace"
       ],
       "enabled": true
     },
@@ -72,7 +72,7 @@
       "type": "local",
       "command": [
         "python",
-        "${VMPROTECT_MCP}"
+        "{env:VMPROTECT_MCP}"
       ],
       "enabled": false,
       "timeout": 30000
@@ -81,11 +81,11 @@
       "type": "local",
       "command": [
         "python",
-        "${SECURITY_MCP_WRAPPERS}",
+        "{env:SECURITY_MCP_WRAPPERS}",
         "shodan"
       ],
       "environment": {
-        "SHODAN_API_KEY": "${SHODAN_API_KEY}"
+        "SHODAN_API_KEY": "{env:SHODAN_API_KEY}"
       },
       "enabled": false,
       "timeout": 30000
@@ -104,7 +104,7 @@
       "type": "local",
       "command": [
         "python",
-        "${SECURITY_MCP_WRAPPERS}",
+        "{env:SECURITY_MCP_WRAPPERS}",
         "jadx"
       ],
       "enabled": false,
@@ -114,7 +114,7 @@
       "type": "local",
       "command": [
         "python",
-        "${SECURITY_MCP_WRAPPERS}",
+        "{env:SECURITY_MCP_WRAPPERS}",
         "volatility"
       ],
       "enabled": false,
@@ -124,7 +124,7 @@
       "type": "local",
       "command": [
         "python",
-        "${SECURITY_MCP_WRAPPERS}",
+        "{env:SECURITY_MCP_WRAPPERS}",
         "yara"
       ],
       "enabled": false,
@@ -161,6 +161,15 @@
       "*.env": "deny",
       "*.env.*": "deny",
       "*.env.example": "allow"
+    },
+    "list": {
+      "*": "allow"
+    },
+    "glob": {
+      "*": "allow"
+    },
+    "grep": {
+      "*": "allow"
     },
     "edit": {
       "*": "ask",
@@ -208,6 +217,10 @@
       "*": "ask",
       "ctf-*": "allow"
     },
+    "ctf-file-triage": "allow",
+    "ctf-flag-grep": "allow",
+    "ctf-rsa-probe": "allow",
+    "ctf-web-probe": "ask",
     "shodan_*": "deny",
     "navicat_*": "deny",
     "nmap_*": "ask",
@@ -224,11 +237,83 @@
     "word_*": "ask",
     "external_directory": {
       "*": "deny",
-      "${CTF_WORKSPACE}": "allow",
-      "${CTF_WORKSPACE}/**": "allow"
+      "C:\\Tools\\Agent\\ctf-workspace": "allow",
+      "C:\\Tools\\Agent\\ctf-workspace\\**": "allow",
+      "C:/Tools/Agent/ctf-workspace": "allow",
+      "C:/Tools/Agent/ctf-workspace/**": "allow"
     }
   },
+  "default_agent": "ctf-router",
   "agent": {
+    "ctf-router": {
+      "description": "Route authorized CTF challenges to the best specialized solver using low-cost triage and evidence-weighted category scoring.",
+      "mode": "primary",
+      "temperature": 0.1,
+      "steps": 25,
+      "permission": {
+        "read": "allow",
+        "list": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "webfetch": "ask",
+        "websearch": "deny",
+        "bash": {
+          "*": "ask",
+          "file *": "allow",
+          "strings *": "allow",
+          "xxd *": "allow",
+          "python *": "allow",
+          "python3 *": "allow",
+          "docker ps*": "allow",
+          "docker logs*": "allow",
+          "rm -rf *": "deny",
+          "ssh *": "deny",
+          "scp *": "deny",
+          "rm *": "deny",
+          "del *": "deny",
+          "rmdir *": "deny",
+          "Remove-Item *": "deny",
+          "powershell Remove-Item *": "deny",
+          "pwsh Remove-Item *": "deny"
+        },
+        "edit": {
+          "*": "ask",
+          "notes.md": "allow"
+        },
+        "skill": {
+          "*": "ask",
+          "ctf-*": "allow"
+        },
+        "ctf-file-triage": "allow",
+        "ctf-flag-grep": "allow",
+        "ctf-rsa-probe": "allow",
+        "ctf-web-probe": "ask",
+        "task": {
+          "*": "ask",
+          "ctf-web": "allow",
+          "ctf-pwn": "allow",
+          "ctf-rev": "allow",
+          "ctf-crypto": "allow",
+          "ctf-forensics": "allow",
+          "ctf-misc": "allow"
+        },
+        "puppeteer_*": "ask",
+        "nmap_*": "ask",
+        "filesystem_*": "ask",
+        "git_*": "deny",
+        "shodan_*": "deny",
+        "ida-pro_*": "deny",
+        "radare2_*": "deny",
+        "jadx_*": "deny",
+        "frida_*": "deny",
+        "ReVa_*": "deny",
+        "vmprotect_*": "deny",
+        "volatility_*": "deny",
+        "yara_*": "deny",
+        "word_*": "deny"
+      },
+      "prompt": "You are a route-only CTF planner for authorized CTF, lab, benchmark, and local challenge targets. Start with ctf-router and ctf-common when useful. Inventory files, services, target scope, and flag format; run only low-cost triage; build an evidence-weighted category table; choose exactly one next specialized CTF agent or command. Do not deeply exploit unless the challenge is trivial. Keep notes.md updated and never guess flags."
+    },
     "ctf-web": {
       "description": "Solve authorized Web CTF challenges using source review, browser interaction, HTTP probing, local reproduction, and exploit scripting.",
       "mode": "primary",

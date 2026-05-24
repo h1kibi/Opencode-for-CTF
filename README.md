@@ -8,6 +8,8 @@ This repository contains:
 - `skills/`: category-specific OpenCode skills for CTF workflows.
 - `.opencode/commands/`: reusable slash commands for common CTF entry points.
 - `templates/`: starter solver scripts for reproducible outputs.
+- `tools/`: lightweight CTF triage tools for file, flag, RSA, and Web probes.
+- `AGENTS.md`: always-on operating rules for authorized CTF solving.
 
 ## Quick Start
 
@@ -32,6 +34,7 @@ The `/ctf` command is route-only. It classifies the challenge and recommends exa
 - `ctf-crypto`: crypto challenge solving with Python/Sage discipline.
 - `ctf-forensics`: file, pcap, memory, document, archive, metadata, and stego workflows.
 - `ctf-misc`: classifier and lightweight controller for mixed CTF tasks.
+- `ctf-router`: default route-only primary agent that scores candidate categories before handing off.
 
 ## Included Skills
 
@@ -67,6 +70,23 @@ The `/ctf` command is route-only. It classifies the challenge and recommends exa
 
 The `templates/` directory contains starter scripts for web, pwn, crypto, reverse engineering, and forensics. Skills should prefer these templates when creating reproducible solvers instead of writing from scratch.
 
+## Custom Tools
+
+- `ctf-file-triage`: summarize file type hints, size, sha256, magic bytes, entropy, strings, URLs, IPs, emails, and likely CTF routing.
+- `ctf-flag-grep`: scan a file tree for flag-like strings with file count and size caps.
+- `ctf-rsa-probe`: parse RSA-style `n/e/c/p/q/dp/dq` assignments and report weak-exponent, shared-prime, and CRT-leak hints.
+- `ctf-web-probe`: fetch one authorized URL plus `robots.txt` and `sitemap.xml`, then summarize headers, cookies, forms, links, scripts, and bug-class hints.
+
+## Workspace Scope
+
+The public upload version restricts OpenCode external-directory access and the filesystem MCP root to:
+
+```text
+C:\Tools\Agent\ctf-workspace
+```
+
+Keep challenge files inside that directory when using this repository as-is. If you need a different workspace, adjust `opencode.jsonc` locally and do not commit private machine-specific changes.
+
 ## Install Globally
 
 Copy the config and skills into your OpenCode global configuration directory:
@@ -75,10 +95,13 @@ Copy the config and skills into your OpenCode global configuration directory:
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.config\opencode\skills"
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.config\opencode\commands"
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.config\opencode\templates"
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.config\opencode\tools"
 Copy-Item .\opencode.jsonc "$env:USERPROFILE\.config\opencode\opencode.jsonc" -Force
+Copy-Item .\AGENTS.md "$env:USERPROFILE\.config\opencode\AGENTS.md" -Force
 Copy-Item .\skills\* "$env:USERPROFILE\.config\opencode\skills" -Recurse -Force
 Copy-Item .\.opencode\commands\* "$env:USERPROFILE\.config\opencode\commands" -Recurse -Force
 Copy-Item .\templates\* "$env:USERPROFILE\.config\opencode\templates" -Recurse -Force
+Copy-Item .\tools\* "$env:USERPROFILE\.config\opencode\tools" -Recurse -Force
 ```
 
 Restart OpenCode after copying. OpenCode does not hot-reload config or skills.
@@ -89,7 +112,7 @@ This repository intentionally omits provider API keys and private tokens.
 
 If you need API keys for MCP servers or providers, keep them in environment variables or a private local config such as `opencode.local.jsonc`.
 
-The public `opencode.jsonc` uses environment variables for machine-specific paths:
+The public `opencode.jsonc` uses OpenCode `{env:VAR}` placeholders for machine-specific tool paths:
 
 ```text
 CTF_WORKSPACE

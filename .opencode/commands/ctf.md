@@ -1,24 +1,25 @@
 ---
-description: Route an authorized CTF challenge and recommend the next command
-agent: ctf-misc
+description: Route an authorized CTF challenge with evidence-weighted triage
+agent: ctf-router
 ---
 
-Use `ctf-router`.
+Use `ctf-router` and do not deep-solve unless the task is trivial.
 
 Challenge info:
 $ARGUMENTS
 
 Route-only workflow:
-1. Classify the challenge.
-2. Create or update the triage section in `notes.md`.
-3. Recommend exactly one next command:
+1. Inventory artifacts, services, target scope, and flag format.
+2. Create or update the evidence-weighted triage section in `notes.md`.
+3. Score likely categories by evidence, confidence, and cheapest verification.
+4. Recommend exactly one next command:
    - `/ctf-web ...`
    - `/ctf-pwn ...`
    - `/ctf-rev ...`
    - `/ctf-crypto ...`
    - `/ctf-forensics ...`
    - `/ctf-misc ...`
-4. Do not deeply solve unless the category is truly misc or ambiguous.
+5. Do not deeply solve unless the category is obvious and the next step is trivial.
 
 Timebox strategy:
 - First 3 minutes: classify category and inventory files/services.

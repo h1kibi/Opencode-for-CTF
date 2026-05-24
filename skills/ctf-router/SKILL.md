@@ -27,7 +27,9 @@ Inspect only what is needed to classify:
 - Service interaction style.
 - Obvious source framework, crypto primitive, pcap/memory/image/document artifact, or jail/game/protocol signs.
 
-## Category Signals
+## Evidence-Weighted Category Signals
+
+Score every plausible category instead of forcing a single early label. Mixed challenges are common, so preserve secondary hypotheses until a cheap verification eliminates them.
 
 ### Web
 
@@ -67,7 +69,9 @@ Use: `ctf-common`, `ctf-terminal`, `ctf-misc`.
 
 ## Decision Rule
 
-If uncertain, choose the category with the cheapest next verification step. Do not load heavy tools or high-risk MCP servers just to classify.
+Prefer the category with the strongest evidence and cheapest next verification step. Do not load heavy tools or high-risk MCP servers just to classify.
+
+When two categories are close, choose the action that increases information across both branches, such as source route mapping for Web plus Crypto, `file`/`strings` for Rev plus Crypto, or archive listing for Forensics plus Rev.
 
 ## Output Contract
 
@@ -75,12 +79,25 @@ Write this to `notes.md` before deep solving:
 
 ```markdown
 # Triage
-- Category:
-- Confidence:
-- Evidence:
-- Selected agent:
-- Selected skills:
-- First three actions:
+
+## Observed Artifacts
+| Artifact | Evidence | Possible categories |
+|---|---|---|
+
+## Category Score
+| Category | Evidence | Confidence | Cheapest verification |
+|---|---|---:|---|
+
+## First Three Actions
+1.
+2.
+3.
+
+## Selected Next Step
+- Command:
+- Agent:
+- Skills:
+- Reason:
 ```
 
 ## Stop Conditions
