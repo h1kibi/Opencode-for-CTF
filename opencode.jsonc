@@ -151,9 +151,7 @@
     "tail_turns": 4,
     "reserved": 10000
   },
-  "plugin": [
-    "opencode-shell-strategy"
-  ],
+  "plugin": [],
   "permission": {
     "*": "ask",
     "read": {
@@ -312,11 +310,11 @@
         "yara_*": "deny",
         "word_*": "deny"
       },
-      "prompt": "You are a route-only CTF planner for authorized CTF, lab, benchmark, and local challenge targets. Start with ctf-router and ctf-common when useful. Inventory files, services, target scope, and flag format; run only low-cost triage; build an evidence-weighted category table; choose exactly one next specialized CTF agent or command. Do not deeply exploit unless the challenge is trivial. Keep notes.md updated and never guess flags."
+      "prompt": "You are a route-only CTF planner for authorized CTF, lab, benchmark, and local challenge targets. Start with ctf-router and ctf-common when useful. Inventory files, services, target scope, and flag format; run only low-cost triage; build an evidence-weighted category table; choose exactly one next specialized CTF agent or command. If a local artifact path is provided, call ctf-file-triage before selecting a final category unless the challenge statement alone is decisive. Prefer ctf-rsa-probe for RSA-like inputs, ctf-web-probe only on authorized or local challenge URLs, and ctf-flag-grep before claiming unsolved. Do not deeply exploit unless the challenge is trivial. Keep notes.md updated and never guess flags."
     },
     "ctf-web": {
       "description": "Solve authorized Web CTF challenges using source review, browser interaction, HTTP probing, local reproduction, and exploit scripting.",
-      "mode": "primary",
+      "mode": "all",
       "temperature": 0.1,
       "steps": 80,
       "permission": {
@@ -378,7 +376,7 @@
     },
     "ctf-pwn": {
       "description": "Solve authorized binary exploitation CTF challenges using local analysis, debugging, exploit development, and pwntools scripts.",
-      "mode": "primary",
+      "mode": "all",
       "temperature": 0.1,
       "steps": 100,
       "permission": {
@@ -440,7 +438,7 @@
     },
     "ctf-rev": {
       "description": "Solve authorized reverse engineering and mobile CTF challenges using static analysis, decompilation, tracing, and controlled dynamic instrumentation.",
-      "mode": "primary",
+      "mode": "all",
       "temperature": 0.1,
       "steps": 100,
       "permission": {
@@ -498,7 +496,7 @@
     },
     "ctf-crypto": {
       "description": "Solve authorized cryptography CTF challenges using math reasoning, Python, Sage, protocol analysis, and reproducible attacks.",
-      "mode": "primary",
+      "mode": "all",
       "temperature": 0.1,
       "steps": 80,
       "permission": {
@@ -552,7 +550,7 @@
     },
     "ctf-forensics": {
       "description": "Solve authorized forensics CTF challenges involving files, memory images, packet captures, documents, archives, malware indicators, and steganography.",
-      "mode": "primary",
+      "mode": "all",
       "temperature": 0.1,
       "steps": 80,
       "permission": {
@@ -612,7 +610,7 @@
     },
     "ctf-misc": {
       "description": "Solve authorized miscellaneous CTF challenges using scripting, file analysis, protocol reasoning, light reversing, and local experimentation.",
-      "mode": "primary",
+      "mode": "all",
       "temperature": 0.1,
       "steps": 80,
       "permission": {

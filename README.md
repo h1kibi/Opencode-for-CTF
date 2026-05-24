@@ -8,7 +8,7 @@ This repository contains:
 - `skills/`: category-specific OpenCode skills for CTF workflows.
 - `.opencode/commands/`: reusable slash commands for common CTF entry points.
 - `templates/`: starter solver scripts for reproducible outputs.
-- `tools/`: lightweight CTF triage tools for file, flag, RSA, and Web probes.
+- `.opencode/tools/`: lightweight CTF triage tools for file, flag, RSA, and Web probes.
 - `AGENTS.md`: always-on operating rules for authorized CTF solving.
 
 ## Quick Start
@@ -101,7 +101,7 @@ Copy-Item .\AGENTS.md "$env:USERPROFILE\.config\opencode\AGENTS.md" -Force
 Copy-Item .\skills\* "$env:USERPROFILE\.config\opencode\skills" -Recurse -Force
 Copy-Item .\.opencode\commands\* "$env:USERPROFILE\.config\opencode\commands" -Recurse -Force
 Copy-Item .\templates\* "$env:USERPROFILE\.config\opencode\templates" -Recurse -Force
-Copy-Item .\tools\* "$env:USERPROFILE\.config\opencode\tools" -Recurse -Force
+Copy-Item .\.opencode\tools\* "$env:USERPROFILE\.config\opencode\tools" -Recurse -Force
 ```
 
 Restart OpenCode after copying. OpenCode does not hot-reload config or skills.

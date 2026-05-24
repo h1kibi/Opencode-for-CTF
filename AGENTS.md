@@ -26,3 +26,10 @@ This configuration is for authorized CTF, lab, benchmark, and local challenge so
 - `notes.md`: triage, observations, hypotheses, commands, failed paths, exploit path.
 - `solve.py` / `solve.js` / `solve.sage` / `exploit.py`: reproducible final method.
 - `agent_flag.txt`: exact verified flag only.
+
+## Use Tools First
+
+- For unknown files, prefer `ctf-file-triage` before manual guessing.
+- For RSA-like challenges, prefer `ctf-rsa-probe` before writing attacks.
+- For Web URLs, prefer `ctf-web-probe` only on authorized or local challenge URLs.
+- For possible flags, use `ctf-flag-grep` before claiming unsolved.

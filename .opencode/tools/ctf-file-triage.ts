@@ -1,7 +1,10 @@
 import { tool } from "@opencode-ai/plugin"
 import { createHash } from "node:crypto"
+import { createReadStream } from "node:fs"
 import { lstat, readdir, readFile } from "node:fs/promises"
 import path from "node:path"
+
+const SAMPLE_BYTES = 1024 * 1024
 
 function entropy(buf: Buffer) {
   if (buf.length === 0) return 0
@@ -33,6 +36,17 @@ function routeHints(name: string, buf: Buffer, strings: string[]) {
   return Array.from(hints)
 }
 
+async function sha256File(target: string) {
+  const hash = createHash("sha256")
+  await new Promise<void>((resolve, reject) => {
+    const stream = createReadStream(target)
+    stream.on("data", (chunk) => hash.update(chunk))
+    stream.on("end", () => resolve())
+    stream.on("error", reject)
+  })
+  return hash.digest("hex")
+}
+
 export default tool({
   description: "CTF file triage: report type hints, size, sha256, magic bytes, entropy, strings highlights, embedded URLs/emails/IPs, directory/archive listing hints, and likely CTF routing.",
   args: {
@@ -46,20 +60,21 @@ export default tool({
       return entries.slice(0, 200).map((entry) => `${entry.isDirectory() ? "dir " : "file"}\t${entry.name}`).join("\n")
     }
 
-    const buf = await readFile(target)
-    const sample = buf.subarray(0, Math.min(buf.length, 256 * 1024))
+    const handle = await readFile(target, { encoding: null, flag: "r" })
+    const sample = handle.subarray(0, Math.min(handle.length, SAMPLE_BYTES))
     const strings = printableStrings(sample)
     const urls = Array.from(new Set(strings.join("\n").match(/https?:\/\/[^\s"'<>]+/g) ?? [])).slice(0, 30)
     const emails = Array.from(new Set(strings.join("\n").match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) ?? [])).slice(0, 30)
     const ips = Array.from(new Set(strings.join("\n").match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g) ?? [])).slice(0, 30)
-    const magic = buf.subarray(0, 32).toString("hex").match(/.{1,2}/g)?.join(" ") ?? ""
+    const magic = sample.subarray(0, 32).toString("hex").match(/.{1,2}/g)?.join(" ") ?? ""
     const archiveLike = /\.(zip|7z|rar|tar|gz|bz2|xz|jar|apk|docx|xlsx|pptx)$/i.test(target)
     const hints = routeHints(target, sample, strings)
 
     return [
       `path: ${target}`,
       `size: ${stat.size}`,
-      `sha256: ${createHash("sha256").update(buf).digest("hex")}`,
+      `sha256: ${await sha256File(target)}`,
+      `sample_bytes: ${sample.length}`,
       `magic: ${magic}`,
       `entropy(sample): ${entropy(sample).toFixed(3)}`,
       `archive_like: ${archiveLike}`,
