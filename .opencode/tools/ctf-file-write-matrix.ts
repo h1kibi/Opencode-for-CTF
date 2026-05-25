@@ -65,7 +65,7 @@ function guessVerificationMethod(targetPath: string, served: boolean) {
 }
 
 export default tool({
-  description: "CTF file-write matrix: given candidate target paths and a write-capable endpoint, produce a decision matrix with existence, writability, create/overwrite flags, reload/serve behavior, risk estimates, and canary result columns. Helps avoid blind destructive overwrites.",
+  description: "CTF file-write matrix: given candidate server paths and a write-capable endpoint or primitive, produce a conservative decision matrix with runtime guess, reload/serve behavior, create/overwrite unknowns, risk estimates, verification method, and canary plan. It does not execute writes and helps avoid blind destructive overwrites.",
   args: {
     paths: tool.schema.string().describe("Newline- or comma-separated list of candidate target paths on the server"),
     endpoint: tool.schema.string().describe("The HTTP endpoint or primitive that can write files (used for suggested canary probes)"),
@@ -92,7 +92,7 @@ export default tool({
       const marker = `CANARY_MARKER_<timestamp>_<random>`
 
       const canary = [
-        `Plan only: verify endpoint semantics first.`,
+        `Plan only: verify endpoint semantics first for ${endpoint}.`,
         `Use marker ${marker}.`,
         `Do not overwrite until original content/hash is saved when possible.`,
         `Verify via ${verification}.`,

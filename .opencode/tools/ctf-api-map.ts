@@ -83,9 +83,9 @@ function parsePlaintextApiList(content: string): ApiEntry[] {
 }
 
 export default tool({
-  description: "CTF API map: scan OpenAPI/Swagger specs or captured API path lists and produce a route table with auth guess, object-id detection, state-changing flag, candidate bug classes, and first safe check commands.",
+  description: "CTF API map: scan JSON OpenAPI/Swagger specs or captured plaintext API path lists and produce a route table with auth guess, object-id detection, state-changing flag, candidate bug classes, and first safe checks.",
   args: {
-    file: tool.schema.string().describe("Path to an OpenAPI/Swagger JSON or YAML file, or a plaintext API path list"),
+    file: tool.schema.string().describe("Path to an OpenAPI/Swagger JSON file, or a plaintext API path list such as `GET /api/users/{id}`"),
   },
   async execute(args) {
     const fs = await import("fs/promises")

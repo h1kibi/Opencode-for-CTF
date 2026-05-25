@@ -3,13 +3,15 @@
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
-    "list": "git ls-files .opencode/tools skills .opencode/commands"
+    "list": "git ls-files .opencode/tools skills .opencode/commands",
+    "bench:web": "tsx scripts/check-web-benchmarks.ts"
   },
   "dependencies": {
     "@opencode-ai/plugin": "1.14.23"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "tsx": "^4.20.0"
   }
 }
