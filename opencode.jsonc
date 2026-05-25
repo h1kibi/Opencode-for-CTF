@@ -145,6 +145,28 @@
       "url": "http://127.0.0.1:12306/mcp",
       "enabled": false,
       "timeout": 30000
+    },
+    "markitdown": {
+      "type": "local",
+      "command": ["markitdown-mcp"],
+      "enabled": false,
+      "timeout": 120000
+    },
+    "docling": {
+      "type": "local",
+      "command": [
+        "uvx",
+        "--from",
+        "docling-mcp",
+        "docling-mcp-server",
+        "--transport",
+        "stdio"
+      ],
+      "environment": {
+        "DOCLING_CONVERSION_MODE": "local"
+      },
+      "enabled": false,
+      "timeout": 180000
     }
   },
   "tool_output": {
@@ -164,7 +186,11 @@
       "*": "allow",
       "*.env": "deny",
       "*.env.*": "deny",
-      "*.env.example": "allow"
+      "*.env.example": "allow",
+      "*id_rsa*": "deny",
+      "*id_ed25519*": "deny",
+      "*.pem": "deny",
+      "*.key": "deny"
     },
     "list": {
       "*": "allow"
@@ -238,6 +264,9 @@
     "ctf-api-map": "allow",
     "ctf-file-write-matrix": "allow",
     "ctf-web-pattern-search": "allow",
+    "doc-read": "allow",
+    "markitdown_*": "ask",
+    "docling_*": "ask",
     "shodan_*": "deny",
     "navicat_*": "deny",
     "nmap_*": "ask",
@@ -760,6 +789,41 @@
         "shodan_*": "deny"
       },
       "prompt": "You review solved or failed CTF attempts. Do not exploit targets. Extract reusable lessons, missed signals, wrong prioritization, stability problems, and skill patch proposals."
+    },
+    "doc-agent": {
+      "description": "General document understanding agent for PDFs, Office files, images, archives, structured text, and RAG preparation.",
+      "mode": "all",
+      "temperature": 0.1,
+      "steps": 80,
+      "permission": {
+        "read": "allow",
+        "list": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "doc-read": "allow",
+        "markitdown_*": "ask",
+        "docling_*": "ask",
+        "webfetch": "ask",
+        "websearch": "ask",
+        "bash": {
+          "*": "ask",
+          "python *": "allow",
+          "python3 *": "allow",
+          "pip *": "ask",
+          "uvx *": "ask",
+          "rm *": "deny",
+          "rm -rf *": "deny"
+        },
+        "edit": {
+          "*": "ask",
+          "extracted/*.md": "allow",
+          "extracted/*.json": "allow",
+          "extracted/*.jsonl": "allow",
+          "extracted/manifest.json": "allow",
+          "extracted/notes.md": "allow"
+        }
+      },
+      "prompt": "You are a general document understanding agent. Your job is to read, summarize, extract, and structure local documents safely. For local PDF, DOCX, XLSX, PPTX, CSV, TSV, HTML, EPUB, image, archive, JSON, Markdown, or text files, use doc-read before answering. Prefer bounded extraction first. For long PDFs, inspect page ranges rather than loading the entire document at once. Use includeJson when reliable page, sheet, slide, or section metadata is needed. Use OCR only when text extraction is empty or the file is clearly scanned/image-based. Use markitdown MCP only when simple broad-format Markdown conversion is needed and doc-read is insufficient. Use docling MCP only when complex PDF layout, tables, formulas, or document structure require stronger parsing. Preserve source files. Avoid destructive commands. Refuse to read secrets such as .env, private keys, SSH credentials, token files, or credential stores. When answering, cite page, sheet, slide, or file path references whenever available. If creating output files, write only under extracted/ unless the user explicitly asks otherwise."
     }
   },
   "share": "disabled",
