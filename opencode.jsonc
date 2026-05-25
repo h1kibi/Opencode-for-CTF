@@ -228,6 +228,9 @@
     "ctf-flag-grep": "allow",
     "ctf-rsa-probe": "allow",
     "ctf-web-probe": "ask",
+    "ctf-java-map": "allow",
+    "ctf-api-map": "allow",
+    "ctf-file-write-matrix": "allow",
     "shodan_*": "deny",
     "navicat_*": "deny",
     "nmap_*": "ask",
@@ -384,6 +387,8 @@
         "nmap_*": "ask",
         "ctf-web-probe": "allow",
         "ctf-java-map": "allow",
+        "ctf-api-map": "allow",
+        "ctf-file-write-matrix": "allow",
         "shodan_*": "deny",
         "ida-pro_*": "deny",
         "radare2_*": "deny",
@@ -686,6 +691,38 @@
         "navicat_*": "deny"
       },
       "prompt": "You are a legal miscellaneous CTF solver. Classify the challenge first, then choose the smallest useful toolset. Prefer local scripts and reproducible steps. Keep notes.md and write the verified final flag to agent_flag.txt."
+    },
+    "ctf-retro": {
+      "description": "Analyze completed or failed CTF solves and produce lessons and patch proposals.",
+      "mode": "all",
+      "temperature": 0.1,
+      "steps": 40,
+      "permission": {
+        "read": "allow",
+        "list": "allow",
+        "grep": "allow",
+        "edit": {
+          "*": "ask",
+          "retros/*.md": "allow",
+          "lessons/*.md": "allow",
+          "patches/*.md": "allow"
+        },
+        "skill": {
+          "*": "ask",
+          "ctf-*": "allow"
+        },
+        "bash": {
+          "*": "ask"
+        },
+        "webfetch": "deny",
+        "websearch": "deny",
+        "filesystem_*": "deny",
+        "git_*": "deny",
+        "puppeteer_*": "deny",
+        "nmap_*": "deny",
+        "shodan_*": "deny"
+      },
+      "prompt": "You review solved or failed CTF attempts. Do not exploit targets. Extract reusable lessons, missed signals, wrong prioritization, stability problems, and skill patch proposals."
     }
   },
   "share": "disabled",

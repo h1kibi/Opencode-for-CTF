@@ -1,6 +1,6 @@
 ---
 description: Convert a completed or failed Web CTF solve into lessons and skill patch proposals
-agent: ctf-web
+agent: ctf-retro
 ---
 
 Use `ctf-common` and `ctf-web-retro`.
