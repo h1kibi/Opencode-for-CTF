@@ -59,6 +59,51 @@ Do not directly modify core skill files. Proposals are suggestions for the opera
 
 ## Lessons Learned
 
+## Pattern Library Update
+
+When a solve or failure reveals a reusable Web CTF technique, propose a pattern entry under:
+
+`skills/ctf-web-patterns/references/<category>.md`
+
+Do not copy long writeups. Write a compact pattern card:
+
+```markdown
+## Pattern: <short name>
+
+Signals:
+- 
+
+Expected primitive:
+- 
+
+First safe check:
+- 
+
+Attack queue effect:
+- Value:
+- Cost:
+- Risk:
+- Stability:
+- Confidence:
+
+Stop rule:
+- 
+
+Escalation:
+- 
+
+Source:
+- local retro / imported public reference / challenge note
+```
+
+A pattern is acceptable only if it changes future decision-making:
+
+* better route
+* better first safe check
+* better stop rule
+* better primitive lock
+* better control-plane choice
+
 Write one lesson per insight:
 
 ```markdown

@@ -64,6 +64,21 @@ After recon provides a surface map, score each candidate attack path and choose 
 - Do not choose a lower-score candidate just because it was discovered first.
 - If two candidates have the same score, prefer the one with lower risk.
 
+## Pattern-Enriched Ranking
+
+If a candidate has strong signals but unclear technique, call `ctf-web-pattern-search` with the observed signals.
+
+For each matched pattern, update the queue:
+
+| Candidate | Matched Pattern | Expected Primitive | Value | Cost | Risk | Confidence Change | First Safe Check |
+|---|---|---|---:|---:|---:|---:|---:|---|
+
+Confidence rules:
+
+- Increase confidence only when the pattern matches observed evidence.
+- Do not increase confidence for generic payload lists.
+- Do not rank destructive patterns above safe source-backed checks unless the expected primitive is critical and evidence is strong.
+
 ## Output Contract
 
 Write this to `notes.md`:

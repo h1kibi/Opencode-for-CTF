@@ -4,7 +4,8 @@
   "scripts": {
     "check": "tsc --noEmit",
     "list": "git ls-files .opencode/tools skills .opencode/commands",
-    "bench:web": "tsx scripts/check-web-benchmarks.ts"
+    "bench:web": "tsx scripts/check-web-benchmarks.ts",
+    "tools:verify": "tsx scripts/verify-ctf-tooling.ts"
   },
   "dependencies": {
     "@opencode-ai/plugin": "1.14.23"

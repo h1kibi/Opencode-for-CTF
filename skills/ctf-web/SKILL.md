@@ -82,6 +82,23 @@ After budget exhaustion, return to attack-queue. Do not continue because the pat
 - If a critical primitive or two high primitives are confirmed, transition to primitive-lock.
 - If the budget is exhausted without confirmation, return to attack-queue.
 
+## Pattern Recall Gate
+
+Use `ctf-web-patterns` or `ctf-web-pattern-search` only after recon and attack-queue exist.
+
+Good use cases:
+
+- A candidate is promising but the exact bypass family is unclear.
+- The target shows parser discrepancy, framework quirk, or CTF-like historical pattern.
+- Source or dependency evidence suggests a known class but not the exact primitive.
+
+Rules:
+
+- Pattern recall cannot bypass attempt budget.
+- Pattern recall cannot justify bulk fuzzing.
+- Pattern recall must produce one focused safe check, not a payload storm.
+- If the matched pattern requires destructive behavior, route through `ctf-web-stability-guard`.
+
 ### Phase: primitive-lock
 
 - Load `ctf-web-primitive-lock`.
@@ -153,6 +170,7 @@ Route to these when focused-probe selects a specific bug class:
 | One-time token, limit, inventory, repeated action, concurrency clue | `ctf-web-race` |
 | Cache headers, CDN/proxy, cache key behavior | `ctf-web-cache` |
 | Mongo/Elastic/JSON operator query behavior | `ctf-web-nosql` |
+| Confirmed signal needs historical CTF pattern matching, bypass family recall, parser discrepancy recall, or CVE-shaped technique lookup | `ctf-web-patterns` |
 
 ## Tool Discipline
 
