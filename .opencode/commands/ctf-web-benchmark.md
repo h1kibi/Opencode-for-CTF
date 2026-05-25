@@ -1,6 +1,6 @@
 ---
 description: Run Web CTF regression benchmarks against agent output to verify phase discipline, routing, and constraint compliance
-agent: ctf-web
+agent: ctf-retro
 ---
 
 Use `ctf-common` and `ctf-web`.

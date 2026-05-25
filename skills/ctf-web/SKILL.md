@@ -162,6 +162,35 @@ Route to these when focused-probe selects a specific bug class:
 - Use `nmap` only for localhost or explicitly authorized challenge hosts.
 - Record meaningful request/response summaries in `notes.md`, not every byte of HTML.
 
+## Browser MCP Discipline
+
+Use browser MCP only when curl, source review, or local scripts are insufficient.
+
+Good use cases:
+
+- JavaScript-rendered routes or SPA behavior.
+- DOM XSS and client-side sinks.
+- CSRF, CORS, CSP, and cookie behavior requiring real browser state.
+- Login/admin UI workflows.
+- Network capture for frontend API discovery.
+- Console errors and interactive element discovery.
+- Screenshot evidence.
+
+Prefer `mcp-chrome` when the task needs the user's currently open CTF browser state, real tabs, real cookies, network observation, console output, or manual-login context.
+
+Prefer Puppeteer or a clean browser profile when the task needs reproducibility, clean state, final-solve automation, or no accidental personal login state.
+
+Do not use browser MCP for:
+
+- Broad fuzzing.
+- Repeated payload attempts.
+- High-risk state-changing actions.
+- File overwrite or upload loops.
+- Bot compatibility testing when the challenge bot is PhantomJS or a different runtime.
+- Final solve when curl or `solve.py` can reproduce the chain.
+
+Use a dedicated CTF Chrome profile. Do not use a personal daily Chrome profile.
+
 ## Evidence Requirements
 
 Web findings require:

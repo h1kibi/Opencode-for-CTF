@@ -42,6 +42,28 @@ function isReloadable(relPath: string, isServed: boolean) {
   return reloadablePatterns.some((re) => re.test(relPath)) ? "likely" : "unknown"
 }
 
+function guessVerificationMethod(targetPath: string, served: boolean) {
+  const l = targetPath.toLowerCase()
+
+  if (served && /\.(html|htm|css|js|png|jpg|jpeg|gif|svg|txt|json|xml)$/i.test(l)) {
+    return "served-url"
+  }
+
+  if (/\.(py|jsp|php|rb|js)$/i.test(l) || /__init__\.py$/i.test(l)) {
+    return "import/reload side effect"
+  }
+
+  if (/log/i.test(l)) {
+    return "log/debug view"
+  }
+
+  if (/template|view|layout|partial/i.test(l)) {
+    return "rendered page"
+  }
+
+  return "unknown; do not assume HTTP accessibility"
+}
+
 export default tool({
   description: "CTF file-write matrix: given candidate target paths and a write-capable endpoint, produce a decision matrix with existence, writability, create/overwrite flags, reload/serve behavior, risk estimates, and canary result columns. Helps avoid blind destructive overwrites.",
   args: {
@@ -60,14 +82,22 @@ export default tool({
       .filter((s: string) => s.length > 0)
 
     const rows: string[][] = []
-    rows.push(["Path", "Runtime", "Reloaded/Served", "Create New", "Overwrite Existing", "Risk", "Canary Result"])
+    rows.push(["Path", "Runtime", "Reloaded/Served", "Create New", "Overwrite Existing", "Risk", "Verification Method", "Canary Plan"])
 
     for (const p of paths) {
       const runtime = guessRuntime(p)
       const reload = isReloadable(p, served)
       const risk = riskCategories[runtime] ?? "unknown reload behavior"
+      const verification = guessVerificationMethod(p, served)
+      const marker = `CANARY_MARKER_<timestamp>_<random>`
 
-      const canary = `curl -s -X POST "${endpoint}" -d '{"path":"${p}","content":"CANARY_MARKER_$(date +%s)","_canary":true}' -o /dev/null -w "%{http_code}" ; curl -s "${p}" | grep -c CANARY_MARKER`
+      const canary = [
+        `Plan only: verify endpoint semantics first.`,
+        `Use marker ${marker}.`,
+        `Do not overwrite until original content/hash is saved when possible.`,
+        `Verify via ${verification}.`,
+        `If verification is unknown, do not proceed without a High-Risk Action Plan.`,
+      ].join(" ")
 
       rows.push([
         p,
@@ -76,6 +106,7 @@ export default tool({
         "?",
         "?",
         risk,
+        verification,
         canary,
       ])
     }

@@ -32,12 +32,54 @@ function guessObjectId(path: string, paramNames: string[]) {
 
 function firstSafeCheck(path: string, method: string) {
   const m = method.toUpperCase()
-  if (m === "GET") return `curl -s -o /dev/null -w "%{http_code}" "${path}"`
-  if (m === "POST") return `curl -s -X POST -H "Content-Type: application/json" -d '{"_safe_probe":true}' -o /dev/null -w "%{http_code}" "${path}"`
-  if (m === "PUT") return `curl -s -X PUT -H "Content-Type: application/json" -d '{"_safe_probe":true}' -o /dev/null -w "%{http_code}" "${path}"`
-  if (m === "PATCH") return `curl -s -X PATCH -H "Content-Type: application/json" -d '{"_safe_probe":true}' -o /dev/null -w "%{http_code}" "${path}"`
-  if (m === "DELETE") return `curl -s -X DELETE -o /dev/null -w "%{http_code}" "${path}"`
+
+  if (m === "GET") {
+    return `curl -s -o /dev/null -w "%{http_code}" "${path}"`
+  }
+
+  if (m === "HEAD") {
+    return `curl -s -I -o /dev/null -w "%{http_code}" "${path}"`
+  }
+
+  if (m === "OPTIONS") {
+    return `curl -s -X OPTIONS -o /dev/null -w "%{http_code}" "${path}"`
+  }
+
+  if (m === "DELETE") {
+    return "DO NOT send DELETE as first safe check; verify via OPTIONS, source review, route docs, or a non-mutating equivalent first"
+  }
+
+  if (["POST", "PUT", "PATCH"].includes(m)) {
+    return "State-changing method: first inspect source/schema, then use a harmless canary body only after recording a High-Risk Action Plan"
+  }
+
   return `curl -s -o /dev/null -w "%{http_code}" "${path}"`
+}
+
+type ApiEntry = {
+  method: string
+  path: string
+  parameters?: string[]
+}
+
+function parsePlaintextApiList(content: string): ApiEntry[] {
+  const entries: ApiEntry[] = []
+
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim()
+    if (!line || line.startsWith("#")) continue
+
+    const match = line.match(/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(\S+)/i)
+    if (!match) continue
+
+    entries.push({
+      method: match[1].toUpperCase(),
+      path: match[2],
+      parameters: [],
+    })
+  }
+
+  return entries
 }
 
 export default tool({
@@ -60,35 +102,51 @@ export default tool({
     const rows: string[][] = []
     rows.push(["Method", "Path", "Auth Needed", "Object ID", "State-Changing", "Candidate Bugs", "First Safe Check"])
 
-    let spec: any
+    let entries: ApiEntry[] = []
+
     try {
-      spec = JSON.parse(content)
-    } catch {
-      return "API map: file is not valid JSON (currently only JSON OpenAPI specs supported)"
-    }
+      const spec = JSON.parse(content)
+      const paths = spec.paths || {}
 
-    const paths = spec.paths || spec.paths || {}
-    for (const [routePath, methods] of Object.entries(paths)) {
-      if (!methods || typeof methods !== "object") continue
-      for (const [method, detail] of Object.entries(methods as Record<string, any>)) {
-        const m = method.toUpperCase()
-        const isStateChanging = stateChangingMethods.has(m)
-        const auth = guessAuth(routePath)
-        const paramNames: string[] = []
-        if (detail?.parameters) {
-          for (const p of detail.parameters) {
-            if (p.name) paramNames.push(p.name)
+      for (const [routePath, methods] of Object.entries(paths)) {
+        if (!methods || typeof methods !== "object") continue
+
+        for (const [method, detail] of Object.entries(methods as Record<string, any>)) {
+          const paramNames: string[] = []
+
+          if (detail?.parameters) {
+            for (const p of detail.parameters) {
+              if (p.name) paramNames.push(p.name)
+            }
           }
-        }
-        const hasObjectId = guessObjectId(routePath, paramNames)
-        const bugs = candidateBugHints[m]?.join(", ") ?? ""
-        const safeCheck = firstSafeCheck(routePath, m)
 
-        rows.push([m, routePath, auth, hasObjectId ? "yes" : "no", isStateChanging ? "yes" : "no", bugs, safeCheck])
+          entries.push({
+            method: method.toUpperCase(),
+            path: routePath,
+            parameters: paramNames,
+          })
+        }
       }
+    } catch {
+      entries = parsePlaintextApiList(content)
     }
 
-    if (rows.length === 1) return "API map: no paths found in spec"
+    if (entries.length === 0) {
+      return "API map: no API paths found. Provide JSON OpenAPI/Swagger or plaintext lines like `GET /api/users/{id}`."
+    }
+
+    for (const entry of entries) {
+      const m = entry.method.toUpperCase()
+      const isStateChanging = stateChangingMethods.has(m)
+      const auth = guessAuth(entry.path)
+      const hasObjectId = guessObjectId(entry.path, entry.parameters ?? [])
+      const bugs = candidateBugHints[m]?.join(", ") ?? ""
+      const safeCheck = firstSafeCheck(entry.path, m)
+
+      rows.push([m, entry.path, auth, hasObjectId ? "yes" : "no", isStateChanging ? "yes" : "no", bugs, safeCheck])
+    }
+
+    if (rows.length === 1) return "API map: no paths found"
 
     return rows.map((r) => r.join(" | ")).join("\n")
   },

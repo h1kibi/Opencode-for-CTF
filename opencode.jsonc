@@ -139,6 +139,12 @@
       ],
       "enabled": false,
       "timeout": 60000
+    },
+    "chrome": {
+      "type": "remote",
+      "url": "http://127.0.0.1:12306/mcp",
+      "enabled": false,
+      "timeout": 30000
     }
   },
   "tool_output": {
@@ -236,6 +242,7 @@
     "nmap_*": "ask",
     "mysql_*": "ask",
     "puppeteer_*": "ask",
+    "chrome_*": "ask",
     "ida-pro_*": "ask",
     "radare2_*": "ask",
     "jadx_*": "ask",
@@ -383,6 +390,13 @@
         "filesystem_*": "ask",
         "git_*": "ask",
         "puppeteer_*": "ask",
+        "chrome_*": "ask",
+        "chrome_get_web_content": "allow",
+        "chrome_get_interactive_elements": "allow",
+        "chrome_history": "deny",
+        "chrome_bookmark_search": "deny",
+        "chrome_bookmark_add": "deny",
+        "chrome_bookmark_delete": "deny",
         "mysql_*": "ask",
         "nmap_*": "ask",
         "ctf-web-probe": "allow",
@@ -700,6 +714,7 @@
       "permission": {
         "read": "allow",
         "list": "allow",
+        "glob": "allow",
         "grep": "allow",
         "edit": {
           "*": "ask",

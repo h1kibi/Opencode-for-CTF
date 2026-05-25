@@ -103,6 +103,29 @@ Before overwriting any existing file:
 
 If the target becomes slow, inconsistent, or returns repeated 5xx errors, stop probing and reassess instance stability.
 
+## Browser MCP Risk Gate
+
+Browser MCP actions are high-risk when they:
+
+- Trigger admin bots.
+- Submit state-changing forms.
+- Upload files.
+- Inject scripts.
+- Send custom browser-side requests.
+- Start network debugger capture on sensitive non-challenge tabs.
+- Access history, bookmarks, cookies, or tabs unrelated to the challenge.
+- Repeat payloads or interactions more than the focused-probe budget allows.
+
+Before high-risk browser MCP actions, write a High-Risk Action Plan in `notes.md`.
+
+Default browser MCP limits:
+
+- Maximum bot-triggering payloads: 2 before reassessment.
+- Maximum state-changing form submissions: 2 canary submissions before reassessment.
+- No script injection unless the current phase is focused-probe or later.
+- No browser MCP use for broad fuzzing.
+- No history/bookmark access during CTF solving.
+
 ## Output Contract
 
 Write this to `notes.md`:

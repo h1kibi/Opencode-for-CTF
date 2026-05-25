@@ -64,3 +64,8 @@ Rules:
 - Write `solve.py` or `solve.js` when practical.
 - Write only the verified final flag to `agent_flag.txt`.
 - Custom Python/Node/Bash/browser scripts are high-risk if they send more than 20 requests, use concurrency, repeatedly trigger bots, repeatedly upload files, dump data, mutate backend state, or write/overwrite files.
+- Use browser MCP only after recon identifies a browser-specific need: SPA route discovery, DOM sink evidence, login/admin UI, network capture, console error, or screenshot evidence.
+- Prefer curl/source review for reproducible HTTP behavior.
+- Prefer `solve.py` or `solve.js` for final solve; browser MCP should not be required for final flag retrieval unless the challenge itself is browser-only.
+- Treat Chrome MCP click/fill/inject/network-debugger/custom-request actions as high-risk when they mutate state, trigger bots, upload files, or repeat payloads.
+- Never use personal Chrome history/bookmarks for CTF solving.
