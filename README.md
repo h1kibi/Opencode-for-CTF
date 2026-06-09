@@ -228,6 +228,10 @@ npm run tools:verify
 
 另外，这套配置不是沙箱。对未知二进制、恶意文档、可疑样本，请在隔离环境中运行。
 
+## License
+
+本项目采用 [MIT License](./LICENSE)。
+
 ## 建议阅读顺序
 
 1. `README.md`
