@@ -1,5 +1,7 @@
 # Opencode for CTF
 
+[English](./README_EN.md)
+
 一个面向 **OpenCode** 的 **CTF 自动化解题 Agent 配置仓库**。
 
 它不是单个 prompt，也不是一组零散脚本，而是一套围绕 **agents / commands / skills / tools / benchmarks** 组织起来的工程化配置，用来把 CTF 解题流程结构化、可复用化、可扩展化。
