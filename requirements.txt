@@ -1,0 +1,38 @@
+# Core Python packages for repository helpers and optional local workflows.
+# This file is intentionally conservative: it lists packages that are broadly useful
+# for extending this OpenCode CTF configuration, but does not force heavyweight
+# system tools (gdb, ghidra, jadx, tshark, etc.) to be installed by pip.
+
+requests>=2.32.0
+beautifulsoup4>=4.12.0
+lxml>=5.2.0
+PyYAML>=6.0.1
+python-dotenv>=1.0.1
+rich>=13.7.0
+click>=8.1.7
+httpx>=0.27.0
+
+# Common CTF automation helpers
+pwntools>=4.13.0
+pycryptodome>=3.20.0
+capstone>=5.0.1
+unicorn>=2.0.1
+ROPGadget>=7.4
+frida-tools>=13.6.0
+
+# Reverse / mobile / binary analysis helpers
+jadx-python>=1.0.0 ; python_version >= '3.10'
+
+# Forensics / parsing / archives / metadata
+yara-python>=4.5.0
+python-magic>=0.4.27
+oletools>=0.60.2
+pdfminer.six>=20231228
+pefile>=2023.2.7
+
+# Notes:
+# - SageMath should usually be installed separately from the official distribution.
+# - Ghidra, IDA Pro, Radare2, JADX GUI, Wireshark/tshark, Volatility, and Docker
+#   are external tools and should be installed manually as described in README.md.
+# - If a package is unavailable on your platform, remove it locally and keep your
+#   private environment notes separate from the public repository.
