@@ -348,13 +348,14 @@ Copy-Item .\templates "$env:USERPROFILE\.config\opencode\templates" -Recurse -Fo
 
 ### 1. 模型与 Provider
 
-你可以删除作者个人偏好的 provider/model，或完全替换成自己的：
+本仓库不提供作者个人的 provider / model 配置，也不预设默认模型供应商。你需要根据自己的环境自行配置，例如：
 
-- OpenAI-compatible provider
-- Claude / Gemini / DeepSeek / OpenRouter / 自建网关
-- 小模型 / 大模型分工
+- 你实际可用的 OpenAI-compatible provider
+- 你自己的模型名称与路由方式
+- 大模型 / 小模型分工
+- API key 注入方式
 
-建议把这些配置保留在你自己的私有版本中，或改成环境变量驱动。
+建议你在自己的私有配置中完成这些设置，或改成环境变量驱动，而不是把个人 provider / model 直接提交到公开仓库。
 
 ### 2. 工作目录 / 挑战目录
 
@@ -502,29 +503,6 @@ npm run tools:verify
 ```
 
 如果你引入了新的 tools / skills / commands，建议每次都跑一遍。
-
----
-
-## 开源版与作者私有版的区别
-
-作者自己的本地配置通常会比公开仓库更激进，可能包括：
-
-- 更完整的 provider 池
-- 私有模型网关
-- 本地知识库接入
-- 私有 MCP 服务
-- 本机绝对路径
-- 个人工作目录
-- 更复杂的多 agent 协同
-
-公开版的目标不是 1:1 暴露作者私人环境，而是保留：
-
-- **体系结构**
-- **方法论**
-- **可迁移能力**
-- **可二次开发的骨架**
-
-这样别人克隆后，既能理解你的 agent 设计，也能按自己的环境快速落地。
 
 ---
 
