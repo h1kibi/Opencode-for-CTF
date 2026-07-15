@@ -2,101 +2,138 @@
 
 [English](./README_EN.md)
 
-一个面向 **OpenCode** 的 **CTF 自动化解题 Agent 配置仓库**。
+**opencode-for-ctf** 是一个面向 [OpenCode](https://opencode.ai) 的 CTF 自动化解题 Agent 插件。
 
-它不是单个 prompt，也不是一组零散脚本，而是一套围绕 **agents / commands / skills / tools / benchmarks** 组织起来的工程化配置，用来把 CTF 解题流程结构化、可复用化、可扩展化。
+它不是一个单一的 prompt，而是一套完整的插件式 Agent 工程方案，围绕 **agents / commands / skills / tools** 组织，为 CTF 解题提供结构化、可复用、可扩展的能力。
 
-## Features
+## 特性
 
-- **多题型支持**：Web / Pwn / Rev / Crypto / Forensics / Misc
-- **自动路由**：可先做低成本 triage，再分流到对应题型 agent
-- **结构化工作流**：强调 recon、hypothesis、verification、closure
-- **工具化能力**：内置文件 triage、flag grep、RSA 分析、Web probe、Java map 等工具
-- **可扩展**：便于继续增加 skills、commands、tools、benchmarks
-- **适合长期迭代**：保留 lesson / retro / benchmark 方向，适合持续打磨 agent
-
-## 适合谁
-
-适合这些用户：
-
-- 想把 OpenCode 用于 CTF 自动化的人
-- 想把 prompt 升级成工程化 agent 配置的人
-- 想统一管理多题型工作流的人
-- 想继续扩展 MCP、知识库、专项 skill 的人
-
-## 仓库结构
-
-```text
-Opencode-for-CTF/
-├─ opencode.jsonc                # 主配置文件（公开模板）
-├─ AGENTS.md                     # 全局运行规则与安全边界
-├─ .env.example                  # 用户自行配置的环境变量示例
-├─ requirements.txt              # Python 依赖
-├─ package.json                  # Node/TypeScript 依赖与脚本
-│
-├─ .opencode/
-│  ├─ commands/                  # Slash commands
-│  └─ tools/                     # 自定义工具
-│
-├─ skills/                       # CTF 技能库
-├─ templates/                    # solve / exploit 模板
-├─ benchmarks/                   # 行为基准与回归材料
-├─ lessons/                      # 经验沉淀
-├─ retros/                       # 复盘记录
-├─ patches/                      # 配置演进记录
-└─ scripts/                      # 校验脚本
-```
+- **两大主 Agent** — `ctf-fast`（轻量快速解题）和 `ctf-expert`（证据驱动全面分析）
+- **全题型覆盖** — Web / Pwn / Rev / Crypto / Forensics / Misc
+- **140+ 工具** — 文件分析、Web 探测、二进制调试、密码学计算、取证提取等
+- **56+ 技能** — 各题型方法论沉淀为可复用的 skill
+- **120+ 命令** — 统一入口，减少每次手工组织上下文
+- **证据驱动** — `ctf-expert` 模式下通过 Evidence.md 追踪已知信息，迭代逼近 flag
+- **插件化架构** — 作为 OpenCode 插件加载，无侵入
 
 ## 快速开始
 
-### 1. 克隆仓库
+### 作为插件安装
 
-```bash
-git clone https://github.com/h1kibi/Opencode-for-CTF.git
-cd Opencode-for-CTF
+在 `~/.config/opencode/opencode.jsonc` 中添加插件引用：
+
+```jsonc
+{
+  "plugin": ["file:C:\\path\\to\\Opencode-for-CTF"],
+  "default_agent": "ctf-fast",  // 可选: ctf-fast 或 ctf-expert
+  "skills": {
+    "paths": [
+      "C:\\path\\to\\Opencode-for-CTF\\skills",
+      "C:\\path\\to\\Opencode-for-CTF\\skills-external\\ctf-skills"
+    ]
+  },
+  "instructions": [
+    "C:\\path\\to\\Opencode-for-CTF\\rules-cn.md",
+    "C:\\path\\to\\Opencode-for-CTF\\ctf-rules.md"
+  ]
+}
 ```
 
-### 2. 安装依赖
+### 安装依赖
 
 ```bash
 npm install
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
 ```
 
-### 3. 复制到 OpenCode 配置目录
+## Agent 一览
 
-```powershell
-New-Item -ItemType Directory -Force "$env:USERPROFILE\.config\opencode"
-Copy-Item .\opencode.jsonc "$env:USERPROFILE\.config\opencode\opencode.jsonc" -Force
-Copy-Item .\AGENTS.md "$env:USERPROFILE\.config\opencode\AGENTS.md" -Force
-Copy-Item .\.opencode "$env:USERPROFILE\.config\opencode\.opencode" -Recurse -Force
-Copy-Item .\skills "$env:USERPROFILE\.config\opencode\skills" -Recurse -Force
-Copy-Item .\templates "$env:USERPROFILE\.config\opencode\templates" -Recurse -Force
+| Agent | 类型 | 用途 |
+|-------|------|------|
+| `ctf-fast` | **主 agent** | 轻量快速解题 — 直觉优先、最小工具依赖、快速验证 |
+| `ctf-expert` | **主 agent** | 全面证据驱动解题 — 侦查→分析→路线验证→迭代循环 |
+| `ctf-web` | 子 agent | Web 漏洞利用 |
+| `ctf-pwn` | 子 agent | 二进制漏洞利用 |
+| `ctf-rev` | 子 agent | 逆向工程 |
+| `ctf-crypto` | 子 agent | 密码学攻击 |
+| `ctf-forensics` | 子 agent | 取证分析 |
+| `ctf-scout` | 子 agent | 信息搜集 |
+| `ctf-librarian` | 子 agent | 知识库查询 |
+| `ctf-oracle` | 子 agent | 模式匹配/知识推断 |
+
+### 选择指南
+
+| 场景 | 推荐 agent |
+|------|-----------|
+| 快速尝试解题、简单题型 | `ctf-fast` |
+| 已知常见套路、需要快速验证 | `ctf-fast` |
+| 复杂逆向/二进制利用 | `ctf-expert` |
+| 多步骤 Web 链式攻击 | `ctf-expert` |
+| 不熟悉的题型、需要深入分析 | `ctf-expert` |
+| 多次尝试仍未解出 | `ctf-expert` |
+
+## 仓库结构
+
+```
+Opencode-for-CTF/
+├── opencode.json           # 插件入口
+├── package.json            # Node.js 依赖
+├── agents/                 # Agent 定义 (YAML frontmatter + markdown)
+├── commands/               # Slash 命令
+├── skills/                 # CTF 技能库 (56+ skills)
+├── skills-external/        # 外部 CTF 技能 (ctf-skills 镜像)
+├── tools/                  # CTF 工具 (140+ tools)
+├── templates/              # solve / exploit 模板
+├── src/                    # 插件运行时
+│   ├── plugin.ts           # 插件入口
+│   ├── team-manager.ts     # 团队模式编排
+│   └── continuation-manager.ts
+├── scripts/                # 校验与诊断脚本
+├── rules/                  # 安全/CTF 规则
+├── knowledge/              # 知识库 (lessons, pattern-cards)
+├── lessons/                # 结构化 lessons
+├── packages/               # 子包 (ctf-core, ctf-notes-core 等)
+└── runtime/                # 运行时环境辅助脚本
 ```
 
-### 4. 配置你自己的环境
+## 配置
 
-本仓库**不包含作者个人 provider / model 配置**。你需要自行配置：
+### 工作区配置
 
-- 你自己的 provider / model
-- API keys / tokens
-- `CTF_WORKSPACE`
-- 本地工具路径
-- 可选 MCP 服务
+参考 `CTF_WORKSPACE_OPENCODE_TEMPLATE.jsonc` 配置你的 CTF 工作区。
 
-请参考：
+### 环境变量
 
-- `.env.example`
-- `opencode.jsonc`
+| 变量 | 用途 |
+|------|------|
+| `DEEPSEEK_API_KEY` | DeepSeek API Key |
+| `GITHUB_PAT` | GitHub Personal Access Token |
+| `GHIDRA_INSTALL_DIR` | Ghidra 安装目录 |
+| `JINA_API_KEY` | Jina AI API Key |
+| `BRAVE_API_KEY` | Brave Search API Key |
 
 ## 使用方式
 
-推荐入口：
+### 快速解题 (ctf-fast)
 
-```text
-/ctf ./challenge
+适合简单到中等难度的题目，直觉优先、快速验证：
+
+```
+/ctf-fast ./challenge
+```
+
+### 全面解题 (ctf-expert)
+
+适合复杂题目，证据驱动、多轮迭代：
+
+```
+/ctf-expert ./challenge
+```
+
+### 专业子 agent
+
+已知题型可直接调用对应子 agent：
+
+```
 /ctf-web http://127.0.0.1:8000
 /ctf-pwn ./chall --remote 127.0.0.1:31337
 /ctf-rev ./crackme
@@ -104,142 +141,41 @@ Copy-Item .\templates "$env:USERPROFILE\.config\opencode\templates" -Recurse -Fo
 /ctf-forensics ./artifact.pcap
 ```
 
-建议习惯：
+### ctf-expert 工作流
 
-1. 未知题先走 `/ctf`
-2. 明确题型直接走对应 command
-3. 保留 `notes.md`
-4. 产出 `solve.py` / `exploit.py` / `solve.js` 等复现脚本
-5. 只在确认后写入 `agent_flag.txt`
+`ctf-expert` 采用五阶段循环解题：
 
-## 主要组成
-
-### Agents
-
-按题型和阶段分工，例如：
-
-- `ctf-router`
-- `ctf-web`
-- `ctf-pwn`
-- `ctf-rev`
-- `ctf-crypto`
-- `ctf-forensics`
-- `ctf-misc`
-
-### Commands
-
-统一入口，减少每次手工组织上下文，例如：
-
-- `/ctf`
-- `/ctf-web`
-- `/ctf-pwn`
-- `/ctf-rev`
-- `/ctf-crypto`
-- `/ctf-forensics`
-- `/ctf-misc`
-
-### Skills
-
-沉淀题型方法论与专项能力，例如：
-
-- Web recon / attack queue / JWT / IDOR / SSTI / SSRF / Upload / XSS
-- Pwn workflow / references
-- Crypto RSA references
-- Java Web 分析
-
-### Tools
-
-内置高频辅助工具，例如：
-
-- `ctf-file-triage`
-- `ctf-flag-grep`
-- `ctf-rsa-probe`
-- `ctf-web-probe`
-- `ctf-java-map`
-- `ctf-api-map`
-- `ctf-file-write-matrix`
-- `ctf-web-pattern-search`
-
-## 需要用户自行配置的内容
-
-公开仓库只提供框架和模板，不绑定个人环境。你需要按自己机器修改：
-
-### 模型与 Provider
-
-- 你实际可用的 provider
-- 模型名称与路由方式
-- 大模型 / 小模型分工
-- API key 注入方式
-
-### 工作目录
-
-- `CTF_WORKSPACE`
-- 外部目录访问权限
-- filesystem MCP 根目录
-
-### 本地工具路径
-
-- `PUPPETEER_EXECUTABLE_PATH`
-- `GHIDRA_INSTALL_DIR`
-- `IDA_PATH`
-- `SECURITY_MCP_WRAPPERS`
-- `VMPROTECT_MCP`
-- 其他你自己的本地工具路径
-
-### 可选增强
-
-- AnySearch
-- 浏览器自动化 MCP
-- 文档转换 MCP
-- 本地知识库 / 自建 MCP
-- Reverse / Forensics 专项工具链
-
-## 常用校验命令
-
-```bash
-npm run check
-npm run list
-npm run tools:verify
+```mermaid
+graph TD
+    A[Phase 1: 侦查] --> B[Phase 2: 分析 & 路线制定]
+    B --> C[Phase 3: 路线验证]
+    C --> D{Phase 4: 成功?}
+    D -->|找到 Flag| E[✓ 返回 Flag]
+    D -->|全部失败| F[Phase 5: 证据收集]
+    F --> B
 ```
 
-## 推荐外部工具
+- 每次制定 **3 条路线**，依次验证
+- 维护 `Evidence.md` 追踪已知信息和已验证事实
+- 受阻 ≠ 死路，WAF/障碍可能意味着方向正确
+- 三条路线失败后收集证据，重新分析，迭代直到拿到 flag
 
-不是全部必需，但会明显提升体验：
+## Agent 开发
 
-- Node.js
-- Python 3.11+
-- Git
-- OpenCode
-- Chrome / Chromium
-- Docker / Docker Compose
-- gdb / checksec / ROPgadget
-- Ghidra / JADX / Radare2 / Frida
-- SageMath
-- binwalk / exiftool / tshark / yara / volatility
+本插件遵循 OpenCode Agent 规范。agent 定义采用 YAML frontmatter + markdown 格式：
 
-## 安全边界
+```yaml
+---
+"description": "Agent 描述"
+"mode": "primary"  # 或 subagent
+"temperature": 0
+"steps": 120
+---
+# Agent 指令内容
+```
 
-本仓库仅面向：
-
-- 授权 CTF
-- 本地靶场
-- benchmark
-- 明确授权的实验环境
-
-不要将其用于未授权目标。
-
-另外，这套配置不是沙箱。对未知二进制、恶意文档、可疑样本，请在隔离环境中运行。
+详情参考 [AGENTS.md](./AGENTS.md)。
 
 ## License
 
-本项目采用 [MIT License](./LICENSE)。
-
-## 建议阅读顺序
-
-1. `README.md`
-2. `AGENTS.md`
-3. `opencode.jsonc`
-4. `.opencode/commands/`
-5. `skills/`
-6. `.opencode/tools/`
-7. `benchmarks/`
+MIT
