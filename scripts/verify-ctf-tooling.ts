@@ -15,7 +15,13 @@ const checks: Check[] = [
   { group: "web", name: "ffuf", command: "ffuf", args: ["-V"] },
   { group: "web", name: "sqlmap", command: "sqlmap", args: ["--version"] },
   { group: "crypto", name: "openssl", command: "openssl", args: ["version"] },
+  { group: "crypto", name: "sage", command: "sage", args: ["--version"] },
   { group: "pwn", name: "gdb", command: "gdb", args: ["--version"] },
+  { group: "pwn", name: "checksec", command: "checksec", args: ["--version"] },
+  { group: "pwn", name: "readelf", command: "readelf", args: ["--version"] },
+  { group: "pwn", name: "objdump", command: "objdump", args: ["--version"] },
+  { group: "pwn", name: "nm", command: "nm", args: ["--version"] },
+  { group: "pwn", name: "strings", command: "strings", args: ["--version"] },
   { group: "rev", name: "file", command: "file", args: ["--version"] },
   { group: "forensics", name: "exiftool", command: "exiftool", args: ["-ver"] },
 ]
@@ -43,4 +49,4 @@ for (const [group, result] of groups) {
   console.log(`missing: ${result.missing.length ? result.missing.join(", ") : "none"}`)
 }
 
-console.log("\nUse missing tools only when the selected challenge path requires them. Do not install broad toolsets during active solving unless necessary.")
+console.log("\nUse missing tools only when the selected challenge path requires them. Prefer route-specific installs over broad toolset expansion during active solving.")

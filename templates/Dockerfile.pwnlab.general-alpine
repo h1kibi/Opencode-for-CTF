@@ -1,0 +1,85 @@
+FROM alpine:3.20
+
+ENV LC_ALL=C.UTF-8 LANG=C.UTF-8 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn TERM=xterm-256color
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
+RUN apk update \
+    && apk add --no-cache \
+      bash \
+      binutils \
+      build-base \
+      ca-certificates \
+      coreutils \
+      curl \
+      file \
+      gdb \
+      git \
+      grep \
+      less \
+      make \
+      musl-dev \
+      netcat-openbsd \
+      openssh-client \
+      patchelf \
+      pkgconfig \
+      procps \
+      python3 \
+      python3-dev \
+      py3-pip \
+      socat \
+      strace \
+      sudo \
+      tmux \
+      unzip \
+      vim \
+      wget \
+      xxd \
+      zip \
+      zlib-dev \
+    && for pkg in \
+      capstone-dev \
+      py3-capstone \
+      clang \
+      cmake \
+      elfutils \
+      jq \
+      libffi-dev \
+      linux-headers \
+      ltrace \
+      musl-dbg \
+      nasm \
+      ncurses-dev \
+      qemu-x86_64 \
+      qemu-i386 \
+      qemu-aarch64 \
+      qemu-mipsel \
+      ruby \
+      ruby-dev; \
+    do \
+      apk add --no-cache "$pkg" || apk add --no-cache "$pkg" || echo "WARN: optional apk package failed: $pkg"; \
+    done
+
+RUN python3 -m venv /opt/pwnvenv \
+    && . /opt/pwnvenv/bin/activate \
+    && (python3 -m pip install --upgrade pip setuptools wheel || echo "WARN: optional pip bootstrap failed") \
+    && for pkg in pwntools ROPGadget capstone unicorn keystone-engine pyelftools angr claripy z3-solver requests ipython; do \
+      python3 -m pip install "$pkg" || echo "WARN: optional pip package failed: $pkg"; \
+    done \
+    && python3 -m pip install ropper || echo "WARN: optional pip package failed: ropper" \
+    && (gem install one_gadget --no-document || echo "WARN: optional gem install failed: one_gadget") \
+    && (gem install seccomp-tools --no-document || echo "WARN: optional gem install failed: seccomp-tools") \
+    && ln -sf /opt/pwnvenv/bin/ROPgadget /usr/local/bin/ROPgadget || true \
+    && ln -sf /opt/pwnvenv/bin/ropper /usr/local/bin/ropper || true \
+    && printf '#!/usr/bin/env bash\nexec python3 -m pwnlib.commandline.checksec "$@"\n' > /usr/local/bin/checksec \
+    && chmod +x /usr/local/bin/checksec
+
+ENV PATH="/opt/pwnvenv/bin:${PATH}"
+
+RUN git clone --depth=1 https://github.com/hugsy/gef.git /opt/gef || true \
+    && if [ -f /opt/gef/gef.py ]; then printf '\nsource /opt/gef/gef.py\n' > /root/.gdbinit; else touch /root/.gdbinit; fi \
+    && printf 'set disassembly-flavor intel\nset pagination off\nset follow-fork-mode child\n' >> /root/.gdbinit \
+    && printf '#!/usr/bin/env bash\nset +e\necho "[pwnlab-alpine] musl tool check"\nfor c in file readelf objdump nm strings gdb python3 ROPGadget ropper patchelf qemu-x86_64 qemu-i386 qemu-aarch64 qemu-mipsel strace ltrace tmux vim git curl wget socat; do command -v "$c" >/dev/null 2>&1 && echo "OK $c" || echo "MISS $c"; done\npython3 - <<"PY"\ntry:\n import pwn; print("OK pwntools")\nexcept Exception as e: print("MISS pwntools", e)\ntry:\n import angr; print("OK angr", angr.__version__)\nexcept Exception as e: print("MISS angr", e)\ntry:\n import claripy; print("OK claripy", getattr(claripy, "__version__", "present"))\nexcept Exception as e: print("MISS claripy", e)\ntry:\n import z3; print("OK z3", z3.get_version_string())\nexcept Exception as e: print("MISS z3", e)\nPY\necho "NOTE: Alpine uses musl; do not reuse glibc offsets/gadgets blindly."\n' > /usr/local/bin/pwnlab-check \
+    && chmod +x /usr/local/bin/pwnlab-check
+
+WORKDIR /work
+CMD ["bash"]

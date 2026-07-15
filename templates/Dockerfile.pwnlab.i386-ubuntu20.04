@@ -1,0 +1,15 @@
+FROM pwnlab:general-ubuntu20.04
+
+ENV TERM=xterm-256color
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# 32-bit x86 target toolbox: inherit the proven general20 environment and only
+# add i386-target defaults/health checks. This avoids the broken pure-i386
+# package/PyPI path while still giving a stable 32-bit exploitation substrate.
+RUN printf 'set architecture i386\nset disassembly-flavor intel\nset pagination off\nset follow-fork-mode child\n' > /root/.gdbinit \
+    && printf '#!/usr/bin/env bash\nset +e\necho "[pwnlab-i386] tool check"\nfor c in file readelf objdump nm strings checksec gdb gdbserver python3 ROPgadget ropper one_gadget patchelf qemu-i386 strace ltrace tmux vim git curl wget socat seccomp-tools; do command -v "$c" >/dev/null 2>&1 && echo "OK $c" || echo "MISS $c"; done\npython3 - <<"PY"\ntry:\n import pwn; print("OK pwntools")\nexcept Exception as e: print("MISS pwntools", e)\nPY\n' > /usr/local/bin/pwnlab-check \
+    && chmod +x /usr/local/bin/pwnlab-check
+
+WORKDIR /work
+CMD ["bash"]

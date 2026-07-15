@@ -1,0 +1,19 @@
+{
+  "primary_owner": "",
+  "supporting_surface": "",
+  "closure_owner": "",
+  "handoff_trigger": "",
+  "return_trigger": "",
+  "handoff_penalty_reason": "",
+  "matrix": [
+    {
+      "surface": "",
+      "evidence": [],
+      "why_not_primary": "",
+      "supporting_role": "",
+      "handoff_trigger": "",
+      "return_trigger": "",
+      "closure_owner": ""
+    }
+  ]
+}

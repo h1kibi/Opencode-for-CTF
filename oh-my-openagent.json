@@ -1,0 +1,87 @@
+{
+  "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/oh-my-opencode.schema.json",
+  "agents": {
+    "atlas": {
+      "model": "yintu/gpt-5.4"
+    },
+    "explore": {
+      "model": "yintu/gpt-5.4"
+    },
+    "hephaestus": {
+      "model": "yintu/gpt-5.4"
+    },
+    "librarian": {
+      "model": "yintu/gpt-5.4"
+    },
+    "metis": {
+      "model": "yintu/gpt-5.5"
+    },
+    "momus": {
+      "model": "yintu/gpt-5.5"
+    },
+    "multimodal-looker": {
+      "model": "yintu/gpt-5.4"
+    },
+    "oracle": {
+      "model": "yintu/gpt-5.4"
+    },
+    "prometheus": {
+      "model": "yintu/gpt-5.5"
+    },
+    "sisyphus": {
+      "model": "yintu/gpt-5.5"
+    }
+  },
+  "categories": {
+    "artistry": {
+      "model": "yintu/gpt-5.5"
+    },
+    "deep": {
+      "model": "yintu/gpt-5.4"
+    },
+    "git": {
+      "model": "yintu/gpt-5.4"
+    },
+    "quick": {
+      "model": "yintu/gpt-5.4"
+    },
+    "ultrabrain": {
+      "model": "yintu/gpt-5.5"
+    },
+    "unspecified-high": {
+      "model": "yintu/gpt-5.5"
+    },
+    "unspecified-low": {
+      "model": "yintu/gpt-5.4"
+    },
+    "visual-engineering": {
+      "model": "yintu/gpt-5.4"
+    },
+    "writing": {
+      "model": "yintu/gpt-5.4"
+    }
+  },
+  "disabled_commands": [
+    "ralph-loop"
+  ],
+  "disabled_hooks": [
+    "auto-slash-command",
+    "todo-continuation-enforcer",
+    "tasks-todowrite-disabler",
+    "rules-injector",
+    "keyword-detector"
+  ],
+  "disabled_mcps": [
+    "context7",
+    "websearch",
+    "grep_app",
+    "lsp",
+    "ast_grep"
+  ],
+  "disabled_skills": [
+    "security-research",
+    "security-review"
+  ],
+  "hashline_edit": false,
+  "model_fallback": false
+}

@@ -1,0 +1,24 @@
+{
+  "id": "controller-snapshot-writer-contract",
+  "category": "meta",
+  "description": "Snapshot command should prefer structured evidence refresh and point at canonical state writers or snapshot files rather than freeform prose-only refresh.",
+  "artifacts": [
+    "commands/ctf-snapshot.md",
+    "scripts/write-evidence-state.ts",
+    "templates/route.json",
+    "templates/primitive.json",
+    "templates/ctf_evidence_snapshot.md"
+  ],
+  "expected": {
+    "primary_owner": "misc",
+    "support_surface": "none",
+    "first_safe_tool": "write-evidence-state",
+    "hard_submode": "snapshot_refresh_contract",
+    "bottleneck_family": "state_refresh",
+    "source_first": false,
+    "closure_required": false,
+    "handoff_trigger": "noisy_branch_or_interruption_risk",
+    "stop_rule": "refresh_structured_state_before_freeform_summary"
+  },
+  "notes": "Controller regression skeleton for snapshot writer-friendly behavior."
+}

@@ -44,6 +44,15 @@ Collect these before acting:
 7. Produce a reproducible solver or exploit script when practical.
 8. Verify the flag from challenge behavior or artifact evidence before finalizing.
 
+## Reusable Templates
+
+When the solve is non-trivial, start from the smallest matching template under `templates/` instead of inventing ad hoc structure:
+
+- `templates/ctf_plan.md` for route planning or hard-open work.
+- `templates/ctf_handoff.md` for branch handoff, pause, or owner switch.
+- `templates/ctf_evidence_snapshot.md` for compact restart value.
+- category-specific templates such as `templates/pwn_notes.md` when the branch requires deeper domain notes.
+
 ## Convergence Checkpoint
 
 After every meaningful observation, decide whether to continue exploring or lock the current best path.
@@ -82,6 +91,88 @@ Do not branch-hop silently.
 - Summarize long outputs into addresses, parameters, routes, stack traces, error messages, constants, and decision points.
 - For interactive tools, use `ctf-terminal`.
 - Do not use hidden evaluator metadata, answer files, or ground-truth fields as the solution when the harness intends them to be hidden.
+
+## Shared Execution Discipline
+
+Category agents should keep their prompts focused on domain-specific workflow. Use this common discipline for cross-category behavior:
+
+- Visible text before an active probe/tool call should be at most one short sentence unless a user-facing gate, final result, safety decision, or stuck checkpoint is required.
+- Do not narrate broad alternatives during active solving. Convert uncertainty into one controlled probe, one state update, one pivot, one final check, or one explicit resource request.
+- For any non-trivial branch, keep at most top-3 active hypotheses and change one variable per probe.
+- A changed payload string is not a changed hypothesis. A new hypothesis changes the primitive, sink, oracle, parser, state boundary, owner, or closure path.
+- After two or three same-family attempts without a new differential, rerank, pivot, or mark the branch blocked instead of continuing payload roulette.
+- Once a high-value primitive is confirmed, stop broad recon and build the shortest closure path to flag/source/config/secret/admin/export/output.
+- On resume after interruption, do not restart recon by default. Reconstruct the strongest evidence, current owner, confirmed primitive or signal, blocker, and next one-variable probe.
+
+## Shared Checkpoint Contract
+
+When a solve becomes branchy, interrupted, or ready for handoff, record a compact checkpoint instead of a long retrospective:
+
+- target / scope / flag format
+- current primary owner and support surface
+- strongest evidence and confirmed facts
+- confirmed primitive or strongest non-proof signal
+- failed same-family attempts already spent
+- current blocker or uncertainty
+- exploit / solve artifact path if present
+- next one-variable probe with oracle and falsify condition
+
+If the branch is likely to pause, switch owner, or survive interruption, prefer `templates/ctf_handoff.md` or `templates/ctf_evidence_snapshot.md` over freeform notes.
+
+## Restart Artifact Priority
+
+When resuming or handing control between `ctf-fast`, `ctf-pwn-fast`, `ctf-rigorous`, or category specialists, prefer structured restart artifacts over broad note rereads.
+
+Preferred human-readable restart order under `work/ctf-evidence/<challenge-slug>/`:
+
+1. `resume.md` seeded from `templates/ctf_resume_packet.md`
+2. `fast-handoff.md` seeded from `templates/ctf_fast_handoff.md`
+3. `handoff.md` seeded from `templates/ctf_handoff.md`
+4. `snapshot.md` seeded from `templates/ctf_evidence_snapshot.md`
+
+Preferred structured packet to pair with the restart artifact:
+
+- `inventory.md`
+- `route.json`
+- `hypotheses.json`
+- `signal-memory.yaml`
+- `primitive.json`
+- `closure.json`
+
+Use markdown restart artifacts to recover compact human context, and structured files to recover controller state. Do not let `notes.md` outrank an existing structured restart artifact unless the structured packet is stale or missing required fields.
+
+If the packet quality is uncertain, run `ctf:evidence-doctor <challenge-slug>` or `node scripts/ctf-evidence-doctor.ts <challenge-slug>` before continuing.
+
+## Evidence Packet Hygiene
+
+For non-trivial branches, keep the structured evidence packet minimally executable:
+
+- `route.json` should expose `primary_owner`, `first_safe_tool`, and the current route/budget posture.
+- `primitive.json` should expose the current primitive and `closure_owner` once a strong primitive exists.
+- `closure.json` should expose the current `closure_owner`, top closure probe, and blocker when the branch is in closure-first mode.
+- `hypotheses.json` should expose a compact queue or hypothesis list that can survive restart.
+
+When the branch changes owner, queue shape, or closure posture materially, refresh the packet before more probing. Prefer dedicated evidence writers and helpers over ad hoc prose.
+
+## Evidence Discipline
+
+For non-trivial solves, keep a compact evidence directory under `work/ctf-evidence/<challenge-slug>/` when practical. Suggested files:
+
+- `inventory.txt` - files, services, runtime, and flag format
+- `route.json` - current owner, support surface, and top route summary
+- `probes.jsonl` - one-line probe packets with oracle/result
+- `primitive.json` - confirmed primitive and closure implications
+- `closure.json` - ordered closure probes and downgrade trigger
+- `solve-output.txt` - sanitized final solver transcript or local output proof
+- `final-verification.txt` - why the flag is real and how it was reproduced
+- `retro.md` - post-solve lesson capture or patch proposal
+
+Rules:
+
+- `agent_flag.txt` is for the exact verified flag only.
+- Do not store reusable live secrets, raw cookies, private keys, or challenge credentials in reusable lesson artifacts.
+- If local and remote behavior diverge, keep a compact local/remote transcript or summary before mutating the payload family.
+- If a pattern card materially influenced the branch, record feedback before final retro ends.
 
 ## Accuracy Rules
 
@@ -160,6 +251,8 @@ Maintain these when useful:
 When a matching file exists under `templates/`, copy it as the starting point instead of writing a solver from scratch.
 
 When solved, summarize root cause, exploit path, verification evidence, and the solver entry point.
+
+If the solve was branchy or source-guided, also record the shortest reproduction path in `final-verification.txt`: setup -> primitive -> oracle -> closure step -> flag.
 
 ## Stop Conditions
 

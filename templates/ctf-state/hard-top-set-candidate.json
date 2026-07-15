@@ -1,0 +1,12 @@
+{
+  "card_id": "",
+  "category": "web|pwn|rev|crypto|forensics|misc",
+  "title": "",
+  "trigger": [],
+  "first_safe_probe": "",
+  "falsify_rule": "",
+  "stop_rule": "",
+  "closure_relevance": "",
+  "negative_twin": "",
+  "notes": ""
+}

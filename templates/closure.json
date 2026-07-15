@@ -1,0 +1,14 @@
+{
+  "current_primitive": "",
+  "closure_owner": "",
+  "best_flag_location_hypothesis": "",
+  "flag_location_type": "",
+  "storage_candidates": [],
+  "best_oracle": "",
+  "main_blocker": "",
+  "top_closure_probe": "",
+  "second_best_closure_probe": "",
+  "stop_rule": "",
+  "downgrade_trigger": "",
+  "last_updated": ""
+}

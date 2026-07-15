@@ -1,0 +1,6 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "file:C:\\Projects\\Agent-projects\\Opencode-for-CTF"
+  ]
+}

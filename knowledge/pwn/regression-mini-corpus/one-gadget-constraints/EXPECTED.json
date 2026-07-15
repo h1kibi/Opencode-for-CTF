@@ -1,0 +1,23 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "one-gadget-constraints",
+  "sample_type": "metadata-only",
+  "expected_primitive": "pwn.closure.one_gadget_constraints",
+  "expected_tags": {
+    "closure": [
+      "one_gadget"
+    ],
+    "runtime": [
+      "glibc_2_35"
+    ],
+    "anti_pattern": [
+      "one_gadget_roulette"
+    ]
+  },
+  "minimal_probe_shape": "verify registers/stack slots then call selected one_gadget",
+  "confirm_oracle": "gadget executes with constraints satisfied",
+  "falsify_oracle": "constraint unsatisfied under runtime",
+  "anti_pattern_to_avoid": [
+    "one_gadget_roulette"
+  ]
+}

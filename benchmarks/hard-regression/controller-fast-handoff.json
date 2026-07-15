@@ -1,0 +1,35 @@
+{
+  "id": "controller-fast-handoff",
+  "category": "mixed",
+  "description": "Fast lane confirms a useful primitive but cannot close quickly; rigorous mode should resume from structured fast handoff instead of rereading broad chat context.",
+  "artifacts": [
+    "templates/ctf_fast_handoff.md",
+    "templates/ctf_resume_packet.md",
+    "commands/ctf-resume.md",
+    "agents/ctf-rigorous.md"
+  ],
+  "expected": {
+    "primary_owner": "web",
+    "support_surface": "java",
+    "first_safe_tool": "ctf-web-fingerprint",
+    "hard_submode": "resume_from_fast_handoff",
+    "bottleneck_family": "closure_owner_selection",
+    "source_first": true,
+    "closure_required": true,
+    "handoff_trigger": "fast_lane_not_closing",
+    "stop_rule": "prefer_structured_restart_artifact_before_broad_reread"
+  },
+  "metrics": {
+    "route_correct": true,
+    "owner_correct": true,
+    "branch_waste_rate": "low",
+    "primitive_to_closure_steps": "bounded",
+    "resume_stable": true,
+    "retro_yield": {
+      "lesson": true,
+      "pattern_feedback": true,
+      "chain_candidate": true
+    }
+  },
+  "notes": "Controller benchmark skeleton for fast-to-rigorous restart behavior."
+}

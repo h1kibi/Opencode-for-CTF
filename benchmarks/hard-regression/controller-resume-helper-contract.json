@@ -1,0 +1,23 @@
+{
+  "id": "controller-resume-helper-contract",
+  "category": "meta",
+  "description": "Resume-side helper should return preferred restart artifact plus canonical route/primitive/closure state so command integration can consume structured evidence first.",
+  "artifacts": [
+    "scripts/resume-helper.ts",
+    "scripts/read-evidence-state.ts",
+    "docs/CTF_EVIDENCE_LAYOUT.md",
+    "commands/ctf-resume.md"
+  ],
+  "expected": {
+    "primary_owner": "misc",
+    "support_surface": "none",
+    "first_safe_tool": "resume-helper",
+    "hard_submode": "resume_helper_contract",
+    "bottleneck_family": "restart_state_consumption",
+    "source_first": false,
+    "closure_required": false,
+    "handoff_trigger": "command_side_integration_trial",
+    "stop_rule": "consume_structured_restart_artifact_before_freeform_context"
+  },
+  "notes": "Controller regression skeleton for resume-side helper behavior."
+}

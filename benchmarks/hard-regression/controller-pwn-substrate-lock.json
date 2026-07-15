@@ -1,0 +1,23 @@
+{
+  "id": "controller-pwn-substrate-lock",
+  "category": "pwn",
+  "description": "Rigorous PWN routing should lock substrate early and avoid cross-substrate drift for the same probe family.",
+  "artifacts": [
+    "agents/ctf-rigorous.md",
+    "agents/ctf-pwn.md",
+    "agents/ctf-pwn-fast.md",
+    "templates/pwn_state_compact.md"
+  ],
+  "expected": {
+    "primary_owner": "pwn",
+    "support_surface": "none",
+    "first_safe_tool": "ctf-pwn-docker-harness",
+    "hard_submode": "pwn_substrate_lock",
+    "bottleneck_family": "runtime_alignment",
+    "source_first": false,
+    "closure_required": true,
+    "handoff_trigger": "runtime_sensitive_branch",
+    "stop_rule": "do_not_cross_substrate_without_explicit_falsifying_blocker"
+  },
+  "notes": "Controller regression skeleton for Docker-first substrate discipline."
+}

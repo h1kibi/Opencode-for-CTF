@@ -1,0 +1,24 @@
+{
+  "id": "controller-command-contract-audit",
+  "category": "meta",
+  "description": "Critical controller commands should declare helper-first and artifact-first contract lines so command-side state integration remains explicit and regression-testable.",
+  "artifacts": [
+    "scripts/check-command-helper-contracts.ts",
+    "commands/ctf-resume.md",
+    "commands/ctf-snapshot.md",
+    "commands/ctf-closure.md",
+    "commands/ctf-final.md"
+  ],
+  "expected": {
+    "primary_owner": "misc",
+    "support_surface": "none",
+    "first_safe_tool": "check-command-helper-contracts",
+    "hard_submode": "command_contract_audit",
+    "bottleneck_family": "command_side_integration_guard",
+    "source_first": false,
+    "closure_required": false,
+    "handoff_trigger": "command_contract_drift_detection",
+    "stop_rule": "fail_when_critical_command_contract_lines_disappear"
+  },
+  "notes": "Controller regression skeleton for helper-first command contract auditing."
+}

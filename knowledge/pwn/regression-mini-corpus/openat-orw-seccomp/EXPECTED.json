@@ -1,0 +1,26 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "openat-orw-seccomp",
+  "sample_type": "metadata-only",
+  "expected_primitive": "pwn.closure.openat_orw",
+  "expected_tags": {
+    "control": [
+      "syscall"
+    ],
+    "leak": [
+      "file"
+    ],
+    "mitigation": [
+      "seccomp"
+    ],
+    "closure": [
+      "orw"
+    ]
+  },
+  "minimal_probe_shape": "openat(AT_FDCWD, \"flag\", 0) -> read -> write",
+  "confirm_oracle": "flag bytes printed",
+  "falsify_oracle": "openat denied or path wrong",
+  "anti_pattern_to_avoid": [
+    "shell_over_flag"
+  ]
+}

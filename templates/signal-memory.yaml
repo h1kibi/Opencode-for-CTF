@@ -1,0 +1,46 @@
+# CTF Signal Memory
+
+confirmed_assets:
+  - evidence: ""
+    value: ""
+    role: terminal|bridge|support|unknown
+
+high_value_signals:
+  - id: S1
+    evidence: ""
+    family: other
+    priority: P1
+    status: unresolved
+    why_high_value: ""
+    first_probe: ""
+    flag_path_distance: 2
+    revisit_trigger: ""
+    kill_condition: ""
+
+signal_debt:
+  unresolved_P0_P1_P2_count: 0
+  must_pay_before_more_same_family: false
+  highest_debt: none
+
+terminal_candidates:
+  - id: T1
+    path: ""
+    evidence: ""
+    blocker: ""
+    next_probe: ""
+    flag_path_distance: 2
+    owner: unknown
+
+weak_or_killed_branches:
+  - branch: ""
+    reason: ""
+    revive_if: ""
+
+attention_refresh:
+  confirmed_assets: ""
+  unresolved_high_value_signals: ""
+  best_terminal_candidate: ""
+  weak_branch_to_stop: ""
+  next_one_variable_probe: ""
+
+last_updated: ""

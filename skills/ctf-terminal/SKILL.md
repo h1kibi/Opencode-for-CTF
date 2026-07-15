@@ -43,6 +43,7 @@ Before running commands, know:
 - For debugger work, prefer scripted commands such as `gdb -batch` or saved command files when possible.
 - For binary data, prefer `xxd`, `hexdump`, or Python parsing over dumping raw control bytes into the transcript.
 - For long outputs, extract only key offsets, addresses, exceptions, status codes, routes, hashes, constants, and stack traces.
+- For APK/JADX/apktool/native triage, prefer tools that emit a compact summary plus artifact paths. Use `ctf-artifact-page` for structured paging/search rather than relying on truncated terminal output.
 
 ## Evidence Requirements
 

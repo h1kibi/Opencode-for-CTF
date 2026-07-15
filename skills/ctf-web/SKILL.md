@@ -12,6 +12,10 @@ Core rule: Start every Web challenge in recon phase. Map the full attack surface
 
 This skill is the Web challenge controller and phase dispatcher. It enforces the solve state machine and routes to specialized skills at each phase.
 
+Keep this skill thin. It should own phase discipline, route selection, and skill dispatch. Detailed bug-family payload ladders, runtime quirks, and closure matrices belong in the focused `ctf-web-*` skills and `references/*.md`.
+
+Start reference navigation from `references/REFERENCE_INDEX.md` when multiple Web subfamilies or phases compete.
+
 ## Scope
 
 Use only for authorized CTF, lab, benchmark, or local web services. Avoid aggressive brute force and broad scanning unless the challenge explicitly requires it.
@@ -68,15 +72,7 @@ Do not enter focused-probe directly from recon. Always pass through attack-queue
 - Use minimal probes with an explicit attempt budget.
 - Do not try more than 3 variants of the same payload family unless the hypothesis changed.
 
-Focused-probe budget:
-- SQLi without source evidence: 3 minimal probes.
-- XSS without bot: 2 payloads.
-- XSS with bot: 2 ES5/XHR payloads before reassessing runtime.
-- SSRF without internal target map: 2 probes.
-- Upload/write: 2 canary checks before matrix.
-- File overwrite: 1 reversible canary before reassessment.
-- Race/concurrency: disabled unless attack-queue selects race as the top candidate.
-- Wordlist fuzzing and sqlmap are never initial focused probes.
+Focused-probe budgets should stay in the specialized skill or the selected attack queue entry. Do not re-expand every family budget here.
 
 After budget exhaustion, return to attack-queue. Do not continue because the path is "interesting."
 - If a critical primitive or two high primitives are confirmed, transition to primitive-lock.
@@ -98,6 +94,15 @@ Rules:
 - Pattern recall cannot justify bulk fuzzing.
 - Pattern recall must produce one focused safe check, not a payload storm.
 - If the matched pattern requires destructive behavior, route through `ctf-web-stability-guard`.
+
+Use references to keep this controller compact:
+
+- early recon flow -> `references/blackbox-first-pass.md`, `references/v9-blackbox-toolchain.md`
+- runtime/admin-bot -> `references/browser-runtime-admin-bot.md`
+- parser/path/content-type mismatch -> `references/parser-differential.md`
+- source-first bridge -> `references/source-leak-audit-bridge.md`
+- attack-queue / control heuristics -> `references/decision-gates.md`, `references/practical-patterns.md`
+- closure routing -> `references/web-closure-matrix.md`, `references/flag-recovery.md`
 
 ### Phase: primitive-lock
 
@@ -179,6 +184,7 @@ Route to these when focused-probe selects a specific bug class:
 - Use database tools only when the challenge exposes a local DB, source config, or explicit credentials.
 - Use `nmap` only for localhost or explicitly authorized challenge hosts.
 - Record meaningful request/response summaries in `notes.md`, not every byte of HTML.
+- Keep this skill focused on selecting the next smallest useful tool or Web-specific skill, not on reproducing every family playbook inline.
 
 ## Browser MCP Discipline
 

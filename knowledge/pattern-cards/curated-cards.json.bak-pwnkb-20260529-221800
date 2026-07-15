@@ -1,0 +1,3415 @@
+{
+  "meta": {
+    "source": "curated from ljagiello/ctf-skills organization and high-value CTF pattern families",
+    "version": 1,
+    "cards": 56,
+    "updated_by": "java-web-strengthening",
+    "updated_at": "2026-05-29T00:00:00.000Z"
+  },
+  "cards": [
+    {
+      "id": "curated:web.scoreboard.speed_lane",
+      "category": "web",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 9,
+      "source": "user-competition-optimization+ljagiello-ctf-skills",
+      "curated": true,
+      "rank_boost": 950,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "title": "Scoreboard Speed Lane for early Web CTF scoring",
+      "trigger": "Fresh online Web CTF challenge, easy/medium-looking target, scoreboard pressure, or first 8-12 minutes before full decision-state workflow.",
+      "preconditions": [
+        "fresh Web target or early scoring phase",
+        "no strong evidence that the challenge is already multi-stage/hard",
+        "low-cost direct surfaces remain untested"
+      ],
+      "first_safe_check": "Run the speed lane order: challenge/page clues; robots/sitemap/.well-known; .git/.phps/~/.bak/.swp/.zip/source maps/backup/debug/config; JS/env/admin paths/GraphQL ops; default or clue-derived creds; weak cookie/JWT shape; obvious file read/source/debug/SQL/LFI/upload/admin-token; direct artifact flag grep.",
+      "oracle": "Direct flag/source/secret/admin-token path or a clear decision to enter full workflow after the time box.",
+      "confirm": "A direct path appears and can be reproduced minimally.",
+      "falsify": "Speed lane families are exhausted without direct path and target requires stateful/multi-stage workflow.",
+      "stop_rule": "Use only 1-2 low-cost probes per speed-lane family; do not deep dive CRLF/XSS/cache/race/request-smuggling/GraphQL unless direct or only clue.",
+      "pivot_rule": "After 8-12 minutes or no direct path, enter full decision-state workflow.",
+      "source_file": "ctf-experience-gate/SKILL.md; ctf-web/SKILL.md; ljagiello/ctf-skills field notes",
+      "keywords": [
+        "scoreboard",
+        "speedrun",
+        "speed lane",
+        "fast lane",
+        "early triage",
+        "robots",
+        "sitemap",
+        ".git",
+        ".phps",
+        "backup",
+        "source map",
+        "default creds",
+        "flag grep",
+        "direct flag",
+        "online CTF"
+      ],
+      "snippet": "For early online scoring, prioritize direct clues/source leaks/static leaks/default creds/obvious primitives for 8-12 minutes, return early if direct path appears, then switch to full workflow.",
+      "next_tools": [
+        "ctf-web-fingerprint",
+        "ctf-web-blackbox-map",
+        "ctf-pattern-card-search",
+        "ctf-decision-state"
+      ],
+      "execution_plan": [
+        "Run clue and source-surface checks first.",
+        "Check JS/source maps/default creds/obvious primitives.",
+        "Return early on direct path.",
+        "Otherwise switch to full decision-state."
+      ],
+      "failure_modes": [
+        "over-processing simple tasks with full workflow",
+        "deep-diving medium-value bugs before source/clue checks",
+        "missing direct source leak under scoreboard pressure"
+      ],
+      "primary_subfamily": "scoreboard-speed-lane",
+      "subfamilies": [
+        "speedrun",
+        "early-triage",
+        "return-early"
+      ],
+      "subfamily_confidence": 5,
+      "concepts": [
+        "speedrun",
+        "scoreboard",
+        "early triage",
+        "return early"
+      ],
+      "retrieval_intents": [
+        "online CTF speedrun web",
+        "first 10 minutes web triage",
+        "scoreboard fast lane"
+      ],
+      "query_aliases": [
+        "scoreboard speed lane",
+        "speedrun web ctf",
+        "first 8 12 minutes web",
+        "fast lane direct flag source leak"
+      ],
+      "review_recommendation": "keep; addresses over-process risk in strong Web workflow",
+      "semantic_tokens": [
+        "scoreboard",
+        "speedrun",
+        "fast",
+        "lane",
+        "robots",
+        "sitemap",
+        "git",
+        "phps",
+        "backup",
+        "source map",
+        "default creds",
+        "flag grep"
+      ],
+      "semantic_ngrams": [
+        "scoreboard speed lane",
+        "early triage",
+        "return early",
+        "source leak first",
+        "direct flag"
+      ],
+      "evidence_phrases": [
+        "online scoring",
+        "first 8-12 minutes",
+        "direct flag",
+        "source leak",
+        "default creds"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "quality": 10,
+      "specificity": 9,
+      "id": "curated:web.competition.evidence_replay_gate",
+      "kind": "workflow",
+      "title": "Evidence ledger and replay skeleton gate",
+      "trigger": "A branch is confirmed or a solve path requires multiple requests, auth state, object IDs, cookies/tokens, GraphQL operations, race windows, upload paths, or workflow steps.",
+      "preconditions": [
+        "evidence signal is present",
+        "state damage is understood or probe is harmless",
+        "one observable oracle exists"
+      ],
+      "first_safe_check": "Record key URLs, route templates, object IDs, cookies/tokens, roles, request bodies, response oracles, confirmed/falsified hypotheses, then produce minimal curl or Python requests skeleton before deepening.",
+      "oracle": "A one-variable check confirms state/auth/query/runtime/deployment/replay differential or falsifies the mapped family.",
+      "confirm": "The check produces a route to source/secret/data/flag, stronger primitive, or reproducible state differential.",
+      "falsify": "The signal is present but first safe check has no oracle and constraints show the family is not reachable.",
+      "stop_rule": "Run no more than two same-family probes without new differential; do not skip evidence/replay notes for confirmed branches.",
+      "pivot_rule": "Pivot to clue/source/primitive-value/framework mapping or next high-yield branch.",
+      "source_file": "ctf-web/field-notes.md; ctf-web/SKILL.md",
+      "keywords": [
+        "evidence",
+        "replay",
+        "curl",
+        "python requests",
+        "object id",
+        "token",
+        "cookie",
+        "request template",
+        "oracle",
+        "hypothesis",
+        "solve.py",
+        "reproducible",
+        "workflow"
+      ],
+      "snippet": "Evidence ledger and replay skeleton gate: A branch is confirmed or a solve path requires multiple requests, auth state, object IDs, cookies/tokens, GraphQL operations, race windows, upload paths, or workflow steps. First safe check: Record key URLs, route templates, object IDs, cookies/tokens, roles, request bodies, response oracles, confirmed/falsified hypotheses, then produce minimal curl or Python requests skeleton before deepening.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence and affected state/input.",
+        "Run the first safe check as one variable.",
+        "Observe and update decision-state.",
+        "If confirmed, create minimal replay skeleton and continue chain."
+      ],
+      "failure_modes": [
+        "generic fuzzing before modeling state/oracle",
+        "payload variants before harmless canary",
+        "not recording replay evidence",
+        "over-promoting a branch with no source/secret/data route"
+      ],
+      "primary_subfamily": "evidence-replay",
+      "subfamilies": [
+        "evidence-replay"
+      ],
+      "concepts": [
+        "competition web coverage",
+        "evidence-replay",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "evidence ledger replay curl script",
+        "object id token cookie request template",
+        "minimal Python requests exploit skeleton"
+      ],
+      "query_aliases": [
+        "evidence ledger replay curl script",
+        "object id token cookie request template",
+        "minimal Python requests exploit skeleton"
+      ],
+      "review_recommendation": "keep; fills previously identified competition-level Web CTF gap using ljagiello/ctf-skills patterns",
+      "semantic_tokens": [
+        "evidence",
+        "replay",
+        "curl",
+        "python requests",
+        "object id",
+        "token",
+        "cookie",
+        "request template",
+        "oracle",
+        "hypothesis",
+        "solve.py",
+        "reproducible",
+        "workflow"
+      ],
+      "semantic_ngrams": [
+        "evidence ledger replay curl script",
+        "object id token cookie request template",
+        "minimal Python requests exploit skeleton"
+      ],
+      "evidence_phrases": [
+        "curl replay",
+        "Python requests",
+        "object ID",
+        "Cookie",
+        "token",
+        "response oracle"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "quality": 10,
+      "specificity": 9,
+      "id": "curated:web.competition.request_smuggling_gate",
+      "kind": "technique",
+      "title": "HTTP request smuggling/splitting parser differential gate",
+      "trigger": "TE/CL ambiguity, duplicate Content-Length, Transfer-Encoding variants, hop-by-hop headers, chunked boundary oddities, proxy/cache frontends, CRLF header/body split, or inconsistent keep-alive behavior appears.",
+      "preconditions": [
+        "evidence signal is present",
+        "state damage is understood or probe is harmless",
+        "one observable oracle exists"
+      ],
+      "first_safe_check": "Use harmless marker and low-volume desync/cache boundary probe; distinguish request splitting, cache poisoning, and backend-only reachability; require clear oracle and isolation before deeper attempts.",
+      "oracle": "A one-variable check confirms state/auth/query/runtime/deployment/replay differential or falsifies the mapped family.",
+      "confirm": "The check produces a route to source/secret/data/flag, stronger primitive, or reproducible state differential.",
+      "falsify": "The signal is present but first safe check has no oracle and constraints show the family is not reachable.",
+      "stop_rule": "Run no more than two same-family probes without new differential; do not skip evidence/replay notes for confirmed branches.",
+      "pivot_rule": "Pivot to clue/source/primitive-value/framework mapping or next high-yield branch.",
+      "source_file": "ctf-web/client-side.md; ctf-web/cves.md; ctf-web/field-notes.md",
+      "keywords": [
+        "request smuggling",
+        "TE.CL",
+        "CL.TE",
+        "Content-Length",
+        "Transfer-Encoding",
+        "chunked",
+        "hop-by-hop",
+        "CRLF",
+        "request splitting",
+        "proxy",
+        "cache",
+        "desync"
+      ],
+      "snippet": "HTTP request smuggling/splitting parser differential gate: TE/CL ambiguity, duplicate Content-Length, Transfer-Encoding variants, hop-by-hop headers, chunked boundary oddities, proxy/cache frontends, CRLF header/body split, or inconsistent keep-alive behavior appears. First safe check: Use harmless marker and low-volume desync/cache boundary probe; distinguish request splitting, cache poisoning, and backend-only reachability; require clear oracle and isolation before deeper attempts.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence and affected state/input.",
+        "Run the first safe check as one variable.",
+        "Observe and update decision-state.",
+        "If confirmed, create minimal replay skeleton and continue chain."
+      ],
+      "failure_modes": [
+        "generic fuzzing before modeling state/oracle",
+        "payload variants before harmless canary",
+        "not recording replay evidence",
+        "over-promoting a branch with no source/secret/data route"
+      ],
+      "primary_subfamily": "request-smuggling-splitting",
+      "subfamilies": [
+        "request-smuggling-splitting"
+      ],
+      "concepts": [
+        "competition web coverage",
+        "request-smuggling-splitting",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "request smuggling TE.CL CL.TE duplicate Content-Length",
+        "Transfer-Encoding chunked hop-by-hop",
+        "CRLF request splitting cache proxy"
+      ],
+      "query_aliases": [
+        "request smuggling TE.CL CL.TE duplicate Content-Length",
+        "Transfer-Encoding chunked hop-by-hop",
+        "CRLF request splitting cache proxy"
+      ],
+      "review_recommendation": "keep; fills previously identified competition-level Web CTF gap using ljagiello/ctf-skills patterns",
+      "semantic_tokens": [
+        "request smuggling",
+        "te.cl",
+        "cl.te",
+        "content-length",
+        "transfer-encoding",
+        "chunked",
+        "hop-by-hop",
+        "crlf",
+        "request splitting",
+        "proxy",
+        "cache",
+        "desync"
+      ],
+      "semantic_ngrams": [
+        "request smuggling TE.CL CL.TE duplicate Content-Length",
+        "Transfer-Encoding chunked hop-by-hop",
+        "CRLF request splitting cache proxy"
+      ],
+      "evidence_phrases": [
+        "TE.CL",
+        "CL.TE",
+        "duplicate Content-Length",
+        "Transfer-Encoding",
+        "chunked",
+        "desync"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "quality": 10,
+      "specificity": 9,
+      "id": "curated:web.competition.third_party_supply_chain_gate",
+      "kind": "workflow",
+      "title": "Third-party integration and supply-chain gate",
+      "trigger": "Webhook features, OAuth app binding, object storage/CDN buckets, subdomain takeover fingerprints, analytics/support widget tokens, CI/CD variables, package/version clues, or exposed admin panels appear.",
+      "preconditions": [
+        "evidence signal is present",
+        "state damage is understood or probe is harmless",
+        "one observable oracle exists"
+      ],
+      "first_safe_check": "Classify integration trust boundary; test harmless webhook signature/echo behavior; check takeover fingerprint; inspect JS/config for third-party tokens; map OAuth/webhook/callback trust before exploit.",
+      "oracle": "A one-variable check confirms state/auth/query/runtime/deployment/replay differential or falsifies the mapped family.",
+      "confirm": "The check produces a route to source/secret/data/flag, stronger primitive, or reproducible state differential.",
+      "falsify": "The signal is present but first safe check has no oracle and constraints show the family is not reachable.",
+      "stop_rule": "Run no more than two same-family probes without new differential; do not skip evidence/replay notes for confirmed branches.",
+      "pivot_rule": "Pivot to clue/source/primitive-value/framework mapping or next high-yield branch.",
+      "source_file": "ctf-web/auth-infra.md; ctf-web/auth-and-access.md; ctf-web/field-notes.md",
+      "keywords": [
+        "webhook",
+        "third party",
+        "OAuth app",
+        "S3",
+        "bucket",
+        "CDN",
+        "subdomain takeover",
+        "analytics",
+        "support widget",
+        "CI/CD",
+        "package version",
+        "admin panel",
+        "callback"
+      ],
+      "snippet": "Third-party integration and supply-chain gate: Webhook features, OAuth app binding, object storage/CDN buckets, subdomain takeover fingerprints, analytics/support widget tokens, CI/CD variables, package/version clues, or exposed admin panels appear. First safe check: Classify integration trust boundary; test harmless webhook signature/echo behavior; check takeover fingerprint; inspect JS/config for third-party tokens; map OAuth/webhook/callback trust before exploit.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence and affected state/input.",
+        "Run the first safe check as one variable.",
+        "Observe and update decision-state.",
+        "If confirmed, create minimal replay skeleton and continue chain."
+      ],
+      "failure_modes": [
+        "generic fuzzing before modeling state/oracle",
+        "payload variants before harmless canary",
+        "not recording replay evidence",
+        "over-promoting a branch with no source/secret/data route"
+      ],
+      "primary_subfamily": "third-party-supply-chain",
+      "subfamilies": [
+        "third-party-supply-chain"
+      ],
+      "concepts": [
+        "competition web coverage",
+        "third-party-supply-chain",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "webhook secret third party OAuth app",
+        "S3 bucket CDN subdomain takeover",
+        "analytics support widget token leak"
+      ],
+      "query_aliases": [
+        "webhook secret third party OAuth app",
+        "S3 bucket CDN subdomain takeover",
+        "analytics support widget token leak"
+      ],
+      "review_recommendation": "keep; fills previously identified competition-level Web CTF gap using ljagiello/ctf-skills patterns",
+      "semantic_tokens": [
+        "webhook",
+        "third party",
+        "oauth app",
+        "s3",
+        "bucket",
+        "cdn",
+        "subdomain takeover",
+        "analytics",
+        "support widget",
+        "ci/cd",
+        "package version",
+        "admin panel",
+        "callback"
+      ],
+      "semantic_ngrams": [
+        "webhook secret third party OAuth app",
+        "S3 bucket CDN subdomain takeover",
+        "analytics support widget token leak"
+      ],
+      "evidence_phrases": [
+        "webhook",
+        "S3 bucket",
+        "subdomain takeover",
+        "support widget",
+        "CI/CD variable"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "quality": 10,
+      "specificity": 9,
+      "id": "curated:web.competition.cloud_container_ci_gate",
+      "kind": "workflow",
+      "title": "Cloud/container/CI/deployment exposure gate",
+      "trigger": "Docker socket/API, Kubernetes API/serviceaccount, cloud metadata, .env, health/metrics/debug endpoints, CI artifacts/logs, object storage buckets, SSRF-to-internal, or environment secret clues appear.",
+      "preconditions": [
+        "evidence signal is present",
+        "state damage is understood or probe is harmless",
+        "one observable oracle exists"
+      ],
+      "first_safe_check": "Classify environment from headers/errors/JS/config; test harmless metadata/debug/health endpoints; check exposed .env/git history/CI logs; model SSRF-to-metadata/Docker/K8s before exploitation.",
+      "oracle": "A one-variable check confirms state/auth/query/runtime/deployment/replay differential or falsifies the mapped family.",
+      "confirm": "The check produces a route to source/secret/data/flag, stronger primitive, or reproducible state differential.",
+      "falsify": "The signal is present but first safe check has no oracle and constraints show the family is not reachable.",
+      "stop_rule": "Run no more than two same-family probes without new differential; do not skip evidence/replay notes for confirmed branches.",
+      "pivot_rule": "Pivot to clue/source/primitive-value/framework mapping or next high-yield branch.",
+      "source_file": "ctf-web/server-side-advanced-2.md; ctf-web/auth-infra.md; ctf-web/field-notes.md",
+      "keywords": [
+        "cloud",
+        "metadata",
+        "docker",
+        "docker socket",
+        "kubernetes",
+        "k8s",
+        "serviceaccount",
+        ".env",
+        "metrics",
+        "health",
+        "debug",
+        "CI",
+        "artifact",
+        "object storage",
+        "bucket",
+        "SSRF"
+      ],
+      "snippet": "Cloud/container/CI/deployment exposure gate: Docker socket/API, Kubernetes API/serviceaccount, cloud metadata, .env, health/metrics/debug endpoints, CI artifacts/logs, object storage buckets, SSRF-to-internal, or environment secret clues appear. First safe check: Classify environment from headers/errors/JS/config; test harmless metadata/debug/health endpoints; check exposed .env/git history/CI logs; model SSRF-to-metadata/Docker/K8s before exploitation.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence and affected state/input.",
+        "Run the first safe check as one variable.",
+        "Observe and update decision-state.",
+        "If confirmed, create minimal replay skeleton and continue chain."
+      ],
+      "failure_modes": [
+        "generic fuzzing before modeling state/oracle",
+        "payload variants before harmless canary",
+        "not recording replay evidence",
+        "over-promoting a branch with no source/secret/data route"
+      ],
+      "primary_subfamily": "cloud-container-ci",
+      "subfamilies": [
+        "cloud-container-ci"
+      ],
+      "concepts": [
+        "competition web coverage",
+        "cloud-container-ci",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "cloud metadata Docker socket Kubernetes",
+        "env metrics health CI artifact",
+        "SSRF to metadata Docker K8s"
+      ],
+      "query_aliases": [
+        "cloud metadata Docker socket Kubernetes",
+        "env metrics health CI artifact",
+        "SSRF to metadata Docker K8s"
+      ],
+      "review_recommendation": "keep; fills previously identified competition-level Web CTF gap using ljagiello/ctf-skills patterns",
+      "semantic_tokens": [
+        "cloud",
+        "metadata",
+        "docker",
+        "docker socket",
+        "kubernetes",
+        "k8s",
+        "serviceaccount",
+        ".env",
+        "metrics",
+        "health",
+        "debug",
+        "ci",
+        "artifact",
+        "object storage",
+        "bucket",
+        "ssrf"
+      ],
+      "semantic_ngrams": [
+        "cloud metadata Docker socket Kubernetes",
+        "env metrics health CI artifact",
+        "SSRF to metadata Docker K8s"
+      ],
+      "evidence_phrases": [
+        "Docker API",
+        "Kubernetes",
+        "metadata service",
+        ".env",
+        "CI artifact",
+        "metrics"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "quality": 10,
+      "specificity": 9,
+      "id": "curated:web.competition.nosql_orm_search_gate",
+      "kind": "technique",
+      "title": "NoSQL/ORM/search query injection gate",
+      "trigger": "MongoDB/Mongoose operators, $where, $regex, JSON filter objects, Prisma/ORM filters, Elasticsearch/Lucene/Meilisearch query strings, Cypher/Gremlin, Redis command shaping, or GraphQL-to-DB resolver clues appear.",
+      "preconditions": [
+        "evidence signal is present",
+        "state damage is understood or probe is harmless",
+        "one observable oracle exists"
+      ],
+      "first_safe_check": "Test object-vs-string type confusion in JSON, harmless operator injection, regex/timing oracle, filter key allowlist bypass, and whether client-side filters map directly to backend query objects.",
+      "oracle": "A one-variable check confirms state/auth/query/runtime/deployment/replay differential or falsifies the mapped family.",
+      "confirm": "The check produces a route to source/secret/data/flag, stronger primitive, or reproducible state differential.",
+      "falsify": "The signal is present but first safe check has no oracle and constraints show the family is not reachable.",
+      "stop_rule": "Run no more than two same-family probes without new differential; do not skip evidence/replay notes for confirmed branches.",
+      "pivot_rule": "Pivot to clue/source/primitive-value/framework mapping or next high-yield branch.",
+      "source_file": "ctf-web/auth-and-access.md; ctf-web/server-side-advanced-4.md; ctf-web/field-notes.md",
+      "keywords": [
+        "nosql",
+        "mongodb",
+        "mongoose",
+        "$where",
+        "$regex",
+        "$ne",
+        "$gt",
+        "prisma",
+        "orm",
+        "elasticsearch",
+        "lucene",
+        "meilisearch",
+        "cypher",
+        "gremlin",
+        "redis",
+        "operator injection"
+      ],
+      "snippet": "NoSQL/ORM/search query injection gate: MongoDB/Mongoose operators, $where, $regex, JSON filter objects, Prisma/ORM filters, Elasticsearch/Lucene/Meilisearch query strings, Cypher/Gremlin, Redis command shaping, or GraphQL-to-DB resolver clues appear. First safe check: Test object-vs-string type confusion in JSON, harmless operator injection, regex/timing oracle, filter key allowlist bypass, and whether client-side filters map directly to backend query objects.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence and affected state/input.",
+        "Run the first safe check as one variable.",
+        "Observe and update decision-state.",
+        "If confirmed, create minimal replay skeleton and continue chain."
+      ],
+      "failure_modes": [
+        "generic fuzzing before modeling state/oracle",
+        "payload variants before harmless canary",
+        "not recording replay evidence",
+        "over-promoting a branch with no source/secret/data route"
+      ],
+      "primary_subfamily": "nosql-orm-search",
+      "subfamilies": [
+        "nosql-orm-search"
+      ],
+      "concepts": [
+        "competition web coverage",
+        "nosql-orm-search",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "NoSQL MongoDB operator injection",
+        "ORM filter confusion Prisma",
+        "Elasticsearch Lucene query injection"
+      ],
+      "query_aliases": [
+        "NoSQL MongoDB operator injection",
+        "ORM filter confusion Prisma",
+        "Elasticsearch Lucene query injection"
+      ],
+      "review_recommendation": "keep; fills previously identified competition-level Web CTF gap using ljagiello/ctf-skills patterns",
+      "semantic_tokens": [
+        "nosql",
+        "mongodb",
+        "mongoose",
+        "$where",
+        "$regex",
+        "$ne",
+        "$gt",
+        "prisma",
+        "orm",
+        "elasticsearch",
+        "lucene",
+        "meilisearch",
+        "cypher",
+        "gremlin",
+        "redis",
+        "operator injection"
+      ],
+      "semantic_ngrams": [
+        "NoSQL MongoDB operator injection",
+        "ORM filter confusion Prisma",
+        "Elasticsearch Lucene query injection"
+      ],
+      "evidence_phrases": [
+        "$where",
+        "$regex",
+        "MongoDB",
+        "Prisma",
+        "Elasticsearch",
+        "GraphQL resolver"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "quality": 10,
+      "specificity": 9,
+      "id": "curated:web.competition.cors_cross_origin_gate",
+      "kind": "workflow",
+      "title": "CORS/postMessage/cross-origin boundary gate",
+      "trigger": "CORS headers, reflected Origin, credentials, null origin, iframe sandbox, opener, postMessage, service worker scope, JSONP/XSSI, or browser cross-origin evidence appears.",
+      "preconditions": [
+        "evidence signal is present",
+        "state damage is understood or probe is harmless",
+        "one observable oracle exists"
+      ],
+      "first_safe_check": "Test harmless Origin reflection with/without credentials, null origin, exact postMessage origin validation, iframe/opener reachability, service-worker scope, and whether GET/script/image/prefetch channels can read or signal secrets.",
+      "oracle": "A one-variable check confirms state/auth/query/runtime/deployment/replay differential or falsifies the mapped family.",
+      "confirm": "The check produces a route to source/secret/data/flag, stronger primitive, or reproducible state differential.",
+      "falsify": "The signal is present but first safe check has no oracle and constraints show the family is not reachable.",
+      "stop_rule": "Run no more than two same-family probes without new differential; do not skip evidence/replay notes for confirmed branches.",
+      "pivot_rule": "Pivot to clue/source/primitive-value/framework mapping or next high-yield branch.",
+      "source_file": "ctf-web/auth-infra.md; ctf-web/client-side*.md; ctf-web/field-notes.md",
+      "keywords": [
+        "cors",
+        "origin",
+        "Access-Control-Allow-Origin",
+        "Access-Control-Allow-Credentials",
+        "null origin",
+        "postMessage",
+        "iframe",
+        "opener",
+        "service worker",
+        "JSONP",
+        "XSSI",
+        "prefetch"
+      ],
+      "snippet": "CORS/postMessage/cross-origin boundary gate: CORS headers, reflected Origin, credentials, null origin, iframe sandbox, opener, postMessage, service worker scope, JSONP/XSSI, or browser cross-origin evidence appears. First safe check: Test harmless Origin reflection with/without credentials, null origin, exact postMessage origin validation, iframe/opener reachability, service-worker scope, and whether GET/script/image/prefetch channels can read or signal secrets.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence and affected state/input.",
+        "Run the first safe check as one variable.",
+        "Observe and update decision-state.",
+        "If confirmed, create minimal replay skeleton and continue chain."
+      ],
+      "failure_modes": [
+        "generic fuzzing before modeling state/oracle",
+        "payload variants before harmless canary",
+        "not recording replay evidence",
+        "over-promoting a branch with no source/secret/data route"
+      ],
+      "primary_subfamily": "cross-origin-boundary",
+      "subfamilies": [
+        "cross-origin-boundary"
+      ],
+      "concepts": [
+        "competition web coverage",
+        "cross-origin-boundary",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "CORS reflected origin credentials null origin",
+        "postMessage origin validation iframe opener",
+        "JSONP XSSI cross origin exfil"
+      ],
+      "query_aliases": [
+        "CORS reflected origin credentials null origin",
+        "postMessage origin validation iframe opener",
+        "JSONP XSSI cross origin exfil"
+      ],
+      "review_recommendation": "keep; fills previously identified competition-level Web CTF gap using ljagiello/ctf-skills patterns",
+      "semantic_tokens": [
+        "cors",
+        "origin",
+        "access-control-allow-origin",
+        "access-control-allow-credentials",
+        "null origin",
+        "postmessage",
+        "iframe",
+        "opener",
+        "service worker",
+        "jsonp",
+        "xssi",
+        "prefetch"
+      ],
+      "semantic_ngrams": [
+        "CORS reflected origin credentials null origin",
+        "postMessage origin validation iframe opener",
+        "JSONP XSSI cross origin exfil"
+      ],
+      "evidence_phrases": [
+        "Access-Control-Allow-Origin",
+        "null origin",
+        "postMessage",
+        "JSONP",
+        "service worker"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "quality": 10,
+      "specificity": 9,
+      "id": "curated:web.competition.websocket_sse_gate",
+      "kind": "workflow",
+      "title": "WebSocket/SSE realtime API authz gate",
+      "trigger": "ws://, wss://, Socket.IO, EventSource/SSE, room/channel IDs, namespace names, hidden event strings, or JSON event handlers appear in JS/runtime.",
+      "preconditions": [
+        "evidence signal is present",
+        "state damage is understood or probe is harmless",
+        "one observable oracle exists"
+      ],
+      "first_safe_check": "Extract event names and endpoints from JS; connect with current cookie/token; compare anonymous/user states; test room/channel object IDs for authz; try harmless mass-assignment fields only with low state damage.",
+      "oracle": "A one-variable check confirms state/auth/query/runtime/deployment/replay differential or falsifies the mapped family.",
+      "confirm": "The check produces a route to source/secret/data/flag, stronger primitive, or reproducible state differential.",
+      "falsify": "The signal is present but first safe check has no oracle and constraints show the family is not reachable.",
+      "stop_rule": "Run no more than two same-family probes without new differential; do not skip evidence/replay notes for confirmed branches.",
+      "pivot_rule": "Pivot to clue/source/primitive-value/framework mapping or next high-yield branch.",
+      "source_file": "ctf-web/server-side-exec.md; ctf-web/field-notes.md",
+      "keywords": [
+        "websocket",
+        "sse",
+        "socket.io",
+        "eventsource",
+        "room",
+        "channel",
+        "namespace",
+        "event",
+        "mass assignment",
+        "isAdmin",
+        "role",
+        "IDOR"
+      ],
+      "snippet": "WebSocket/SSE realtime API authz gate: ws://, wss://, Socket.IO, EventSource/SSE, room/channel IDs, namespace names, hidden event strings, or JSON event handlers appear in JS/runtime. First safe check: Extract event names and endpoints from JS; connect with current cookie/token; compare anonymous/user states; test room/channel object IDs for authz; try harmless mass-assignment fields only with low state damage.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence and affected state/input.",
+        "Run the first safe check as one variable.",
+        "Observe and update decision-state.",
+        "If confirmed, create minimal replay skeleton and continue chain."
+      ],
+      "failure_modes": [
+        "generic fuzzing before modeling state/oracle",
+        "payload variants before harmless canary",
+        "not recording replay evidence",
+        "over-promoting a branch with no source/secret/data route"
+      ],
+      "primary_subfamily": "realtime-api-authz",
+      "subfamilies": [
+        "realtime-api-authz"
+      ],
+      "concepts": [
+        "competition web coverage",
+        "realtime-api-authz",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "WebSocket SSE room channel IDOR",
+        "Socket.IO namespace mass assignment",
+        "EventSource hidden events auth bypass"
+      ],
+      "query_aliases": [
+        "WebSocket SSE room channel IDOR",
+        "Socket.IO namespace mass assignment",
+        "EventSource hidden events auth bypass"
+      ],
+      "review_recommendation": "keep; fills previously identified competition-level Web CTF gap using ljagiello/ctf-skills patterns",
+      "semantic_tokens": [
+        "websocket",
+        "sse",
+        "socket.io",
+        "eventsource",
+        "room",
+        "channel",
+        "namespace",
+        "event",
+        "mass assignment",
+        "isadmin",
+        "role",
+        "idor"
+      ],
+      "semantic_ngrams": [
+        "WebSocket SSE room channel IDOR",
+        "Socket.IO namespace mass assignment",
+        "EventSource hidden events auth bypass"
+      ],
+      "evidence_phrases": [
+        "ws://",
+        "wss://",
+        "Socket.IO",
+        "EventSource",
+        "room id",
+        "channel id"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "quality": 10,
+      "specificity": 9,
+      "id": "curated:web.competition.race_toctou_gate",
+      "kind": "workflow",
+      "title": "Race/TOCTOU bounded concurrency gate",
+      "trigger": "Coupon/redeem/refund/transfer/stock/quota/invite/registration uniqueness/file cleanup/balance check has separable check and action or multiple requests can observe stale state.",
+      "preconditions": [
+        "evidence signal is present",
+        "state damage is understood or probe is harmless",
+        "one observable oracle exists"
+      ],
+      "first_safe_check": "Identify one idempotency/state variable; run a tiny bounded concurrent batch with harmless duplicate action; compare whether multiple requests observed pre-update state and whether rollback/cleanup risk is acceptable.",
+      "oracle": "A one-variable check confirms state/auth/query/runtime/deployment/replay differential or falsifies the mapped family.",
+      "confirm": "The check produces a route to source/secret/data/flag, stronger primitive, or reproducible state differential.",
+      "falsify": "The signal is present but first safe check has no oracle and constraints show the family is not reachable.",
+      "stop_rule": "Run no more than two same-family probes without new differential; do not skip evidence/replay notes for confirmed branches.",
+      "pivot_rule": "Pivot to clue/source/primitive-value/framework mapping or next high-yield branch.",
+      "source_file": "ctf-web/server-side-deser.md; ctf-web/field-notes.md",
+      "keywords": [
+        "race",
+        "TOCTOU",
+        "coupon",
+        "redeem",
+        "refund",
+        "transfer",
+        "stock",
+        "quota",
+        "invite",
+        "balance",
+        "concurrent",
+        "aiohttp",
+        "cleanup window"
+      ],
+      "snippet": "Race/TOCTOU bounded concurrency gate: Coupon/redeem/refund/transfer/stock/quota/invite/registration uniqueness/file cleanup/balance check has separable check and action or multiple requests can observe stale state. First safe check: Identify one idempotency/state variable; run a tiny bounded concurrent batch with harmless duplicate action; compare whether multiple requests observed pre-update state and whether rollback/cleanup risk is acceptable.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence and affected state/input.",
+        "Run the first safe check as one variable.",
+        "Observe and update decision-state.",
+        "If confirmed, create minimal replay skeleton and continue chain."
+      ],
+      "failure_modes": [
+        "generic fuzzing before modeling state/oracle",
+        "payload variants before harmless canary",
+        "not recording replay evidence",
+        "over-promoting a branch with no source/secret/data route"
+      ],
+      "primary_subfamily": "race-toctou",
+      "subfamilies": [
+        "race-toctou"
+      ],
+      "concepts": [
+        "competition web coverage",
+        "race-toctou",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "race condition TOCTOU coupon double spend",
+        "bounded concurrent batch state variable",
+        "file cleanup race window"
+      ],
+      "query_aliases": [
+        "race condition TOCTOU coupon double spend",
+        "bounded concurrent batch state variable",
+        "file cleanup race window"
+      ],
+      "review_recommendation": "keep; fills previously identified competition-level Web CTF gap using ljagiello/ctf-skills patterns",
+      "semantic_tokens": [
+        "race",
+        "toctou",
+        "coupon",
+        "redeem",
+        "refund",
+        "transfer",
+        "stock",
+        "quota",
+        "invite",
+        "balance",
+        "concurrent",
+        "aiohttp",
+        "cleanup window"
+      ],
+      "semantic_ngrams": [
+        "race condition TOCTOU coupon double spend",
+        "bounded concurrent batch state variable",
+        "file cleanup race window"
+      ],
+      "evidence_phrases": [
+        "coupon",
+        "redeem",
+        "refund",
+        "quota",
+        "stock",
+        "TOCTOU",
+        "cleanup race"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "id": "curated:web.nonphp.cache_proxy_cdn_gate",
+      "kind": "technique",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Cache/proxy/CDN poisoning and smuggling gate",
+      "trigger": "Cache/CDN/proxy headers, X-Forwarded-Host, Host trust, cache hit/miss, request smuggling signs, CRLF in headers, CSP/header injection, or shared cache behavior appears.",
+      "preconditions": [
+        "evidence signal is present",
+        "one observable oracle exists or can be calibrated safely"
+      ],
+      "first_safe_check": "Build cache-key model with harmless markers: cacheability, key dimensions, Host/XFH influence, path/query normalization, header/body boundary; promote only if poison reaches admin/bot/users or exposes source/secret.",
+      "oracle": "A controlled one-variable check changes auth/runtime/schema/state/source/secret reachability or falsifies the mapped family.",
+      "confirm": "Mapped family produces a direct route to source/secret/data/flag, stronger primitive, or clear runtime/authz differential.",
+      "falsify": "Signal is present but first safe check yields no expected oracle and constraints show the family is not reachable.",
+      "stop_rule": "Do not run payload variants before the first safe check/model is built; downgrade after two no-progress same-family probes.",
+      "pivot_rule": "Pivot to challenge clue, source availability, primitive value gate, or next framework-specific mapping.",
+      "source_file": "ctf-web/client-side*.md; ctf-web/cves.md; ctf-web/field-notes.md",
+      "keywords": [
+        "cache",
+        "CDN",
+        "proxy",
+        "cache poisoning",
+        "request smuggling",
+        "X-Forwarded-Host",
+        "Host",
+        "cache key",
+        "hit",
+        "miss",
+        "CRLF",
+        "CSP",
+        "header injection",
+        "web cache deception"
+      ],
+      "snippet": "Cache/proxy/CDN poisoning and smuggling gate: Cache/CDN/proxy headers, X-Forwarded-Host, Host trust, cache hit/miss, request smuggling signs, CRLF in headers, CSP/header injection, or shared cache behavior appears. First safe check: Build cache-key model with harmless markers: cacheability, key dimensions, Host/XFH influence, path/query normalization, header/body boundary; promote only if poison reaches admin/bot/users or exposes source/secret.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence signal and related input/state.",
+        "Run the first safe check as one variable.",
+        "Observe and rerank in ctf-decision-state.",
+        "Only then escalate to exploit-specific payloads."
+      ],
+      "failure_modes": [
+        "generic black-box fuzzing before framework mapping",
+        "payload variants before oracle calibration",
+        "over-promoting medium-value findings without a flag/source/data route"
+      ],
+      "primary_subfamily": "cache-proxy-cdn",
+      "subfamilies": [
+        "cache-proxy-cdn"
+      ],
+      "concepts": [
+        "non-PHP web instinct",
+        "cache-proxy-cdn",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "cache key model",
+        "Host XFH poisoning",
+        "request smuggling cache proxy"
+      ],
+      "query_aliases": [
+        "cache poisoning X-Forwarded-Host CDN",
+        "request smuggling cache proxy",
+        "CRLF CSP header injection"
+      ],
+      "review_recommendation": "keep; extracted from ljagiello/ctf-skills and user optimization goals",
+      "semantic_tokens": [
+        "cache",
+        "cdn",
+        "proxy",
+        "cache poisoning",
+        "request smuggling",
+        "x-forwarded-host",
+        "host",
+        "cache key",
+        "hit",
+        "miss",
+        "crlf",
+        "csp",
+        "header injection",
+        "web cache deception"
+      ],
+      "semantic_ngrams": [
+        "cache poisoning X-Forwarded-Host CDN",
+        "request smuggling cache proxy",
+        "CRLF CSP header injection"
+      ],
+      "evidence_phrases": [
+        "X-Forwarded-Host",
+        "cache hit",
+        "cache miss",
+        "request smuggling",
+        "CRLF header"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "id": "curated:web.nonphp.go_template_path_gate",
+      "kind": "technique",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Go/Pongo2 template and path semantic gate",
+      "trigger": "Go templates, Pongo2, html/template, text/template, path cleaning, rune/byte length checks, Unicode normalization, filepath.Clean, router mismatch, or Go stack traces appear.",
+      "preconditions": [
+        "evidence signal is present",
+        "one observable oracle exists or can be calibrated safely"
+      ],
+      "first_safe_check": "Test template arithmetic/field access or one parser differential: encoded slash/dot, path-clean behavior, rune-vs-byte boundary, Unicode homoglyph/case-folding discrepancy.",
+      "oracle": "A controlled one-variable check changes auth/runtime/schema/state/source/secret reachability or falsifies the mapped family.",
+      "confirm": "Mapped family produces a direct route to source/secret/data/flag, stronger primitive, or clear runtime/authz differential.",
+      "falsify": "Signal is present but first safe check yields no expected oracle and constraints show the family is not reachable.",
+      "stop_rule": "Do not run payload variants before the first safe check/model is built; downgrade after two no-progress same-family probes.",
+      "pivot_rule": "Pivot to challenge clue, source availability, primitive value gate, or next framework-specific mapping.",
+      "source_file": "ctf-web/server-side-advanced*.md; ctf-web/field-notes.md",
+      "keywords": [
+        "go",
+        "golang",
+        "template",
+        "Pongo2",
+        "html/template",
+        "text/template",
+        "filepath.Clean",
+        "path clean",
+        "rune",
+        "byte",
+        "unicode",
+        "homoglyph",
+        "case folding"
+      ],
+      "snippet": "Go/Pongo2 template and path semantic gate: Go templates, Pongo2, html/template, text/template, path cleaning, rune/byte length checks, Unicode normalization, filepath.Clean, router mismatch, or Go stack traces appear. First safe check: Test template arithmetic/field access or one parser differential: encoded slash/dot, path-clean behavior, rune-vs-byte boundary, Unicode homoglyph/case-folding discrepancy.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence signal and related input/state.",
+        "Run the first safe check as one variable.",
+        "Observe and rerank in ctf-decision-state.",
+        "Only then escalate to exploit-specific payloads."
+      ],
+      "failure_modes": [
+        "generic black-box fuzzing before framework mapping",
+        "payload variants before oracle calibration",
+        "over-promoting medium-value findings without a flag/source/data route"
+      ],
+      "primary_subfamily": "go-template-path",
+      "subfamilies": [
+        "go-template-path"
+      ],
+      "concepts": [
+        "non-PHP web instinct",
+        "go-template-path",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "Go template injection",
+        "rune byte mismatch",
+        "path clean parser differential"
+      ],
+      "query_aliases": [
+        "Go template Pongo2 path clean",
+        "rune byte length mismatch",
+        "Unicode case folding path traversal"
+      ],
+      "review_recommendation": "keep; extracted from ljagiello/ctf-skills and user optimization goals",
+      "semantic_tokens": [
+        "go",
+        "golang",
+        "template",
+        "pongo2",
+        "html/template",
+        "text/template",
+        "filepath.clean",
+        "path clean",
+        "rune",
+        "byte",
+        "unicode",
+        "homoglyph",
+        "case folding"
+      ],
+      "semantic_ngrams": [
+        "Go template Pongo2 path clean",
+        "rune byte length mismatch",
+        "Unicode case folding path traversal"
+      ],
+      "evidence_phrases": [
+        "Pongo2",
+        "Go template",
+        "rune/byte",
+        "filepath.Clean",
+        "Unicode"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "id": "curated:web.nonphp.spring_java_mapping_gate",
+      "kind": "technique",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Java/Spring Thymeleaf/SpEL/deserialization gate",
+      "trigger": "Spring Boot, Thymeleaf, SpEL, Actuator, Java serialized object, XML xsi:type, Jackson/Fastjson, JNDI/RMI, Java stack trace, or FileCopyUtils clues appear.",
+      "preconditions": [
+        "evidence signal is present",
+        "one observable oracle exists or can be calibrated safely"
+      ],
+      "first_safe_check": "Check actuator/env/heapdump exposure, template expression arithmetic, serialized stream magic, URLDNS-style blind deserialization, or safe file-read expression using framework utilities when shell is blocked.",
+      "oracle": "A controlled one-variable check changes auth/runtime/schema/state/source/secret reachability or falsifies the mapped family.",
+      "confirm": "Mapped family produces a direct route to source/secret/data/flag, stronger primitive, or clear runtime/authz differential.",
+      "falsify": "Signal is present but first safe check yields no expected oracle and constraints show the family is not reachable.",
+      "stop_rule": "Do not run payload variants before the first safe check/model is built; downgrade after two no-progress same-family probes.",
+      "pivot_rule": "Pivot to challenge clue, source availability, primitive value gate, or next framework-specific mapping.",
+      "source_file": "ctf-web/server-side-exec.md; ctf-web/server-side-deser.md",
+      "keywords": [
+        "java",
+        "spring",
+        "spring boot",
+        "thymeleaf",
+        "SpEL",
+        "actuator",
+        "FileCopyUtils",
+        "deserialization",
+        "ysoserial",
+        "JNDI",
+        "RMI",
+        "xsi:type",
+        "Jackson",
+        "Fastjson"
+      ],
+      "snippet": "Java/Spring Thymeleaf/SpEL/deserialization gate: Spring Boot, Thymeleaf, SpEL, Actuator, Java serialized object, XML xsi:type, Jackson/Fastjson, JNDI/RMI, Java stack trace, or FileCopyUtils clues appear. First safe check: Check actuator/env/heapdump exposure, template expression arithmetic, serialized stream magic, URLDNS-style blind deserialization, or safe file-read expression using framework utilities when shell is blocked.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence signal and related input/state.",
+        "Run the first safe check as one variable.",
+        "Observe and rerank in ctf-decision-state.",
+        "Only then escalate to exploit-specific payloads."
+      ],
+      "failure_modes": [
+        "generic black-box fuzzing before framework mapping",
+        "payload variants before oracle calibration",
+        "over-promoting medium-value findings without a flag/source/data route"
+      ],
+      "primary_subfamily": "java-spring-framework",
+      "subfamilies": [
+        "java-spring-framework"
+      ],
+      "concepts": [
+        "non-PHP web instinct",
+        "java-spring-framework",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "Spring actuator Thymeleaf SpEL",
+        "Java deserialization first check",
+        "FileCopyUtils file read"
+      ],
+      "query_aliases": [
+        "Spring Thymeleaf SpEL FileCopyUtils",
+        "actuator env heapdump",
+        "Java deserialization URLDNS"
+      ],
+      "review_recommendation": "keep; extracted from ljagiello/ctf-skills and user optimization goals",
+      "semantic_tokens": [
+        "java",
+        "spring",
+        "spring boot",
+        "thymeleaf",
+        "spel",
+        "actuator",
+        "filecopyutils",
+        "deserialization",
+        "ysoserial",
+        "jndi",
+        "rmi",
+        "xsi:type",
+        "jackson",
+        "fastjson"
+      ],
+      "semantic_ngrams": [
+        "Spring Thymeleaf SpEL FileCopyUtils",
+        "actuator env heapdump",
+        "Java deserialization URLDNS"
+      ],
+      "evidence_phrases": [
+        "Spring Boot",
+        "Thymeleaf",
+        "Actuator",
+        "FileCopyUtils",
+        "xsi:type",
+        "serialized object"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "id": "curated:web.nonphp.flask_python_framework_gate",
+      "kind": "technique",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Flask/Python SSTI/debug/session/pickle gate",
+      "trigger": "Flask/Jinja/Werkzeug, render_template_string, signed session cookie, SECRET_KEY leak, debug console, .format on user input, pickle/joblib/shelve, or Python stack traces appear.",
+      "preconditions": [
+        "evidence signal is present",
+        "one observable oracle exists or can be calibrated safely"
+      ],
+      "first_safe_check": "Run one safe fingerprint: Jinja arithmetic, session decode/sign feasibility, Werkzeug debug prerequisites, .format attribute traversal, or pickle marker/base64 classification.",
+      "oracle": "A controlled one-variable check changes auth/runtime/schema/state/source/secret reachability or falsifies the mapped family.",
+      "confirm": "Mapped family produces a direct route to source/secret/data/flag, stronger primitive, or clear runtime/authz differential.",
+      "falsify": "Signal is present but first safe check yields no expected oracle and constraints show the family is not reachable.",
+      "stop_rule": "Do not run payload variants before the first safe check/model is built; downgrade after two no-progress same-family probes.",
+      "pivot_rule": "Pivot to challenge clue, source availability, primitive value gate, or next framework-specific mapping.",
+      "source_file": "ctf-web/server-side.md; ctf-web/server-side-advanced.md; ctf-web/server-side-deser.md",
+      "keywords": [
+        "flask",
+        "jinja",
+        "werkzeug",
+        "debug",
+        "SECRET_KEY",
+        "session",
+        "itsdangerous",
+        "render_template_string",
+        "str.format",
+        "pickle",
+        "joblib",
+        "shelve",
+        "python"
+      ],
+      "snippet": "Flask/Python SSTI/debug/session/pickle gate: Flask/Jinja/Werkzeug, render_template_string, signed session cookie, SECRET_KEY leak, debug console, .format on user input, pickle/joblib/shelve, or Python stack traces appear. First safe check: Run one safe fingerprint: Jinja arithmetic, session decode/sign feasibility, Werkzeug debug prerequisites, .format attribute traversal, or pickle marker/base64 classification.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence signal and related input/state.",
+        "Run the first safe check as one variable.",
+        "Observe and rerank in ctf-decision-state.",
+        "Only then escalate to exploit-specific payloads."
+      ],
+      "failure_modes": [
+        "generic black-box fuzzing before framework mapping",
+        "payload variants before oracle calibration",
+        "over-promoting medium-value findings without a flag/source/data route"
+      ],
+      "primary_subfamily": "flask-python-framework",
+      "subfamilies": [
+        "flask-python-framework"
+      ],
+      "concepts": [
+        "non-PHP web instinct",
+        "flask-python-framework",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "Flask Jinja debug session",
+        "Python pickle classification",
+        "str.format traversal"
+      ],
+      "query_aliases": [
+        "Flask Jinja SSTI Werkzeug debug secret key",
+        "pickle session cookie",
+        "Python str.format attribute traversal"
+      ],
+      "review_recommendation": "keep; extracted from ljagiello/ctf-skills and user optimization goals",
+      "semantic_tokens": [
+        "flask",
+        "jinja",
+        "werkzeug",
+        "debug",
+        "secret_key",
+        "session",
+        "itsdangerous",
+        "render_template_string",
+        "str.format",
+        "pickle",
+        "joblib",
+        "shelve",
+        "python"
+      ],
+      "semantic_ngrams": [
+        "Flask Jinja SSTI Werkzeug debug secret key",
+        "pickle session cookie",
+        "Python str.format attribute traversal"
+      ],
+      "evidence_phrases": [
+        "Flask",
+        "Werkzeug",
+        "SECRET_KEY",
+        "render_template_string",
+        "pickle.loads"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "id": "curated:web.nonphp.node_prototype_pollution_gate",
+      "kind": "technique",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Node/Express prototype-pollution and middleware gate",
+      "trigger": "Node/Express, merge/clone/deep-set libraries, __proto__, constructor.prototype, JSON body merge, EJS/Pug/Handlebars options, vm/sandbox, dependency/version leak, trust proxy or middleware path mismatch appears.",
+      "preconditions": [
+        "evidence signal is present",
+        "one observable oracle exists or can be calibrated safely"
+      ],
+      "first_safe_check": "Try one harmless visible property pollution or options influence; map template/debug gadgets; test middleware path/proxy trust normalization before vm escape payloads.",
+      "oracle": "A controlled one-variable check changes auth/runtime/schema/state/source/secret reachability or falsifies the mapped family.",
+      "confirm": "Mapped family produces a direct route to source/secret/data/flag, stronger primitive, or clear runtime/authz differential.",
+      "falsify": "Signal is present but first safe check yields no expected oracle and constraints show the family is not reachable.",
+      "stop_rule": "Do not run payload variants before the first safe check/model is built; downgrade after two no-progress same-family probes.",
+      "pivot_rule": "Pivot to challenge clue, source availability, primitive value gate, or next framework-specific mapping.",
+      "source_file": "ctf-web/node-and-prototype.md; ctf-web/auth-and-access.md",
+      "keywords": [
+        "node",
+        "express",
+        "prototype pollution",
+        "__proto__",
+        "constructor.prototype",
+        "merge",
+        "deep-set",
+        "EJS",
+        "Pug",
+        "Handlebars",
+        "vm",
+        "sandbox",
+        "trust proxy",
+        "middleware"
+      ],
+      "snippet": "Node/Express prototype-pollution and middleware gate: Node/Express, merge/clone/deep-set libraries, __proto__, constructor.prototype, JSON body merge, EJS/Pug/Handlebars options, vm/sandbox, dependency/version leak, trust proxy or middleware path mismatch appears. First safe check: Try one harmless visible property pollution or options influence; map template/debug gadgets; test middleware path/proxy trust normalization before vm escape payloads.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence signal and related input/state.",
+        "Run the first safe check as one variable.",
+        "Observe and rerank in ctf-decision-state.",
+        "Only then escalate to exploit-specific payloads."
+      ],
+      "failure_modes": [
+        "generic black-box fuzzing before framework mapping",
+        "payload variants before oracle calibration",
+        "over-promoting medium-value findings without a flag/source/data route"
+      ],
+      "primary_subfamily": "node-prototype-middleware",
+      "subfamilies": [
+        "node-prototype-middleware"
+      ],
+      "concepts": [
+        "non-PHP web instinct",
+        "node-prototype-middleware",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "prototype pollution first safe check",
+        "express middleware path trust",
+        "node vm sandbox mapping"
+      ],
+      "query_aliases": [
+        "Node prototype pollution Express middleware",
+        "__proto__ constructor.prototype merge",
+        "EJS template options vm escape"
+      ],
+      "review_recommendation": "keep; extracted from ljagiello/ctf-skills and user optimization goals",
+      "semantic_tokens": [
+        "node",
+        "express",
+        "prototype pollution",
+        "__proto__",
+        "constructor.prototype",
+        "merge",
+        "deep-set",
+        "ejs",
+        "pug",
+        "handlebars",
+        "vm",
+        "sandbox",
+        "trust proxy",
+        "middleware"
+      ],
+      "semantic_ngrams": [
+        "Node prototype pollution Express middleware",
+        "__proto__ constructor.prototype merge",
+        "EJS template options vm escape"
+      ],
+      "evidence_phrases": [
+        "__proto__",
+        "constructor.prototype",
+        "Express",
+        "trust proxy",
+        "vm sandbox"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "id": "curated:web.nonphp.graphql_schema_authz_gate",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 9,
+      "title": "GraphQL schema/authz/operation gate",
+      "trigger": "GraphQL endpoint, Apollo/GraphiQL errors, JSON query body, operationName, frontend GraphQL operations, or introspection-like errors appear.",
+      "preconditions": [
+        "evidence signal is present",
+        "one observable oracle exists or can be calibrated safely"
+      ],
+      "first_safe_check": "Test introspection and __typename; extract operations from JS; model object IDs and authz; test batching/aliasing/depth/cost behavior and mutation side effects safely.",
+      "oracle": "A controlled one-variable check changes auth/runtime/schema/state/source/secret reachability or falsifies the mapped family.",
+      "confirm": "Mapped family produces a direct route to source/secret/data/flag, stronger primitive, or clear runtime/authz differential.",
+      "falsify": "Signal is present but first safe check yields no expected oracle and constraints show the family is not reachable.",
+      "stop_rule": "Do not run payload variants before the first safe check/model is built; downgrade after two no-progress same-family probes.",
+      "pivot_rule": "Pivot to challenge clue, source availability, primitive value gate, or next framework-specific mapping.",
+      "source_file": "ctf-web/server-side-2.md; ctf-web/field-notes.md",
+      "keywords": [
+        "graphql",
+        "introspection",
+        "__typename",
+        "Apollo",
+        "GraphiQL",
+        "operationName",
+        "query",
+        "mutation",
+        "batching",
+        "aliasing",
+        "authz",
+        "depth",
+        "CSRF"
+      ],
+      "snippet": "GraphQL schema/authz/operation gate: GraphQL endpoint, Apollo/GraphiQL errors, JSON query body, operationName, frontend GraphQL operations, or introspection-like errors appear. First safe check: Test introspection and __typename; extract operations from JS; model object IDs and authz; test batching/aliasing/depth/cost behavior and mutation side effects safely.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence signal and related input/state.",
+        "Run the first safe check as one variable.",
+        "Observe and rerank in ctf-decision-state.",
+        "Only then escalate to exploit-specific payloads."
+      ],
+      "failure_modes": [
+        "generic black-box fuzzing before framework mapping",
+        "payload variants before oracle calibration",
+        "over-promoting medium-value findings without a flag/source/data route"
+      ],
+      "primary_subfamily": "graphql-api-state",
+      "subfamilies": [
+        "graphql-api-state"
+      ],
+      "concepts": [
+        "non-PHP web instinct",
+        "graphql-api-state",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "model GraphQL schema",
+        "GraphQL authz batching",
+        "introspection operations"
+      ],
+      "query_aliases": [
+        "GraphQL introspection batching alias authz",
+        "Apollo GraphiQL operationName",
+        "GraphQL CSRF mutation"
+      ],
+      "review_recommendation": "keep; extracted from ljagiello/ctf-skills and user optimization goals",
+      "semantic_tokens": [
+        "graphql",
+        "introspection",
+        "__typename",
+        "apollo",
+        "graphiql",
+        "operationname",
+        "query",
+        "mutation",
+        "batching",
+        "aliasing",
+        "authz",
+        "depth",
+        "csrf"
+      ],
+      "semantic_ngrams": [
+        "GraphQL introspection batching alias authz",
+        "Apollo GraphiQL operationName",
+        "GraphQL CSRF mutation"
+      ],
+      "evidence_phrases": [
+        "graphql",
+        "operationName",
+        "__typename",
+        "Apollo error",
+        "mutation"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "id": "curated:web.nonphp.jwt_jwk_jku_kid_gate",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 9,
+      "title": "JWT/JWE/OAuth token-shape gate",
+      "trigger": "JWT/JWE/OAuth/OIDC/SAML evidence appears: alg, kid, jku, jwk, weak secret, public key, HS/RS confusion, redirect_uri, state, nonce, issuer, or audience.",
+      "preconditions": [
+        "evidence signal is present",
+        "one observable oracle exists or can be calibrated safely"
+      ],
+      "first_safe_check": "Decode header/payload; classify alg/kid/jku/jwk; test claim significance without forging; look for public keys/JWKS; check kid path lookup and jku host trust; for OAuth test redirect_uri/state/nonce binding.",
+      "oracle": "A controlled one-variable check changes auth/runtime/schema/state/source/secret reachability or falsifies the mapped family.",
+      "confirm": "Mapped family produces a direct route to source/secret/data/flag, stronger primitive, or clear runtime/authz differential.",
+      "falsify": "Signal is present but first safe check yields no expected oracle and constraints show the family is not reachable.",
+      "stop_rule": "Do not run payload variants before the first safe check/model is built; downgrade after two no-progress same-family probes.",
+      "pivot_rule": "Pivot to challenge clue, source availability, primitive value gate, or next framework-specific mapping.",
+      "source_file": "ctf-web/auth-jwt.md; ctf-web/auth-infra.md",
+      "keywords": [
+        "jwt",
+        "jwe",
+        "jwk",
+        "jku",
+        "kid",
+        "alg",
+        "none",
+        "HS256",
+        "RS256",
+        "weak secret",
+        "OAuth",
+        "OIDC",
+        "redirect_uri",
+        "state",
+        "nonce",
+        "audience"
+      ],
+      "snippet": "JWT/JWE/OAuth token-shape gate: JWT/JWE/OAuth/OIDC/SAML evidence appears: alg, kid, jku, jwk, weak secret, public key, HS/RS confusion, redirect_uri, state, nonce, issuer, or audience. First safe check: Decode header/payload; classify alg/kid/jku/jwk; test claim significance without forging; look for public keys/JWKS; check kid path lookup and jku host trust; for OAuth test redirect_uri/state/nonce binding.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence signal and related input/state.",
+        "Run the first safe check as one variable.",
+        "Observe and rerank in ctf-decision-state.",
+        "Only then escalate to exploit-specific payloads."
+      ],
+      "failure_modes": [
+        "generic black-box fuzzing before framework mapping",
+        "payload variants before oracle calibration",
+        "over-promoting medium-value findings without a flag/source/data route"
+      ],
+      "primary_subfamily": "token-auth",
+      "subfamilies": [
+        "token-auth"
+      ],
+      "concepts": [
+        "non-PHP web instinct",
+        "token-auth",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "classify JWT token",
+        "kid jku jwk checks",
+        "oauth redirect state"
+      ],
+      "query_aliases": [
+        "JWT kid jku jwk alg confusion",
+        "HS RS algorithm confusion",
+        "OAuth redirect_uri state nonce"
+      ],
+      "review_recommendation": "keep; extracted from ljagiello/ctf-skills and user optimization goals",
+      "semantic_tokens": [
+        "jwt",
+        "jwe",
+        "jwk",
+        "jku",
+        "kid",
+        "alg",
+        "none",
+        "hs256",
+        "rs256",
+        "weak secret",
+        "oauth",
+        "oidc",
+        "redirect_uri",
+        "state",
+        "nonce",
+        "audience"
+      ],
+      "semantic_ngrams": [
+        "JWT kid jku jwk alg confusion",
+        "HS RS algorithm confusion",
+        "OAuth redirect_uri state nonce"
+      ],
+      "evidence_phrases": [
+        "alg",
+        "kid",
+        "jku",
+        "jwk",
+        "JWT",
+        "redirect_uri",
+        "state nonce"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "ljagiello-ctf-skills+user-curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "id": "curated:web.nonphp.admin_bot_xss_promotion",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Admin-bot/XSS promotion gate",
+      "trigger": "Report/preview/share/admin bot, CSP, storage/cookie clues, same-origin secret endpoint, postMessage sink, or callback oracle appears; XSS/client-side bugs should become main line only with a credible bot/secret route.",
+      "preconditions": [
+        "evidence signal is present",
+        "one observable oracle exists or can be calibrated safely"
+      ],
+      "first_safe_check": "Send one harmless canary to learn bot visit, origin, cookies/storage visibility, CSP, and reachable same-origin endpoints before payload variants.",
+      "oracle": "A controlled one-variable check changes auth/runtime/schema/state/source/secret reachability or falsifies the mapped family.",
+      "confirm": "Mapped family produces a direct route to source/secret/data/flag, stronger primitive, or clear runtime/authz differential.",
+      "falsify": "Signal is present but first safe check yields no expected oracle and constraints show the family is not reachable.",
+      "stop_rule": "Do not run payload variants before the first safe check/model is built; downgrade after two no-progress same-family probes.",
+      "pivot_rule": "Pivot to challenge clue, source availability, primitive value gate, or next framework-specific mapping.",
+      "source_file": "ctf-web/client-side*.md; ctf-web/field-notes.md",
+      "keywords": [
+        "admin bot",
+        "xss",
+        "csp",
+        "postMessage",
+        "storage",
+        "cookie",
+        "same-origin",
+        "report",
+        "preview",
+        "callback",
+        "exfil",
+        "dom"
+      ],
+      "snippet": "Admin-bot/XSS promotion gate: Report/preview/share/admin bot, CSP, storage/cookie clues, same-origin secret endpoint, postMessage sink, or callback oracle appears; XSS/client-side bugs should become main line only with a credible bot/secret route. First safe check: Send one harmless canary to learn bot visit, origin, cookies/storage visibility, CSP, and reachable same-origin endpoints before payload variants.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Record exact evidence signal and related input/state.",
+        "Run the first safe check as one variable.",
+        "Observe and rerank in ctf-decision-state.",
+        "Only then escalate to exploit-specific payloads."
+      ],
+      "failure_modes": [
+        "generic black-box fuzzing before framework mapping",
+        "payload variants before oracle calibration",
+        "over-promoting medium-value findings without a flag/source/data route"
+      ],
+      "primary_subfamily": "admin-bot-runtime",
+      "subfamilies": [
+        "admin-bot-runtime"
+      ],
+      "concepts": [
+        "non-PHP web instinct",
+        "admin-bot-runtime",
+        "CTF pattern recall"
+      ],
+      "retrieval_intents": [
+        "promote XSS only with bot route",
+        "admin bot canary",
+        "runtime model before payload"
+      ],
+      "query_aliases": [
+        "admin bot XSS main line",
+        "report preview CSP storage cookie",
+        "same origin secret endpoint",
+        "postMessage exfil oracle"
+      ],
+      "review_recommendation": "keep; extracted from ljagiello/ctf-skills and user optimization goals",
+      "semantic_tokens": [
+        "admin bot",
+        "xss",
+        "csp",
+        "postmessage",
+        "storage",
+        "cookie",
+        "same-origin",
+        "report",
+        "preview",
+        "callback",
+        "exfil",
+        "dom"
+      ],
+      "semantic_ngrams": [
+        "admin bot XSS main line",
+        "report preview CSP storage cookie",
+        "same origin secret endpoint",
+        "postMessage exfil oracle"
+      ],
+      "evidence_phrases": [
+        "admin bot",
+        "report URL",
+        "preview bot",
+        "CSP",
+        "postMessage",
+        "storage secret"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "user-retro+curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "id": "curated:web.ctf_instinct.classic_function_mapping",
+      "kind": "technique",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Classic dangerous-function to CTF vulnerability mapping",
+      "trigger": "Source or snippets reveal classic Web dangerous functions or legacy PHP patterns such as addslashes, include/readfile/file_get_contents, file_put_contents, unserialize, preg_replace /e, eval/assert/template render, header Location with input, or raw HTML output.",
+      "preconditions": [
+        "source/snippet/function name is visible",
+        "function is on user-controlled or semi-controlled data path"
+      ],
+      "first_safe_check": "Map the function to its classic CTF hypothesis before generic exploration: addslashes->wide-byte SQLi; include/readfile/file_get_contents->LFI/wrapper/consumer mismatch; file_put_contents->file-write/filter chain; unserialize->POP; eval/assert/template->RCE/SSTI; header Location input->CRLF/open redirect lower priority; raw HTML->XSS only with bot/secret route.",
+      "oracle": "A focused hypothesis/probe for the mapped vulnerability family, or falsification by control/reachability constraints.",
+      "confirm": "The mapped family produces a direct source/data/file/code/flag-relevant oracle.",
+      "falsify": "Input is not controlled/reachable or mapped family is blocked by confirmed constraints.",
+      "stop_rule": "Do not do generic black-box branching before applying obvious function mapping.",
+      "pivot_rule": "If mapping fails, return to source-guided sink audit or next high-value primitive.",
+      "source_file": "curated-from-user-retro; classic CTF function mapping",
+      "keywords": [
+        "addslashes",
+        "wide byte",
+        "include",
+        "readfile",
+        "file_get_contents",
+        "file_put_contents",
+        "unserialize",
+        "preg_replace /e",
+        "eval",
+        "assert",
+        "header Location",
+        "XSS",
+        "CRLF",
+        "classic CTF"
+      ],
+      "snippet": "In CTF Web, dangerous function names should immediately trigger classic vulnerability hypotheses instead of broad exploration.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-pattern-card-search"
+      ],
+      "execution_plan": [
+        "Identify dangerous function and controlled input.",
+        "Apply mapping to one focused hypothesis.",
+        "Run one safe probe or source reasoning step.",
+        "Only then broaden."
+      ],
+      "failure_modes": [
+        "seeing addslashes but not testing wide-byte",
+        "seeing include but missing LFI/wrapper",
+        "seeing file_put_contents but missing write adapter",
+        "over-prioritizing header/XSS over source/SQL/file chain"
+      ],
+      "primary_subfamily": "classic-function-mapping",
+      "subfamilies": [
+        "dangerous-function",
+        "teaching-vulnerability",
+        "source-guided"
+      ],
+      "concepts": [
+        "classic CTF mapping",
+        "dangerous function",
+        "source-guided exploit"
+      ],
+      "retrieval_intents": [
+        "map PHP dangerous function",
+        "classic web ctf function sink",
+        "addslashes wide byte include file_put_contents unserialize"
+      ],
+      "query_aliases": [
+        "addslashes wide-byte",
+        "include LFI wrapper",
+        "file_put_contents filter",
+        "unserialize POP chain",
+        "header Location CRLF lower priority"
+      ],
+      "review_recommendation": "keep; confirmed by user retro as needed mapping",
+      "semantic_tokens": [
+        "addslashes",
+        "wide-byte",
+        "include",
+        "readfile",
+        "file_get_contents",
+        "file_put_contents",
+        "unserialize",
+        "eval",
+        "assert",
+        "header",
+        "xss",
+        "crlf"
+      ],
+      "semantic_ngrams": [
+        "classic function",
+        "dangerous function",
+        "wide byte",
+        "POP chain",
+        "file write",
+        "consumer mismatch"
+      ],
+      "evidence_phrases": [
+        "addslashes",
+        "header(\"Location",
+        "comment.php?id=",
+        "raw HTML output",
+        "preg_replace /e"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "user-retro+curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "id": "curated:web.ctf_instinct.primitive_value_gate",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Primitive value gate for CTF Web main-line selection",
+      "trigger": "A phenomenon-like Web primitive such as CRLF, stored XSS, open redirect, reflection, weak parser differential, or UI-only response difference is found before a clear route to flag/source/database.",
+      "preconditions": [
+        "confirmed or suspected medium-value primitive",
+        "no direct two-step route to flag/source/database/privileged state",
+        "other high-value source/data/file/SQL branches may exist"
+      ],
+      "first_safe_check": "Classify the primitive value: high-value if it can read files/source/database/config, write files, execute code, deserialize, or SSRF to internal/source; medium-value if it is XSS/CRLF/open redirect/reflection/header/UI-only. Promote medium-value only if it has a two-step route to flag/source/database.",
+      "oracle": "A ranked decision showing whether the primitive moves toward flag/source/database or should be downgraded.",
+      "confirm": "The primitive clearly unlocks flag/source/database/privileged state within two steps.",
+      "falsify": "Two probes produce no closer source/database/file/flag evidence.",
+      "stop_rule": "Downgrade medium-value primitive after two no-progress probes or if cheap high-yield source/data branch remains untested.",
+      "pivot_rule": "Pivot to challenge clues, source availability, SQL/file/include/unserialize/write/RCE sinks, or classic teaching-vulnerability mapping.",
+      "source_file": "curated-from-user-retro; primitive value gate",
+      "keywords": [
+        "primitive value",
+        "CRLF",
+        "XSS",
+        "open redirect",
+        "reflection",
+        "medium value",
+        "high value",
+        "source",
+        "database",
+        "file read",
+        "SQLi",
+        "flag path"
+      ],
+      "snippet": "CTF Web should not let CRLF/XSS/reflection dominate unless they are within two steps of flag/source/database. Rank primitives by CTF yield, not real-world severity.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state"
+      ],
+      "execution_plan": [
+        "Label primitive high/medium.",
+        "Ask whether it reaches flag/source/database/privileged state within two steps.",
+        "If not, downgrade after two no-progress probes.",
+        "Promote high-yield source/data/file/SQL branches."
+      ],
+      "failure_modes": [
+        "closing CRLF chain without flag route",
+        "closing stored XSS without bot/secret path",
+        "treating reflection as execution evidence",
+        "ignoring cheap source leak while medium-value bug exists"
+      ],
+      "primary_subfamily": "primitive-value-ranking",
+      "subfamilies": [
+        "medium-primitive-downgrade",
+        "ctf-yield-ranking",
+        "blackbox-difference-correction"
+      ],
+      "concepts": [
+        "primitive ranking",
+        "CTF yield",
+        "branch prioritization"
+      ],
+      "retrieval_intents": [
+        "downgrade CRLF XSS",
+        "rank web primitive value",
+        "blackbox difference not main line"
+      ],
+      "query_aliases": [
+        "CRLF XSS low priority CTF",
+        "medium primitive no flag route",
+        "reflection only evidence",
+        "two step flag source database"
+      ],
+      "review_recommendation": "keep; confirmed by user retro as prioritization miss",
+      "semantic_tokens": [
+        "primitive",
+        "value",
+        "crlf",
+        "xss",
+        "redirect",
+        "reflection",
+        "source",
+        "database",
+        "file",
+        "flag",
+        "downgrade"
+      ],
+      "semantic_ngrams": [
+        "primitive value",
+        "medium value",
+        "two step",
+        "flag source database",
+        "reflection evidence",
+        "CRLF chain"
+      ],
+      "evidence_phrases": [
+        "found CRLF",
+        "stored XSS",
+        "comment.php?id= difference",
+        "only reflection",
+        "not close to flag"
+      ]
+    },
+    {
+      "category": "web",
+      "source": "user-retro+curated",
+      "curated": true,
+      "rank_boost": 900,
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "subfamily_confidence": 5,
+      "id": "curated:web.ctf_instinct.source_availability_priority",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 9,
+      "title": "CTF Web source availability priority gate",
+      "trigger": "Old PHP, BUU/NSS/training-style challenge, simple artificial app, acquired login state, traditional directory/static layout, many simple interaction points, or black-box chain cost exceeds cheap source acquisition cost.",
+      "preconditions": [
+        "URL-only or source-poor Web CTF",
+        "target resembles classic training app or old PHP site",
+        "cheap source/data leak surfaces have not been checked"
+      ],
+      "first_safe_check": "Check a bounded high-yield source surface set: .git/HEAD, .git/index, .phps, ~, .bak, .swp, .zip, backup/source archives, debug/source/history leaks before deep CRLF/XSS/parser chains.",
+      "oracle": "Source code, git metadata, backup archive, debug/source leak, or confirmed 404/403/no-leak results for the bounded set.",
+      "confirm": "Any source/history/config leak or route to recover source appears.",
+      "falsify": "Bounded source surface set is unavailable and no clue suggests source leak.",
+      "stop_rule": "Do not continue deep medium-value chains while this cheap source gate is untested.",
+      "pivot_rule": "After source gate falsifies, return to black-box modeling or strongest high-value primitive.",
+      "source_file": "curated-from-user-retro; CTF Web instinct decision",
+      "keywords": [
+        "source leak",
+        ".git",
+        "git index",
+        ".phps",
+        "bak",
+        "swp",
+        "zip",
+        "backup",
+        "old php",
+        "BUU",
+        "NSS",
+        "training",
+        "source availability"
+      ],
+      "snippet": "In classic CTF Web, cheap source acquisition often outranks long black-box closure. Put .git/.phps/backup/history checks in top hypotheses when source cost is low.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-web-fingerprint",
+        "ctf-web-blackbox-map"
+      ],
+      "execution_plan": [
+        "Identify CTF/training/old-PHP signals.",
+        "Run bounded source surface checks.",
+        "If source leaks, switch to source-guided sink audit.",
+        "If falsified, resume black-box hypotheses."
+      ],
+      "failure_modes": [
+        "deep CRLF/XSS chain before cheap source checks",
+        "treating training-style app like real business app",
+        "missing .git/.phps/backups after login"
+      ],
+      "primary_subfamily": "source-availability",
+      "subfamilies": [
+        "git-leak",
+        "backup-source",
+        "ctf-teaching-app"
+      ],
+      "concepts": [
+        "source leak",
+        "CTF instinct",
+        "low-cost high-yield"
+      ],
+      "retrieval_intents": [
+        "prioritize source leak",
+        "check git phps backup",
+        "old php source acquisition"
+      ],
+      "query_aliases": [
+        "old php .git .phps backup",
+        "BUU NSS source leak",
+        "source cost lower than blackbox",
+        "git HEAD index"
+      ],
+      "review_recommendation": "keep; confirmed by user retro as missed strategy pattern",
+      "semantic_tokens": [
+        "source",
+        "git",
+        "phps",
+        "backup",
+        "bak",
+        "swp",
+        "zip",
+        "old",
+        "php",
+        "buu",
+        "nss",
+        "training"
+      ],
+      "semantic_ngrams": [
+        "source availability",
+        "git leak",
+        "phps source",
+        "backup source",
+        "old php",
+        "training site"
+      ],
+      "evidence_phrases": [
+        "old PHP",
+        "BUU",
+        "NSS",
+        ".git/HEAD",
+        ".git/index",
+        ".phps",
+        "backup archive"
+      ]
+    },
+    {
+      "id": "curated:web.challenge_clue.credential_mask_structure",
+      "category": "web",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Challenge clue priority for credential-shaped masks",
+      "trigger": "A Web page, challenge text, placeholder, error, source comment, or visible UI gives a distinctive username/password-shaped clue such as name***, admin???, masked credential, unusual personal name, or sample login.",
+      "preconditions": [
+        "distinctive clue is visible or leaked",
+        "the clue maps to an input such as username, password, token, path, or parameter",
+        "generic black-box branches are tempting but clue has not been exhausted"
+      ],
+      "first_safe_check": "Build a Clue Ledger and test a bounded structured set derived from the exact clue: literal, prefix/suffix, fixed padding, common numeric/date suffix, case/normalization, leetspeak, username-derived password, and mask length assumptions.",
+      "oracle": "Login/status/body/error/redirect/session differential for the clue-derived candidates, or evidence that the clue is decoy/noise.",
+      "confirm": "One clue-derived variant changes auth/session/state or reaches the next stage.",
+      "falsify": "Bounded clue-first variants produce no differential and the clue has no relation to available inputs.",
+      "stop_rule": "Do not move to content-type/source-extension/route discovery before the clue-first budget is exhausted or falsified.",
+      "pivot_rule": "After clue exhaustion, return to normal Web black-box flow: login differential, source leak checks, parser/content-type differentials, route/API modeling.",
+      "source_file": "curated-from-user-retro; ctf-experience-gate challenge clue priority",
+      "keywords": [
+        "challenge clue",
+        "obvious hint",
+        "credential",
+        "password",
+        "username",
+        "masked string",
+        "stars",
+        "asterisk",
+        "suffix",
+        "padding",
+        "zhangwei",
+        "sample credential",
+        "login"
+      ],
+      "source": "user-retro+curated",
+      "curated": true,
+      "snippet": "Strong page/challenge clues such as zhangwei*** should be treated as structure hints, not just one literal credential attempt. Exhaust a small clue-first budget before generic black-box exploration.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-web-diff-probe"
+      ],
+      "execution_plan": [
+        "Record exact clue, location, related input, and implied structure.",
+        "Generate 3-6 bounded variants from the mask/structure.",
+        "Test variants with one stable auth oracle.",
+        "Only pivot to generic Web branches after explicit clue exhaustion."
+      ],
+      "failure_modes": [
+        "testing only literal username/password then abandoning the clue",
+        "generic login differential before clue variants",
+        "source-extension/content-type probing while a strong UI clue remains unexplored"
+      ],
+      "rank_boost": 900,
+      "primary_subfamily": "challenge-clue-credential",
+      "subfamilies": [
+        "obvious-hint",
+        "credential-mask",
+        "clue-first-budget"
+      ],
+      "subfamily_confidence": 5,
+      "concepts": [
+        "challenge clue",
+        "credential structure",
+        "hint exhaustion"
+      ],
+      "retrieval_intents": [
+        "use obvious page hint",
+        "credential mask variants",
+        "zhangwei star password clue",
+        "sample credential structure"
+      ],
+      "query_aliases": [
+        "zhangwei*** password",
+        "name*** credential",
+        "masked password hint",
+        "obvious clue first",
+        "stars suffix password"
+      ],
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "curation_tier": "user-retro-critical",
+      "review_recommendation": "keep; confirmed by user retro as missed priority pattern",
+      "semantic_tokens": [
+        "clue",
+        "credential",
+        "password",
+        "username",
+        "mask",
+        "stars",
+        "asterisk",
+        "suffix",
+        "padding",
+        "zhangwei",
+        "login"
+      ],
+      "semantic_ngrams": [
+        "challenge clue",
+        "credential mask",
+        "obvious hint",
+        "password structure",
+        "star suffix",
+        "clue first"
+      ],
+      "evidence_phrases": [
+        "zhangwei***",
+        "sample credential",
+        "masked password",
+        "visible username",
+        "obvious clue"
+      ]
+    },
+    {
+      "id": "curated:web.php.file_get_contents_include_data_colon_mismatch",
+      "category": "web",
+      "kind": "technique",
+      "quality": 10,
+      "specificity": 10,
+      "title": "PHP file_get_contents precheck vs include data: scheme mismatch",
+      "trigger": "Same page/path parameter is read or validated by file_get_contents and later consumed by include/require, with filters that remove dots or block direct local paths.",
+      "preconditions": [
+        "controlled include/read parameter",
+        "file_get_contents precheck or validator exists",
+        "include/require sink exists",
+        "one concrete wrapper payload failure risks over-pruning the family"
+      ],
+      "first_safe_check": "Test exact scheme syntax differential rather than wrapper family broadly: compare data://... with data:,harmless/profile or another harmless data: value that file_get_contents and include may resolve differently.",
+      "oracle": "Precheck succeeds on harmless data content while include resolves/executes/loads a different local relative tail, or produces a distinct include warning/path.",
+      "confirm": "A data: form passes the precheck and reaches a different include target or behavior than file_get_contents consumed.",
+      "falsify": "Both consumers canonicalize and consume the same resource for data: and data:// forms under controlled tests.",
+      "stop_rule": "Do not pivot to /proc, /flag variants, null byte, or broad path tricks before exact consumer-differential probes are tested.",
+      "pivot_rule": "If data: mismatch fails, test another single parser differential from the equation: path normalization, wrapper syntax, encoding, or content-type consumer.",
+      "source_file": "curated-from-user-retro; PHP precheck/include semantic mismatch",
+      "keywords": [
+        "php",
+        "file_get_contents",
+        "include",
+        "require",
+        "data:",
+        "data://",
+        "semantic mismatch",
+        "parser differential",
+        "precheck",
+        "sink",
+        "profile",
+        "dot removal"
+      ],
+      "source": "user-retro+curated",
+      "curated": true,
+      "snippet": "For file_get_contents() followed by include(), do not kill the data-wrapper idea after data:// fails; test exact data: syntax such as data:,harmless/profile as the consumer-differential probe.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state",
+        "ctf-web-diff-probe"
+      ],
+      "execution_plan": [
+        "Write precheck/sink equation with the same controlled page value.",
+        "Compare one harmless data:// payload to one data:,harmless/relative-tail payload.",
+        "Observe whether file_get_contents and include consume different resources.",
+        "Only after falsification pivot to another semantic mismatch class."
+      ],
+      "failure_modes": [
+        "treating one payload failure as class falsification",
+        "spending budget on /proc or /flag variants",
+        "focusing on making profile naturally executable instead of consumer mismatch"
+      ],
+      "rank_boost": 900,
+      "primary_subfamily": "php-consumer-mismatch",
+      "subfamilies": [
+        "file_get_contents-vs-include",
+        "data-scheme-syntax",
+        "parser-differential"
+      ],
+      "subfamily_confidence": 5,
+      "concepts": [
+        "semantic mismatch",
+        "php wrapper",
+        "parser differential",
+        "precheck sink"
+      ],
+      "retrieval_intents": [
+        "file_get_contents include mismatch",
+        "data colon vs data slash php",
+        "precheck sink consumer difference"
+      ],
+      "query_aliases": [
+        "file_get_contents include data:",
+        "data:,a/profile",
+        "data:// failed allow_url_include",
+        "php include parser mismatch"
+      ],
+      "semantic_tokens": [
+        "php",
+        "file_get_contents",
+        "include",
+        "data:",
+        "data://",
+        "precheck",
+        "sink",
+        "mismatch",
+        "parser",
+        "profile"
+      ],
+      "semantic_ngrams": [
+        "file_get_contents include",
+        "data colon mismatch",
+        "precheck sink",
+        "php data scheme",
+        "consumer differential"
+      ],
+      "evidence_phrases": [
+        "file_get_contents()",
+        "include()",
+        "data:,a/profile",
+        "allow_url_include=0",
+        "dot removal"
+      ],
+      "curation_tier": "user-retro-critical",
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "review_recommendation": "keep; confirmed by user retro as missed solve pattern",
+      "semi_curated": false,
+      "promoted": true
+    },
+    {
+      "id": "curated:web.php.file_put_contents.filter_write_base64",
+      "category": "web",
+      "kind": "technique",
+      "quality": 10,
+      "specificity": 10,
+      "title": "PHP file_put_contents to php://filter write base64 execution",
+      "trigger": "PHP source/gadget exposes file_put_contents or equivalent write sink with controllable path and content, especially after unserialize magic methods or source leak.",
+      "preconditions": [
+        "controlled or partially controlled file path/resource",
+        "controlled or partially controlled content",
+        "write sink reachable or triggerable"
+      ],
+      "first_safe_check": "Model controlled path/content and test whether the write resource can be changed to php://filter/write=convert.base64-decode/resource=<webroot-or-include-target>; account for dirty PHP prefix/suffix with base64 decoder tolerance or alignment padding.",
+      "oracle": "Written target decodes controlled payload, include/static access changes, or harmless marker appears without raw dirty prefix breaking decode.",
+      "confirm": "A harmless base64 marker survives the write adapter and lands in the chosen target/resource.",
+      "falsify": "Resource path cannot use wrappers, content is not sufficiently controlled, or prefix/suffix cannot be tolerated/aligned after one controlled check.",
+      "stop_rule": "Do not hunt hidden routes until wrapper-write and target-reachability checks are falsified.",
+      "pivot_rule": "If filter write fails, test webroot/include target, .user.ini/auto_prepend, session/upload/phar adapter only when reachable.",
+      "source_file": "curated-from-user-retro; PHP wrapper/write sink pattern",
+      "keywords": [
+        "php",
+        "file_put_contents",
+        "php://filter",
+        "write=convert.base64-decode",
+        "base64",
+        "dirty prefix",
+        "prefix pollution",
+        "unserialize",
+        "__toString",
+        "file write",
+        "webshell"
+      ],
+      "source": "user-retro+curated",
+      "curated": true,
+      "snippet": "Controlled PHP file write should immediately trigger wrapper/filter adapter thinking: php://filter/write=convert.base64-decode/resource=... plus base64 tolerance/alignment for fixed prefixes.",
+      "next_tools": [
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state"
+      ],
+      "execution_plan": [
+        "Confirm write sink controls path and content.",
+        "Choose harmless marker payload and resource target.",
+        "Test php://filter/write=convert.base64-decode/resource=... with prefix/suffix tolerance or alignment.",
+        "If marker lands, convert to final executable/read chain."
+      ],
+      "failure_modes": [
+        "continuing SSRF/protocol enumeration after source is read",
+        "searching hidden deserialize entry before using known gadget",
+        "abandoning write sink because of fixed prefix without testing base64 tolerance"
+      ],
+      "rank_boost": 900,
+      "primary_subfamily": "php-file-write-wrapper",
+      "subfamilies": [
+        "php-filter-write",
+        "base64-dirty-prefix",
+        "unserialize-file-write"
+      ],
+      "subfamily_confidence": 5,
+      "concepts": [
+        "file write",
+        "php wrapper",
+        "deserialization gadget",
+        "exploit adapter"
+      ],
+      "retrieval_intents": [
+        "turn file_put_contents into execution",
+        "php filter write base64",
+        "bypass prefix pollution in written php"
+      ],
+      "query_aliases": [
+        "file_put_contents php filter write",
+        "php://filter write base64 decode resource",
+        "unserialize file_put_contents webshell",
+        "dirty prefix base64 php"
+      ],
+      "semantic_tokens": [
+        "php",
+        "file_put_contents",
+        "filter",
+        "write",
+        "base64",
+        "decode",
+        "resource",
+        "prefix",
+        "unserialize",
+        "gadget"
+      ],
+      "semantic_ngrams": [
+        "php filter write",
+        "file_put_contents sink",
+        "base64 dirty prefix",
+        "controlled file write",
+        "unserialize write gadget"
+      ],
+      "evidence_phrases": [
+        "file_put_contents",
+        "GWHT::__toString",
+        "Yongen::hasaki",
+        "php://filter/write",
+        "<?php die"
+      ],
+      "curation_tier": "user-retro-critical",
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "review_recommendation": "keep; confirmed by user retro as missed solve pattern",
+      "semi_curated": false,
+      "promoted": true
+    },
+    {
+      "id": "curated:web.primitive_composition.sink_first_closure",
+      "category": "web",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Primitive composition before new discovery",
+      "trigger": "A concrete sink, gadget, source leak, SSRF-read source, LFI-read source, file write, include sink, deserialization gadget, or state transition is already known.",
+      "preconditions": [
+        "existing primitive or sink has been identified",
+        "next steps are drifting toward hidden routes, more parameters, protocol enumeration, or environment discovery"
+      ],
+      "first_safe_check": "Build a Primitive Ledger and run local pattern recall using exact sink/function/protocol names; select the top two chain-closure probes before any broad discovery.",
+      "oracle": "A composable chain hypothesis with controlled data/path/trigger/oracle, or a falsified blocker proving the primitive cannot be used.",
+      "confirm": "Existing primitive yields a plausible chain adapter or a one-variable probe with direct progress.",
+      "falsify": "Top two chain-closure probes are unreachable, untriggerable, or blocked by confirmed constraints.",
+      "stop_rule": "Do not do more than one cheap new-surface check until chain closure fails.",
+      "pivot_rule": "If closure fails, pivot to the next known primitive or then resume limited discovery.",
+      "source_file": "curated-from-user-retro; ctf-experience-gate/SKILL.md",
+      "keywords": [
+        "primitive",
+        "sink",
+        "gadget",
+        "chain closure",
+        "composition",
+        "file write",
+        "include",
+        "ssrf",
+        "source leak",
+        "exploit chain"
+      ],
+      "source": "user-retro+curated",
+      "curated": true,
+      "snippet": "When a concrete primitive/sink is known, close the exploit chain from existing pieces before searching for hidden routes or new bugs.",
+      "next_tools": [
+        "ctf-pattern-card-search",
+        "ctf-pattern-to-hypothesis",
+        "ctf-decision-state"
+      ],
+      "execution_plan": [
+        "Write Primitive Ledger: controlled data, path/name, transforms, trigger, execution context, oracle, blockers.",
+        "Search exact sink/function names in pattern cards.",
+        "Run the top chain-closure probe as one variable.",
+        "Only resume discovery after two closure probes are falsified."
+      ],
+      "failure_modes": [
+        "continuing recon after a strong sink",
+        "hidden-route search before sink composition",
+        "treating SSRF source-read as needing more SSRF instead of source-guided closure"
+      ],
+      "rank_boost": 900,
+      "primary_subfamily": "primitive-composition",
+      "subfamilies": [
+        "sink-first",
+        "chain-closure",
+        "exploit-adapter"
+      ],
+      "subfamily_confidence": 5,
+      "concepts": [
+        "primitive composition",
+        "sink closure",
+        "exploit chain"
+      ],
+      "retrieval_intents": [
+        "close known primitive",
+        "compose existing sink",
+        "avoid broad recon after source leak"
+      ],
+      "query_aliases": [
+        "sink first closure",
+        "known primitive exploit chain",
+        "existing gadget composition"
+      ],
+      "semantic_tokens": [
+        "primitive",
+        "sink",
+        "gadget",
+        "closure",
+        "composition",
+        "adapter",
+        "source",
+        "ssrf",
+        "include",
+        "write"
+      ],
+      "semantic_ngrams": [
+        "primitive composition",
+        "sink first",
+        "chain closure",
+        "known sink",
+        "exploit adapter"
+      ],
+      "evidence_phrases": [
+        "found sink",
+        "file_put_contents",
+        "include sink",
+        "SSRF read source",
+        "gadget found"
+      ],
+      "curation_tier": "user-retro-critical",
+      "coverage_score": 50,
+      "curation_priority": 100,
+      "review_recommendation": "keep; confirmed by user retro as missed solve pattern",
+      "semi_curated": false,
+      "promoted": true
+    },
+    {
+      "id": "curated:web.semantic_mismatch.precheck_sink",
+      "category": "web",
+      "kind": "technique",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Precheck/sink semantic mismatch",
+      "trigger": "Same controlled input is validated or read by one component and later consumed by another semantic sink such as include, render, fetch, browser, deserializer, template, file system, or proxy route.",
+      "preconditions": [
+        "source or black-box evidence shows two consumers of same input",
+        "direct path is blocked by filter or validator"
+      ],
+      "first_safe_check": "Write the precheck/sink equation and test one harmless value that is interpreted differently by the validator and the sink.",
+      "oracle": "status/body/header/error/state differential between precheck and sink behavior",
+      "confirm": "One value passes precheck but reaches or changes sink behavior.",
+      "falsify": "Validator and sink consume identical canonicalized value for all safe tests.",
+      "stop_rule": "Stop environment enumeration after two no-differential probes; pivot to another mismatch class or primitive.",
+      "pivot_rule": "If mismatch fails, inspect transform chain/canonicalization or switch to state/authz/file-write primitive.",
+      "source_file": "ctf-web/server-side-advanced*.md; ctf-web/SKILL.md",
+      "keywords": [
+        "precheck",
+        "sink",
+        "semantic mismatch",
+        "parser discrepancy",
+        "filter",
+        "include",
+        "render",
+        "path",
+        "url"
+      ]
+    },
+    {
+      "id": "curated:web.url_parser_fetcher",
+      "category": "web",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 8,
+      "title": "URL parser vs fetcher mismatch",
+      "trigger": "SSRF, redirect, webhook, callback, image fetch, proxy, or import feature validates a URL before fetching it with a different parser/library.",
+      "preconditions": [
+        "URL-like parameter",
+        "network fetch/redirect/proxy behavior",
+        "filter on host/scheme/path"
+      ],
+      "first_safe_check": "Compare relative, same-origin absolute, benign off-origin, scheme-relative, userinfo, encoded host, and trailing-dot forms one at a time.",
+      "oracle": "Location change, fetch callback, error difference, DNS/log hit, or internal route response",
+      "confirm": "Validator accepts a value whose fetcher target differs from validator's target.",
+      "falsify": "All safe variants normalize to same accepted/rejected target.",
+      "stop_rule": "Max 3 parser variants without new oracle; then pivot to host-header/cache or auth workflow.",
+      "pivot_rule": "If outbound is blocked, pivot to open redirect/cache/link-generation differential.",
+      "source_file": "ctf-web/server-side-advanced*.md; ctf-web/auth-and-access*.md",
+      "keywords": [
+        "ssrf",
+        "url parser",
+        "fetcher",
+        "redirect",
+        "callback",
+        "webhook",
+        "host",
+        "scheme"
+      ]
+    },
+    {
+      "id": "curated:web.authz_object_matrix",
+      "category": "web",
+      "kind": "workflow",
+      "quality": 9,
+      "specificity": 8,
+      "title": "Object-level authz matrix",
+      "trigger": "Object IDs, users, tenants, teams, roles, reset tokens, orders, files, notes, or workflow-owned resources appear in routes or APIs.",
+      "preconditions": [
+        "two sessions or two object IDs exist",
+        "endpoint exposes object identifier or role-dependent state"
+      ],
+      "first_safe_check": "Run owner/non-owner/anonymous matrix on one read-only endpoint, then one state transition if authorized by challenge scope.",
+      "oracle": "status/body/schema/field/redirect/state differential across users or objects",
+      "confirm": "Non-owner accesses or mutates owner resource, or role boundary changes without expected guard.",
+      "falsify": "All tested object/session combinations enforce expected boundary.",
+      "stop_rule": "Stop after one object family with no differential; pivot to workflow replay or hidden API.",
+      "pivot_rule": "If read is safe but write is guarded, test skip-step/replay on workflow transition.",
+      "source_file": "ctf-web/auth-and-access*.md; ctf-web/SKILL.md",
+      "keywords": [
+        "idor",
+        "authz",
+        "object id",
+        "tenant",
+        "role",
+        "owner",
+        "workflow",
+        "matrix"
+      ]
+    },
+    {
+      "id": "curated:web.client_admin_bot_runtime",
+      "category": "web",
+      "kind": "workflow",
+      "quality": 9,
+      "specificity": 8,
+      "title": "Admin bot runtime first",
+      "trigger": "Report/preview/share/admin bot feature, CSP, DOM sink, postMessage, storage, or browser-only network behavior appears.",
+      "preconditions": [
+        "bot or privileged browser exists",
+        "attacker controls content or URL visited by bot"
+      ],
+      "first_safe_check": "Run one harmless canary to learn bot visit, origin, CSP, cookies, storage, and network/oracle before payload variants.",
+      "oracle": "bot hit, callback, DOM/network evidence, storage change, CSP/error signal",
+      "confirm": "Canary proves privileged browser reaches attacker-controlled content or state.",
+      "falsify": "No bot visit or no controlled content reachability after one calibrated canary.",
+      "stop_rule": "Do not send repeated bot payloads without runtime model and oracle.",
+      "pivot_rule": "If bot is unreachable, pivot to reflected/stored context or server-side primitive.",
+      "source_file": "ctf-web/client-side*.md",
+      "keywords": [
+        "xss",
+        "admin bot",
+        "csp",
+        "dom",
+        "postmessage",
+        "storage",
+        "browser"
+      ]
+    },
+    {
+      "id": "curated:web.source_config_secret_chain",
+      "category": "web",
+      "kind": "workflow",
+      "quality": 9,
+      "specificity": 7,
+      "title": "Source/config leak to secret forgery",
+      "trigger": "Source map, backup, .git, Docker/config, OpenAPI, debug route, stack trace, or exposed config appears.",
+      "preconditions": [
+        "leak reveals code/config/dependency/secret candidate",
+        "app uses signed cookie/token/session or hidden route"
+      ],
+      "first_safe_check": "Extract only high-value config and route/sink map, then test one token/session/route primitive rather than broad source reading.",
+      "oracle": "successful token decode/forge, hidden route access, source-confirmed direct flag path",
+      "confirm": "Leaked secret/config unlocks authenticated or direct flag-relevant action.",
+      "falsify": "Leak contains no secrets, no reachable sinks, and no useful route/state changes.",
+      "stop_rule": "Stop broad reading after top config/routes/sinks are mapped.",
+      "pivot_rule": "If no secret, use source to select parser/auth/upload/state primitive.",
+      "source_file": "ctf-web/server-side*.md; ctf-web/auth*.md",
+      "keywords": [
+        "source leak",
+        "config",
+        "secret",
+        "session",
+        "jwt",
+        "cookie",
+        "debug",
+        "source map"
+      ]
+    },
+    {
+      "id": "curated:pwn.protection_primitive_first",
+      "category": "pwn",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 8,
+      "title": "Protection and primitive first",
+      "trigger": "Native binary/service with crash, memory corruption, or exploitation hint.",
+      "preconditions": [
+        "binary available or remote service behavior reproducible"
+      ],
+      "first_safe_check": "Run checksec/file and identify smallest primitive: leak, write, control-flow, shellcode, syscall, or win function before building chain.",
+      "oracle": "controlled crash, leaked address, overwrite confirmation, or win path reachability",
+      "confirm": "Primitive is reproducible locally or remotely with a stable oracle.",
+      "falsify": "No control over crash/leak/write after minimal triage; reverse behavior first.",
+      "stop_rule": "Do not ROP/heap-groom before primitive and protections are known.",
+      "pivot_rule": "If behavior unclear, pivot to reverse; if crypto/web gate blocks exploit, pivot category.",
+      "source_file": "ctf-pwn/SKILL.md",
+      "keywords": [
+        "pwn",
+        "checksec",
+        "primitive",
+        "leak",
+        "write",
+        "rip",
+        "rop",
+        "heap"
+      ]
+    },
+    {
+      "id": "curated:pwn.format_string_leak_then_write",
+      "category": "pwn",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 9,
+      "title": "Format string leak before write",
+      "trigger": "printf-style user-controlled format, %p/%x/%s behavior, stack leak, GOT/libc target, or blind format string oracle.",
+      "preconditions": [
+        "format string reaches printf-family sink",
+        "output or side effect is observable"
+      ],
+      "first_safe_check": "Find offset and leak stack/libc/PIE/canary with read-only specifiers before any write specifier.",
+      "oracle": "stable leaked pointer or stack value matching expected memory region",
+      "confirm": "Offset and at least one useful base/canary leak are reproducible.",
+      "falsify": "Input is not treated as format string or output is fully sanitized/no oracle.",
+      "stop_rule": "Do not overwrite until offset, target, and RELRO/writeability are known.",
+      "pivot_rule": "If write blocked, use leak for another vulnerability chain or ret2libc.",
+      "source_file": "ctf-pwn/format-string.md",
+      "keywords": [
+        "format string",
+        "printf",
+        "offset",
+        "leak",
+        "got",
+        "libc",
+        "canary"
+      ]
+    },
+    {
+      "id": "curated:pwn.heap_allocator_primitive",
+      "category": "pwn",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 8,
+      "title": "Heap primitive before gadget hunting",
+      "trigger": "UAF, double-free, overflow into heap metadata, tcache/fastbin/unsorted bin, custom allocator, FSOP, or FILE structure.",
+      "preconditions": [
+        "heap operations controllable",
+        "allocator/libc or custom allocator behavior identifiable"
+      ],
+      "first_safe_check": "Identify allocation/free/edit/show primitives and reproduce one leak, overlap, double-free, or arbitrary write condition.",
+      "oracle": "heap/libc leak, overlapped chunk, poisoned pointer, controlled write target, or FILE leak",
+      "confirm": "A heap primitive is repeatable across clean runs.",
+      "falsify": "No controlled heap state change or oracle after minimal menu/state mapping.",
+      "stop_rule": "Do not jump to one_gadget before leak/write and constraints are known.",
+      "pivot_rule": "If allocator path is too opaque, reverse menu/state or use dynamic tracing.",
+      "source_file": "ctf-pwn/heap-techniques*.md",
+      "keywords": [
+        "heap",
+        "uaf",
+        "tcache",
+        "fastbin",
+        "unsorted",
+        "fsop",
+        "allocator"
+      ]
+    },
+    {
+      "id": "curated:crypto.rsa_triage_matrix",
+      "category": "crypto",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 9,
+      "title": "RSA weakness triage matrix",
+      "trigger": "RSA parameters n/e/c, public key, multiple moduli/ciphertexts, leaked dp/dq/phi, small exponent, close primes, shared primes, or oracle.",
+      "preconditions": [
+        "RSA-like integers or key material available"
+      ],
+      "first_safe_check": "Run structured RSA triage: bit sizes, small factors, gcd across moduli, small e root/broadcast, Fermat close primes, dp/dq/phi leak, common modulus, Coppersmith indicators.",
+      "oracle": "factorization, plaintext recovery, private exponent recovery, or successful decryption/signature forgery",
+      "confirm": "One weakness recovers p/q/d/plaintext or forges required signature.",
+      "falsify": "All cheap RSA checks fail and no oracle/partial leak exists.",
+      "stop_rule": "Do not brute-force large RSA; pivot to partial leakage/lattice/oracle only with evidence.",
+      "pivot_rule": "If RSA clean, inspect encoding/protocol or implementation for side-channel/oracle.",
+      "source_file": "ctf-crypto/rsa-attacks*.md",
+      "keywords": [
+        "rsa",
+        "small e",
+        "shared prime",
+        "common modulus",
+        "fermat",
+        "coppersmith",
+        "dp",
+        "dq"
+      ]
+    },
+    {
+      "id": "curated:crypto.nonce_seed_reuse",
+      "category": "crypto",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 8,
+      "title": "Nonce, IV, or PRNG state reuse",
+      "trigger": "Repeated nonce/IV, predictable seed, time seed, LCG/MT/LFSR/xorshift, DSA/ECDSA k reuse, stream cipher key reuse, or multiple ciphertexts under same keystream.",
+      "preconditions": [
+        "multiple samples or oracle access",
+        "nonce/seed/keystream pattern observable"
+      ],
+      "first_safe_check": "Compare samples for repeated nonce/IV/keystream or recover PRNG state from outputs using known format/prefix.",
+      "oracle": "recovered keystream, seed, state, private key, plaintext, or valid forgery",
+      "confirm": "Predicted next output, decrypted plaintext, or forged signature validates recovered state/key.",
+      "falsify": "No repeated/predictable state and insufficient outputs for recovery.",
+      "stop_rule": "Stop blind seed brute-force if time/window/source evidence is absent.",
+      "pivot_rule": "Pivot to mode misuse, padding oracle, or algebraic structure.",
+      "source_file": "ctf-crypto/prng*.md; ctf-crypto/modern-ciphers*.md; ctf-crypto/ecc-attacks.md",
+      "keywords": [
+        "nonce",
+        "iv",
+        "seed",
+        "prng",
+        "lcg",
+        "mt19937",
+        "lfsr",
+        "ecdsa",
+        "keystream"
+      ]
+    },
+    {
+      "id": "curated:crypto.mode_oracle_misuse",
+      "category": "crypto",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 8,
+      "title": "Block cipher mode misuse and oracle",
+      "trigger": "AES/CBC/ECB/GCM/OFB/CTR with padding errors, repeated IV/nonce, block alignment, chosen plaintext/ciphertext, or MAC/encryption confusion.",
+      "preconditions": [
+        "cipher mode or oracle behavior observable",
+        "known prefix/format or multiple samples"
+      ],
+      "first_safe_check": "Classify mode behavior with repeated blocks, controlled block changes, padding/error oracle, IV/nonce reuse, or tag verification differences.",
+      "oracle": "padding/error branch, repeated block pattern, valid forged token, decrypted block, or tag/key relation",
+      "confirm": "One block/bitflip/oracle step changes plaintext/auth state predictably.",
+      "falsify": "Mode is authenticated and nonce/IV/oracle misuse absent under available samples.",
+      "stop_rule": "Do not enumerate payloads without a block/mode equation.",
+      "pivot_rule": "Pivot to KDF/PRNG/hash or protocol state if mode checks fail.",
+      "source_file": "ctf-crypto/modern-ciphers*.md",
+      "keywords": [
+        "aes",
+        "cbc",
+        "ecb",
+        "gcm",
+        "padding oracle",
+        "bitflip",
+        "nonce",
+        "iv"
+      ]
+    },
+    {
+      "id": "curated:reverse.validation_slice_solver",
+      "category": "reverse",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 8,
+      "title": "Validation slice to solver",
+      "trigger": "Binary/APK/WASM/client validates flag/license/key with transforms, constants, comparisons, tables, or state machine.",
+      "preconditions": [
+        "validation routine or oracle exists",
+        "input format partially known"
+      ],
+      "first_safe_check": "Locate validation slice via strings/xrefs/runtime trace, extract constants and transforms, then lift only that slice to Python/z3 instead of decompiling the whole program.",
+      "oracle": "solver output accepted by binary or runtime oracle advances one byte/state",
+      "confirm": "Extracted model predicts accepted/rejected inputs or recovers flag bytes.",
+      "falsify": "Slice is not validation or model fails on known samples.",
+      "stop_rule": "Stop reading unrelated framework/UI code once validation slice is found.",
+      "pivot_rule": "If validation is cryptographic, pivot to crypto; if exploitation needed, pivot to pwn.",
+      "source_file": "ctf-reverse/patterns*.md; ctf-reverse/SKILL.md",
+      "keywords": [
+        "reverse",
+        "validation",
+        "z3",
+        "constants",
+        "transform",
+        "xrefs",
+        "solver"
+      ]
+    },
+    {
+      "id": "curated:reverse.custom_vm_trace",
+      "category": "reverse",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 9,
+      "title": "Custom VM dispatch and trace",
+      "trigger": "Interpreter loop, bytecode, opcode dispatch, VM registers/state, custom ISA, emulator, game VM, or packed validation VM.",
+      "preconditions": [
+        "bytecode or dispatch loop identifiable"
+      ],
+      "first_safe_check": "Identify instruction format, dispatch table, VM state registers/memory, and trace one known input before full devirtualization.",
+      "oracle": "opcode trace, state transition, comparison branch, or recovered bytecode semantics",
+      "confirm": "Trace explains at least one validation/output behavior and supports solver/emulator.",
+      "falsify": "No VM state/dispatch relation found after tracing key loop.",
+      "stop_rule": "Do not lift entire VM before instruction format and state are known.",
+      "pivot_rule": "If VM only wraps crypto/math, pivot to crypto after extracting equations.",
+      "source_file": "ctf-reverse/patterns*.md; ctf-misc/games-and-vms*.md",
+      "keywords": [
+        "custom vm",
+        "bytecode",
+        "dispatch",
+        "opcode",
+        "trace",
+        "emulator"
+      ]
+    },
+    {
+      "id": "curated:forensics.layered_artifact_triage",
+      "category": "forensics",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 8,
+      "title": "Layered artifact triage",
+      "trigger": "Unknown file, archive, image, PDF, disk/memory/pcap/media artifact, embedded object, or multi-stage forensic challenge.",
+      "preconditions": [
+        "artifact file or directory available"
+      ],
+      "first_safe_check": "Run type/magic/metadata/strings/embedded/trailing-data triage, extract safely, then flag-grep before deeper specialized analysis.",
+      "oracle": "new embedded file, stream, metadata clue, flag fragment, or pivot artifact",
+      "confirm": "A layer is peeled and produces new evidence or direct flag candidate.",
+      "falsify": "No embedded/trailing/metadata/string evidence and no format-specific anomaly.",
+      "stop_rule": "Do not brute stego before cheap metadata/signature/archive/string checks.",
+      "pivot_rule": "If recovered artifact is crypto/web/binary, pivot category immediately.",
+      "source_file": "ctf-forensics/SKILL.md; ctf-forensics/disk*.md; ctf-forensics/stego*.md",
+      "keywords": [
+        "forensics",
+        "artifact",
+        "metadata",
+        "binwalk",
+        "strings",
+        "archive",
+        "carving",
+        "stego"
+      ]
+    },
+    {
+      "id": "curated:forensics.pcap_stream_first",
+      "category": "forensics",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 8,
+      "title": "PCAP stream and protocol first",
+      "trigger": "Packet capture, DNS/HTTP/TCP/USB/ICMP traffic, credentials, transferred files, covert timing, or multi-stream network artifact.",
+      "preconditions": [
+        "pcap/pcapng or network logs available"
+      ],
+      "first_safe_check": "Summarize protocols, extract HTTP objects/DNS names/TCP streams/credentials, and only then inspect covert channels or crypto.",
+      "oracle": "reassembled file, credential, stream payload, domain pattern, timing bits, or flag fragment",
+      "confirm": "One stream/object/protocol field yields flag-relevant evidence.",
+      "falsify": "No relevant application streams or payload anomalies.",
+      "stop_rule": "Do not deep-dive exotic covert channels before normal streams/objects are exhausted.",
+      "pivot_rule": "If encrypted/compressed payload recovered, pivot crypto/misc/forensics as appropriate.",
+      "source_file": "ctf-forensics/network*.md",
+      "keywords": [
+        "pcap",
+        "tcp stream",
+        "dns",
+        "http",
+        "credentials",
+        "covert",
+        "timing",
+        "tshark"
+      ]
+    },
+    {
+      "id": "curated:misc.jail_capability_model",
+      "category": "misc",
+      "kind": "workflow",
+      "quality": 9,
+      "specificity": 8,
+      "title": "Jail capability model before payloads",
+      "trigger": "Python jail, bash jail, sandbox, restricted shell, blocked characters, no quotes/calls/imports, or object graph escape.",
+      "preconditions": [
+        "interactive jail or source/policy visible"
+      ],
+      "first_safe_check": "Model allowed syntax, builtins, objects, side effects, oracle, and output channel before trying escape payloads.",
+      "oracle": "new object access, file read, command execution, error branch, or sandbox policy bypass",
+      "confirm": "One capability escalation is proven: string construction, attribute access, import recovery, file read, or command execution.",
+      "falsify": "Policy prevents all modeled capabilities under safe probes.",
+      "stop_rule": "Do not paste jail payload catalogs without matching capability constraints.",
+      "pivot_rule": "If jail is actually web/binary/container, pivot category.",
+      "source_file": "ctf-misc/pyjails.md; ctf-misc/bashjails.md",
+      "keywords": [
+        "pyjail",
+        "bashjail",
+        "sandbox",
+        "no quotes",
+        "no call",
+        "object graph",
+        "builtins"
+      ]
+    },
+    {
+      "id": "curated:misc.encoding_layer_solver",
+      "category": "misc",
+      "kind": "workflow",
+      "quality": 9,
+      "specificity": 7,
+      "title": "Encoding stack as reversible pipeline",
+      "trigger": "Encoded text/blob, unusual alphabet, repeated transformations, QR/audio/esolang hints, XOR/base/rot/unicode layers.",
+      "preconditions": [
+        "data has structured charset, magic bytes, entropy shift, or known flag prefix"
+      ],
+      "first_safe_check": "Identify alphabet/entropy/magic/known-prefix clues and build an automated reversible decode pipeline with checkpoints.",
+      "oracle": "magic bytes, readable text, valid archive/image, flag prefix, or next-layer format",
+      "confirm": "One layer decodes to a recognizable format or next transform evidence.",
+      "falsify": "No reversible transform improves structure or matches expected format.",
+      "stop_rule": "Stop manual CyberChef-like guessing after a few no-structure transforms; model constraints or pivot artifact type.",
+      "pivot_rule": "If output becomes crypto/forensics/reverse artifact, pivot category.",
+      "source_file": "ctf-misc/encodings*.md",
+      "keywords": [
+        "encoding",
+        "base64",
+        "hex",
+        "rot",
+        "xor",
+        "unicode",
+        "qr",
+        "multi layer"
+      ]
+    },
+    {
+      "id": "curated:web.java.spel_filecopyutils",
+      "category": "web",
+      "kind": "technique",
+      "quality": 10,
+      "specificity": 10,
+      "title": "Spring SpEL file read via FileCopyUtils when shell/I/O is blocked",
+      "trigger": "Spring Boot Thymeleaf/SpEL template preview or expression sink, WAF blocks Runtime/ProcessBuilder/FileInputStream/flag, or distroless no-shell container.",
+      "preconditions": ["SpEL/Thymeleaf expression evaluation confirmed", "file-read goal or shell unavailable"],
+      "first_safe_check": "Confirm expression type access with harmless marker, then test directory listing or benign file read through Spring/JDK utility classes before flag path.",
+      "oracle": "evaluated expression, directory listing, file content, or engine-specific error",
+      "confirm": "Spring utility/JDK file-read expression returns controlled file content.",
+      "falsify": "Expression not evaluated or type/file access blocked with no alternate context leak.",
+      "stop_rule": "Do not keep trying Runtime.exec in no-shell/WAF-blocked contexts when file-read works.",
+      "pivot_rule": "If type access blocked, pivot to model/config/view path leak.",
+      "source_file": "ctf-web/server-side-exec.md; ctf-web-java/references/java-spel-filecopyutils.md",
+      "keywords": ["java", "spring", "thymeleaf", "spel", "FileCopyUtils", "StreamUtils", "distroless", "no shell", "ssti", "file read"]
+    },
+    {
+      "id": "curated:web.java.xmldecoder_deser",
+      "category": "web",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 9,
+      "title": "Java XMLDecoder is gadget-free text deserialization",
+      "trigger": "XMLDecoder source/bytecode, XML import endpoint, Java bean XML parser errors, or text XML object construction.",
+      "preconditions": ["controlled XML reaches XMLDecoder or equivalent bean object construction"],
+      "first_safe_check": "Send a harmless XMLDecoder object/error probe to verify parser reachability and oracle before side-effect payloads.",
+      "oracle": "XMLDecoder-specific error, instantiated benign object, callback, or response side effect",
+      "confirm": "Controlled XML is parsed by XMLDecoder and can invoke allowed methods/classes.",
+      "falsify": "XMLDecoder not reachable or XML parser is safe non-object parser.",
+      "stop_rule": "Do not use binary gadget assumptions for XMLDecoder; first prove text object construction.",
+      "pivot_rule": "If XMLDecoder absent, inspect XXE or Jackson/Fastjson parser path.",
+      "source_file": "ctf-web/server-side-deser.md; ctf-web-java/references/java-xml-gadget-deser.md",
+      "keywords": ["java", "XMLDecoder", "deserialization", "xml", "bean", "object construction", "gadget-free"]
+    },
+    {
+      "id": "curated:web.java.hql_h2_nbsp",
+      "category": "web",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 9,
+      "title": "HQL to H2 parser mismatch with non-breaking space",
+      "trigger": "Hibernate/JPA/HQL query with H2 backend, filters block subqueries/spaces/keywords, or parser mismatch clues.",
+      "preconditions": ["HQL/JPA path reaches H2 database", "error or boolean oracle exists"],
+      "first_safe_check": "Verify DB is H2 and query is HQL/JPA, then test one harmless U+00A0 non-breaking-space differential.",
+      "oracle": "HQL/DB error difference, accepted expression, boolean/error-based differential",
+      "confirm": "Application/HQL parser and H2 interpret encoded whitespace differently.",
+      "falsify": "No H2/HQL evidence or U+00A0 has no parsing differential.",
+      "stop_rule": "Do not apply H2-specific parser bypass to unknown DBs without evidence.",
+      "pivot_rule": "If mismatch absent, return to source query extraction or MyBatis/JDBC branch.",
+      "source_file": "ctf-web/server-side-advanced-2.md; ctf-web-java/references/java-hql-h2-parser-mismatch.md",
+      "keywords": ["java", "hibernate", "hql", "jpa", "h2", "nbsp", "non-breaking space", "parser mismatch", "sql"]
+    },
+    {
+      "id": "curated:web.java.spring_actuator_config",
+      "category": "web",
+      "kind": "technique",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Spring Boot actuator/config exposure before payloads",
+      "trigger": "Spring Boot, actuator dependency/config, /actuator routes, management endpoints, env/mappings/logfile hints, or exposed debug config.",
+      "preconditions": ["Java Spring Boot service or source/config available"],
+      "first_safe_check": "Verify management base path, endpoint exposure, and auth status for /actuator, /actuator/mappings, /actuator/env, /actuator/logfile using one read-only request each.",
+      "oracle": "endpoint list, config secret, route map, logfile, env leak, or clear 401/403 boundary",
+      "confirm": "An actuator/debug endpoint exposes route/config/log evidence or a useful auth boundary.",
+      "falsify": "Actuator absent or protected with no route/config leak.",
+      "stop_rule": "Do not brute actuator endpoints; after base endpoints fail, pivot to source/config mapping.",
+      "pivot_rule": "Use leaked mappings/config to choose Java source-guided sink or auth route.",
+      "source_file": "ctf-web-java/references/spring-boot-source-map.md",
+      "keywords": ["java", "spring", "spring boot", "actuator", "management", "env", "mappings", "logfile", "config"]
+    },
+    {
+      "id": "curated:web.java.h2_console",
+      "category": "web",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 9,
+      "title": "H2 console with config-derived credentials",
+      "trigger": "H2 dependency, spring.h2.console.enabled, jdbc:h2 URL, /h2-console route, or embedded database config.",
+      "preconditions": ["H2 dependency/config evidence and reachable web route or source"],
+      "first_safe_check": "Check H2 console route and extract JDBC URL/user/password from application config before login attempts.",
+      "oracle": "H2 console page, config credentials, database access, or route protection status",
+      "confirm": "Console reachable and credentials/config allow useful DB inspection or control.",
+      "falsify": "Console disabled/unreachable and no config credential path.",
+      "stop_rule": "Do not guess many credentials before reading config/defaults and route auth.",
+      "pivot_rule": "If DB access works, inspect flag/admin/session tables or file aliases only within challenge scope.",
+      "source_file": "ctf-web-java/references/spring-boot-source-map.md",
+      "keywords": ["java", "h2", "h2-console", "jdbc:h2", "spring.h2.console", "database", "console"]
+    },
+    {
+      "id": "curated:web.java.mybatis_dollar_sqli",
+      "category": "web",
+      "kind": "technique",
+      "quality": 10,
+      "specificity": 10,
+      "title": "MyBatis ${} raw SQL reachability",
+      "trigger": "MyBatis mapper XML/annotation with ${}, ORDER BY/table/column/search substitution, or SQL stack trace.",
+      "preconditions": ["mapper reachable from controller/service", "controlled parameter reaches ${} or string SQL"],
+      "first_safe_check": "Trace controller -> service -> mapper and send one harmless SQL differential such as order toggle, quote error, or boolean condition.",
+      "oracle": "SQL error, changed ordering/count, boolean differential, or source-proven raw query",
+      "confirm": "Controlled field changes SQL semantics through ${} or concatenation.",
+      "falsify": "Only #{} prepared binding or unreachable mapper path.",
+      "stop_rule": "Do not dump data before proving raw substitution and DB type/flag path.",
+      "pivot_rule": "If no SQL differential, inspect mapper dynamic conditions or another sink.",
+      "source_file": "ctf-web-java/references/java-sql-mybatis.md",
+      "keywords": ["java", "mybatis", "${}", "mapper", "sql injection", "order by", "raw sql", "jdbc"]
+    },
+    {
+      "id": "curated:web.java.shiro_rememberme_key",
+      "category": "web",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 9,
+      "title": "Shiro rememberMe key/config gate before gadgets",
+      "trigger": "Apache Shiro dependency/config, rememberMe cookie, CookieRememberMeManager, shiro.ini, or Shiro filter chain.",
+      "preconditions": ["Shiro rememberMe behavior or config evidence"],
+      "first_safe_check": "Verify rememberMe cookie processing/tamper oracle and look for key/config/source before any gadget payload.",
+      "oracle": "rememberMe deletion/tamper behavior, key clue, auth state change, or Shiro-specific error",
+      "confirm": "Key/config and parser behavior support a token/session primitive.",
+      "falsify": "No rememberMe processing or key/config gate unavailable.",
+      "stop_rule": "Do not run Shiro gadget payloads from dependency name alone.",
+      "pivot_rule": "If Shiro not exploitable, use filter chain mapping for auth bypass or route discovery.",
+      "source_file": "ctf-web-java/references/java-deser-shiro-fastjson.md",
+      "keywords": ["java", "shiro", "rememberMe", "CookieRememberMeManager", "key", "deserialization", "session"]
+    },
+    {
+      "id": "curated:web.java.fastjson_autotype",
+      "category": "web",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 9,
+      "title": "Fastjson autoType requires parser/config/data-shape proof",
+      "trigger": "Fastjson dependency, JSON.parseObject/parseArray, @type field, autoType config, or JSON parser errors.",
+      "preconditions": ["reachable JSON parser endpoint", "controlled JSON body"],
+      "first_safe_check": "Confirm Fastjson version/config and send a harmless @type/parser behavior probe before gadget payloads.",
+      "oracle": "Fastjson-specific error, accepted type field, parse differential, or source-proven autoType path",
+      "confirm": "Endpoint parses controlled type-shaped JSON under exploitable config.",
+      "falsify": "No Fastjson parser path, autoType disabled with no bypass clue, or body not controlled.",
+      "stop_rule": "Do not gadget guess without parser oracle and classpath evidence.",
+      "pivot_rule": "If parser not exploitable, inspect business JSON binding or auth logic.",
+      "source_file": "ctf-web-java/references/java-deser-shiro-fastjson.md",
+      "keywords": ["java", "fastjson", "autoType", "@type", "parseObject", "deserialization", "json"]
+    },
+    {
+      "id": "curated:web.java.thymeleaf_expression",
+      "category": "web",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 8,
+      "title": "Thymeleaf/view expression context first",
+      "trigger": "Thymeleaf dependency, template fragments, view name control, template expression, or Spring view rendering with user input.",
+      "preconditions": ["template/view/expression context identified"],
+      "first_safe_check": "Identify whether input controls view name, fragment, template body, or model value; then use a harmless engine-specific marker.",
+      "oracle": "evaluated marker, template parse error, view resolution error, or source-proven expression sink",
+      "confirm": "Controlled input is evaluated by Thymeleaf/expression parser.",
+      "falsify": "Input is only rendered as model data or sanitized literal text.",
+      "stop_rule": "Do not use generic SSTI payloads before engine/context identity.",
+      "pivot_rule": "If expression blocked, inspect file/view path or model/data leak.",
+      "source_file": "ctf-web-java/references/java-template-expression.md",
+      "keywords": ["java", "thymeleaf", "template", "fragment", "view", "expression", "spel", "ssti"]
+    },
+    {
+      "id": "curated:web.java.jsp_upload_write",
+      "category": "web",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 8,
+      "title": "JSP upload/write requires served reloadable path proof",
+      "trigger": "Java upload route, MultipartFile, filename control, JSP/Tomcat webroot, file write, archive extraction, or static resource path.",
+      "preconditions": ["file write/upload route and controlled filename/content"],
+      "first_safe_check": "Upload/write benign canary and verify storage path, extension checks, served URL, and reload/execution behavior before JSP payloads.",
+      "oracle": "canary served/readable, path disclosure, extension bypass differential, or source-proven webroot write",
+      "confirm": "Controlled file lands in served/reloadable path or yields reliable file read/write primitive.",
+      "falsify": "Upload directory is non-executable/unserved and no traversal/write primitive exists.",
+      "stop_rule": "Never overwrite existing files; do not assume upload equals RCE.",
+      "pivot_rule": "If no JSP execution, use file read/write for config/flag/source path.",
+      "source_file": "ctf-web-java/references/java-file-upload-path.md",
+      "keywords": ["java", "jsp", "upload", "MultipartFile", "Tomcat", "webroot", "file write", "path traversal"]
+    },
+    {
+      "id": "curated:web.java.documentbuilder_xxe",
+      "category": "web",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 8,
+      "title": "Java XML parser XXE feature gate",
+      "trigger": "DocumentBuilderFactory, SAXParserFactory, XMLInputFactory, SAXReader, TransformerFactory, XML upload/import, SVG/Office XML parsing.",
+      "preconditions": ["controlled XML-like body/file reaches Java XML parser"],
+      "first_safe_check": "Inspect parser features and send a benign entity/error probe to confirm DTD/entity behavior before file or SSRF payloads.",
+      "oracle": "entity expansion, parser error differential, callback, or source-proven insecure features",
+      "confirm": "External entity/DTD behavior is enabled and observable.",
+      "falsify": "DOCTYPE/entities disabled or parser unreachable.",
+      "stop_rule": "Do not spray XXE payloads without parser identity and oracle.",
+      "pivot_rule": "If XXE blocked, inspect SSRF/file parser chain or upload storage.",
+      "source_file": "ctf-web-java/references/java-xxe-ssrf.md",
+      "keywords": ["java", "xxe", "DocumentBuilderFactory", "SAXParserFactory", "XMLInputFactory", "SAXReader", "xml"]
+    },
+    {
+      "id": "curated:web.java.resttemplate_ssrf",
+      "category": "web",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 8,
+      "title": "Java URL fetcher SSRF with validator/fetcher split",
+      "trigger": "RestTemplate, HttpClient, WebClient, OkHttpClient, URL.openConnection, webhook/import/proxy/avatar URL feature.",
+      "preconditions": ["controlled URL reaches server-side Java fetcher"],
+      "first_safe_check": "Identify URL validator and fetcher, then test one harmless scheme/host/redirect differential or same-origin oracle.",
+      "oracle": "fetch callback, status/body differential, parser error, redirect behavior, or source-proven fetch path",
+      "confirm": "Controlled URL is fetched server-side and validator can be modeled or bypassed.",
+      "falsify": "URL not fetched or strict allowlist blocks intended scope.",
+      "stop_rule": "Do not spray URL bypasses before identifying validator/fetcher and scope.",
+      "pivot_rule": "If fetch works, target in-scope actuator/internal route/file protocol only when challenge-intended.",
+      "source_file": "ctf-web-java/references/java-xxe-ssrf.md",
+      "keywords": ["java", "ssrf", "RestTemplate", "HttpClient", "WebClient", "openConnection", "URL", "redirect"]
+    },
+    {
+      "id": "curated:web.java.spring_security_path_matcher",
+      "category": "web",
+      "kind": "technique",
+      "quality": 9,
+      "specificity": 8,
+      "title": "Spring Security/filter path matcher mismatch",
+      "trigger": "Spring Security config, Filter/Interceptor, Shiro chain, route exclusions, 401/403 boundary, path normalization clues.",
+      "preconditions": ["protected route or filter/security config evidence"],
+      "first_safe_check": "Build route-auth table and test exactly one path/method normalization differential such as semicolon, trailing slash, encoded slash, or method mismatch.",
+      "oracle": "status/body/auth differential or source-proven matcher mismatch",
+      "confirm": "A path/method/session variant crosses auth boundary without losing route reachability.",
+      "falsify": "Matcher and handler normalize identically with no auth differential.",
+      "stop_rule": "Do not spray path variants before mapping matcher/filter source.",
+      "pivot_rule": "If bypass fails, inspect session/role checks or IDOR/workflow logic.",
+      "source_file": "ctf-web-java/references/java-auth-filter-bypass.md",
+      "keywords": ["java", "spring security", "filter", "interceptor", "shiro", "path matcher", "semicolon", "encoded slash", "auth bypass"]
+    },
+    {
+      "id": "curated:web.java.zip_slip_upload",
+      "category": "web",
+      "kind": "technique",
+      "quality": 8,
+      "specificity": 8,
+      "title": "Java archive extraction Zip Slip canary first",
+      "trigger": "ZipInputStream, ZipEntry, archive upload/extract, JarEntry, TarArchiveEntry, or filename join without normalization.",
+      "preconditions": ["archive member names are attacker-controlled and extracted server-side"],
+      "first_safe_check": "Use safe archive listing/source review or a non-destructive canary path plan before attempting traversal write.",
+      "oracle": "canary file appears in controlled safe location, extraction error reveals path, or source proves unsafe join",
+      "confirm": "Archive member path escapes intended directory or writes to useful served/readable path.",
+      "falsify": "Canonical path check prevents traversal or extraction not reachable.",
+      "stop_rule": "Do not overwrite existing files; avoid blind destructive archive writes.",
+      "pivot_rule": "If write primitive exists, use file-write matrix to choose stable flag/source/JSP/control path.",
+      "source_file": "ctf-web-java/references/java-file-upload-path.md",
+      "keywords": ["java", "zip slip", "ZipInputStream", "ZipEntry", "archive", "upload", "path traversal", "file write"]
+    },
+    {
+      "id": "curated:web.java.dependency_gate",
+      "category": "web",
+      "kind": "workflow",
+      "quality": 10,
+      "specificity": 9,
+      "title": "Java dependency risk requires version/config/reachability/data-shape gates",
+      "trigger": "pom.xml/build.gradle/JAR dependencies suggest Shiro/Fastjson/Jackson/MyBatis/Template/Actuator/H2/Struts/FileUpload risk.",
+      "preconditions": ["Java dependencies are visible"],
+      "first_safe_check": "Run dependency risk triage, then confirm version, config gate, reachable route/sink, and controlled data shape before CVE-shaped payloads.",
+      "oracle": "all gates confirmed for one dependency family or risk demoted below source-proven sinks",
+      "confirm": "A dependency-backed route has version/config/reachability/data-shape evidence and a first safe probe.",
+      "falsify": "Dependency exists but no config/reachability/data-shape evidence.",
+      "stop_rule": "Do not exploit from dependency name alone.",
+      "pivot_rule": "Choose source-proven sink or another dependency family with stronger gates.",
+      "source_file": "ctf-web-java/references/java-dependency-risk.md",
+      "keywords": ["java", "dependency", "pom.xml", "build.gradle", "version", "config gate", "reachability", "cve"]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "stdout-file-leak",
+  "sample_type": "metadata-only",
+  "expected_primitive": "pwn.primitive.stdout_file_leak",
+  "expected_tags": {
+    "leak": [
+      "libc"
+    ],
+    "closure": [
+      "fsop"
+    ],
+    "runtime": [
+      "glibc_2_35"
+    ]
+  },
+  "minimal_probe_shape": "version-specific stdout FILE field corruption then flush",
+  "confirm_oracle": "libc bytes leak through stdout",
+  "falsify_oracle": "FILE checks reject or wrong layout",
+  "anti_pattern_to_avoid": [
+    "wrong_libc"
+  ]
+}

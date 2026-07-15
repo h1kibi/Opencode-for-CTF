@@ -1,0 +1,84 @@
+{
+  "version": "2026.07.ctf-v3",
+  "description": "CTF agent operating profile with two primary modes: ctf-fast (lightweight intuition-first) and ctf-expert (evidence-driven iterative solving). Replaces the original ctf-master.",
+  "default_entrypoints": [
+    "/ctf-fast",
+    "/ctf-expert",
+    "/ctf-pwn-fast",
+    "/ctf-rigorous",
+    "/ctf-rev-team",
+    "/ctf-hard-open"
+  ],
+  "primary_agents": [
+    "ctf-fast",
+    "ctf-expert",
+    "ctf-pwn-fast",
+    "ctf-rigorous"
+  ],
+  "meta_subagents": [
+    "ctf-scout",
+    "ctf-librarian",
+    "ctf-oracle",
+    "ctf-verifier"
+  ],
+  "required_tools": [
+    "ctf-decision-state",
+    "ctf-one-shot-triage",
+    "ctf-source-first-pack",
+    "ctf-web-recon-pack",
+    "ctf-java-analyze-pack",
+    "ctf-web-blackbox-map",
+    "ctf-apk-triage",
+    "ctf-android-native-triage",
+    "ctf-android-runtime-check",
+    "ctf-android-runtime-doctor",
+    "ctf-android-dynamic-macro",
+    "ctf-dex-patch-map",
+    "ctf-android-packed-closure-helper",
+    "ctf-jadx-targeted-slice",
+    "ctf-artifact-page",
+    "ctf-pwn-runner",
+    "ctf-pwn-redflag-panel",
+    "ctf-pwn-disasm-constraint-map",
+    "ctf-pwn-stack-frame-solver",
+    "ctf-pwn-got-leak-router",
+    "ctf-pwn-stage-harness",
+    "ctf-pwn-stage-delta-runner",
+    "ctf-pwn-io-diff-check",
+    "ctf-lesson-search",
+    "ctf-pattern-card-search"
+  ],
+  "required_scripts": [
+    "scripts/ctf-config-qa.ts",
+    "scripts/init-ctf-evidence.ts",
+    "scripts/write-evidence-state.ts",
+    "scripts/read-evidence-state.ts",
+    "scripts/init-rev-team-memory.ts",
+    "scripts/update-rev-team-memory.ts",
+    "scripts/read-rev-team-memory.ts",
+    "scripts/check-command-helper-contracts.ts"
+  ],
+  "required_state_files": [
+    "work/ctf-evidence/<challenge-slug>/inventory.md",
+    "work/ctf-evidence/<challenge-slug>/route.json",
+    "work/ctf-evidence/<challenge-slug>/hypotheses.json",
+    "work/ctf-evidence/<challenge-slug>/signal-memory.yaml",
+    "work/ctf-evidence/<challenge-slug>/primitive.json",
+    "work/ctf-evidence/<challenge-slug>/closure.json"
+  ],
+  "rev_team_state_files": [
+    "work/ctf-evidence/<challenge-slug>/rev-team-memory.json",
+    "work/ctf-evidence/<challenge-slug>/rev-team-summary.md"
+  ],
+  "required_indexes": [
+    "knowledge/lessons/lessons.index.json"
+  ],
+  "qa_required": true,
+  "readiness_gate": {
+    "config_contracts": true,
+    "evidence_packet_bootstrap": true,
+    "fanout_contract": true,
+    "lesson_index_presence": true,
+    "benchmark_smoke": true
+  }
+}

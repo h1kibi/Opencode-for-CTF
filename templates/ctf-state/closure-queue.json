@@ -1,0 +1,20 @@
+{
+  "current_primitive": "",
+  "current_boundary": "",
+  "candidate_flag_locations": [],
+  "candidate_read_paths": [],
+  "privilege_needed": "",
+  "best_oracle": "",
+  "blockers": [],
+  "downgrade_trigger": "",
+  "best_flag_location_hypothesis": "",
+  "closure_owner": "",
+  "probes": [
+    {
+      "order": 1,
+      "probe": "",
+      "expected_oracle": "",
+      "failure_condition": ""
+    }
+  ]
+}

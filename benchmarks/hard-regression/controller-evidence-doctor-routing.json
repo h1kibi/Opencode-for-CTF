@@ -1,0 +1,27 @@
+{
+  "id": "controller-evidence-doctor-routing",
+  "category": "mixed",
+  "description": "Non-trivial branches with stable challenge slug should recommend or refresh evidence doctor instead of drifting between notes and structured state.",
+  "artifacts": [
+    "scripts/ctf-evidence-doctor.ts",
+    "scripts/evidence-helper.ts",
+    "commands/ctf.md",
+    "commands/ctf-resume.md",
+    "commands/ctf-hard-open.md",
+    "commands/ctf-fanout.md",
+    "skills/ctf-common/SKILL.md",
+    "skills/ctf-ledger-discipline/SKILL.md"
+  ],
+  "expected": {
+    "primary_owner": "mixed",
+    "support_surface": "controller",
+    "first_safe_tool": "ctf-evidence-doctor",
+    "hard_submode": "evidence_packet_quality",
+    "bottleneck_family": "restart_packet_drift",
+    "source_first": false,
+    "closure_required": false,
+    "handoff_trigger": "structured_state_and_notes_may_diverge",
+    "stop_rule": "refresh_packet_quality_before_more_probing"
+  },
+  "notes": "Regression skeleton for evidence doctor recommendation and packet hygiene routing."
+}

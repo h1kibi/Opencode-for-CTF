@@ -1,0 +1,23 @@
+{
+  "id": "controller-snapshot-helper-contract",
+  "category": "meta",
+  "description": "Snapshot-side helper should refresh canonical route/primitive state and return a compact next control action for command integration.",
+  "artifacts": [
+    "scripts/snapshot-helper.ts",
+    "scripts/write-evidence-state.ts",
+    "scripts/read-evidence-state.ts",
+    "commands/ctf-snapshot.md"
+  ],
+  "expected": {
+    "primary_owner": "misc",
+    "support_surface": "none",
+    "first_safe_tool": "snapshot-helper",
+    "hard_submode": "snapshot_helper_contract",
+    "bottleneck_family": "state_refresh_execution",
+    "source_first": false,
+    "closure_required": false,
+    "handoff_trigger": "noisy_branch_or_interruption_risk",
+    "stop_rule": "refresh_structured_state_before_prose_only_snapshot"
+  },
+  "notes": "Controller regression skeleton for snapshot-side helper behavior."
+}

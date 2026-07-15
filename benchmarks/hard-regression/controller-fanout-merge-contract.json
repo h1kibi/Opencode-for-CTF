@@ -1,0 +1,25 @@
+{
+  "id": "controller-fanout-merge-contract",
+  "category": "mixed",
+  "description": "Fanout should merge scout/librarian/oracle output back into one owner, one support surface, one top queue, and one next probe rather than parallel solve tracks.",
+  "artifacts": [
+    "commands/ctf-fanout.md",
+    "agents/ctf-rigorous.md",
+    "agents/ctf-scout.md",
+    "agents/ctf-librarian.md",
+    "agents/ctf-oracle.md",
+    "skills/ctf-ledger-discipline/SKILL.md"
+  ],
+  "expected": {
+    "primary_owner": "web",
+    "support_surface": "java",
+    "first_safe_tool": "ctf-source-first-pack",
+    "hard_submode": "fanout_merge_one_probe",
+    "bottleneck_family": "owner_queue_merge",
+    "source_first": true,
+    "closure_required": false,
+    "handoff_trigger": "ambiguous_multi_surface_branch",
+    "stop_rule": "merge_fanout_into_one_next_probe"
+  },
+  "notes": "Regression skeleton for OmO-style fanout-lite merge discipline."
+}

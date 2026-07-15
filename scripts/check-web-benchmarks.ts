@@ -67,6 +67,22 @@ const rules: BenchmarkRule[] = [
       return hasBudget ? "PASS" : "N/A"
     },
   },
+  {
+    name: "closure path recorded after primitive",
+    check(output) {
+      const hasPrimitive = /(?:Primitive Ledger|confirmed primitive|high-value primitive)/i.test(output)
+      if (!hasPrimitive) return "N/A"
+      const hasClosure = /(?:closure path|closure owner|closure probe|flag-location hypothesis|web-closure-matrix)/i.test(output)
+      return hasClosure ? "PASS" : "FAIL"
+    },
+  },
+  {
+    name: "evidence trail referenced",
+    check(output) {
+      const hasEvidence = /(?:work[\\/]ctf-evidence|final-verification|solve-output|ctf_evidence_snapshot|ctf_handoff)/i.test(output)
+      return hasEvidence ? "PASS" : "N/A"
+    },
+  },
 ]
 
 function findOutputFiles(dir: string): string[] {
@@ -133,7 +149,7 @@ function runBenchmarks(targetDir: string) {
   if (failures.length > 0) {
     console.log(`- Critical Failures: ${failures.join(", ")}`)
   }
-  console.log("- Recommendations: review failures against `benchmarks/web/<name>/expected_behavior.md`")
+  console.log("- Recommendations: review failures against `benchmarks/web/<name>/expected_behavior.md` and closure/evidence rules")
 }
 
 const target = process.argv[2]

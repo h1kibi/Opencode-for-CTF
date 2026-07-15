@@ -1,0 +1,29 @@
+{
+  "strongest_evidence": [],
+  "current_primary_owner": "",
+  "supporting_surface": "",
+  "closure_owner": "",
+  "handoff_trigger": "",
+  "return_trigger": "",
+  "hard_submode": "",
+  "current_bottleneck_family": "",
+  "best_hypothesis": "",
+  "best_oracle": "",
+  "current_boundary": "",
+  "confirmed_primitive": "",
+  "nearest_flag_path": "",
+  "next_probe": "",
+  "why_not_other_branches": "",
+  "resume_snapshot_10_lines": [
+    "category / owner:",
+    "best evidence:",
+    "top-3 hypotheses:",
+    "confirmed primitives:",
+    "blocked branches:",
+    "current closure status:",
+    "next one-variable probe:",
+    "why not other branches:",
+    "flag location guess:",
+    "exact next tool/action:"
+  ]
+}

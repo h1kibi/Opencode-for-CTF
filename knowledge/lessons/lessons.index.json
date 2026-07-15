@@ -1,0 +1,1917 @@
+{
+  "meta": {
+    "version": 1,
+    "generated_at": "2026-06-05",
+    "source_dir": "../../lessons",
+    "description": "Structured lesson index for closure, owner handoff, failure signatures, and anti-pattern retrieval."
+  },
+  "lessons": [
+    {
+      "id": "closure-source-leak",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-source-leak.md",
+      "family": "closure",
+      "category": "all",
+      "title": "Source leak closure",
+      "triggers": [
+        "source leak",
+        "source available",
+        "config readable",
+        "decompiled source",
+        "template source"
+      ],
+      "signals": [
+        "backward slice",
+        "route map",
+        "config",
+        "secret",
+        "admin route"
+      ],
+      "better_question": "What is the shortest source-guided path from current control to flag, secret, config, or admin-only state?",
+      "stop_rule": "Do not return to broad route discovery until the top two source-guided closure probes fail or are falsified.",
+      "promote_if": [
+        "high-value source path exists",
+        "flag/config/secret symbols visible"
+      ],
+      "demote_if": [
+        "source does not reduce uncertainty",
+        "closure probes falsified"
+      ],
+      "query_terms": [
+        "source leak",
+        "closure",
+        "config",
+        "env",
+        "admin route",
+        "backward slice"
+      ],
+      "related_pattern_queries": [
+        "web source backward slice sink config secret route",
+        "web debug config source flag recovery"
+      ],
+      "related_closure_lessons": [
+        "closure-file-read",
+        "closure-admin-session"
+      ],
+      "suggested_control_action": "CLOSE",
+      "closure_owner_hint": "the surface that owns source-guided sink-to-flag completion"
+    },
+    {
+      "id": "closure-file-read",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-file-read.md",
+      "family": "closure",
+      "category": "web",
+      "title": "File read closure",
+      "triggers": [
+        "lfi",
+        "file read",
+        "local read",
+        "arbitrary read"
+      ],
+      "signals": [
+        "flag path",
+        "env file",
+        "app root",
+        "config path"
+      ],
+      "better_question": "What is the cheapest highest-probability file set for this runtime, user, and app root?",
+      "stop_rule": "After two low-probability path mutations with no new differential, stop broad path guessing.",
+      "promote_if": [
+        "direct read primitive confirmed"
+      ],
+      "demote_if": [
+        "path guessing becomes flat"
+      ],
+      "query_terms": [
+        "file read",
+        "lfi",
+        "flag path",
+        "env",
+        "config",
+        "app root"
+      ],
+      "related_pattern_queries": [
+        "web file read lfi config env app root",
+        "web include read path closure"
+      ],
+      "related_failure_signatures": [
+        "failure-repeated-proc-enum"
+      ],
+      "related_closure_lessons": [
+        "closure-source-leak"
+      ],
+      "suggested_control_action": "CLOSE",
+      "budget_penalty": "shrink path-guess budget after two flat low-probability reads",
+      "closure_owner_hint": "the surface controlling filesystem read and target path ranking"
+    },
+    {
+      "id": "closure-admin-session",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-admin-session.md",
+      "family": "closure",
+      "category": "web",
+      "title": "Admin/session closure",
+      "triggers": [
+        "admin session",
+        "privileged token",
+        "role=admin",
+        "authenticated admin"
+      ],
+      "signals": [
+        "admin dashboard",
+        "export",
+        "debug",
+        "logs",
+        "privileged api"
+      ],
+      "better_question": "Which privileged surface is most likely to reveal the flag or its storage location immediately?",
+      "stop_rule": "Do not drop back into generic exploitation until the top privileged data surfaces are tested.",
+      "promote_if": [
+        "privileged state confirmed"
+      ],
+      "demote_if": [
+        "no privileged assets remain untested"
+      ],
+      "query_terms": [
+        "admin",
+        "session",
+        "privileged route",
+        "export",
+        "logs",
+        "hidden api"
+      ],
+      "related_pattern_queries": [
+        "web admin route export debug logs hidden api"
+      ],
+      "related_closure_lessons": [
+        "closure-db-read",
+        "closure-source-leak"
+      ],
+      "suggested_control_action": "CLOSE",
+      "closure_owner_hint": "the owner that controls privileged route and object closure"
+    },
+    {
+      "id": "closure-ssrf-internal",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-ssrf-internal.md",
+      "family": "closure",
+      "category": "web",
+      "title": "SSRF/internal closure",
+      "triggers": [
+        "ssrf",
+        "internal fetch",
+        "metadata access",
+        "internal route access"
+      ],
+      "signals": [
+        "source acquired",
+        "internal config",
+        "admin route",
+        "metadata credentials"
+      ],
+      "better_question": "Has SSRF already solved the information problem, making closure more valuable than further enumeration?",
+      "stop_rule": "After source or config is already acquired, do not keep broad SSRF enumeration unless closure probes fail.",
+      "promote_if": [
+        "source/config/internal route evidence obtained"
+      ],
+      "demote_if": [
+        "enumeration continues without narrowing closure"
+      ],
+      "query_terms": [
+        "ssrf",
+        "internal",
+        "source",
+        "config",
+        "metadata",
+        "closure"
+      ],
+      "related_pattern_queries": [
+        "web ssrf internal source config metadata admin route"
+      ],
+      "related_failure_signatures": [
+        "anti-pattern-ssrf-after-source-acquisition"
+      ],
+      "related_closure_lessons": [
+        "closure-source-leak",
+        "closure-admin-session"
+      ],
+      "suggested_control_action": "CLOSE",
+      "budget_penalty": "freeze broad SSRF enumeration once source or config is already acquired"
+    },
+    {
+      "id": "closure-db-read",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-db-read.md",
+      "family": "closure",
+      "category": "web",
+      "title": "DB read closure",
+      "triggers": [
+        "sqli read",
+        "db read",
+        "collection read",
+        "authenticated data read"
+      ],
+      "signals": [
+        "flag row",
+        "secret table",
+        "config table",
+        "admin object"
+      ],
+      "better_question": "Which tables, collections, or fields are most likely to contain the flag, secret, admin token, or route clue?",
+      "stop_rule": "Do not keep full-database exploration once a likely flag-bearing structure exists.",
+      "promote_if": [
+        "schema names suggest secrets/config/flag"
+      ],
+      "demote_if": [
+        "broad dumping without ranking"
+      ],
+      "query_terms": [
+        "db read",
+        "schema",
+        "flag",
+        "secret",
+        "config",
+        "admin token"
+      ],
+      "related_pattern_queries": [
+        "web db read schema secret config admin token hidden object"
+      ],
+      "related_closure_lessons": [
+        "closure-admin-session"
+      ],
+      "suggested_control_action": "CLOSE"
+    },
+    {
+      "id": "closure-file-write",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-file-write.md",
+      "family": "closure",
+      "category": "web",
+      "title": "File write closure",
+      "triggers": [
+        "file write",
+        "upload write",
+        "controlled path",
+        "controlled content"
+      ],
+      "signals": [
+        "static readback",
+        "include path",
+        "template render",
+        "session trigger"
+      ],
+      "better_question": "What is the cheapest adapter that converts this write into readback, include, render, execution, or privileged state?",
+      "stop_rule": "After a viable adapter exists, freeze unrelated discovery until the top two closure adapters fail.",
+      "promote_if": [
+        "write path and trigger are understood"
+      ],
+      "demote_if": [
+        "new discovery continues despite viable adapters"
+      ],
+      "query_terms": [
+        "file write",
+        "upload",
+        "readback",
+        "include",
+        "render",
+        "adapter"
+      ],
+      "related_pattern_queries": [
+        "web file write upload include render filter adapter"
+      ],
+      "related_closure_lessons": [
+        "closure-deserialization",
+        "closure-template-injection"
+      ],
+      "suggested_control_action": "CLOSE"
+    },
+    {
+      "id": "closure-deserialization",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-deserialization.md",
+      "family": "closure",
+      "category": "web",
+      "title": "Deserialization closure",
+      "triggers": [
+        "deserialization",
+        "gadget chain",
+        "object stream",
+        "unserialize"
+      ],
+      "signals": [
+        "read",
+        "write",
+        "invoke",
+        "render",
+        "trigger"
+      ],
+      "better_question": "What is the cheapest confirmed gadget effect that gets me to read, write, or privileged state with the current sink?",
+      "stop_rule": "Do not keep gadget hunting when one confirmed gadget already composes into a strong closure path.",
+      "promote_if": [
+        "concrete gadget effect is confirmed"
+      ],
+      "demote_if": [
+        "gadget search expands without closure movement"
+      ],
+      "query_terms": [
+        "deserialization",
+        "gadget",
+        "read",
+        "write",
+        "invoke",
+        "closure"
+      ],
+      "related_pattern_queries": [
+        "web deserialization gadget read write invoke render"
+      ],
+      "related_closure_lessons": [
+        "closure-file-write",
+        "closure-source-leak"
+      ],
+      "suggested_control_action": "CLOSE"
+    },
+    {
+      "id": "closure-template-injection",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-template-injection.md",
+      "family": "closure",
+      "category": "web",
+      "title": "Template injection closure",
+      "triggers": [
+        "ssti",
+        "template injection",
+        "render-time expression",
+        "arithmetic fingerprint"
+      ],
+      "signals": [
+        "config read",
+        "env read",
+        "source read",
+        "object traversal"
+      ],
+      "better_question": "What is the smallest template-side read path that reaches config, source, env, filesystem, or privileged state?",
+      "stop_rule": "Read beats shell when a direct flag/config/source path exists.",
+      "promote_if": [
+        "template execution confirmed"
+      ],
+      "demote_if": [
+        "payload cleverness increases without read closure"
+      ],
+      "query_terms": [
+        "ssti",
+        "template",
+        "config",
+        "env",
+        "source",
+        "read path"
+      ],
+      "related_pattern_queries": [
+        "web ssti template env config source read path"
+      ],
+      "related_closure_lessons": [
+        "closure-source-leak",
+        "closure-file-read"
+      ],
+      "suggested_control_action": "CLOSE"
+    },
+    {
+      "id": "closure-jwt-role-forge",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-jwt-role-forge.md",
+      "family": "closure",
+      "category": "web",
+      "title": "JWT/token forge closure",
+      "triggers": [
+        "jwt forge",
+        "role forge",
+        "alg confusion",
+        "token resign"
+      ],
+      "signals": [
+        "admin route",
+        "role-only object",
+        "privileged api"
+      ],
+      "better_question": "Which privileged route or object becomes reachable once the forged token is used?",
+      "stop_rule": "After forgeability is confirmed, token theory is lower priority than privileged route closure.",
+      "promote_if": [
+        "forged or stronger token is usable"
+      ],
+      "demote_if": [
+        "token internals dominate after forgeability"
+      ],
+      "query_terms": [
+        "jwt",
+        "token forge",
+        "admin route",
+        "role",
+        "privileged api"
+      ],
+      "related_pattern_queries": [
+        "web jwt role forge admin route privileged api"
+      ],
+      "related_failure_signatures": [
+        "anti-pattern-jwt-decode-without-trust-boundary"
+      ],
+      "related_closure_lessons": [
+        "closure-admin-session"
+      ],
+      "suggested_control_action": "CLOSE"
+    },
+    {
+      "id": "closure-java-actuator",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-java-actuator.md",
+      "family": "closure",
+      "category": "web",
+      "title": "Java actuator closure",
+      "triggers": [
+        "spring actuator",
+        "env exposure",
+        "java debug surface",
+        "mappings"
+      ],
+      "signals": [
+        "secret",
+        "credential",
+        "file path",
+        "route enablement"
+      ],
+      "better_question": "Which actuator/config output most directly reveals credentials, file paths, or route enablement?",
+      "stop_rule": "Do not keep broad actuator curiosity once a secret-bearing or route-enabling output is visible.",
+      "promote_if": [
+        "actuator/config output exists"
+      ],
+      "demote_if": [
+        "broad endpoint curiosity dominates"
+      ],
+      "query_terms": [
+        "spring actuator",
+        "env",
+        "mappings",
+        "secret",
+        "credential",
+        "route enablement"
+      ],
+      "related_pattern_queries": [
+        "java spring actuator env mappings secret credential"
+      ],
+      "related_owner_lessons": [
+        "owner-web-java-handoff"
+      ],
+      "related_closure_lessons": [
+        "closure-source-leak",
+        "closure-admin-session"
+      ],
+      "suggested_control_action": "OWNER_OR_CLOSE",
+      "owner_flip_trigger": "Java explains the sink, config path, or privileged route better than Web transport"
+    },
+    {
+      "id": "closure-rev-checker-recovery",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-rev-checker-recovery.md",
+      "family": "closure",
+      "category": "reverse",
+      "title": "Rev checker recovery closure",
+      "triggers": [
+        "checker recovered",
+        "validation logic",
+        "lookup tables",
+        "transform chain"
+      ],
+      "signals": [
+        "solver",
+        "equation",
+        "constants",
+        "output format"
+      ],
+      "better_question": "What exact unknown still blocks reconstruction, and do I need more reversing or just a solver now?",
+      "stop_rule": "Once the checker is modeled, more browsing is lower value than solver completion.",
+      "promote_if": [
+        "checker semantics are understood"
+      ],
+      "demote_if": [
+        "code browsing continues without unknown reduction"
+      ],
+      "query_terms": [
+        "checker",
+        "reverse",
+        "solver",
+        "equation",
+        "lookup table",
+        "flag format"
+      ],
+      "related_pattern_queries": [
+        "reverse checker solver equation lookup table validation logic"
+      ],
+      "related_owner_lessons": [
+        "owner-web-rev-handoff"
+      ],
+      "suggested_control_action": "CLOSE"
+    },
+    {
+      "id": "closure-crypto-oracle-to-plaintext",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-crypto-oracle-to-plaintext.md",
+      "family": "closure",
+      "category": "crypto",
+      "title": "Crypto oracle to plaintext closure",
+      "triggers": [
+        "oracle",
+        "partial key recovery",
+        "parameter weakness",
+        "cryptanalytic primitive"
+      ],
+      "signals": [
+        "plaintext",
+        "key",
+        "forgeable message",
+        "solver skeleton"
+      ],
+      "better_question": "What is the minimal remaining unknown between the current primitive and a decodable or forgeable final artifact?",
+      "stop_rule": "Once the oracle or weakness is real, stop broad reconnaissance and finish the attack.",
+      "promote_if": [
+        "crypto primitive is confirmed"
+      ],
+      "demote_if": [
+        "side facts accumulate without solve completion"
+      ],
+      "query_terms": [
+        "crypto oracle",
+        "plaintext",
+        "partial key",
+        "forgery",
+        "solver"
+      ],
+      "related_pattern_queries": [
+        "crypto oracle plaintext partial key forgery solver"
+      ],
+      "related_owner_lessons": [
+        "owner-web-crypto-handoff"
+      ],
+      "suggested_control_action": "CLOSE"
+    },
+    {
+      "id": "closure-pwn-leak-to-win",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-pwn-leak-to-win.md",
+      "family": "closure",
+      "category": "pwn",
+      "title": "Pwn leak to win closure",
+      "triggers": [
+        "leak confirmed",
+        "control primitive",
+        "partial exploit path"
+      ],
+      "signals": [
+        "base fix",
+        "gadget",
+        "orw",
+        "stabilization",
+        "flag extraction"
+      ],
+      "better_question": "What exact blocker remains between the current primitive and stable win or read-flag behavior?",
+      "stop_rule": "Do not reopen exploit-family discovery when the branch is already leak or control complete enough to finish.",
+      "promote_if": [
+        "leak or control primitive exists"
+      ],
+      "demote_if": [
+        "new exploit families distract from blocker resolution"
+      ],
+      "query_terms": [
+        "pwn leak",
+        "orw",
+        "gadget",
+        "base",
+        "stabilization",
+        "flag read"
+      ],
+      "related_pattern_queries": [
+        "pwn leak orw gadget base flag read stabilization"
+      ],
+      "suggested_control_action": "CLOSE"
+    },
+    {
+      "id": "owner-web-java-handoff",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\owner-web-java-handoff.md",
+      "family": "owner",
+      "category": "web",
+      "title": "Web to Java handoff",
+      "triggers": [
+        "web plus spring",
+        "java stacktrace",
+        "actuator",
+        "jar behavior"
+      ],
+      "signals": [
+        "sink owned by java",
+        "config owned by java",
+        "template or deserialization"
+      ],
+      "better_question": "Does HTTP still own the problem, or is it only transport for a Java-controlled sink or closure path?",
+      "stop_rule": "No co-primary owners when Java clearly owns the sink or closure blocker.",
+      "promote_if": [
+        "java explains sink, oracle, or closure blocker"
+      ],
+      "demote_if": [
+        "web remains owner only because it is visible"
+      ],
+      "query_terms": [
+        "web",
+        "java",
+        "spring",
+        "actuator",
+        "stacktrace",
+        "handoff"
+      ],
+      "related_closure_lessons": [
+        "closure-java-actuator"
+      ],
+      "related_pattern_queries": [
+        "web java spring actuator stacktrace route sink handoff"
+      ],
+      "suggested_control_action": "OWNER",
+      "owner_flip_trigger": "Java now owns sink semantics or closure blocker"
+    },
+    {
+      "id": "owner-web-rev-handoff",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\owner-web-rev-handoff.md",
+      "family": "owner",
+      "category": "web",
+      "title": "Web to Rev handoff",
+      "triggers": [
+        "downloaded client",
+        "apk",
+        "binary",
+        "frontend logic",
+        "local transform"
+      ],
+      "signals": [
+        "token format",
+        "validation logic",
+        "serialization state",
+        "secret in artifact"
+      ],
+      "better_question": "Is HTTP only transport now, while the actual sink, transform, or trust boundary is owned by artifact logic?",
+      "stop_rule": "Do not keep Web as owner when artifact logic defines the real primitive.",
+      "promote_if": [
+        "artifact explains semantics better than live request mutation"
+      ],
+      "demote_if": [
+        "web mutation continues without semantic gain"
+      ],
+      "query_terms": [
+        "web",
+        "reverse",
+        "apk",
+        "binary",
+        "client logic",
+        "handoff"
+      ],
+      "related_closure_lessons": [
+        "closure-rev-checker-recovery"
+      ],
+      "related_pattern_queries": [
+        "web reverse apk binary client logic token validation handoff"
+      ],
+      "suggested_control_action": "OWNER",
+      "owner_flip_trigger": "Artifact logic now explains token, validation, or transform semantics"
+    },
+    {
+      "id": "owner-web-crypto-handoff",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\owner-web-crypto-handoff.md",
+      "family": "owner",
+      "category": "web",
+      "title": "Web to Crypto handoff",
+      "triggers": [
+        "token",
+        "signature",
+        "encrypted blob",
+        "oracle response",
+        "verification logic"
+      ],
+      "signals": [
+        "scheme misuse",
+        "oracle behavior",
+        "trust boundary"
+      ],
+      "better_question": "Is the main uncertainty now route behavior, or cryptographic semantics?",
+      "stop_rule": "If crypto owns the next decisive probe, hand off instead of keeping Web primary by habit.",
+      "promote_if": [
+        "next decisive step depends on crypto modeling"
+      ],
+      "demote_if": [
+        "web mutation dominates despite crypto-owned uncertainty"
+      ],
+      "query_terms": [
+        "web",
+        "crypto",
+        "token",
+        "oracle",
+        "signature",
+        "handoff"
+      ],
+      "related_closure_lessons": [
+        "closure-crypto-oracle-to-plaintext",
+        "closure-jwt-role-forge"
+      ],
+      "related_pattern_queries": [
+        "web crypto token oracle signature verification handoff"
+      ],
+      "suggested_control_action": "OWNER",
+      "owner_flip_trigger": "Crypto semantics now own the next decisive probe"
+    },
+    {
+      "id": "owner-web-forensics-handoff",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\owner-web-forensics-handoff.md",
+      "family": "owner",
+      "category": "web",
+      "title": "Web to Forensics handoff",
+      "triggers": [
+        "uploaded file",
+        "archive",
+        "image",
+        "capture",
+        "log artifact"
+      ],
+      "signals": [
+        "embedded clue",
+        "artifact secret",
+        "internal path in file"
+      ],
+      "better_question": "Is the next best differential on the live service, or inside the provided artifact?",
+      "stop_rule": "Do not keep fuzzing the service when the attachment itself is the stronger clue source.",
+      "promote_if": [
+        "artifact analysis is likely higher-value than web mutation"
+      ],
+      "demote_if": [
+        "service probing continues despite richer artifact clues"
+      ],
+      "query_terms": [
+        "web",
+        "forensics",
+        "artifact",
+        "archive",
+        "image",
+        "handoff"
+      ],
+      "related_pattern_queries": [
+        "web forensics artifact archive image embedded clue handoff"
+      ],
+      "suggested_control_action": "OWNER",
+      "owner_flip_trigger": "Artifact evidence is now more informative than live Web mutation"
+    },
+    {
+      "id": "failure-medium-value-primitive-drift",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-medium-value-primitive-drift.md",
+      "family": "failure",
+      "category": "all",
+      "title": "Medium-value primitive drift",
+      "triggers": [
+        "reflection",
+        "open redirect",
+        "weak xss",
+        "ui-only differential"
+      ],
+      "signals": [
+        "activity without closure progress",
+        "same-family probes"
+      ],
+      "better_question": "Is this branch actually moving closer to flag, source, database, or privileged state?",
+      "stop_rule": "Medium-value branches need a two-step route to higher-value state or they are downgraded.",
+      "promote_if": [
+        "clear two-step path to flag or secret appears"
+      ],
+      "demote_if": [
+        "two same-family probes produce no progress"
+      ],
+      "query_terms": [
+        "medium value",
+        "drift",
+        "reflection",
+        "open redirect",
+        "xss",
+        "no progress"
+      ],
+      "related_failure_signatures": [
+        "anti-pattern-reflection-without-secret-route"
+      ],
+      "related_pattern_queries": [
+        "web reflection xss open redirect no secret route medium value"
+      ],
+      "suggested_control_action": "PIVOT_OR_LEDGER",
+      "budget_penalty": "downgrade medium-value branch after two no-progress probes"
+    },
+    {
+      "id": "failure-source-not-prioritized",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-source-not-prioritized.md",
+      "family": "failure",
+      "category": "web",
+      "title": "Source not prioritized",
+      "triggers": [
+        "cheap source surface exists",
+        "source available",
+        "git leak",
+        "backup file"
+      ],
+      "signals": [
+        "black-box branch continues despite cheap source path"
+      ],
+      "better_question": "Is source acquisition cheaper than the current branch complexity?",
+      "stop_rule": "Do not deepen complex medium-value branches while a cheap source/data surface is still untested.",
+      "promote_if": [
+        "source path cost is low"
+      ],
+      "demote_if": [
+        "black-box branch dominates despite available source"
+      ],
+      "query_terms": [
+        "source not prioritized",
+        "git leak",
+        "backup file",
+        "cheap source",
+        "blackbox drift"
+      ],
+      "related_closure_lessons": [
+        "closure-source-leak"
+      ],
+      "related_pattern_queries": [
+        "web git leak backup file cheap source source-first"
+      ],
+      "suggested_control_action": "PIVOT_OR_CLOSE",
+      "budget_penalty": "cap black-box branch until cheap source surfaces are resolved"
+    },
+    {
+      "id": "failure-flat-differential-branch-not-killed",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-flat-differential-branch-not-killed.md",
+      "family": "failure",
+      "category": "all",
+      "title": "Flat differential branch not killed",
+      "triggers": [
+        "repeated payload mutation",
+        "same endpoint",
+        "no new oracle",
+        "flat results"
+      ],
+      "signals": [
+        "payload variance mistaken for hypothesis variance"
+      ],
+      "better_question": "What orthogonal variable would change the actual hypothesis rather than just the payload string?",
+      "stop_rule": "Three no-differential same-family variants is a stale branch.",
+      "promote_if": [
+        "new orthogonal variable exists"
+      ],
+      "demote_if": [
+        "same family remains flat"
+      ],
+      "query_terms": [
+        "flat differential",
+        "same family",
+        "no new oracle",
+        "payload variance"
+      ],
+      "related_pattern_queries": [
+        "same family no new oracle flat differential endpoint calibration"
+      ],
+      "suggested_control_action": "PIVOT_OR_LEDGER",
+      "budget_penalty": "kill same-family branch after repeated flat differentials"
+    },
+    {
+      "id": "failure-owner-should-switch-earlier",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-owner-should-switch-earlier.md",
+      "family": "failure",
+      "category": "all",
+      "title": "Owner should switch earlier",
+      "triggers": [
+        "supporting surface dominates evidence",
+        "owner mismatch",
+        "mixed-surface drift"
+      ],
+      "signals": [
+        "transport visibility mistaken for sink ownership"
+      ],
+      "better_question": "Which surface now explains the sink, parser, or closure blocker best?",
+      "stop_rule": "No co-primary owners; hand off when support owns sink or closure understanding.",
+      "promote_if": [
+        "supporting surface explains sink or blocker better"
+      ],
+      "demote_if": [
+        "current owner survives only by momentum"
+      ],
+      "query_terms": [
+        "owner switch",
+        "mixed surface",
+        "sink ownership",
+        "handoff",
+        "owner mismatch"
+      ],
+      "related_owner_lessons": [
+        "owner-web-java-handoff",
+        "owner-web-rev-handoff",
+        "owner-web-crypto-handoff",
+        "owner-web-forensics-handoff"
+      ],
+      "suggested_control_action": "OWNER",
+      "owner_flip_trigger": "supporting surface now explains sink or closure blocker better than current owner"
+    },
+    {
+      "id": "failure-primitive-confirmed-no-closure-model",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-primitive-confirmed-no-closure-model.md",
+      "family": "failure",
+      "category": "all",
+      "title": "Primitive confirmed, no closure model",
+      "triggers": [
+        "high-value primitive confirmed",
+        "exploration continues",
+        "no primitive ledger"
+      ],
+      "signals": [
+        "unrelated bug-family exploration after primitive"
+      ],
+      "better_question": "Why is the branch still exploring if a plausible closure queue already exists?",
+      "stop_rule": "After a high-value primitive, unrelated bug-family exploration is suspended until the top closure probes fail.",
+      "promote_if": [
+        "plausible closure queue exists"
+      ],
+      "demote_if": [
+        "discovery dominates after primitive"
+      ],
+      "query_terms": [
+        "primitive confirmed",
+        "no closure model",
+        "closure queue",
+        "exploration after primitive"
+      ],
+      "related_closure_lessons": [
+        "closure-source-leak",
+        "closure-file-read",
+        "closure-admin-session",
+        "closure-file-write"
+      ],
+      "suggested_control_action": "CLOSE",
+      "budget_penalty": "freeze unrelated discovery until top closure probes fail"
+    },
+    {
+      "id": "failure-repeated-proc-enum",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-repeated-proc-enum.md",
+      "family": "failure",
+      "category": "web",
+      "title": "Repeated proc/environment enumeration",
+      "triggers": [
+        "/proc",
+        "fd",
+        "environ",
+        "maps",
+        "hostname",
+        "startup files"
+      ],
+      "signals": [
+        "plausibility replacing evidence",
+        "path variants continue"
+      ],
+      "better_question": "What stronger semantic, parser, or closure probe now has higher information value than another proc path guess?",
+      "stop_rule": "Two no-progress environment or proc probes means the family is frozen until new evidence appears.",
+      "promote_if": [
+        "direct source, flag, or secret evidence appears"
+      ],
+      "demote_if": [
+        "two no-differential proc probes already failed"
+      ],
+      "query_terms": [
+        "proc enum",
+        "environ",
+        "fd",
+        "maps",
+        "no progress",
+        "freeze family"
+      ],
+      "related_pattern_queries": [
+        "semantic mismatch parser differential content type path normalization"
+      ],
+      "suggested_control_action": "PIVOT_OR_LEDGER",
+      "budget_penalty": "freeze proc/environment family after two no-progress probes"
+    },
+    {
+      "id": "anti-pattern-reflection-without-secret-route",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-reflection-without-secret-route.md",
+      "family": "anti-pattern",
+      "category": "web",
+      "title": "Reflection without secret route",
+      "triggers": [
+        "reflection",
+        "display change",
+        "no bot",
+        "no secret endpoint"
+      ],
+      "signals": [
+        "easy interaction",
+        "no exfil path"
+      ],
+      "better_question": "Where is the secret-bearing browser state, privileged reader, or exfil route?",
+      "stop_rule": "Without a secret route, reflection stays medium-value at best.",
+      "promote_if": [
+        "bot, secret endpoint, or DOM-held secret appears"
+      ],
+      "demote_if": [
+        "reflection dominates without secret path"
+      ],
+      "query_terms": [
+        "reflection",
+        "no bot",
+        "no secret route",
+        "display change",
+        "medium value"
+      ],
+      "related_failure_signatures": [
+        "failure-medium-value-primitive-drift"
+      ],
+      "suggested_control_action": "PIVOT",
+      "budget_penalty": "reflection family gets minimal budget without secret route"
+    },
+    {
+      "id": "anti-pattern-ssrf-after-source-acquisition",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-ssrf-after-source-acquisition.md",
+      "family": "anti-pattern",
+      "category": "web",
+      "title": "SSRF after source acquisition",
+      "triggers": [
+        "ssrf already yielded source",
+        "config acquired",
+        "internal routes known"
+      ],
+      "signals": [
+        "open-ended enumeration",
+        "information problem already solved"
+      ],
+      "better_question": "What existing source or config clue should now drive closure?",
+      "stop_rule": "If source or config is already acquired, SSRF exploration must justify a concrete missing dependency.",
+      "promote_if": [
+        "closure probes fail and a missing internal dependency is named"
+      ],
+      "demote_if": [
+        "enumeration continues without closure narrowing"
+      ],
+      "query_terms": [
+        "ssrf",
+        "source acquired",
+        "config acquired",
+        "stop enumeration",
+        "closure"
+      ],
+      "related_closure_lessons": [
+        "closure-source-leak",
+        "closure-ssrf-internal"
+      ],
+      "suggested_control_action": "PIVOT_OR_CLOSE",
+      "budget_penalty": "stop broad SSRF enumeration after source/config acquisition"
+    },
+    {
+      "id": "anti-pattern-jwt-decode-without-trust-boundary",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-jwt-decode-without-trust-boundary.md",
+      "family": "anti-pattern",
+      "category": "web",
+      "title": "JWT decode without trust boundary",
+      "triggers": [
+        "jwt decodes",
+        "no forge evidence",
+        "no key control",
+        "no role path"
+      ],
+      "signals": [
+        "security-looking token",
+        "no exploitability signs"
+      ],
+      "better_question": "Where is the actual trust boundary that would make this token exploitable?",
+      "stop_rule": "Decodability is not exploitability; without trust-boundary evidence, token curiosity is downgraded.",
+      "promote_if": [
+        "weak secret, kid/jku/jwk misuse, or role-sensitive endpoint appears"
+      ],
+      "demote_if": [
+        "decode continues to dominate despite no exploitability path"
+      ],
+      "query_terms": [
+        "jwt decode",
+        "no trust boundary",
+        "weak secret",
+        "role path",
+        "token curiosity"
+      ],
+      "related_closure_lessons": [
+        "closure-jwt-role-forge"
+      ],
+      "suggested_control_action": "PIVOT",
+      "budget_penalty": "token curiosity gets low budget until trust-boundary evidence appears"
+    },
+    {
+      "id": "anti-pattern-rce-obsession-when-read-path-exists",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-rce-obsession-when-read-path-exists.md",
+      "family": "anti-pattern",
+      "category": "all",
+      "title": "RCE obsession when read path exists",
+      "triggers": [
+        "rce obsession",
+        "shell focus",
+        "direct read path exists"
+      ],
+      "signals": [
+        "maximal primitive bias",
+        "read already sufficient"
+      ],
+      "better_question": "Why is execution worth more than the current direct read path to flag, config, or source?",
+      "stop_rule": "Read beats shell when it already reaches the flag path more cheaply.",
+      "promote_if": [
+        "direct read paths are blocked and execution is actually required"
+      ],
+      "demote_if": [
+        "execution dominates despite viable read closure"
+      ],
+      "query_terms": [
+        "rce obsession",
+        "read path exists",
+        "shell vs read",
+        "closure value"
+      ],
+      "related_closure_lessons": [
+        "closure-file-read",
+        "closure-template-injection",
+        "closure-source-leak"
+      ],
+      "suggested_control_action": "CLOSE_OR_PIVOT",
+      "budget_penalty": "execution obsession is downgraded when a cheaper read path exists"
+    },
+    {
+      "id": "anti-pattern-jwt-decode-without-trust-boundary-hard",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-jwt-decode-without-trust-boundary-hard.md",
+      "family": "anti-pattern",
+      "category": "web",
+      "title": "JWT decode without trust boundary (hard-mode)",
+      "triggers": [
+        "jwt decodes cleanly",
+        "claims visible",
+        "alg/kid/jku curiosity",
+        "no server-side authorization proof"
+      ],
+      "signals": [
+        "visible token fields",
+        "no role-sensitive route",
+        "no key-control evidence",
+        "no claim significance differential"
+      ],
+      "better_question": "Which exact server-side trust boundary makes this token exploitable, and can one harmless mutation prove significance?",
+      "stop_rule": "Do not spend hard-mode budget on JWT mutation families until token class, validation path, and claim/key-location significance are classified.",
+      "promote_if": [
+        "claim/header mutation changes authorization",
+        "weak secret/key-control evidence appears",
+        "role-sensitive endpoint is identified"
+      ],
+      "demote_if": [
+        "decode-only evidence",
+        "mutations produce no authz differential",
+        "source shows server ignores client claims"
+      ],
+      "query_terms": [
+        "jwt decode",
+        "trust boundary",
+        "claim significance",
+        "kid",
+        "jku",
+        "role authz"
+      ],
+      "related_closure_lessons": [
+        "closure-jwt-role-forge",
+        "closure-admin-session"
+      ],
+      "related_pattern_queries": [
+        "web jwt trust boundary claim significance kid jku role authorization"
+      ],
+      "suggested_control_action": "PIVOT_OR_LEDGER",
+      "budget_penalty": "cap JWT curiosity until a trust-boundary differential exists"
+    },
+    {
+      "id": "category-failure-signatures-backlog",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\CATEGORY_FAILURE_SIGNATURES_BACKLOG.md",
+      "family": "misc",
+      "category": "all",
+      "title": "Category failure signatures backlog",
+      "triggers": [
+        "hard-mode control review",
+        "category-specific drift",
+        "missing failure lesson",
+        "retro backlog"
+      ],
+      "signals": [
+        "pwn/rev/crypto/web recurring failures",
+        "unindexed anti-pattern",
+        "unmodeled stop rule"
+      ],
+      "better_question": "Which recurring failure signature deserves a structured stop rule before the next hard challenge?",
+      "stop_rule": "Do not treat backlog bullets as tactical advice until converted into a structured lesson with triggers and first probes.",
+      "promote_if": [
+        "same failure appears twice",
+        "budget loss is high",
+        "owner/closure decisions are affected"
+      ],
+      "demote_if": [
+        "one-off note",
+        "already covered by indexed lesson"
+      ],
+      "query_terms": [
+        "failure backlog",
+        "hard mode",
+        "category drift",
+        "stop rule",
+        "retro"
+      ],
+      "related_pattern_queries": [
+        "ctf failure signatures backlog pwn rev crypto web anti-pattern"
+      ],
+      "suggested_control_action": "LEDGER"
+    },
+    {
+      "id": "failure-crypto-coppersmith-without-bounds",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-crypto-coppersmith-without-bounds.md",
+      "family": "failure",
+      "category": "crypto",
+      "title": "Coppersmith without bounds",
+      "triggers": [
+        "Coppersmith proposed",
+        "small roots",
+        "partial key bits",
+        "unknown bounds unstated"
+      ],
+      "signals": [
+        "advanced lattice route",
+        "no polynomial written",
+        "no numerical bound table",
+        "parameter sizes ignored"
+      ],
+      "better_question": "What is the exact polynomial, unknown variable, modulus, and bound inequality that makes Coppersmith applicable?",
+      "stop_rule": "No lattice implementation until polynomial form and small-root bound assumptions are explicitly checked against challenge sizes.",
+      "promote_if": [
+        "unknown bound satisfies theorem conditions",
+        "polynomial model matches transcript",
+        "simpler RSA families eliminated"
+      ],
+      "demote_if": [
+        "unknown too large",
+        "polynomial speculative",
+        "encoding/transcript still ambiguous"
+      ],
+      "query_terms": [
+        "coppersmith",
+        "small roots",
+        "bounds",
+        "rsa",
+        "lattice",
+        "polynomial"
+      ],
+      "related_closure_lessons": [
+        "closure-crypto-oracle-to-plaintext"
+      ],
+      "related_pattern_queries": [
+        "crypto coppersmith small root bounds rsa lattice polynomial"
+      ],
+      "suggested_control_action": "LEDGER_OR_PIVOT",
+      "budget_penalty": "block Sage/lattice coding until precondition table exists"
+    },
+    {
+      "id": "failure-crypto-custom-algebra-before-family-elimination",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-crypto-custom-algebra-before-family-elimination.md",
+      "family": "failure",
+      "category": "crypto",
+      "title": "Custom algebra before family elimination",
+      "triggers": [
+        "recognizable crypto parameters",
+        "oracle behavior",
+        "advanced attack name plausible",
+        "family unclassified"
+      ],
+      "signals": [
+        "custom Sage work",
+        "no precondition matrix",
+        "simpler attacks not tested",
+        "parameter normalization missing"
+      ],
+      "better_question": "Which crypto family is actually supported by parameters/oracle evidence, and what cheapest test distinguishes it from simpler families?",
+      "stop_rule": "Do not start custom algebra before normalizing parameters and eliminating simpler families with one discriminating probe each.",
+      "promote_if": [
+        "family prerequisites proven",
+        "oracle formalized",
+        "simpler families falsified"
+      ],
+      "demote_if": [
+        "attack name chosen from vibes",
+        "ambiguous transcript",
+        "no numerical constraints"
+      ],
+      "query_terms": [
+        "crypto family elimination",
+        "custom algebra",
+        "rsa",
+        "oracle",
+        "precondition matrix"
+      ],
+      "related_closure_lessons": [
+        "closure-crypto-oracle-to-plaintext"
+      ],
+      "related_pattern_queries": [
+        "crypto family precondition matrix oracle normalization rsa attacks"
+      ],
+      "suggested_control_action": "PIVOT_OR_LEDGER",
+      "budget_penalty": "force family/precondition matrix before advanced algebra"
+    },
+    {
+      "id": "failure-crypto-transcript-not-normalized",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-crypto-transcript-not-normalized.md",
+      "family": "failure",
+      "category": "crypto",
+      "title": "Transcript not normalized before attack coding",
+      "triggers": [
+        "bytes/int ambiguity",
+        "base64/hex ambiguity",
+        "protocol transcript",
+        "attack code starts early"
+      ],
+      "signals": [
+        "serializer absent",
+        "field ordering uncertain",
+        "mixed endian assumptions",
+        "math code consumes raw strings"
+      ],
+      "better_question": "What canonical parser/serializer defines each field, byte order, encoding, and transcript order consumed by the attack?",
+      "stop_rule": "No cryptanalytic implementation until all values are normalized into a single canonical representation and round-tripped where possible.",
+      "promote_if": [
+        "canonical parser exists",
+        "field semantics verified",
+        "attack consumes normalized objects only"
+      ],
+      "demote_if": [
+        "encoding ambiguity remains",
+        "different scripts parse values differently"
+      ],
+      "query_terms": [
+        "crypto transcript",
+        "normalization",
+        "bytes ints",
+        "base64 hex",
+        "serializer"
+      ],
+      "related_pattern_queries": [
+        "crypto transcript normalization parser serializer encoding byte int"
+      ],
+      "suggested_control_action": "LEDGER",
+      "budget_penalty": "freeze attack coding until transcript normalization is complete"
+    },
+    {
+      "id": "failure-forensics-memory-sweep-without-target-process",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-forensics-memory-sweep-without-target-process.md",
+      "family": "failure",
+      "category": "forensics",
+      "title": "Memory sweep without target process",
+      "triggers": [
+        "large memory image",
+        "many process/plugin outputs",
+        "no target process",
+        "broad volatility sweep"
+      ],
+      "signals": [
+        "voluminous output",
+        "no anchor artifact",
+        "process dumps without ranking",
+        "strings everywhere"
+      ],
+      "better_question": "Which process or artifact family is the highest-probability owner of the secret/session/credential, and what focused extraction proves it?",
+      "stop_rule": "Do not sweep arbitrary processes until one anchor artifact and ranked target process are selected.",
+      "promote_if": [
+        "browser/session/credential clue",
+        "suspicious process",
+        "network/file handle anchor"
+      ],
+      "demote_if": [
+        "plugin breadth replaces target ranking",
+        "no process owner chosen"
+      ],
+      "query_terms": [
+        "forensics memory",
+        "process ranking",
+        "volatility",
+        "target process",
+        "credential"
+      ],
+      "related_pattern_queries": [
+        "forensics memory image volatility process ranking credential browser session"
+      ],
+      "suggested_control_action": "OWNER_OR_LEDGER",
+      "budget_penalty": "require target process selection before deep dumping"
+    },
+    {
+      "id": "failure-forensics-packet-reading-before-stream-ranking",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-forensics-packet-reading-before-stream-ranking.md",
+      "family": "failure",
+      "category": "forensics",
+      "title": "Packet reading before stream ranking",
+      "triggers": [
+        "pcap with many packets",
+        "manual packet reading",
+        "no conversation ranking",
+        "protocol noise"
+      ],
+      "signals": [
+        "sequential packet inspection",
+        "no top streams",
+        "auth/object-bearing stream unknown"
+      ],
+      "better_question": "Which reconstructed conversations are most likely to contain credentials, sessions, files, or exfil objects?",
+      "stop_rule": "Rank conversations by protocol, byte volume, and auth/object clues before reading individual packets deeply.",
+      "promote_if": [
+        "auth-bearing stream",
+        "file transfer",
+        "DNS/HTTP anomaly",
+        "large or rare protocol conversation"
+      ],
+      "demote_if": [
+        "packet-by-packet reading continues",
+        "no stream reconstruction"
+      ],
+      "query_terms": [
+        "pcap",
+        "stream ranking",
+        "tcp stream",
+        "http objects",
+        "forensics"
+      ],
+      "related_pattern_queries": [
+        "forensics pcap stream ranking tcp http objects credentials"
+      ],
+      "suggested_control_action": "PIVOT_OR_LEDGER",
+      "budget_penalty": "block packet-by-packet reading until stream ranking exists"
+    },
+    {
+      "id": "failure-pwn-partial-control-treated-as-full-rce",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-pwn-partial-control-treated-as-full-rce.md",
+      "family": "failure",
+      "category": "pwn",
+      "title": "Partial control treated as full RCE",
+      "triggers": [
+        "partial memory corruption",
+        "controlled length/index/pointer",
+        "no RIP proof",
+        "full exploit attempted"
+      ],
+      "signals": [
+        "ROP design before primitive",
+        "control surface overclaimed",
+        "no reusable read/write target"
+      ],
+      "better_question": "What exact field is controlled, and what first reusable read/write/control primitive can that field promote into?",
+      "stop_rule": "Do not design full RCE until partial control is promoted into a proven read, write, leak, or control-flow primitive.",
+      "promote_if": [
+        "function pointer/vtable/GOT target",
+        "length-field expansion",
+        "heap link reuse",
+        "reliable leak/write"
+      ],
+      "demote_if": [
+        "only adjacent-field corruption",
+        "no primitive ladder",
+        "crash-only behavior"
+      ],
+      "query_terms": [
+        "pwn partial control",
+        "primitive ladder",
+        "memory corruption",
+        "read write",
+        "RIP control"
+      ],
+      "related_closure_lessons": [
+        "closure-pwn-leak-to-win"
+      ],
+      "related_pattern_queries": [
+        "pwn partial overwrite primitive ladder length field pointer control"
+      ],
+      "suggested_control_action": "LEDGER_OR_PIVOT",
+      "budget_penalty": "force primitive-ladder proof before endgame ROP/shell"
+    },
+    {
+      "id": "failure-pwn-shell-obsession-before-flag-read",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-pwn-shell-obsession-before-flag-read.md",
+      "family": "failure",
+      "category": "pwn",
+      "title": "Shell obsession before easier flag-read closure",
+      "triggers": [
+        "seccomp",
+        "sandbox",
+        "ORW clue",
+        "unstable shell",
+        "direct flag read possible"
+      ],
+      "signals": [
+        "one_gadget roulette",
+        "ret2libc shell loops",
+        "read path ignored",
+        "shell blocked"
+      ],
+      "better_question": "Is a direct ORW/read-flag chain cheaper and more stable than obtaining an interactive shell?",
+      "stop_rule": "When shell is blocked/unstable and a read path is plausible, prioritize direct flag-read or ORW closure over shell variants.",
+      "promote_if": [
+        "seccomp permits open/read/write",
+        "flag path known",
+        "read/write syscalls/gadgets available"
+      ],
+      "demote_if": [
+        "shell payloads rotate without progress",
+        "direct read not tested"
+      ],
+      "query_terms": [
+        "pwn shell obsession",
+        "ORW",
+        "seccomp",
+        "flag read",
+        "one_gadget"
+      ],
+      "related_closure_lessons": [
+        "closure-pwn-leak-to-win"
+      ],
+      "related_pattern_queries": [
+        "pwn seccomp ORW flag read ret2libc one_gadget"
+      ],
+      "suggested_control_action": "CLOSE_OR_PIVOT",
+      "budget_penalty": "cap shell attempts once ORW/read-flag route is plausible"
+    },
+    {
+      "id": "failure-pwn-version-roulette-before-route-gating",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-pwn-version-roulette-before-route-gating.md",
+      "family": "failure",
+      "category": "pwn",
+      "title": "Version roulette before route gating",
+      "triggers": [
+        "libc/glibc assumption",
+        "heap allocator version",
+        "one_gadget offset",
+        "loader mismatch"
+      ],
+      "signals": [
+        "random libc guesses",
+        "version-sensitive route chosen early",
+        "heap behavior unexplained"
+      ],
+      "better_question": "Which exploit assumptions are version-sensitive, and what cheapest clue constrains libc/allocator/loader before route commitment?",
+      "stop_rule": "Do not rotate versions or gadgets before obtaining one constraining leak, fingerprint, or provided-environment clue.",
+      "promote_if": [
+        "symbol leak",
+        "allocator behavior fingerprint",
+        "Docker/libc provided",
+        "build-id clue"
+      ],
+      "demote_if": [
+        "offset roulette",
+        "family switch from one failed gadget",
+        "no version evidence"
+      ],
+      "query_terms": [
+        "pwn libc version",
+        "glibc roulette",
+        "heap version",
+        "build id",
+        "allocator fingerprint"
+      ],
+      "related_pattern_queries": [
+        "pwn libc version leak build-id allocator fingerprint heap glibc"
+      ],
+      "suggested_control_action": "LEDGER_OR_OWNER",
+      "budget_penalty": "require version gate clue before version-sensitive route deepening"
+    },
+    {
+      "id": "failure-rev-patching-before-stable-observation-point",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-rev-patching-before-stable-observation-point.md",
+      "family": "failure",
+      "category": "reverse",
+      "title": "Patching before stable observation point",
+      "triggers": [
+        "anti-debug",
+        "packing",
+        "self-modifying behavior",
+        "patching temptation"
+      ],
+      "signals": [
+        "broad patch",
+        "post-barrier semantics unknown",
+        "trace divergence not localized"
+      ],
+      "better_question": "Where is the smallest barrier, and what stable post-barrier code/memory view can be captured before patching?",
+      "stop_rule": "Do not broadly patch control flow before localizing the barrier and recording one stable post-barrier observation.",
+      "promote_if": [
+        "barrier address known",
+        "post-unpack/checker view dumped",
+        "patch effect validated"
+      ],
+      "demote_if": [
+        "patch destroys semantics",
+        "anti-debug treated globally",
+        "no stable observation"
+      ],
+      "query_terms": [
+        "reverse patching",
+        "anti-debug",
+        "unpack",
+        "stable observation",
+        "self-modifying"
+      ],
+      "related_closure_lessons": [
+        "closure-rev-checker-recovery"
+      ],
+      "related_pattern_queries": [
+        "reverse anti-debug unpack stable observation patching checker"
+      ],
+      "suggested_control_action": "LEDGER_OR_PIVOT",
+      "budget_penalty": "capture stable observation before broad patching"
+    },
+    {
+      "id": "failure-rev-symbolic-before-state-extraction",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-rev-symbolic-before-state-extraction.md",
+      "family": "failure",
+      "category": "reverse",
+      "title": "Symbolic escalation before state-machine extraction",
+      "triggers": [
+        "large pseudocode",
+        "VM-looking control flow",
+        "Z3 temptation",
+        "checker not isolated"
+      ],
+      "signals": [
+        "constraint bloat",
+        "symbolic before boundary",
+        "input/state variables unknown"
+      ],
+      "better_question": "What is the minimal real checker/state machine, and which state variables are touched by one controlled input trace?",
+      "stop_rule": "Do not escalate to symbolic solving until input boundary, comparison boundary, and minimal state variables are extracted.",
+      "promote_if": [
+        "first compare/accept branch located",
+        "state variables reduced",
+        "forward trace exists"
+      ],
+      "demote_if": [
+        "symbolic path explosion",
+        "VM treated as whole program",
+        "no checker boundary"
+      ],
+      "query_terms": [
+        "reverse symbolic",
+        "state extraction",
+        "checker",
+        "Z3",
+        "VM"
+      ],
+      "related_closure_lessons": [
+        "closure-rev-checker-recovery"
+      ],
+      "related_pattern_queries": [
+        "reverse checker state machine z3 symbolic path explosion VM"
+      ],
+      "suggested_control_action": "PIVOT_OR_LEDGER",
+      "budget_penalty": "block symbolic escalation until state extraction is complete"
+    },
+    {
+      "id": "failure-rev-table-constants-read-without-forward-model",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-rev-table-constants-read-without-forward-model.md",
+      "family": "failure",
+      "category": "reverse",
+      "title": "Table constants read without forward model",
+      "triggers": [
+        "lookup tables",
+        "byte arrays",
+        "constants extracted",
+        "no forward model"
+      ],
+      "signals": [
+        "inverse solver starts early",
+        "table path unverified",
+        "controlled input not traced"
+      ],
+      "better_question": "Can one extracted table round predict an observed state change or comparison for a controlled input?",
+      "stop_rule": "Do not invert tables or build solvers until one forward transform step is verified on the real checker path.",
+      "promote_if": [
+        "table on checker path",
+        "forward round validated",
+        "comparison prediction succeeds"
+      ],
+      "demote_if": [
+        "constants are decorative/decoys",
+        "no controlled trace",
+        "inverse-first modeling"
+      ],
+      "query_terms": [
+        "reverse table constants",
+        "forward model",
+        "lookup table",
+        "checker path",
+        "controlled input"
+      ],
+      "related_closure_lessons": [
+        "closure-rev-checker-recovery"
+      ],
+      "related_pattern_queries": [
+        "reverse lookup table constants forward model controlled input checker"
+      ],
+      "suggested_control_action": "LEDGER_OR_PIVOT",
+      "budget_penalty": "require verified forward model before inverse solver"
+    },
+    {
+      "id": "failure-rev-hidden-semantic-carrier-missed",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-rev-hidden-semantic-carrier-missed.md",
+      "family": "failure",
+      "category": "reverse",
+      "title": "Hidden semantic carrier missed",
+      "triggers": [
+        "exception path",
+        "suspicious register staging",
+        "patch or frame hint",
+        "visible checker too weak",
+        "logic appears removed"
+      ],
+      "signals": [
+        "data staged but not consumed in .text",
+        "unwind or metadata structures present",
+        "negative proof claimed too early"
+      ],
+      "better_question": "What hidden semantic carrier could still consume the staged data, and has a metadata/unwind pass actually ruled that out?",
+      "stop_rule": "Do not conclude checker removal or underconstraint until `.eh_frame` / `.debug_frame` / `.gcc_except_table` and `DW_CFA_val_expression` / `DW_OP_*` checks are negative.",
+      "promote_if": [
+        "exception routing exists",
+        "register staging is unexplained",
+        "frame or patch title hints exist"
+      ],
+      "demote_if": [
+        "metadata pass is negative",
+        "staged data is fully explained in normal .text"
+      ],
+      "query_terms": [
+        "reverse hidden semantics",
+        "eh_frame",
+        "debug_frame",
+        "dwarf unwind",
+        "DW_CFA_val_expression",
+        "DW_OP",
+        "metadata consumer",
+        "exception path"
+      ],
+      "related_closure_lessons": [
+        "closure-rev-checker-recovery"
+      ],
+      "related_pattern_queries": [
+        "reverse eh_frame debug_frame dwarf unwind metadata hidden consumer exception path"
+      ],
+      "suggested_control_action": "PIVOT_OR_LEDGER",
+      "budget_penalty": "require one hidden-semantic pass before concluding logic removal"
+    },
+    {
+      "id": "closure-pwn-ret2libc-two-stage",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-pwn-ret2libc-two-stage.md",
+      "family": "closure",
+      "category": "pwn",
+      "title": "Two-stage ret2libc closure",
+      "triggers": ["ret2libc", "two stage leak", "stage one leak", "rip control"],
+      "signals": ["stable first-stage leak needed", "base calculation", "clean return", "stage two chain"],
+      "better_question": "What is the smallest first-stage leak-and-return chain that proves a stable base before final execution?",
+      "stop_rule": "Do not rotate libc guesses, gadgets, or one_gadget candidates before one stable first-stage leak succeeds.",
+      "query_terms": ["ret2libc", "two stage", "leak then execute", "base calculation", "clean return"],
+      "related_pattern_queries": ["pwn ret2libc two stage leak clean return base calculation"],
+      "related_closure_lessons": ["closure-pwn-leak-to-win"],
+      "suggested_control_action": "CLOSE",
+      "closure_owner_hint": "the pwn branch already holding control and leak recovery"
+    },
+    {
+      "id": "closure-pwn-orw-seccomp",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-pwn-orw-seccomp.md",
+      "family": "closure",
+      "category": "pwn",
+      "title": "ORW/seccomp closure",
+      "triggers": ["seccomp", "sandbox", "shell blocked", "orw"],
+      "signals": ["syscall allowlist", "direct flag path", "open read write", "shell instability"],
+      "better_question": "Which allowed syscall sequence reaches the flag fastest with the current primitive?",
+      "stop_rule": "Do not continue shell-first mutation once seccomp evidence points to ORW or file-read closure.",
+      "query_terms": ["seccomp", "orw", "open read write", "sandbox", "flag read"],
+      "related_pattern_queries": ["pwn seccomp orw open read write syscall allowed shell blocked"],
+      "related_closure_lessons": ["closure-pwn-leak-to-win"],
+      "suggested_control_action": "CLOSE",
+      "closure_owner_hint": "the pwn branch holding the current memory-corruption primitive"
+    },
+    {
+      "id": "failure-pwn-movaps-alignment",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-pwn-movaps-alignment.md",
+      "family": "failure",
+      "category": "pwn",
+      "title": "movaps/alignment crash treated as gadget luck",
+      "triggers": ["movaps", "alignment crash", "ret2libc crash", "system crash"],
+      "signals": ["libc reached", "stack alignment suspect", "ret before system", "wrong gadget rotation"],
+      "better_question": "Would one clean stack-alignment fix explain the crash before any libc or gadget rotation?",
+      "stop_rule": "Test one alignment fix before changing libc, gadget family, or one_gadget candidates.",
+      "query_terms": ["movaps", "stack alignment", "ret2libc crash", "system crash", "alignment ret"],
+      "related_pattern_queries": ["pwn movaps stack alignment ret2libc wrong libc prompt sync"],
+      "suggested_control_action": "PIVOT",
+      "budget_penalty": "freeze gadget/libc roulette until one alignment test is tried"
+    },
+    {
+      "id": "failure-pwn-heap-technique-before-menu-state",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-pwn-heap-technique-before-menu-state.md",
+      "family": "failure",
+      "category": "pwn",
+      "title": "Heap technique before menu state reduction",
+      "triggers": ["heap menu", "tcache", "double free", "allocator"],
+      "signals": ["named house guessed early", "menu state unclear", "allocator version unknown", "primitive unproven"],
+      "better_question": "What exact menu state, allocator version, and concrete heap primitive are proven before choosing a named heap route?",
+      "stop_rule": "Do not try named heap techniques until the menu state table, allocator version, and one concrete primitive are verified.",
+      "query_terms": ["heap menu", "allocator version", "tcache", "uaf", "double free", "menu state"],
+      "related_pattern_queries": ["heap menu add delete edit show allocator version primitive proof"],
+      "suggested_control_action": "LEDGER_OR_PIVOT",
+      "budget_penalty": "block named heap technique escalation until menu state is reduced"
+    },
+    {
+      "id": "anti-pattern-pwn-blind-remote-before-local-oracle",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-pwn-blind-remote-before-local-oracle.md",
+      "family": "anti-pattern",
+      "category": "pwn",
+      "title": "Blind remote mutation before local oracle",
+      "triggers": ["remote only", "timeout", "eof", "local missing"],
+      "signals": ["remote drift", "prompt sync unclear", "libc mismatch suspect", "flat remote retries"],
+      "better_question": "What is the smallest local or scripted oracle that proves the current hypothesis before more remote mutation?",
+      "stop_rule": "Do not continue blind remote mutation after two flat attempts without a new observation or stronger local/runtime model.",
+      "query_terms": ["remote drift", "local works remote fails", "prompt sync", "libc mismatch", "timeout not shell"],
+      "related_pattern_queries": ["pwn remote drift local works remote fails prompt sync libc mismatch timeout"],
+      "suggested_control_action": "PIVOT",
+      "budget_penalty": "shrink remote retry budget until a local or scripted oracle exists"
+    },
+    {
+      "id": "anti-pattern-java-dependency-without-reachability",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-java-dependency-without-reachability.md",
+      "family": "anti-pattern",
+      "category": "java-web",
+      "title": "Java dependency without reachability",
+      "triggers": ["fastjson", "shiro", "log4j", "jackson", "struts", "snakeyaml", "dependency only"],
+      "signals": ["no route proof", "no parser call", "no config gate", "no controlled data shape", "no oracle"],
+      "better_question": "Which request reaches this dependency-controlled parser or sink, with what controlled bytes and what oracle?",
+      "stop_rule": "Do not run gadget or CVE payloads until route, config, controlled data shape, and oracle are proven.",
+      "query_terms": ["java dependency", "reachability", "parser route", "controlled bytes", "oracle"],
+      "related_pattern_queries": ["java dependency without reachability route parser config gate oracle"],
+      "suggested_control_action": "DEMOTE"
+    },
+    {
+      "id": "anti-pattern-java-full-decompile-third-party",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-java-full-decompile-third-party.md",
+      "family": "anti-pattern",
+      "category": "java-web",
+      "title": "Java full decompile third-party waste",
+      "triggers": ["full decompile", "BOOT-INF/lib", "third-party libraries", "dependency decompile first"],
+      "signals": ["app routes unmapped", "sink unmapped", "third-party noise", "no app-owned target class"],
+      "better_question": "Which app-owned controller, service, mapper, parser, or security class is closest to a route, sink, or flag path?",
+      "stop_rule": "Do not full-decompile third-party libraries before app class map, config map, and selected bytecode hints exist.",
+      "query_terms": ["java full decompile", "third party", "app-owned class", "route map", "bytecode hints"],
+      "related_pattern_queries": ["java archive map bytecode hints app classes before third party decompile"],
+      "suggested_control_action": "PIVOT"
+    },
+    {
+      "id": "anti-pattern-java-template-engine-not-confirmed",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-java-template-engine-not-confirmed.md",
+      "family": "anti-pattern",
+      "category": "java-web",
+      "title": "Java template engine not confirmed",
+      "triggers": ["thymeleaf", "freemarker", "jsp", "ssti", "spel"],
+      "signals": ["dependency clue only", "template route unclear", "escaped model data", "no engine differential"],
+      "better_question": "Does controlled input reach template name resolution, expression parsing, fragment selection, or only escaped model data?",
+      "stop_rule": "After two harmless expression markers produce no engine-specific differential, stop template payload variants.",
+      "query_terms": ["java template engine", "thymeleaf", "freemarker", "expression parsing", "escaped model data"],
+      "related_pattern_queries": ["java template engine confirmed route expression parsing harmless marker"],
+      "suggested_control_action": "PIVOT"
+    },
+    {
+      "id": "anti-pattern-java-upload-without-served-path",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-java-upload-without-served-path.md",
+      "family": "anti-pattern",
+      "category": "java-web",
+      "title": "Java upload without served path proof",
+      "triggers": ["upload", "write primitive", "jsp execution", "static readback"],
+      "signals": ["served path unproven", "reload behavior unknown", "canary absent", "overwrite temptation"],
+      "better_question": "Where is the file stored, is the path user-controlled, is it served or reloaded, and can a canary be read back?",
+      "stop_rule": "Do not attempt JSP shells or overwrites until canary create, readback, and served behavior are proven.",
+      "query_terms": ["java upload", "served path", "readback", "jsp", "canary file"],
+      "related_pattern_queries": ["java upload served path canary readback jsp static resources"],
+      "suggested_control_action": "DEMOTE"
+    },
+    {
+      "id": "failure-java-auth-filter-before-payload",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-java-auth-filter-before-payload.md",
+      "family": "failure",
+      "category": "java-web",
+      "title": "Java auth filter before payload",
+      "triggers": ["401", "403", "302", "spring security", "shiro", "servlet filter"],
+      "signals": ["payload depth starts early", "route-auth table missing", "identity unclear", "interceptor unknown"],
+      "better_question": "Which identity, session, path, or method reaches the handler and which filter or interceptor blocks it?",
+      "stop_rule": "If 401, 403, or 302 dominates, stop payload mutation and build a route-auth table.",
+      "query_terms": ["java auth filter", "spring security", "shiro", "route auth table", "interceptor"],
+      "related_pattern_queries": ["java auth filter spring security shiro route auth table path normalization"],
+      "suggested_control_action": "PIVOT"
+    },
+    {
+      "id": "failure-java-boot-fail-no-harness",
+      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-java-boot-fail-no-harness.md",
+      "family": "failure",
+      "category": "java-web",
+      "title": "Java boot failure needs local harness",
+      "triggers": ["boot fail", "spring app will not start", "db missing", "profile missing", "jdk mismatch"],
+      "signals": ["environment stall", "full boot budget exceeded", "top sink known", "mockable target exists"],
+      "better_question": "Can the target controller, service, mapper, or parser method be isolated with mocks to prove source-to-sink and oracle?",
+      "stop_rule": "Do not spend more than a short setup budget fixing full app boot before writing a harness plan for the top sink.",
+      "query_terms": ["java boot fail", "local harness", "mock request", "mock mapper", "source to sink"],
+      "related_pattern_queries": ["java boot fail local harness verifier mock controller service parser sink"],
+      "suggested_control_action": "PIVOT"
+    }
+  ]
+}

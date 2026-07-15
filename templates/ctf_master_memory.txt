@@ -1,0 +1,99 @@
+# CTF Master Memory
+
+[Challenge]
+name:
+target:
+flag_format:
+slug:
+start_time:
+
+[Current Controller State]
+state: FAST_INTAKE | STRATEGY | PARALLEL_VALIDATE | REFLECTION | FINALIZE | TERMINATE
+round: 0 | 1 | 2 | 3
+primary_owner:
+supporting_surface:
+closure_owner:
+
+[Known Facts]
+- 
+
+[Strongest Evidence]
+- 
+
+[Knowledge Hits]
+- seckb:
+- pattern_cards:
+- lessons:
+- cvekb:
+- why_relevant:
+
+[Round 0 - Fast Intake]
+fast_executor:
+fast_summary:
+ruled_out_paths:
+best_next_master_direction:
+
+[Round 1 - Strategy]
+top1_claim:
+top1_owner:
+top1_confirm_probe:
+top1_falsify_condition:
+top1_expected_oracle:
+top1_time_cost:
+top1_destructiveness:
+
+top2_claim:
+top2_owner:
+top2_confirm_probe:
+top2_falsify_condition:
+top2_expected_oracle:
+top2_time_cost:
+top2_destructiveness:
+
+top3_claim:
+top3_owner:
+top3_confirm_probe:
+top3_falsify_condition:
+top3_expected_oracle:
+top3_time_cost:
+top3_destructiveness:
+
+[Round 1 - Validation Results]
+top1_result:
+top1_new_facts:
+
+top2_result:
+top2_new_facts:
+
+top3_result:
+top3_new_facts:
+
+[Reflection]
+missing_facts:
+new_recon_targets:
+suspended_hypotheses:
+abandoned_hypotheses_with_reason:
+revised_hypotheses:
+
+[Round 2 - Strategy]
+...
+
+[Round 2 - Validation Results]
+...
+
+[Round 3 - Strategy]
+...
+
+[Round 3 - Validation Results]
+...
+
+[Flag Candidate]
+value:
+source:
+confidence:
+one_cheap_confirmation:
+
+[Terminate Summary]
+why_stopped:
+best_remaining_direction:
+reusable_findings:

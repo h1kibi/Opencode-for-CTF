@@ -1,0 +1,22 @@
+{
+  "challenge": {
+    "name": "",
+    "category": "unknown",
+    "flag_format": "",
+    "target": ""
+  },
+  "current_mode": "ctf-rigorous",
+  "primary_owner": "",
+  "supporting_surface": "",
+  "closure_owner": "",
+  "budget_profile": "hard",
+  "first_safe_tool": "",
+  "direct_win_check": "",
+  "hard_submode": "",
+  "current_bottleneck_family": "",
+  "source_first_required": false,
+  "top_route_summary": "",
+  "next_probe": "",
+  "evidence_dir": "work/ctf-evidence/<challenge-slug>",
+  "last_updated": ""
+}

@@ -1,0 +1,41 @@
+{
+  "challenge_id": "",
+  "category": "",
+  "framework": "",
+  "runtime": "",
+  "primary_owner": "",
+  "supporting_surface": "",
+  "closure_owner": "",
+  "routes": [],
+  "params": [],
+  "auth": [],
+  "signals": [],
+  "entrypoints": [],
+  "sources": [],
+  "sinks": [],
+  "sanitizers": [],
+  "evidence_gate": {
+    "file_symbol_line_verified": false,
+    "controllability": "",
+    "sink_or_condition": "",
+    "oracle_or_harness": "",
+    "false_positive_checks": []
+  },
+  "local_harness": {
+    "target_symbol": "",
+    "mock_plan": [],
+    "payload_families": [],
+    "success_oracle": "",
+    "observed_signal": "",
+    "verdict": ""
+  },
+  "confirmed_primitives": [],
+  "chain_implications": [],
+  "unknown": [],
+  "blocked": [],
+  "artifacts": [],
+  "errors": [],
+  "best_oracle": "",
+  "why_now": "",
+  "why_not_others": ""
+}

@@ -1,0 +1,181 @@
+---
+name: ctf-pwn
+description: Use for authorized pwn CTF challenges involving native binaries, memory corruption, shellcode, ROP, heap exploitation, format strings, syscall abuse, or pwntools exploit development.
+compatibility: opencode
+---
+
+# CTF Pwn
+
+## Purpose
+
+Use this skill for binary exploitation. It structures triage, crash reproduction, primitive discovery, exploitation, and reliable pwntools output.
+
+Always combine this with `ctf-terminal` for real-output command discipline.
+
+For format string challenges, load `references/format-string.md`.
+
+For heap or tcache challenges, load `references/heap-tcache.md`.
+
+For direct win/libc call chains, load `references/ret2win-ret2libc.md`.
+
+For PIE, canary, ASLR, libc, stack, or heap pointer disclosure needs, load `references/pie-canary-leak.md`.
+
+For seccomp, sandbox, blocked shell, syscall, or read-flag chains, load `references/seccomp-orw.md`.
+
+For final exploit verification and retry discipline, load `references/pwn-runner-contract.md`.
+
+Use `ctf-pwn-runner` for final local exploit verification when `exploit.py`, `solve.py`, or `work/last_attempt.py` exists.
+
+Use `ctf-pwn-playbook-router` after `ctf-binary-probe` on non-trivial targets to derive top-3 strategy seeds from mitigations and evidence.
+
+## Scope
+
+Use only on provided challenge binaries, local services, Dockerized tasks, or explicitly authorized CTF endpoints.
+
+## Inputs
+
+Collect:
+
+- Binary, libc, loader, Dockerfile, source if present, remote host/port if present.
+- Architecture, protections, input protocol, normal behavior, and flag format.
+- Whether ASLR, PIE, NX, canary, RELRO, seccomp, or sandboxing matters.
+
+## Workflow
+
+1. Triage with `file`, `checksec`, `strings`, `readelf`, and source review if available.
+2. Run the binary locally and document normal protocol.
+3. Reproduce a crash with controlled input.
+4. Determine offset and control primitive.
+5. Identify leak primitive if ASLR/PIE/libc resolution is needed.
+6. Choose exploitation strategy: ret2win, ret2libc, ROP, SROP, shellcode, format string, GOT overwrite, heap poisoning, or logic exploit.
+7. Script interaction with pwntools; avoid fragile one-off shell pipes.
+8. Test locally under the same Docker/libc conditions when possible.
+9. Only then adapt to remote host/port.
+
+## Scoreboard Speed Lane
+
+For easy/medium pwn challenges or the first 8-12 minutes of a fresh target, prefer decisive low-cost checks before full exploitation ceremony:
+
+1. Run `ctf-binary-probe` once unless fresh equivalent evidence already exists.
+2. Check for direct `win`, `print_flag`, `backdoor`, `system`, `/bin/sh`, `flag`, `cat flag`, or menu debug symbols/strings.
+3. If source exists, audit obvious `gets`, `scanf("%s")`, `read` length mismatch, `strcpy`, `strcat`, `sprintf`, `printf(user)`, array index, integer truncation, signedness, and lifetime bugs.
+4. If no PIE/canary and a win function exists, try ret2win before complex leak chains.
+5. If format-string behavior is visible, find offset and decide leak/write route before generic overflow branches.
+6. If a menu heap is present, build a menu state table before picking a heap technique.
+7. If seccomp/sandbox is present, inspect allowed syscalls before choosing shell, ORW, SROP, or file-read ROP.
+8. Return early with `exploit.py` when a direct ret2win, format leak/write, one-shot ROP, or logic bug is verified.
+
+## Pwn Constraint Equation
+
+Before a non-trivial branch, summarize the exploit equation:
+
+| Input Surface | Parser / State | Memory Object | Bug Class | Control / Leak Oracle | Mitigations | Desired Primitive |
+|---|---|---|---|---|---|---|
+
+Use the table to prevent payload drift. A probe is useful only if it proves reachability, crash/control, leak stability, mitigation assumptions, or final flag path.
+
+## Pwn Hard Brakes
+
+- After 3 crash/payload variants without a new control, leak, or state differential, stop mutation and re-map protocol, source, protections, and oracle.
+- Do not build final ROP logic before proving offset/control or leak/base assumptions.
+- Do not rotate libc versions, one_gadget offsets, or gadget variants repeatedly without a verified leak and version hypothesis.
+- For heap challenges, do not try named house/tcache techniques until allocator version, menu state, chunk layout, and primitive evidence are known.
+- For remote-only targets, build the shortest local or scripted oracle possible before long remote attempts.
+
+## Fallback Matrix
+
+When a pwn probe stalls, load `references/pwn-fallback-matrix.md` and choose one fallback by failed stage: triage, protocol, crash, control, leak, mitigation bypass, heap state, or final reliability.
+
+## Knowledge Retrieval
+
+For non-trivial branches, use local pattern recall before long manual drift:
+
+- Use `ctf-pattern-card-search` with `category: pwn` and evidence terms from the current constraint equation.
+- Convert one strong card with `ctf-pattern-to-hypothesis` or use it to seed `ctf-decision-state`.
+- Prefer `ctf-pwn-playbook-router` first when fresh `ctf-binary-probe` output exists; then use the returned `next_pattern_query` if the selected route stalls.
+- If curated cards are weak, use `ctf-skill-repo-search` against the local `knowledge/ljagiello-ctf-skills` mirror.
+- Prefer pwn-specific queries such as `ret2libc crash movaps wrong libc`, `heap menu tcache safe linking`, `format string offset leak canary`, or `seccomp shell blocked ORW`.
+
+## Reference Dispatch
+
+- `ret2win-ret2libc.md`: direct win symbol, `/bin/sh`, `system`, GOT/PLT leak, ret2libc, simple ROP.
+- `pie-canary-leak.md`: canary/PIE/ASLR/libc/heap base blocks exploitation and an output/leak path may exist.
+- `seccomp-orw.md`: seccomp/sandbox evidence, shell route fails, or final path should be open/read/write.
+- `format-string.md`: uncontrolled format string, `%p/%s/%n` evidence, stack leak/write route.
+- `heap-tcache.md`: menu allocator, UAF/double-free/off-by-one/tcache/fastbin/unsorted-bin evidence.
+- `pwn-fallback-matrix.md`: any stage stalls without new control/leak/state evidence.
+- `pwn-runner-contract.md`: final exploit success signals, last-attempt handling, crash/timeout distinction, and shell/flag verification.
+
+## Exploit Decision Tree
+
+1. Run `file` and `checksec`.
+2. For non-trivial targets, run `ctf-pwn-playbook-router` on the triage output and keep at most top-3 routes.
+3. If no crash, identify input surface, protocol state, length checks, and logic bugs.
+4. If crash exists, confirm whether control is possible with debugger evidence.
+5. If RIP/EIP is controlled:
+   - NX off: consider shellcode.
+   - NX on and PIE off: consider ROP, ret2win, or ret2csu.
+   - NX on and PIE on: find an info leak before building final ROP.
+6. If format string exists:
+   - Find offset.
+   - Leak address.
+   - Check RELRO.
+   - Decide read/write target.
+7. If heap bug exists:
+   - Identify allocator and libc.
+   - Reproduce UAF, double-free, overflow, or off-by-one.
+   - Choose tcache, fastbin, unsorted bin, or house technique based on version.
+8. If seccomp exists:
+   - Inspect allowed syscalls before choosing shell, open-read-write, or ORW ROP.
+9. If source exists and memory corruption is unclear:
+   - Audit parsing, integer math, array bounds, format strings, and object lifetimes.
+
+## Tool Discipline
+
+- Use scripted `gdb` or batch commands when possible.
+- Use `xxd` or Python for binary output parsing.
+- Keep payload generation deterministic.
+- Record offsets, gadgets, leaks, base addresses, and assumptions in `notes.md`.
+- Do not assume a crash means instruction-pointer control; prove it.
+
+## Primitive Ladder v5
+
+Advance one proven stage at a time:
+
+1. Input reaches parser.
+2. Crash or controlled behavior is reproduced.
+3. Offset/control proof is measured.
+4. Leak primitive is established if mitigations require it.
+5. Mitigation bypass is calculated.
+6. Write or control-flow primitive is reliable.
+7. Final win/read-flag path is verified.
+
+Do not write final exploit logic until the current ladder stage is proven by a crash transcript, debugger state, leak calculation, or local exploit output. Record assumptions that affect reliability, especially ASLR/PIE/libc/remote differences.
+
+## Evidence Requirements
+
+Required evidence includes:
+
+- Protection summary.
+- Crash transcript or debugger state.
+- Offset calculation.
+- Leak calculation if used.
+- Local exploit success or clear explanation why only remote can verify.
+- Final flag output from the program or service.
+
+## Output Contract
+
+Produce `exploit.py` or `solve.py` with:
+
+- `LOCAL`/`REMOTE` mode or clear target variables.
+- Binary/libc paths as variables.
+- Comments for offsets and important gadgets.
+- Final flag extraction logic.
+
+For non-trivial pwn, keep `work/last_attempt.py` when iterating and report a machine-readable verification summary as described in `references/pwn-runner-contract.md`.
+
+Prefer `ctf-pwn-runner` for this summary; if it reports `script_ran_ok` without `flag_detected` or a confirmed shell oracle, do not declare success.
+
+## Stop Conditions
+
+Stop or ask when required binaries/libc are missing, remote service is unavailable, exploit reliability is too low to verify, or an operation would attack out-of-scope infrastructure.

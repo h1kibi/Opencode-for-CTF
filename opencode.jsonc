@@ -1,835 +1,198 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "puppeteer": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-puppeteer"
-      ],
-      "environment": {
-        "PUPPETEER_EXECUTABLE_PATH": "{env:PUPPETEER_EXECUTABLE_PATH}"
+
+  // ============================================================
+  // opencode-for-ctf 插件参考配置
+  // ============================================================
+  // 将此文件放入你的 opencode 配置目录（~/.config/opencode/opencode.jsonc）
+  // 或 CTF 工作区根目录，然后根据需要调整 provider、MCP、权限等。
+  //
+  // 插件路径示例（根据实际路径调整）：
+  //   "file:C:\\Projects\\Agent-projects\\Opencode-for-CTF"
+  // ============================================================
+
+  "default_agent": "ctf-fast",   // 可选: ctf-fast (快速) 或 ctf-expert (全面)
+  "small_model": "deepseek/deepseek-v4-flash",
+
+  // ---- 加载 opencode-for-ctf 插件 ----
+  // 插件提供: 运行时 hooks（continuation、team-mode、skill MCP lifecycle）
+  "plugin": [
+    "file:C:\\Projects\\Agent-projects\\Opencode-for-CTF"
+  ],
+
+  // ---- CTF Agent 定义 ----
+  // opencode-for-ctf/agents/ 目录下的所有 agent 会自动加载。
+  // 此处可覆盖默认 agent 配置。
+  "agent": {
+    "build": { "disable": true },
+    "plan": { "disable": true }
+  },
+
+  // ---- Provider 配置（按需填写你的 API Key） ----
+  "provider": {
+    "deepseek": {
+      "name": "DeepSeek",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "https://api.deepseek.com/v1",
+        "apiKey": "{env:DEEPSEEK_API_KEY}"
       },
-      "enabled": false,
-      "timeout": 30000
+      "models": {
+        "deepseek-v4-pro": { "name": "deepseek-v4-pro" },
+        "deepseek-v4-flash": { "name": "deepseek-v4-flash" }
+      }
+    }
+  },
+
+  // ---- CTF Skills ----
+  "skills": {
+    "paths": [
+      "C:\\Projects\\Agent-projects\\Opencode-for-CTF\\skills",
+      "C:\\Projects\\Agent-projects\\Opencode-for-CTF\\skills-external\\ctf-skills"
+    ]
+  },
+
+  // ---- 全局指令文件 ----
+  "instructions": [
+    "C:\\Projects\\Agent-projects\\Opencode-for-CTF\\rules-cn.md",
+    "C:\\Projects\\Agent-projects\\Opencode-for-CTF\\ctf-rules.md"
+  ],
+
+  // ---- MCP 服务（按需启用） ----
+  "mcp": {
+    "filesystem": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\Administrator"],
+      "enabled": true
     },
+    "browser": {
+      "type": "local",
+      "command": ["npx", "-y", "chrome-devtools-mcp", "--headless", "--isolated", "--slim"],
+      "enabled": true
+    },
+    "markitdown": {
+      "type": "local",
+      "command": ["npx", "-y", "mcp-markdownify-server"],
+      "enabled": true
+    },
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true
+    },
+    "github": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer {env:GITHUB_PAT}",
+        "X-MCP-Readonly": "true"
+      }
+    },
+    // ---- 逆向分析工具 ----
     "ReVa": {
       "type": "local",
-      "command": [
-        "mcp-reva"
-      ],
-      "environment": {
-        "GHIDRA_INSTALL_DIR": "{env:GHIDRA_INSTALL_DIR}"
-      },
-      "enabled": false,
-      "timeout": 60000
+      "command": ["mcp-reva"],
+      "environment": { "GHIDRA_INSTALL_DIR": "{env:GHIDRA_INSTALL_DIR}" },
+      "enabled": true,
+      "timeout": 120000
     },
     "ida-pro": {
       "type": "local",
       "command": [
         "python",
-        "-m",
-        "ida_pro_mcp"
+        "C:\\Projects\\Agent-projects\\Opencode-for-CTF\\runtime\\ida-pro-mcp\\launch_idalib_mcp.py",
+        "--stdio"
       ],
-      "environment": {
-        "IDA_PATH": "{env:IDA_PATH}"
-      },
-      "enabled": false,
-      "timeout": 60000
-    },
-    "radare2": {
-      "type": "local",
-      "command": [
-        "python",
-        "{env:SECURITY_MCP_WRAPPERS}",
-        "radare2"
-      ],
-      "enabled": false,
-      "timeout": 30000
-    },
-    "git": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@cyanheads/git-mcp-server"
-      ],
-      "enabled": false,
-      "timeout": 30000
-    },
-    "filesystem": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "{env:CTF_WORKSPACE}"
-      ],
-      "enabled": false
-    },
-    "vmprotect": {
-      "type": "local",
-      "command": [
-        "python",
-        "{env:VMPROTECT_MCP}"
-      ],
-      "enabled": false,
-      "timeout": 30000
-    },
-    "shodan": {
-      "type": "local",
-      "command": [
-        "python",
-        "{env:SECURITY_MCP_WRAPPERS}",
-        "shodan"
-      ],
-      "environment": {
-        "SHODAN_API_KEY": "{env:SHODAN_API_KEY}"
-      },
-      "enabled": false,
-      "timeout": 30000
-    },
-    "frida": {
-      "type": "local",
-      "command": [
-        "python",
-        "-m",
-        "frida_mcp.cli"
-      ],
-      "enabled": false,
-      "timeout": 30000
-    },
-    "jadx": {
-      "type": "local",
-      "command": [
-        "python",
-        "{env:SECURITY_MCP_WRAPPERS}",
-        "jadx"
-      ],
-      "enabled": false,
-      "timeout": 30000
-    },
-    "volatility": {
-      "type": "local",
-      "command": [
-        "python",
-        "{env:SECURITY_MCP_WRAPPERS}",
-        "volatility"
-      ],
-      "enabled": false,
-      "timeout": 60000
-    },
-    "yara": {
-      "type": "local",
-      "command": [
-        "python",
-        "{env:SECURITY_MCP_WRAPPERS}",
-        "yara"
-      ],
-      "enabled": false,
-      "timeout": 30000
-    },
-    "nmap": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@ebowwa/mcp-nmap"
-      ],
-      "enabled": false,
-      "timeout": 60000
-    },
-    "chrome": {
-      "type": "remote",
-      "url": "{env:CHROME_MCP_URL}",
-      "enabled": false,
-      "timeout": 30000
-    },
-    "markitdown": {
-      "type": "local",
-      "command": ["markitdown-mcp"],
       "enabled": false,
       "timeout": 120000
     },
-    "docling": {
+    "flutter-aot": {
       "type": "local",
       "command": [
-        "uvx",
-        "--from",
-        "docling-mcp",
-        "docling-mcp-server",
-        "--transport",
-        "stdio"
+        "python",
+        "C:\\Projects\\Agent-projects\\Opencode-for-CTF\\runtime\\flutter-aot-mcp\\flutter_aot_mcp.py",
+        "--stdio"
       ],
-      "environment": {
-        "DOCLING_CONVERSION_MODE": "local"
-      },
       "enabled": false,
-      "timeout": 180000
+      "timeout": 3600000
+    },
+    // ---- 知识库 ----
+    "seckb": {
+      "type": "local",
+      "command": ["{env:SECKB_PYTHON}", "{env:SECKB_MCP_SERVER}"],
+      "environment": {
+        "SECKB_ROOT": "{env:SECKB_ROOT}",
+        "SECKB_CONFIG": "{env:SECKB_CONFIG}"
+      },
+      "enabled": false
+    },
+    "cvekb": {
+      "type": "local",
+      "command": ["{env:SECKB_PYTHON}", "{env:CVEKB_MCP_SERVER}"],
+      "environment": { "CVEKB_ROOT": "{env:CVEKB_ROOT}" },
+      "enabled": false
     }
   },
-  "tool_output": {
-    "max_lines": 800,
-    "max_bytes": 30000
-  },
-  "compaction": {
-    "auto": true,
-    "prune": true,
-    "tail_turns": 4,
-    "reserved": 10000
-  },
-  "plugin": [],
+
+  // ---- 权限控制 ----
   "permission": {
-    "*": "ask",
+    "bash": {
+      "*": "ask",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "git branch*": "allow",
+      "git add*": "ask",
+      "git commit*": "ask",
+      "git push*": "ask",
+      "rm *": "deny",
+      "Remove-Item *": "deny",
+      "del *": "deny"
+    },
+    "edit": "ask",
     "read": {
       "*": "allow",
       "*.env": "deny",
       "*.env.*": "deny",
-      "*.env.example": "allow",
-      "*id_rsa*": "deny",
-      "*id_ed25519*": "deny",
-      "*.pem": "deny",
-      "*.key": "deny"
+      "**/.ssh/**": "deny",
+      "**/.aws/**": "deny",
+      "**/.azure/**": "deny",
+      "**/.gcloud/**": "deny",
+      "**/.kube/**": "deny"
     },
-    "list": {
-      "*": "allow"
-    },
-    "glob": {
-      "*": "allow"
-    },
-    "grep": {
-      "*": "allow"
-    },
-    "edit": {
-      "*": "ask",
-      "notes.md": "allow",
-      "solve.py": "allow",
-      "solve.js": "allow",
-      "exploit.py": "allow",
-      "agent_flag.txt": "allow"
-    },
-    "bash": {
-      "*": "ask",
-      "python *": "allow",
-      "python3 *": "allow",
-      "node *": "allow",
-      "file *": "allow",
-      "strings *": "allow",
-      "xxd *": "allow",
-      "readelf *": "allow",
-      "objdump *": "allow",
-      "checksec *": "allow",
-      "curl http://127.0.0.1*": "allow",
-      "curl http://localhost*": "allow",
-      "nc 127.0.0.1*": "ask",
-      "nc localhost*": "ask",
-      "docker ps*": "allow",
-      "docker logs*": "allow",
-      "docker compose up*": "ask",
-      "docker compose down*": "ask",
-      "gdb *": "ask",
-      "sage *": "ask",
-      "openssl *": "ask",
-          "rm -rf *": "deny",
-          "ssh *": "deny",
-          "scp *": "deny",
-          "rm *": "deny",
-          "del *": "deny",
-          "rmdir *": "deny",
-          "Remove-Item *": "deny",
-          "powershell Remove-Item *": "deny",
-          "pwsh Remove-Item *": "deny",
-          "ffuf *": "ask",
-          "gobuster *": "ask",
-          "feroxbuster *": "ask",
-          "dirsearch *": "ask",
-          "wfuzz *": "ask",
-          "sqlmap *": "ask",
-          "hydra *": "deny",
-          "ab *": "ask",
-          "hey *": "ask"
-    },
+    "external_directory": { "C:\\**": "allow" },
     "webfetch": "ask",
-    "websearch": "deny",
-    "skill": {
-      "*": "ask",
-      "ctf-*": "allow"
-    },
-    "ctf-file-triage": "allow",
-    "ctf-flag-grep": "allow",
-    "ctf-rsa-probe": "allow",
-    "ctf-web-probe": "ask",
-    "ctf-java-map": "allow",
-    "ctf-api-map": "allow",
-    "ctf-file-write-matrix": "allow",
-    "ctf-web-pattern-search": "allow",
-    "doc-read": "allow",
-    "markitdown_*": "ask",
-    "docling_*": "ask",
-    "shodan_*": "deny",
-    "navicat_*": "deny",
-    "nmap_*": "ask",
-    "mysql_*": "ask",
-    "puppeteer_*": "ask",
-    "chrome_*": "ask",
-    "chrome_get_web_content": "allow",
-    "chrome_get_interactive_elements": "allow",
-    "chrome_history": "deny",
-    "chrome_bookmark_search": "deny",
-    "chrome_bookmark_add": "deny",
-    "chrome_bookmark_delete": "deny",
-    "chrome_chrome_get_web_content": "allow",
-    "chrome_chrome_get_interactive_elements": "allow",
-    "chrome_chrome_history": "deny",
-    "chrome_chrome_bookmark_search": "deny",
-    "chrome_chrome_bookmark_add": "deny",
-    "chrome_chrome_bookmark_delete": "deny",
-    "chrome_chrome_*": "ask",
-    "ida-pro_*": "ask",
-    "radare2_*": "ask",
-    "jadx_*": "ask",
-    "frida_*": "ask",
-    "ReVa_*": "ask",
-    "vmprotect_*": "ask",
-    "volatility_*": "ask",
-    "yara_*": "ask",
-    "word_*": "ask",
-    "external_directory": {
-      "*": "deny",
-      "C:\\Tools\\Agent\\ctf-workspace": "allow",
-      "C:\\Tools\\Agent\\ctf-workspace\\**": "allow",
-      "C:/Tools/Agent/ctf-workspace": "allow",
-      "C:/Tools/Agent/ctf-workspace/**": "allow"
-    }
+    "websearch": "ask"
   },
-  "default_agent": "ctf-router",
-  "agent": {
-    "ctf-router": {
-      "description": "Route authorized CTF challenges to the best specialized solver using low-cost triage and evidence-weighted category scoring.",
-      "mode": "primary",
-      "temperature": 0.1,
-      "steps": 25,
-      "permission": {
-        "read": "allow",
-        "list": "allow",
-        "glob": "allow",
-        "grep": "allow",
-        "webfetch": "ask",
-        "websearch": "deny",
-        "bash": {
-          "*": "ask",
-          "file *": "allow",
-          "strings *": "allow",
-          "xxd *": "allow",
-          "python *": "allow",
-          "python3 *": "allow",
-          "docker ps*": "allow",
-          "docker logs*": "allow",
-          "rm -rf *": "deny",
-          "ssh *": "deny",
-          "scp *": "deny",
-          "rm *": "deny",
-          "del *": "deny",
-          "rmdir *": "deny",
-          "Remove-Item *": "deny",
-          "powershell Remove-Item *": "deny",
-          "pwsh Remove-Item *": "deny"
-        },
-        "edit": {
-          "*": "ask",
-          "notes.md": "allow"
-        },
-        "skill": {
-          "*": "ask",
-          "ctf-*": "allow"
-        },
-        "ctf-file-triage": "allow",
-        "ctf-flag-grep": "allow",
-        "ctf-rsa-probe": "allow",
-        "ctf-web-probe": "ask",
-        "task": {
-          "*": "ask",
-          "ctf-web": "allow",
-          "ctf-pwn": "allow",
-          "ctf-rev": "allow",
-          "ctf-crypto": "allow",
-          "ctf-forensics": "allow",
-          "ctf-misc": "allow"
-        },
-        "puppeteer_*": "deny",
-        "chrome_*": "deny",
-        "nmap_*": "ask",
-        "filesystem_*": "ask",
-        "git_*": "deny",
-        "shodan_*": "deny",
-        "ida-pro_*": "deny",
-        "radare2_*": "deny",
-        "jadx_*": "deny",
-        "frida_*": "deny",
-        "ReVa_*": "deny",
-        "vmprotect_*": "deny",
-        "volatility_*": "deny",
-        "yara_*": "deny",
-        "word_*": "deny"
-      },
-      "prompt": "You are a route-only CTF planner for authorized CTF, lab, benchmark, and local challenge targets. Start with ctf-router and ctf-common when useful. Inventory files, services, target scope, and flag format; run only low-cost triage; build an evidence-weighted category table; choose exactly one next specialized CTF agent or command. If a local artifact path is provided, call ctf-file-triage before selecting a final category unless the challenge statement alone is decisive. Prefer ctf-rsa-probe for RSA-like inputs, ctf-web-probe only on authorized or local challenge URLs, and ctf-flag-grep before claiming unsolved. Do not deeply exploit unless the challenge is trivial. Keep notes.md updated and never guess flags."
-    },
-    "ctf-web": {
-      "description": "Solve authorized Web CTF challenges using source review, browser interaction, HTTP probing, local reproduction, and exploit scripting.",
-      "mode": "all",
-      "temperature": 0.1,
-      "steps": 80,
-      "permission": {
-        "websearch": "deny",
-        "webfetch": "ask",
-        "bash": {
-          "*": "ask",
-          "python *": "allow",
-          "python3 *": "allow",
-          "node *": "allow",
-          "npm test*": "allow",
-          "pytest *": "allow",
-          "curl http://127.0.0.1*": "allow",
-          "curl http://localhost*": "allow",
-          "docker ps*": "allow",
-          "docker logs*": "allow",
-          "docker compose up*": "ask",
-          "docker compose down*": "ask",
-          "nmap 127.0.0.1*": "ask",
-          "nmap localhost*": "ask",
-          "rm -rf *": "deny",
-          "ssh *": "deny",
-          "scp *": "deny",
-          "rm *": "deny",
-          "del *": "deny",
-          "rmdir *": "deny",
-          "Remove-Item *": "deny",
-          "powershell Remove-Item *": "deny",
-          "pwsh Remove-Item *": "deny",
-          "ffuf *": "ask",
-          "gobuster *": "ask",
-          "feroxbuster *": "ask",
-          "wfuzz *": "ask",
-          "sqlmap *": "ask",
-          "hydra *": "deny",
-          "ab *": "ask",
-          "hey *": "ask"
-        },
-        "edit": {
-          "*": "ask",
-          "notes.md": "allow",
-          "solve.py": "allow",
-          "solve.js": "allow",
-          "agent_flag.txt": "allow",
-          "retros/*.md": "allow",
-          "lessons/*.md": "allow",
-          "patches/*.md": "allow"
-        },
-        "skill": {
-          "*": "ask",
-          "ctf-*": "allow"
-        },
-        "filesystem_*": "ask",
-        "git_*": "ask",
-        "puppeteer_*": "ask",
-        "chrome_*": "ask",
-        "chrome_get_web_content": "allow",
-        "chrome_get_interactive_elements": "allow",
-        "chrome_history": "deny",
-        "chrome_bookmark_search": "deny",
-        "chrome_bookmark_add": "deny",
-        "chrome_bookmark_delete": "deny",
-        "chrome_chrome_get_web_content": "allow",
-        "chrome_chrome_get_interactive_elements": "allow",
-        "chrome_chrome_history": "deny",
-        "chrome_chrome_bookmark_search": "deny",
-        "chrome_chrome_bookmark_add": "deny",
-        "chrome_chrome_bookmark_delete": "deny",
-        "chrome_chrome_*": "ask",
-        "mysql_*": "ask",
-        "nmap_*": "ask",
-        "ctf-web-probe": "allow",
-        "ctf-java-map": "allow",
-        "ctf-api-map": "allow",
-        "ctf-file-write-matrix": "allow",
-        "ctf-web-pattern-search": "allow",
-        "shodan_*": "deny",
-        "ida-pro_*": "deny",
-        "radare2_*": "deny",
-        "jadx_*": "deny",
-        "frida_*": "deny",
-        "ReVa_*": "deny",
-        "vmprotect_*": "deny",
-        "volatility_*": "deny",
-        "yara_*": "deny",
-        "word_*": "deny"
-      },
-      "prompt": "You are a legal CTF Web challenge solver. Work only on authorized local, lab, or CTF targets. Use ctf-common and ctf-web. Start in recon phase: map routes, inputs, auth/session boundaries, source/sink behavior, debug/admin/upload/editor surfaces, and bot behavior before deeply exploiting any one bug class. Build an attack queue ranked by value, verification cost, risk, stability, and confidence; do not pursue the first visible vulnerability just because it appears first. Prefer high-value, low-cost, low-risk, source-backed checks. Maintain a compact Primitive Ledger in notes.md once non-trivial behavior appears. Once one critical primitive or two high primitives are confirmed, stop broad probing and build the shortest stable exploit chain. Prefer admin sessions, backend endpoints, database-backed fields, reloadable/imported files, and debug/log views over blind callbacks or new routes. Before destructive, batch, high-concurrency, repeated bot-triggering, upload/write/overwrite, or state-changing actions, run a low-risk canary, record the risk plan, and obey a strict attempt budget. Write reproducible solve.py or solve.js and write only the verified final flag to agent_flag.txt."
-    },
-    "ctf-pwn": {
-      "description": "Solve authorized binary exploitation CTF challenges using local analysis, debugging, exploit development, and pwntools scripts.",
-      "mode": "all",
-      "temperature": 0.1,
-      "steps": 100,
-      "permission": {
-        "webfetch": "deny",
-        "websearch": "deny",
-        "bash": {
-          "*": "ask",
-          "file *": "allow",
-          "strings *": "allow",
-          "xxd *": "allow",
-          "checksec *": "allow",
-          "readelf *": "allow",
-          "objdump *": "allow",
-          "python *": "allow",
-          "python3 *": "allow",
-          "gdb *": "ask",
-          "ROPgadget *": "ask",
-          "one_gadget *": "ask",
-          "nc 127.0.0.1*": "ask",
-          "nc localhost*": "ask",
-          "rm -rf *": "deny",
-          "ssh *": "deny",
-          "scp *": "deny",
-          "rm *": "deny",
-          "del *": "deny",
-          "rmdir *": "deny",
-          "Remove-Item *": "deny",
-          "powershell Remove-Item *": "deny",
-          "pwsh Remove-Item *": "deny"
-        },
-        "edit": {
-          "*": "ask",
-          "notes.md": "allow",
-          "solve.py": "allow",
-          "exploit.py": "allow",
-          "agent_flag.txt": "allow"
-        },
-        "skill": {
-          "*": "ask",
-          "ctf-*": "allow"
-        },
-        "filesystem_*": "ask",
-        "git_*": "ask",
-        "radare2_*": "ask",
-        "nmap_*": "ask",
-        "shodan_*": "deny",
-        "puppeteer_*": "deny",
-        "mysql_*": "deny",
-        "ida-pro_*": "deny",
-        "jadx_*": "deny",
-        "frida_*": "deny",
-        "ReVa_*": "deny",
-        "vmprotect_*": "deny",
-        "volatility_*": "deny",
-        "yara_*": "deny",
-        "word_*": "deny"
-      },
-      "prompt": "You are a legal pwn CTF solver. Work locally first. Identify binary protections, crash primitive, control primitive, leak primitive, exploit strategy, and produce a reproducible pwntools solve script."
-    },
-    "ctf-rev": {
-      "description": "Solve authorized reverse engineering and mobile CTF challenges using static analysis, decompilation, tracing, and controlled dynamic instrumentation.",
-      "mode": "all",
-      "temperature": 0.1,
-      "steps": 100,
-      "permission": {
-        "webfetch": "deny",
-        "websearch": "deny",
-        "bash": {
-          "*": "ask",
-          "file *": "allow",
-          "strings *": "allow",
-          "xxd *": "allow",
-          "objdump *": "allow",
-          "readelf *": "allow",
-          "python *": "allow",
-          "python3 *": "allow",
-          "jadx *": "ask",
-          "frida *": "ask",
-          "adb *": "ask",
-          "rm -rf *": "deny",
-          "ssh *": "deny",
-          "scp *": "deny",
-          "rm *": "deny",
-          "del *": "deny",
-          "rmdir *": "deny",
-          "Remove-Item *": "deny",
-          "powershell Remove-Item *": "deny",
-          "pwsh Remove-Item *": "deny"
-        },
-        "edit": {
-          "*": "ask",
-          "notes.md": "allow",
-          "solve.py": "allow",
-          "agent_flag.txt": "allow"
-        },
-        "skill": {
-          "*": "ask",
-          "ctf-*": "allow"
-        },
-        "filesystem_*": "ask",
-        "git_*": "ask",
-        "ida-pro_*": "ask",
-        "radare2_*": "ask",
-        "jadx_*": "ask",
-        "frida_*": "ask",
-        "ReVa_*": "ask",
-        "vmprotect_*": "ask",
-        "shodan_*": "deny",
-        "puppeteer_*": "deny",
-        "mysql_*": "deny",
-        "nmap_*": "deny",
-        "volatility_*": "deny",
-        "yara_*": "deny",
-        "word_*": "deny"
-      },
-      "prompt": "You are a legal CTF reverse engineering solver. Prefer static analysis first, then controlled dynamic analysis. Keep notes.md, document functions, constants, encodings, anti-debug checks, and produce a reproducible solve script."
-    },
-    "ctf-crypto": {
-      "description": "Solve authorized cryptography CTF challenges using math reasoning, Python, Sage, protocol analysis, and reproducible attacks.",
-      "mode": "all",
-      "temperature": 0.1,
-      "steps": 80,
-      "permission": {
-        "webfetch": "deny",
-        "websearch": "deny",
-        "bash": {
-          "*": "ask",
-          "python *": "allow",
-          "python3 *": "allow",
-          "sage *": "ask",
-          "openssl *": "ask",
-          "node *": "allow",
-          "rm -rf *": "deny",
-          "ssh *": "deny",
-          "scp *": "deny",
-          "rm *": "deny",
-          "del *": "deny",
-          "rmdir *": "deny",
-          "Remove-Item *": "deny",
-          "powershell Remove-Item *": "deny",
-          "pwsh Remove-Item *": "deny"
-        },
-        "edit": {
-          "*": "ask",
-          "notes.md": "allow",
-          "solve.py": "allow",
-          "solve.sage": "allow",
-          "agent_flag.txt": "allow"
-        },
-        "skill": {
-          "*": "ask",
-          "ctf-*": "allow"
-        },
-        "filesystem_*": "ask",
-        "git_*": "ask",
-        "shodan_*": "deny",
-        "nmap_*": "deny",
-        "mysql_*": "deny",
-        "puppeteer_*": "deny",
-        "ida-pro_*": "deny",
-        "radare2_*": "deny",
-        "jadx_*": "deny",
-        "frida_*": "deny",
-        "ReVa_*": "deny",
-        "vmprotect_*": "deny",
-        "volatility_*": "deny",
-        "yara_*": "deny",
-        "word_*": "deny"
-      },
-      "prompt": "You are a legal crypto CTF solver. Identify the primitive, assumptions, weakness, attack path, and write a reproducible solve script. Do not guess flags."
-    },
-    "ctf-forensics": {
-      "description": "Solve authorized forensics CTF challenges involving files, memory images, packet captures, documents, archives, malware indicators, and steganography.",
-      "mode": "all",
-      "temperature": 0.1,
-      "steps": 80,
-      "permission": {
-        "webfetch": "deny",
-        "websearch": "deny",
-        "bash": {
-          "*": "ask",
-          "file *": "allow",
-          "strings *": "allow",
-          "xxd *": "allow",
-          "python *": "allow",
-          "python3 *": "allow",
-          "binwalk *": "ask",
-          "foremost *": "ask",
-          "exiftool *": "ask",
-          "tshark *": "ask",
-          "volatility *": "ask",
-          "vol.py *": "ask",
-          "yara *": "ask",
-          "rm -rf *": "deny",
-          "ssh *": "deny",
-          "scp *": "deny",
-          "rm *": "deny",
-          "del *": "deny",
-          "rmdir *": "deny",
-          "Remove-Item *": "deny",
-          "powershell Remove-Item *": "deny",
-          "pwsh Remove-Item *": "deny"
-        },
-        "edit": {
-          "*": "ask",
-          "notes.md": "allow",
-          "solve.py": "allow",
-          "agent_flag.txt": "allow"
-        },
-        "skill": {
-          "*": "ask",
-          "ctf-*": "allow"
-        },
-        "filesystem_*": "ask",
-        "git_*": "ask",
-        "volatility_*": "ask",
-        "yara_*": "ask",
-        "word_*": "ask",
-        "shodan_*": "deny",
-        "nmap_*": "deny",
-        "mysql_*": "deny",
-        "puppeteer_*": "deny",
-        "ida-pro_*": "deny",
-        "radare2_*": "deny",
-        "jadx_*": "deny",
-        "frida_*": "deny",
-        "ReVa_*": "deny",
-        "vmprotect_*": "deny"
-      },
-      "prompt": "You are a legal forensics CTF solver. Preserve evidence, avoid destructive operations, keep notes.md, enumerate file type, metadata, embedded files, encodings, packet artifacts, memory processes, and produce reproducible extraction steps."
-    },
-    "ctf-misc": {
-      "description": "Solve authorized miscellaneous CTF challenges using scripting, file analysis, protocol reasoning, light reversing, and local experimentation.",
-      "mode": "all",
-      "temperature": 0.1,
-      "steps": 80,
-      "permission": {
-        "webfetch": "ask",
-        "websearch": "deny",
-        "bash": {
-          "*": "ask",
-          "python *": "allow",
-          "python3 *": "allow",
-          "node *": "allow",
-          "file *": "allow",
-          "strings *": "allow",
-          "xxd *": "allow",
-          "curl http://127.0.0.1*": "allow",
-          "curl http://localhost*": "allow",
-          "nc 127.0.0.1*": "ask",
-          "nc localhost*": "ask",
-          "docker ps*": "allow",
-          "docker logs*": "allow",
-          "docker compose up*": "ask",
-          "docker compose down*": "ask",
-          "rm -rf *": "deny",
-          "ssh *": "deny",
-          "scp *": "deny",
-          "rm *": "deny",
-          "del *": "deny",
-          "rmdir *": "deny",
-          "Remove-Item *": "deny",
-          "powershell Remove-Item *": "deny",
-          "pwsh Remove-Item *": "deny"
-        },
-        "edit": {
-          "*": "ask",
-          "notes.md": "allow",
-          "solve.py": "allow",
-          "solve.js": "allow",
-          "agent_flag.txt": "allow"
-        },
-        "skill": {
-          "*": "ask",
-          "ctf-*": "allow"
-        },
-        "filesystem_*": "ask",
-        "git_*": "ask",
-        "puppeteer_*": "ask",
-        "radare2_*": "ask",
-        "yara_*": "ask",
-        "word_*": "ask",
-        "shodan_*": "deny",
-        "navicat_*": "deny"
-      },
-      "prompt": "You are a legal miscellaneous CTF solver. Classify the challenge first, then choose the smallest useful toolset. Prefer local scripts and reproducible steps. Keep notes.md and write the verified final flag to agent_flag.txt."
-    },
-    "ctf-retro": {
-      "description": "Analyze completed or failed CTF solves and produce lessons and patch proposals.",
-      "mode": "all",
-      "temperature": 0.1,
-      "steps": 40,
-      "permission": {
-        "read": "allow",
-        "list": "allow",
-        "glob": "allow",
-        "grep": "allow",
-        "edit": {
-          "*": "ask",
-          "retros/*.md": "allow",
-          "lessons/*.md": "allow",
-          "patches/*.md": "allow"
-        },
-        "skill": {
-          "*": "ask",
-          "ctf-*": "allow"
-        },
-        "bash": {
-          "*": "ask"
-        },
-        "webfetch": "deny",
-        "websearch": "deny",
-        "filesystem_*": "deny",
-        "git_*": "deny",
-        "puppeteer_*": "deny",
-        "nmap_*": "deny",
-        "shodan_*": "deny"
-      },
-      "prompt": "You review solved or failed CTF attempts. Do not exploit targets. Extract reusable lessons, missed signals, wrong prioritization, stability problems, and skill patch proposals."
-    },
-    "doc-agent": {
-      "description": "General document understanding agent for PDFs, Office files, images, archives, structured text, and RAG preparation.",
-      "mode": "all",
-      "temperature": 0.1,
-      "steps": 80,
-      "permission": {
-        "read": "allow",
-        "list": "allow",
-        "glob": "allow",
-        "grep": "allow",
-        "doc-read": "allow",
-        "markitdown_*": "ask",
-        "docling_*": "ask",
-        "webfetch": "ask",
-        "websearch": "ask",
-        "bash": {
-          "*": "ask",
-          "python *": "allow",
-          "python3 *": "allow",
-          "pip *": "ask",
-          "uvx *": "ask",
-          "rm *": "deny",
-          "rm -rf *": "deny"
-        },
-        "edit": {
-          "*": "ask",
-          "extracted/*.md": "allow",
-          "extracted/*.json": "allow",
-          "extracted/*.jsonl": "allow",
-          "extracted/manifest.json": "allow",
-          "extracted/notes.md": "allow"
-        }
-      },
-      "prompt": "You are a general document understanding agent. Your job is to read, summarize, extract, and structure local documents safely. For local PDF, DOCX, XLSX, PPTX, CSV, TSV, HTML, EPUB, image, archive, JSON, Markdown, or text files, use doc-read before answering. Prefer bounded extraction first. For long PDFs, inspect page ranges rather than loading the entire document at once. Use includeJson when reliable page, sheet, slide, or section metadata is needed. Use OCR only when text extraction is empty or the file is clearly scanned/image-based. Use markitdown MCP only when simple broad-format Markdown conversion is needed and doc-read is insufficient. Use docling MCP only when complex PDF layout, tables, formulas, or document structure require stronger parsing. Preserve source files. Avoid destructive commands. Refuse to read secrets such as .env, private keys, SSH credentials, token files, or credential stores. When answering, cite page, sheet, slide, or file path references whenever available. If creating output files, write only under extracted/ unless the user explicitly asks otherwise."
-    }
+
+  // ---- 工具输出限制 ----
+  "tool_output": {
+    "max_lines": 500,
+    "max_bytes": 30000
   },
+
+  // ---- 上下文压缩 ----
+  "compaction": {
+    "auto": true,
+    "prune": false,
+    "tail_turns": 40,
+    "reserved": 12000
+  },
+
   "share": "disabled",
-  "skills": {
-    "paths": [
-      "./skills"
+
+  // ---- 文件变更监控忽略 ----
+  "watcher": {
+    "ignore": [
+      "**/extracted/**",
+      "**/work/**",
+      "**/*.pcap", "**/*.pcapng",
+      "**/*.mem", "**/*.raw", "**/*.img", "**/*.iso",
+      "**/*.zip", "**/*.7z", "**/*.tar", "**/*.gz",
+      "**/*.bin", "**/*.elf", "**/*.exe", "**/*.dll", "**/*.so",
+      "**/*.apk", "**/*.dex",
+      "**/node_modules/**", "**/.git/**"
     ]
   }
 }

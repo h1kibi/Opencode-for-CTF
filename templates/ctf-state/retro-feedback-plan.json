@@ -1,0 +1,21 @@
+{
+  "challenge_id": "",
+  "status": "solved|failed|timeout",
+  "lesson_candidate": {
+    "family": "",
+    "trigger_signal": "",
+    "wrong_behavior": "",
+    "correction_rule": ""
+  },
+  "pattern_feedback": {
+    "card_id": "",
+    "result": "confirmed|falsified|weak|misleading|led_to_flag",
+    "evidence": ""
+  },
+  "chain_candidate": {
+    "name": "",
+    "segment_gap": "",
+    "first_safe_probe": "",
+    "blocker_or_bypass": ""
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "controller-auto-continuation",
+  "category": "mixed",
+  "description": "Automatic continuation should nudge idle sessions with unfinished high-priority work, using the current strongest state instead of restarting recon.",
+  "artifacts": [
+    "runtime/src/continuation-manager.ts",
+    "runtime/src/plugin.ts",
+    "tools/ctf-continuation-control.ts",
+    "commands/ctf-continue.md"
+  ],
+  "expected": {
+    "primary_owner": "mixed",
+    "support_surface": "controller",
+    "first_safe_tool": "ctf-continuation-control",
+    "hard_submode": "idle_todo_nudge",
+    "bottleneck_family": "unfinished_branch_goes_idle",
+    "source_first": false,
+    "closure_required": false,
+    "handoff_trigger": "session_idle_with_unfinished_high_priority_work",
+    "stop_rule": "nudge_from_current_state_without_restarting_broad_recon"
+  },
+  "notes": "Regression skeleton for automatic continuation and todo enforcement runtime behavior."
+}

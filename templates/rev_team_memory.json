@@ -1,0 +1,24 @@
+{
+  "schema_version": "rev_team_memory.v1",
+  "challenge": {
+    "slug": "",
+    "target": "",
+    "category": "rev",
+    "created_at": "",
+    "updated_at": ""
+  },
+  "assets": [],
+  "confirmed_facts": [],
+  "high_value_signals": [],
+  "hypotheses": [],
+  "closed_or_falsified_routes": [],
+  "closure_candidates": [],
+  "knowledge_hits": [],
+  "team_tasks": [],
+  "next_action": {
+    "owner": "lead",
+    "action": "",
+    "tool": "",
+    "why": ""
+  }
+}

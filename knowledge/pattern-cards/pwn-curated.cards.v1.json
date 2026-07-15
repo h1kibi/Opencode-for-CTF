@@ -1,0 +1,943 @@
+{
+  "meta": {
+    "cards": 21,
+    "generated_at": "2026-06-15T00:00:00Z",
+    "source_repo": "local-pwn-curated",
+    "version": 6,
+    "curated_cards": 21,
+    "auto_cards": 0
+  },
+  "cards": [
+    {
+      "id": "pwn-primitive-frame-indexed-callsite-leak",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/closure/frame-indexed-callsite-leak.md",
+      "category": "pwn",
+      "title": "Frame-indexed callsite leak primitive",
+      "kind": "primitive",
+      "trigger": "saved rbp controllable, lea rax [rbp-k], mov rdi rax, call printf puts, original callsite reuse, rbp argument selector",
+      "first_safe_check": "ctf-pwn-primitive-compressor or ctf-pwn-stack-frame-solver, then one minimal rbp=target+k callsite probe",
+      "oracle": "target bytes or raw GOT/libc pointer bytes printed before crash/EOF",
+      "stop_rule": "do not build fake-stack libc calls, GOT rewrite loops, or one_gadget closure before this primitive probe",
+      "pivot_rule": "if original callsite is reached and target is not consumed, then consider synthetic closure or alternate target",
+      "keywords": [
+        "frame-indexed",
+        "saved rbp",
+        "callsite reuse",
+        "printf got leak",
+        "rbp argument selector"
+      ],
+      "snippet": "saved rbp selects [rbp-k] argument for original printf/puts callsite",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 230,
+      "retrieval_intents": [
+        "frame indexed callsite leak",
+        "saved rbp printf got leak",
+        "rbp target plus offset"
+      ],
+      "semantic_tokens": [
+        "frame-indexed",
+        "callsite-reuse",
+        "primitive-compression",
+        "saved-rbp-argument-selector"
+      ],
+      "query_aliases": [
+        "rbp indexed printf leak",
+        "saved rbp got leak",
+        "original callsite leak"
+      ]
+    },
+    {
+      "id": "pwn-anti-over-reconstructed-fake-stack-before-callsite-probe",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/anti-patterns/over-reconstructed-fake-stack-before-callsite-probe.md",
+      "category": "pwn",
+      "title": "Over-reconstructed fake stack before original callsite probe",
+      "kind": "anti-pattern",
+      "trigger": "fake stack libc crash, stdio corruption, synthetic frame instability while original rbp-indexed callsite untested",
+      "first_safe_check": "return to primitive compression: rbp=target+k, rip=original callsite",
+      "oracle": "minimal original callsite probe is confirmed or falsified by real oracle",
+      "stop_rule": "complex closure failure cannot falsify simpler original callsite primitive",
+      "pivot_rule": "after two synthetic-environment explanations, rollback to shortest primitive",
+      "keywords": [
+        "fake stack drift",
+        "overconstruction",
+        "original callsite",
+        "primitive not tested"
+      ],
+      "snippet": "do not debug synthetic closure before original callsite primitive",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 220,
+      "retrieval_intents": [
+        "fake stack before callsite anti pattern",
+        "overconstructed fake stack",
+        "complex closure before primitive"
+      ],
+      "semantic_tokens": [
+        "anti-drift",
+        "primitive-first",
+        "overconstruction"
+      ],
+      "query_aliases": [
+        "fake stack printf crash not primitive failure",
+        "complex closure before primitive",
+        "original callsite first"
+      ]
+    },
+    {
+      "id": "pwn-closure-ret2win-direct",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/closure/ret2win-direct.md",
+      "category": "pwn",
+      "title": "ret2win direct closure",
+      "kind": "workflow",
+      "trigger": "win symbol, backdoor, print_flag, direct privileged function, no canary or already neutralized",
+      "first_safe_check": "ctf-pwn-crash-probe + one minimal direct ret2win payload",
+      "oracle": "privileged function lands or direct route is concretely falsified",
+      "stop_rule": "do not build ret2libc or broader ROP before one direct ret2win attempt",
+      "pivot_rule": "if arguments, alignment, or base are needed, downgrade to the smallest matching next family",
+      "keywords": [
+        "ret2win",
+        "win",
+        "backdoor",
+        "print_flag",
+        "direct jump"
+      ],
+      "snippet": "ret2win before heavier routes",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 180,
+      "retrieval_intents": [
+        "ret2win",
+        "direct win function",
+        "backdoor function"
+      ],
+      "semantic_tokens": [
+        "ret2win",
+        "direct-close",
+        "win-symbol"
+      ],
+      "query_aliases": [
+        "ret2win direct",
+        "win function direct",
+        "backdoor direct jump"
+      ]
+    },
+    {
+      "id": "pwn-closure-ret2libc-leak-first",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/closure/ret2libc-leak-first.md",
+      "category": "pwn",
+      "title": "ret2libc leak first closure",
+      "kind": "workflow",
+      "trigger": "NX enabled, libc route likely, puts leak, printf leak, show leak, leak-first closure",
+      "first_safe_check": "build one leak-only stage and safe return",
+      "oracle": "one stable classified leak yields sane libc base",
+      "stop_rule": "do not rotate one_gadget or alternate libc before one stable leak-first stage",
+      "pivot_rule": "if shell is blocked, promote ORW/file-read closure",
+      "keywords": [
+        "ret2libc",
+        "leak first",
+        "puts leak",
+        "two stage"
+      ],
+      "snippet": "ret2libc leak first before final chain",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 190,
+      "retrieval_intents": [
+        "ret2libc leak first",
+        "two stage ret2libc",
+        "puts leak base"
+      ],
+      "semantic_tokens": [
+        "ret2libc",
+        "leak-first",
+        "two-stage"
+      ],
+      "query_aliases": [
+        "ret2libc leak first",
+        "two stage ret2libc",
+        "puts leak then system"
+      ]
+    },
+    {
+      "id": "pwn-closure-fmt-leak-before-write",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/closure/fmt-leak-before-write.md",
+      "category": "pwn",
+      "title": "format string leak before write",
+      "kind": "workflow",
+      "trigger": "printf user, format string, positional leak, fmt offset, write-first drift",
+      "first_safe_check": "ctf-pwn-format-map and one leak-only payload",
+      "oracle": "stable leak map appears before any write",
+      "stop_rule": "no %n writes before offset, RELRO, and target writability are known",
+      "pivot_rule": "if read-only leak already closes, demote write-first ideas",
+      "keywords": [
+        "format string",
+        "%n",
+        "leak first",
+        "fmt"
+      ],
+      "snippet": "fmt leak before write",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 180,
+      "retrieval_intents": [
+        "format string leak first",
+        "fmt offset leak",
+        "no %n before leak"
+      ],
+      "semantic_tokens": [
+        "fmt",
+        "leak-first",
+        "offset-map"
+      ],
+      "query_aliases": [
+        "fmt leak before write",
+        "format string leak first",
+        "no %n before offset"
+      ]
+    },
+    {
+      "id": "pwn-closure-no-canary-no-pie-shortest-rop",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/closure/no-canary-no-pie-shortest-rop.md",
+      "category": "pwn",
+      "title": "no canary no PIE shortest ROP",
+      "kind": "workflow",
+      "trigger": "no canary, no PIE, simple BOF, shortest ROP, direct ret2win or ret2libc",
+      "first_safe_check": "prove control then test direct symbol, imported function, then minimal ret2libc",
+      "oracle": "one minimal chain lands or concrete blocker forces next family",
+      "stop_rule": "do not open heap, SROP, CSU, or stack-pivot while shortest ROP remains untested",
+      "pivot_rule": "if direct target is absent and leakless closure is blocked, move to leak-first ret2libc",
+      "keywords": [
+        "no canary",
+        "no PIE",
+        "shortest ROP",
+        "baby bof"
+      ],
+      "snippet": "no canary no PIE shortest path",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 160,
+      "retrieval_intents": [
+        "no canary no pie",
+        "baby bof shortest rop",
+        "simple bof ret2win ret2libc"
+      ],
+      "semantic_tokens": [
+        "no-canary",
+        "no-pie",
+        "shortest-rop"
+      ],
+      "query_aliases": [
+        "no canary no pie shortest rop",
+        "baby bof shortest route",
+        "simple bof direct close"
+      ]
+    },
+    {
+      "id": "pwn-closure-canary-leak-first",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/closure/canary-leak-first.md",
+      "category": "pwn",
+      "title": "canary leak first",
+      "kind": "workflow",
+      "trigger": "canary found, stack overwrite family, stack leak, show leak, format leak",
+      "first_safe_check": "search leak paths before brute-force or final chain work",
+      "oracle": "a leak exposes canary or a non-return route becomes shorter",
+      "stop_rule": "do not brute-force canary without stable fork oracle",
+      "pivot_rule": "if canary is unnecessary because non-return closure is shorter, promote that route",
+      "keywords": [
+        "canary",
+        "stack leak",
+        "format leak",
+        "show leak"
+      ],
+      "snippet": "canary leak before mutation",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 160,
+      "retrieval_intents": [
+        "canary leak first",
+        "stack canary leak",
+        "show leak canary"
+      ],
+      "semantic_tokens": [
+        "canary",
+        "leak-first",
+        "stack-leak"
+      ],
+      "query_aliases": [
+        "canary leak first",
+        "stack canary leak",
+        "format leak canary"
+      ]
+    },
+    {
+      "id": "pwn-closure-pie-base-before-gadget",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/closure/pie-base-before-gadget.md",
+      "category": "pwn",
+      "title": "PIE base before gadget",
+      "kind": "workflow",
+      "trigger": "PIE enabled, binary leak needed, unknown class leak, gadget math before base",
+      "first_safe_check": "classify leaks and compute base only from known binary/code pointers",
+      "oracle": "one known-class code pointer yields sane PIE base",
+      "stop_rule": "unknown-class leaks must not drive final gadget math",
+      "pivot_rule": "if only libc leaks exist, use them only when binary-relative closure is unnecessary",
+      "keywords": [
+        "PIE",
+        "binary base",
+        "code leak",
+        "unknown leak"
+      ],
+      "snippet": "PIE base before gadget math",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 160,
+      "retrieval_intents": [
+        "PIE base before gadget",
+        "binary leak first",
+        "unknown leak cannot drive ROP"
+      ],
+      "semantic_tokens": [
+        "pie",
+        "base-first",
+        "known-class-leak"
+      ],
+      "query_aliases": [
+        "PIE base before gadget",
+        "binary leak first PIE",
+        "unknown leak cannot drive final math"
+      ]
+    },
+    {
+      "id": "pwn-closure-partial-relro-got-write-queue",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/closure/partial-relro-got-write-queue.md",
+      "category": "pwn",
+      "title": "partial RELRO GOT write queue",
+      "kind": "workflow",
+      "trigger": "partial RELRO, GOT writable, write primitive, GOT overwrite temptation",
+      "first_safe_check": "prove write primitive and later consumer path before promoting GOT overwrite",
+      "oracle": "concrete writable GOT target and useful consumer exist, or route is demoted",
+      "stop_rule": "do not promote GOT overwrite to primary closure just because RELRO is partial",
+      "pivot_rule": "if consumer control is weak, rerank to ret2libc, output-hijack, or file-read",
+      "keywords": [
+        "partial RELRO",
+        "GOT overwrite",
+        "write primitive"
+      ],
+      "snippet": "partial RELRO GOT write enters queue only with proof",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 150,
+      "retrieval_intents": [
+        "partial RELRO GOT overwrite",
+        "GOT write queue",
+        "write primitive consumer path"
+      ],
+      "semantic_tokens": [
+        "partial-relro",
+        "got-write",
+        "consumer-path"
+      ],
+      "query_aliases": [
+        "partial relro got write queue",
+        "GOT overwrite only with proof",
+        "write primitive got consumer"
+      ]
+    },
+    {
+      "id": "pwn-closure-static-orw-before-shell",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/closure/static-orw-before-shell.md",
+      "category": "pwn",
+      "title": "static ORW before shell",
+      "kind": "workflow",
+      "trigger": "static binary, syscall heavy, seccomp, shell blocked, ORW likely",
+      "first_safe_check": "ctf-pwn-syscall-orw-check and one direct ORW/read-flag test",
+      "oracle": "direct file-read path works or outperforms shell-first attempts",
+      "stop_rule": "do not keep forcing shell once syscall evidence says ORW is shorter",
+      "pivot_rule": "if ORW cannot assemble, downgrade to the smallest reachable read/output closure",
+      "keywords": [
+        "static",
+        "ORW",
+        "syscall",
+        "read flag"
+      ],
+      "snippet": "static or sandbox route prefers ORW",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 170,
+      "retrieval_intents": [
+        "static ORW",
+        "syscall ORW before shell",
+        "read flag static binary"
+      ],
+      "semantic_tokens": [
+        "static",
+        "orw",
+        "syscall-close"
+      ],
+      "query_aliases": [
+        "static orw before shell",
+        "syscall orw before shell",
+        "read flag static binary"
+      ]
+    },
+    {
+      "id": "pwn-closure-cxx-uaf-dataonly-first",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/closure/cxx-uaf-dataonly-first.md",
+      "category": "pwn",
+      "title": "CXX UAF data-only first",
+      "kind": "workflow",
+      "trigger": "C++ wrapper objects, inventory menu, stale reference, adjacent consumer, object field reuse",
+      "first_safe_check": "adjacency reasoning and one focused data-only or output-hijack route",
+      "oracle": "shorter adjacent consumer path appears or data-only branch is falsified",
+      "stop_rule": "do not promote FSOP or vtable takeover before one adjacency/data-only check",
+      "pivot_rule": "if no shorter consumer exists, keep current heap/control route and document why",
+      "keywords": [
+        "C++ UAF",
+        "data-only",
+        "adjacency",
+        "vtable",
+        "FSOP"
+      ],
+      "snippet": "C++ UAF should test data-only closure first",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 150,
+      "retrieval_intents": [
+        "C++ UAF data-only",
+        "adjacency output hijack",
+        "inventory object stale reference"
+      ],
+      "semantic_tokens": [
+        "cxx-uaf",
+        "data-only",
+        "adjacency"
+      ],
+      "query_aliases": [
+        "CXX UAF data-only first",
+        "inventory stale reference adjacency",
+        "C++ object output hijack"
+      ]
+    },
+    {
+      "id": "pwn-runtime-bundled-libc-first",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/runtime/bundled-libc-first.md",
+      "category": "pwn",
+      "title": "Bundled libc first: lock runtime before heap probing",
+      "kind": "workflow",
+      "trigger": "bundled libc, bundled ld, wrong base, heap pollution",
+      "first_safe_check": "ctf-pwn-libc-runtime-doctor",
+      "oracle": "recommended runtime lock and explicit loader command appear",
+      "stop_rule": "do not validate heap overlap or tcache on a mismatched base once bundled libc/ld is present",
+      "pivot_rule": "if runtime doctor cannot be satisfied, stop heap validation and relock substrate",
+      "keywords": [
+        "bundled libc",
+        "runtime lock",
+        "wrong base",
+        "heap pollution"
+      ],
+      "snippet": "bundled libc first runtime gate",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 280,
+      "retrieval_intents": [
+        "bundled libc first",
+        "runtime lock",
+        "wrong libc"
+      ],
+      "semantic_tokens": [
+        "bundled-libc",
+        "runtime-lock",
+        "heap-gate"
+      ],
+      "query_aliases": [
+        "bundled libc first",
+        "runtime lock",
+        "lock runtime before heap probing"
+      ]
+    },
+    {
+      "id": "pwn-runtime-exact-read-contracts",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/runtime/exact-read-contracts.md",
+      "category": "pwn",
+      "title": "Exact read(size+1) menu desync contract",
+      "kind": "quick-check",
+      "trigger": "read(size+1), exact-length raw reads, mixed menu/raw phases",
+      "first_safe_check": "ctf-pwn-menu-contract-probe",
+      "oracle": "helper contract distinguishes exact raw read vs line-based read",
+      "stop_rule": "do not keep flipping sendlineafter/sendafter until helper semantics are explicit",
+      "pivot_rule": "if helper semantics remain unclear, spend the next probe on protocol locking",
+      "keywords": [
+        "read(size+1)",
+        "exact read",
+        "menu desync"
+      ],
+      "snippet": "exact read menu contract",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 280,
+      "retrieval_intents": [
+        "exact read",
+        "size+1",
+        "menu contract"
+      ],
+      "semantic_tokens": [
+        "exact-read",
+        "menu-contract",
+        "helper-lock"
+      ],
+      "query_aliases": [
+        "exact read size+1",
+        "menu desync contract",
+        "read(size+1)"
+      ]
+    },
+    {
+      "id": "pwn-runtime-glibc-version-route-map",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/runtime/glibc-version-route-map.md",
+      "category": "pwn",
+      "title": "glibc version route map",
+      "kind": "workflow",
+      "trigger": "glibc version, hooks, safe-linking, FILE, setcontext, version-gated heap",
+      "first_safe_check": "ctf-pwn-libc-resolver + ctf-pwn-libc-fingerprint",
+      "oracle": "version bucket and route pressure are explicit",
+      "stop_rule": "do not name heap techniques before version bucket is known",
+      "pivot_rule": "if version is unknown, relock runtime first",
+      "keywords": [
+        "glibc 2.23",
+        "safe-linking",
+        "setcontext",
+        "FSOP"
+      ],
+      "snippet": "glibc version route map",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 240,
+      "retrieval_intents": [
+        "glibc version",
+        "safe-linking",
+        "setcontext"
+      ],
+      "semantic_tokens": [
+        "glibc-version",
+        "safe-linking",
+        "route-map"
+      ],
+      "query_aliases": [
+        "glibc version route map",
+        "version gated heap",
+        "setcontext route map"
+      ]
+    },
+    {
+      "id": "pwn-curated-glibc27-fake-stdout-shortplaybook",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/curated/glibc27-fake-stdout-shortplaybook.md",
+      "category": "pwn",
+      "title": "glibc 2.27 fake stdout short playbook",
+      "kind": "quick-check",
+      "trigger": "glibc 2.23-2.27, fake stdout, _IO_FILE leakage, shorter closure needed",
+      "first_safe_check": "runtime + leak class confirmation",
+      "oracle": "first leak or stable output differential appears",
+      "stop_rule": "rerank to setcontext+53 and direct ORW if fake stdout is slow",
+      "pivot_rule": "if no concrete leak appears quickly, prefer setcontext+53 ORW",
+      "keywords": [
+        "fake stdout",
+        "glibc 2.27",
+        "setcontext+53"
+      ],
+      "snippet": "glibc27 fake stdout short playbook",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 320,
+      "retrieval_intents": [
+        "glibc 2.27",
+        "fake stdout",
+        "setcontext+53"
+      ],
+      "semantic_tokens": [
+        "glibc-2.27",
+        "fake-stdout",
+        "setcontext+53"
+      ],
+      "query_aliases": [
+        "glibc 2.27 fake stdout",
+        "setcontext+53",
+        "stdout leak short playbook"
+      ]
+    },
+    {
+      "id": "pwn-closure-free-hook-setcontext-orw",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/closure/free_hook_setcontext_orw.md",
+      "category": "pwn",
+      "title": "free_hook to setcontext+53 to ORW",
+      "kind": "workflow",
+      "trigger": "context restore route, ORW shorter than shell, writable frame exists",
+      "first_safe_check": "ctf-pwn-libc-resolver + frame placement proof",
+      "oracle": "context restore lands and ORW becomes direct",
+      "stop_rule": "if trigger/frame placement cannot be proven quickly, rerank to direct ORW or output-hijack",
+      "pivot_rule": "if hooks are removed or unreliable, demote hook route",
+      "keywords": [
+        "__free_hook",
+        "setcontext+53",
+        "ORW"
+      ],
+      "snippet": "free hook setcontext ORW",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 300,
+      "retrieval_intents": [
+        "free_hook",
+        "setcontext+53",
+        "ORW"
+      ],
+      "semantic_tokens": [
+        "free-hook",
+        "setcontext+53",
+        "orw"
+      ],
+      "query_aliases": [
+        "free_hook setcontext orw",
+        "__free_hook setcontext+53",
+        "setcontext orw"
+      ]
+    },
+    {
+      "id": "pwn-closure-seccomp-router",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/closure/seccomp-closure-router.md",
+      "category": "pwn",
+      "title": "seccomp closure router",
+      "kind": "workflow",
+      "trigger": "seccomp, sandbox, syscall allowlist, blocked shell",
+      "first_safe_check": "ctf-pwn-syscall-orw-check",
+      "oracle": "allowlist and direct file-read path become explicit",
+      "stop_rule": "do not keep forcing shell once ORW/FILE/output-hijack is shorter",
+      "pivot_rule": "if syscall surface is unknown, spend next probe on syscall evidence",
+      "keywords": [
+        "seccomp",
+        "ORW",
+        "existing fd",
+        "output-hijack"
+      ],
+      "snippet": "seccomp closure router",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 280,
+      "retrieval_intents": [
+        "seccomp",
+        "ORW",
+        "output hijack"
+      ],
+      "semantic_tokens": [
+        "seccomp",
+        "closure-router",
+        "orw"
+      ],
+      "query_aliases": [
+        "seccomp closure router",
+        "seccomp orw",
+        "file read closure"
+      ]
+    },
+    {
+      "id": "pwn-anti-wrong-libc-validation",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/anti-patterns/wrong-libc-anti-pattern.md",
+      "category": "pwn",
+      "title": "Wrong libc anti-pattern for heap verification",
+      "kind": "note",
+      "trigger": "bundled libc, mismatched base, heap validation drift",
+      "first_safe_check": "ctf-pwn-libc-runtime-doctor",
+      "oracle": "runtime gate says current base is mismatched",
+      "stop_rule": "do not trust earlier heap observations until the runtime is relocked",
+      "pivot_rule": "if base is mismatched, stop heap mutation and relock",
+      "keywords": [
+        "wrong libc",
+        "wrong base",
+        "heap verification"
+      ],
+      "snippet": "wrong libc anti-pattern",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 330,
+      "retrieval_intents": [
+        "wrong libc",
+        "wrong base",
+        "heap verification"
+      ],
+      "semantic_tokens": [
+        "wrong-libc",
+        "anti-pattern",
+        "runtime-lock"
+      ],
+      "query_aliases": [
+        "wrong libc",
+        "wrong base validation",
+        "heap verification wrong libc"
+      ]
+    },
+    {
+      "id": "pwn-anti-exact-read-drift",
+      "source": "local-pwn-curated",
+      "source_file": "knowledge/pwn/anti-patterns/pwn-anti-patterns.md",
+      "category": "pwn",
+      "title": "Exact read / menu helper drift anti-pattern",
+      "kind": "note",
+      "trigger": "read(size+1), mixed menu/raw, helper pollution",
+      "first_safe_check": "ctf-pwn-menu-contract-probe",
+      "oracle": "helper contract locks line vs raw semantics",
+      "stop_rule": "do not keep changing sendlineafter/sendafter until helper semantics are explicit",
+      "pivot_rule": "if protocol is unclear, lock helper before payload mutation",
+      "keywords": [
+        "exact read",
+        "menu desync",
+        "sendafter",
+        "sendlineafter"
+      ],
+      "snippet": "exact read helper drift",
+      "quality": 5,
+      "specificity": 5,
+      "curated": true,
+      "promoted": true,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 330,
+      "retrieval_intents": [
+        "exact read",
+        "menu contract",
+        "helper drift"
+      ],
+      "semantic_tokens": [
+        "exact-read",
+        "helper-drift",
+        "menu-contract"
+      ],
+      "query_aliases": [
+        "exact read size+1",
+        "menu desync contract",
+        "exact read helper drift"
+      ]
+    },
+    {
+      "id": "pwn-primitive-leak-got-stringified-pointer-leak",
+      "source": "local-pwn-knowledge",
+      "source_file": "knowledge/pwn/primitive/leak/got-stringified-pointer-leak.md",
+      "category": "pwn",
+      "title": "got stringified pointer leak",
+      "kind": "primitive",
+      "trigger": "printf/puts argument can point at GOT entry, GOT entry resolved, output treats pointer bytes as char*",
+      "first_safe_check": "read card trigger, generate minimal probe, confirm/falsify before closure",
+      "oracle": "card-specific confirm oracle",
+      "stop_rule": "do not promote closure before primitive probe is verified or falsified",
+      "pivot_rule": "pivot only on real oracle or blocker",
+      "keywords": [
+        "knowledge",
+        "pwn",
+        "primitive",
+        "leak",
+        "got-stringified-pointer-leak.md",
+        "got",
+        "stringified",
+        "pointer",
+        "printf",
+        "puts",
+        "argument",
+        "can",
+        "point",
+        "entry",
+        "resolved",
+        "output",
+        "treats",
+        "bytes"
+      ],
+      "snippet": "got stringified pointer leak",
+      "quality": 4,
+      "specificity": 4,
+      "curated": true,
+      "promoted": false,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 170,
+      "retrieval_intents": [
+        "knowledge",
+        "pwn",
+        "primitive",
+        "leak",
+        "got-stringified-pointer-leak.md",
+        "got",
+        "stringified",
+        "pointer"
+      ],
+      "semantic_tokens": [
+        "knowledge",
+        "pwn",
+        "primitive",
+        "leak",
+        "got-stringified-pointer-leak.md",
+        "got",
+        "stringified",
+        "pointer",
+        "printf",
+        "puts"
+      ],
+      "query_aliases": [
+        "got stringified pointer leak",
+        "primitive leak got stringified pointer leak"
+      ]
+    },
+    {
+      "id": "pwn-anti-patterns-got-page-bulk-write-pollutes-stdio",
+      "source": "local-pwn-knowledge",
+      "source_file": "knowledge/pwn/anti-patterns/got-page-bulk-write-pollutes-stdio.md",
+      "category": "pwn",
+      "title": "got page bulk write pollutes stdio",
+      "kind": "anti-pattern",
+      "trigger": "Partial RELRO or writable GOT-adjacent page., A bulk read/write starts at or near GOT/global pointer region., `.got.plt`, `.data`, `.bss`, `stdin`, `stdout`, or `stderr` are close in memory., Program crashes inside libc stdio after a large write.",
+      "first_safe_check": "read card trigger, generate minimal probe, confirm/falsify before closure",
+      "oracle": "card-specific confirm oracle",
+      "stop_rule": "do not promote closure before primitive probe is verified or falsified",
+      "pivot_rule": "pivot only on real oracle or blocker",
+      "keywords": [
+        "knowledge",
+        "pwn",
+        "anti-patterns",
+        "got-page-bulk-write-pollutes-stdio.md",
+        "got",
+        "page",
+        "bulk",
+        "write",
+        "pollutes",
+        "stdio",
+        "partial",
+        "relro",
+        "writable",
+        "got-adjacent",
+        "page.",
+        "read",
+        "starts",
+        "near"
+      ],
+      "snippet": "got page bulk write pollutes stdio",
+      "quality": 4,
+      "specificity": 4,
+      "curated": true,
+      "promoted": false,
+      "distilled": true,
+      "semi_curated": true,
+      "rank_boost": 130,
+      "retrieval_intents": [
+        "knowledge",
+        "pwn",
+        "anti-patterns",
+        "got-page-bulk-write-pollutes-stdio.md",
+        "got",
+        "page",
+        "bulk",
+        "write"
+      ],
+      "semantic_tokens": [
+        "knowledge",
+        "pwn",
+        "anti-patterns",
+        "got-page-bulk-write-pollutes-stdio.md",
+        "got",
+        "page",
+        "bulk",
+        "write",
+        "pollutes",
+        "stdio"
+      ],
+      "query_aliases": [
+        "got page bulk write pollutes stdio",
+        "anti patterns got page bulk write pollutes stdio"
+      ]
+    }
+  ]
+}

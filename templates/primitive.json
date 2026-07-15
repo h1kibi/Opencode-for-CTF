@@ -1,0 +1,15 @@
+{
+  "primitive": "",
+  "primitive_family": "",
+  "strongest_evidence": [],
+  "current_boundary": "",
+  "current_privilege": "",
+  "closure_owner": "",
+  "best_oracle": "",
+  "blocker": "",
+  "likely_flag_path": "",
+  "next_probe": "",
+  "primitive_role": "bridge",
+  "verification_status": "unverified",
+  "last_updated": ""
+}

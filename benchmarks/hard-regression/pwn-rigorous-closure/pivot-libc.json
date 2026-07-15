@@ -1,0 +1,26 @@
+{
+  "id": "pwn-rigorous-closure-pivot-libc",
+  "category": "pwn",
+  "description": "Primitive already endgame-ready: pivot/control + libc leak known. Rigor should prefer canonical closure over replay-heavy application flow.",
+  "artifacts": [
+    "primitive=STACK_PIVOT_LIBC_LEAK",
+    "state_independence=high",
+    "closure_candidates=syscall_execve,ret2libc_system,menu_replay_cat_flag"
+  ],
+  "expected": {
+    "primary_owner": "pwn",
+    "support_surface": "none",
+    "first_safe_tool": "ctf-decision-state",
+    "hard_submode": "closure-first",
+    "bottleneck_family": "closure-selection",
+    "source_first": false,
+    "closure_required": true,
+    "handoff_trigger": "only_if_current_primitive_falsified",
+    "stop_rule": "do_not_replay_business_flow_before_canonical_closure_is_falsified"
+  },
+  "metrics": {
+    "must_prefer": "syscall_execve_or_ret2libc_system",
+    "must_penalize": "menu_replay_cat_flag"
+  },
+  "notes": "Designed to catch business-narrative drift after primitive lock."
+}

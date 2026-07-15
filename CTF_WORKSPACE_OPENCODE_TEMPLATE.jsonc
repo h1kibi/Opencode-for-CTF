@@ -1,0 +1,80 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Copy this file to your CTF workspace as:
+  //   C:\\Users\\Administrator\\Desktop\\Agent\\ctf-workspace\\opencode.jsonc
+  // or:
+  //   C:\\Users\\Administrator\\Desktop\\Agent\\ctf-workspace\\.opencode\\opencode.jsonc
+  // Then start opencode from the CTF workspace.
+  // Recommended per-challenge structure inside the workspace:
+  //   work/<challenge-id>/
+  //     evidence.json
+  //     endpoint-matrix.md
+  //     state-diff.md
+  //     primitive-ledger.json
+  //     flag-location.json
+  //     blocked-hypotheses.json
+  //     closure-queue.json
+  //     .ctf-decision-state.json
+  //     .ctf-chain-state.json
+  //     solve.py
+  //     retro.md
+  // Use one directory per challenge to keep mixed evidence and stale probes from polluting later solves.
+
+  "default_agent": "ctf-fast",    // 可选: ctf-fast (轻量快速), ctf-expert (证据驱动全面分析)
+  "snapshot": false,
+  "small_model": "yintu/gpt-5.4",
+
+  "tool_output": {
+    "max_lines": 180,
+    "max_bytes": 9000
+  },
+
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "tail_turns": 2,
+    "reserved": 7000
+  },
+
+  "mcp": {
+    "browser": { "enabled": false },
+    "brave_search": { "enabled": false },
+    "markitdown": { "enabled": false },
+    "obsidian": { "enabled": false },
+    "filesystem": { "enabled": false },
+    "github": { "enabled": false },
+    "context7": { "enabled": false },
+    "gh_grep": { "enabled": false },
+    "jina": { "enabled": false },
+    "firecrawl": { "enabled": false },
+    "tavily": { "enabled": false },
+    "playwright": { "enabled": false },
+    "puppeteer": { "enabled": false }
+  },
+
+  "watcher": {
+    "ignore": [
+      "**/archive/**",
+      "**/artifacts/**",
+      "**/extracted/**",
+      "**/work/**",
+      "**/work/*/extracted/**",
+      "**/work/*/artifacts/**",
+      "**/work/*/.ctf-decision-state.json",
+      "**/work/*/.ctf-chain-state.json",
+      "**/*.pcap",
+      "**/*.pcapng",
+      "**/*.mem",
+      "**/*.raw",
+      "**/*.img",
+      "**/*.iso",
+      "**/*.zip",
+      "**/*.7z",
+      "**/*.tar",
+      "**/*.gz",
+      "**/node_modules/**",
+      "**/.git/**"
+    ]
+  }
+}

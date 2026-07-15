@@ -1,0 +1,372 @@
+services:
+  pwn-ubuntu18:
+    image: pwnlab:ubuntu18.04
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.ubuntu18.04
+    working_dir: /work
+    volumes:
+      - ./:/work
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    profiles: ["ubuntu18"]
+
+  pwn-ubuntu20:
+    image: pwnlab:ubuntu20.04
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.ubuntu20.04
+    working_dir: /work
+    volumes:
+      - ./:/work
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    profiles: ["ubuntu20"]
+
+  pwn-ubuntu22:
+    image: pwnlab:ubuntu22.04
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.ubuntu22.04
+    working_dir: /work
+    volumes:
+      - ./:/work
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    profiles: ["ubuntu22", "default"]
+
+  pwn-ubuntu24:
+    image: pwnlab:ubuntu24.04
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.ubuntu24.04
+    working_dir: /work
+    volumes:
+      - ./:/work
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    profiles: ["ubuntu24"]
+
+  pwn-i386:
+    image: pwnlab:i386-ubuntu20.04
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.i386-ubuntu20.04
+    working_dir: /work
+    volumes:
+      - ./:/work
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    profiles: ["i386"]
+
+  pwn-general:
+    image: pwnlab:general-ubuntu22.04
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.general-ubuntu22.04
+    working_dir: /work
+    init: true
+    volumes:
+      - ./:/work
+      - pwn-cache:/root/.cache
+      - pwn-gdb:/root/.gdb
+      - pwn-history:/root/.local/share/pwn-history
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      - PYTHONIOENCODING=utf-8
+      - PWNLIB_NOTERM=0
+    profiles: ["general", "pwn"]
+
+  pwn-heavy:
+    image: pwnlab:heavy-ubuntu22.04
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.heavy-ubuntu22.04
+    working_dir: /work
+    init: true
+    volumes:
+      - ./:/work
+      - pwn-cache:/root/.cache
+      - pwn-gdb:/root/.gdb
+      - pwn-history:/root/.local/share/pwn-history
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      - PYTHONIOENCODING=utf-8
+      - PWNLIB_NOTERM=0
+    profiles: ["heavy"]
+
+  pwn-general24:
+    image: pwnlab:general-ubuntu24.04
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.general-ubuntu24.04
+    working_dir: /work
+    init: true
+    volumes:
+      - ./:/work
+      - pwn-cache:/root/.cache
+      - pwn-gdb:/root/.gdb
+      - pwn-history:/root/.local/share/pwn-history
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      - PYTHONIOENCODING=utf-8
+      - PWNLIB_NOTERM=0
+    profiles: ["general24", "pwn24"]
+
+  pwn-heavy24:
+    image: pwnlab:heavy-ubuntu24.04
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.heavy-ubuntu24.04
+    working_dir: /work
+    init: true
+    volumes:
+      - ./:/work
+      - pwn-cache:/root/.cache
+      - pwn-gdb:/root/.gdb
+      - pwn-history:/root/.local/share/pwn-history
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      - PYTHONIOENCODING=utf-8
+      - PWNLIB_NOTERM=0
+    profiles: ["heavy24"]
+
+  pwn-general18:
+    image: pwnlab:general-ubuntu18.04
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.general-ubuntu18.04
+    working_dir: /work
+    volumes:
+      - ./:/work
+      - pwn-cache:/root/.cache
+      - pwn-gdb:/root/.gdb
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - PWNLIB_NOTERM=0
+    profiles: ["general18"]
+
+  pwn-general20:
+    image: pwnlab:general-ubuntu20.04
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.general-ubuntu20.04
+    working_dir: /work
+    volumes:
+      - ./:/work
+      - pwn-cache:/root/.cache
+      - pwn-gdb:/root/.gdb
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - PWNLIB_NOTERM=0
+    profiles: ["general20"]
+
+  pwn-debian11:
+    image: pwnlab:general-debian11
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.general-debian11
+    working_dir: /work
+    volumes:
+      - ./:/work
+      - pwn-cache:/root/.cache
+      - pwn-gdb:/root/.gdb
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - PWNLIB_NOTERM=0
+    profiles: ["debian11"]
+
+  pwn-debian12:
+    image: pwnlab:general-debian12
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.general-debian12
+    working_dir: /work
+    volumes:
+      - ./:/work
+      - pwn-cache:/root/.cache
+      - pwn-gdb:/root/.gdb
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - PWNLIB_NOTERM=0
+    profiles: ["debian12"]
+
+  pwn-alpine:
+    image: pwnlab:general-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.general-alpine
+    working_dir: /work
+    volumes:
+      - ./:/work
+      - pwn-cache:/root/.cache
+      - pwn-gdb:/root/.gdb
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - PWNLIB_NOTERM=0
+    profiles: ["alpine", "musl"]
+
+  pwn-aarch64:
+    image: pwnlab:aarch64
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.aarch64
+    working_dir: /work
+    volumes:
+      - ./:/work
+      - pwn-cache:/root/.cache
+      - pwn-gdb:/root/.gdb
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - PWNLIB_NOTERM=0
+    profiles: ["aarch64", "arm64"]
+
+  revlab:
+    image: revlab:ubuntu22.04
+    build:
+      context: .
+      dockerfile: Dockerfile.revlab-ubuntu22.04
+    working_dir: /work
+    init: true
+    pull_policy: if_not_present
+    volumes:
+      - ./:/work
+      - pwn-cache:/root/.cache
+      - pwn-gdb:/root/.gdb
+    cap_add:
+      - SYS_PTRACE
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      - PYTHONIOENCODING=utf-8
+      - PWNLIB_NOTERM=0
+      - GOPATH=/root/go
+      - PATH=/usr/local/go/bin:/root/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    profiles: ["revlab", "rev", "forensics"]
+
+  pwn-mipsel:
+    image: pwnlab:mipsel
+    build:
+      context: .
+      dockerfile: Dockerfile.pwnlab.mipsel
+    working_dir: /work
+    init: true
+    pull_policy: if_not_present
+    volumes:
+      - ./:/work
+      - pwn-cache:/root/.cache
+      - pwn-gdb:/root/.gdb
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - PWNLIB_NOTERM=0
+    profiles: ["mipsel"]
+
+volumes:
+  pwn-cache:
+  pwn-gdb:
+  pwn-history:

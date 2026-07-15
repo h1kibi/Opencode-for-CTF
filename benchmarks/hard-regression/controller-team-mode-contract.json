@@ -1,0 +1,23 @@
+{
+  "id": "controller-team-mode-contract",
+  "category": "mixed",
+  "description": "Team Mode should create scoped members and merge them back into one owner, one support surface, and one next probe instead of parallel autonomous solve tracks.",
+  "artifacts": [
+    "tools/ctf-team-mode.ts",
+    "runtime/src/team-manager.ts",
+    "commands/ctf-team-mode.md",
+    "commands/ctf-fanout.md"
+  ],
+  "expected": {
+    "primary_owner": "web",
+    "support_surface": "java",
+    "first_safe_tool": "ctf-team-mode",
+    "hard_submode": "runtime_team_orchestration",
+    "bottleneck_family": "parallel_information_gain",
+    "source_first": true,
+    "closure_required": false,
+    "handoff_trigger": "hard_branch_needs_scoped_parallelism",
+    "stop_rule": "merge_parallel_member_results_into_one_next_probe"
+  },
+  "notes": "Regression skeleton for real Team Mode runtime contract."
+}

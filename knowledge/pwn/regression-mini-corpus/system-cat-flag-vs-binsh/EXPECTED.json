@@ -1,0 +1,20 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "system-cat-flag-vs-binsh",
+  "sample_type": "metadata-only",
+  "expected_primitive": "pwn.closure.system_binsh_vs_system_cat_flag",
+  "expected_tags": {
+    "closure": [
+      "system_cat_flag"
+    ],
+    "anti_pattern": [
+      "shell_over_flag"
+    ]
+  },
+  "minimal_probe_shape": "system(\"cat flag\")",
+  "confirm_oracle": "flag printed directly",
+  "falsify_oracle": "system unavailable or command string not controllable",
+  "anti_pattern_to_avoid": [
+    "shell_over_flag"
+  ]
+}

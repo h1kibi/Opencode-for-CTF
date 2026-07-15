@@ -1,0 +1,2596 @@
+{
+  "schema_version": "pwn_card_tags_index.v2",
+  "generated_at": "2026-06-17T04:46:12.198Z",
+  "total_cards": 75,
+  "tag_schema": "knowledge/pwn/retrieval-tag-schema.md",
+  "cards": [
+    {
+      "id": "pwn.primitive.got_stringified_pointer_leak",
+      "path": "knowledge/pwn/primitive/leak/got-stringified-pointer-leak.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.got_stringified_pointer_leak",
+      "tags": {
+        "control": [
+          "saved_rbp",
+          "fmt",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "rbp_relative_arg",
+          "printf",
+          "puts"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "ret2libc",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "payload = b\"A\"*off + p64(got_entry + k) + p64(callsite) | # or puts(got_entry) / printf((char*)got_entry)",
+      "confirm_oracle_summary": "Raw libc pointer bytes appear before NUL/crash/EOF.",
+      "falsify_oracle_summary": "Callsite reaches target but bytes not printed.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.printf_readonly_fmt_leak",
+      "path": "knowledge/pwn/primitive/leak/printf-readonly-fmt-leak.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.printf_readonly_fmt_leak",
+      "tags": {
+        "control": [
+          "fmt",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "printf"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "for i in range(1,40): |     send(f\"%{i}$p\")",
+      "confirm_oracle_summary": "Stable canary/libc/PIE/stack leak map.",
+      "falsify_oracle_summary": "Input is not format-interpreted.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.puts_got_leak",
+      "path": "knowledge/pwn/primitive/leak/puts-got-leak.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.puts_got_leak",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "puts"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "ret2libc",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "payload = flat({off:[pop_rdi, elf.got[\"puts\"], elf.plt[\"puts\"], elf.symbols[\"main\"]]})",
+      "confirm_oracle_summary": "puts leaks a libc pointer and returns/restarts.",
+      "falsify_oracle_summary": "No argument control/output path.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.stdout_file_leak",
+      "path": "knowledge/pwn/primitive/leak/stdout-file-leak.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.stdout_file_leak",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap",
+          "file"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "fsop",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "# version-specific FILE field corruption | trigger_flush()",
+      "confirm_oracle_summary": "libc-adjacent bytes leak.",
+      "falsify_oracle_summary": "FILE checks reject or wrong layout.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.uninitialized_memory_leak",
+      "path": "knowledge/pwn/primitive/leak/uninitialized-memory-leak.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.uninitialized_memory_leak",
+      "tags": {
+        "control": [
+          "uaf",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap",
+          "uninitialized"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "create(); show() | # compare repeated runs and classify pointer bytes",
+      "confirm_oracle_summary": "Stable stale pointer/secret bytes appear.",
+      "falsify_oracle_summary": "Output zeroed/random unrelated.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.frame_indexed_callsite_call",
+      "path": "knowledge/pwn/primitive/stack-rop/frame-indexed-callsite-call.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.frame_indexed_callsite_call",
+      "tags": {
+        "control": [
+          "saved_rbp",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "rbp_relative_arg",
+          "original_callsite",
+          "printf",
+          "puts",
+          "system"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "payload = b\"A\"*off_rbp + p64(arg_target + k) + p64(callsite_before_arg_setup)",
+      "confirm_oracle_summary": "Original callsite consumes selected argument.",
+      "falsify_oracle_summary": "Callsite reached but argument not consumed/target invalid.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.partial_return_overwrite",
+      "path": "knowledge/pwn/primitive/stack-rop/partial-return-overwrite.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.partial_return_overwrite",
+      "tags": {
+        "control": [
+          "saved_rip",
+          "arbitrary_write",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ],
+        "anti_pattern": [
+          "wrong_libc"
+        ]
+      },
+      "minimal_probe_shape": "payload = prefix + p16(target_low16)",
+      "confirm_oracle_summary": "Control reaches nearby target.",
+      "falsify_oracle_summary": "High bytes/page mismatch blocks target.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.ret2csu_arg_control",
+      "path": "knowledge/pwn/primitive/stack-rop/ret2csu-arg-control.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.ret2csu_arg_control",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "payload = b\"A\"*off + p64(csu_pop) + p64(0)+p64(1)+p64(func_ptr)+p64(rdx)+p64(rsi)+p64(rdi)+p64(csu_call)",
+      "confirm_oracle_summary": "Controlled benign call receives expected args.",
+      "falsify_oracle_summary": "No paired CSU shape or simpler route dominates.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.ret2plt_leak",
+      "path": "knowledge/pwn/primitive/stack-rop/ret2plt-leak.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.ret2plt_leak",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "printf",
+          "puts",
+          "write"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "ret2libc",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "payload = flat({off: [pop_rdi, elf.got[\"puts\"], elf.plt[\"puts\"], elf.symbols[\"main\"]]})",
+      "confirm_oracle_summary": "Pointer-shaped GOT leak appears and program returns.",
+      "falsify_oracle_summary": "No argument control or no output path.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.saved_rbp_stack_pivot",
+      "path": "knowledge/pwn/primitive/stack-rop/saved-rbp-stack-pivot.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.saved_rbp_stack_pivot",
+      "tags": {
+        "control": [
+          "saved_rbp",
+          "stack_pivot",
+          "arbitrary_write",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "fake = p64(next_rbp)+p64(next_rip)+chain | payload = b\"A\"*off_rbp + p64(fake_stack) + p64(leave_ret)",
+      "confirm_oracle_summary": "After leave, rsp/rbp/rip come from fake stack.",
+      "falsify_oracle_summary": "Fake stack unreadable or leave not reached.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.saved_rip_control",
+      "path": "knowledge/pwn/primitive/stack-rop/saved-rip-control.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.saved_rip_control",
+      "tags": {
+        "control": [
+          "saved_rip",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "ret2win",
+          "ret2libc",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "payload = cyclic(length) | # offset = cyclic_find(crashed_rip) | payload = b\"A\"*offset + p64(test_ret)",
+      "confirm_oracle_summary": "RIP lands at controlled marker/test_ret.",
+      "falsify_oracle_summary": "Crash before RIP or canary/input path blocks control.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.shellcode_badchars",
+      "path": "knowledge/pwn/primitive/stack-rop/shellcode-badchars.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.shellcode_badchars",
+      "tags": {
+        "leak": [
+          "stack"
+        ],
+        "mitigation": [
+          "nx"
+        ],
+        "closure": [
+          "shellcode"
+        ]
+      },
+      "minimal_probe_shape": "send stage1 read stub / decoder | read stage2 shellcode to RWX/RW page | jump stage2",
+      "confirm_oracle_summary": "Stage2 bytes match intended shellcode and executes.",
+      "falsify_oracle_summary": "Transform corrupts bytes or no executable target.",
+      "do_not_do_yet": [
+        "writing shellcode via text encoder unintentionally",
+        "not hexdumping artifact length",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    },
+    {
+      "id": "pwn.primitive.srop_sigreturn",
+      "path": "knowledge/pwn/primitive/stack-rop/srop-sigreturn.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.srop_sigreturn",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap",
+          "file"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "ret2libc",
+          "orw",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "frame = SigreturnFrame() | frame.rax = 59; frame.rdi = binsh; frame.rip = syscall_ret | payload = b\"A\"*off + p64(pop_rax)+p64(15)+p64(syscall_ret)+bytes(frame)",
+      "confirm_oracle_summary": "Registers match frame and syscall executes.",
+      "falsify_oracle_summary": "Cannot set rax=15 or no syscall gadget.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.stack_alignment_movaps",
+      "path": "knowledge/pwn/primitive/stack-rop/stack-alignment-movaps.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.stack_alignment_movaps",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "ret2libc",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "payload = b\"A\"*off + p64(ret) + rop_chain",
+      "confirm_oracle_summary": "Crash moves past movaps/prologue.",
+      "falsify_oracle_summary": "Same crash persists because base/arg is wrong.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.stack_leak_environ",
+      "path": "knowledge/pwn/primitive/stack-rop/stack-leak-environ.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.stack_leak_environ",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "arbitrary_read",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "puts"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "target = libc.symbols[\"environ\"] | leak = read_ptr_or_puts(target)",
+      "confirm_oracle_summary": "Pointer is stack-shaped and stable.",
+      "falsify_oracle_summary": "Leak not stack-like or environ unavailable.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.arbitrary_write_struct_pointer",
+      "path": "knowledge/pwn/primitive/write/arbitrary-write-struct-pointer.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.arbitrary_write_struct_pointer",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "arbitrary_read",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "overwrite(obj.ptr, target) | show_or_edit(index)",
+      "confirm_oracle_summary": "Show leaks target or edit writes target.",
+      "falsify_oracle_summary": "Pointer field not reached/validated.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.cpp_vtable_object_hijack",
+      "path": "knowledge/pwn/primitive/write/cpp-vtable-object-hijack.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.cpp_vtable_object_hijack",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "uaf"
+        ],
+        "leak": [
+          "heap"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "pie"
+        ],
+        "closure": [
+          "data_only"
+        ],
+        "anti_pattern": [
+          "one_gadget_roulette"
+        ]
+      },
+      "minimal_probe_shape": "overwrite vptr -> fake vtable | fake_vtable[slot] = target | trigger virtual call",
+      "confirm_oracle_summary": "Call target reached with expected this/args.",
+      "falsify_oracle_summary": "CFI/vtable check blocks or slot/offset wrong.",
+      "do_not_do_yet": [
+        "not identifying slot index",
+        "forgetting this pointer constraints",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    },
+    {
+      "id": "pwn.primitive.exit_handlers_tls_dtors",
+      "path": "knowledge/pwn/primitive/write/exit-handlers-tls-dtors.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.exit_handlers_tls_dtors",
+      "tags": {
+        "control": [
+          "arbitrary_write"
+        ],
+        "leak": [
+          "libc",
+          "heap"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "runtime": [
+          "glibc_2_34_plus"
+        ],
+        "closure": [
+          "fsop"
+        ]
+      },
+      "minimal_probe_shape": "identify version-specific callback storage | write function pointer / encoded pointer | trigger exit or destructor path",
+      "confirm_oracle_summary": "Controlled callback executes on exit/destructor.",
+      "falsify_oracle_summary": "Pointer mangling/layout unknown or exit path not reached.",
+      "do_not_do_yet": [
+        "assuming old hooks on 2.34+",
+        "not accounting for pointer guard mangling",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    },
+    {
+      "id": "pwn.primitive.exit_to_main_loop",
+      "path": "knowledge/pwn/primitive/write/exit-to-main-loop.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.exit_to_main_loop",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "payload = leak_chain + [main_or_vuln] | # or overwrite exit@got -> main",
+      "confirm_oracle_summary": "Program prompts again after leak.",
+      "falsify_oracle_summary": "State corrupted or reentry unsafe.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.fmt_write_got",
+      "path": "knowledge/pwn/primitive/write/fmt-write-got.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.fmt_write_got",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "fmt",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "printf",
+          "write"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "payload = fmtstr_payload(offset, {target: value}, write_size=\"short\")",
+      "confirm_oracle_summary": "Target memory changes and consumer uses it.",
+      "falsify_oracle_summary": "Offset unstable or target read-only.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.partial_pointer_overwrite",
+      "path": "knowledge/pwn/primitive/write/partial-pointer-overwrite.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.partial_pointer_overwrite",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ],
+        "anti_pattern": [
+          "wrong_libc"
+        ]
+      },
+      "minimal_probe_shape": "patch(offset, p8(new_low_byte))",
+      "confirm_oracle_summary": "Pointer redirects within same mapping/page.",
+      "falsify_oracle_summary": "ASLR/page mismatch.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.primitive.partial_relro_got_overwrite",
+      "path": "knowledge/pwn/primitive/write/partial-relro-got-overwrite.md",
+      "kind": "primitive",
+      "title": "pwn.primitive.partial_relro_got_overwrite",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "printf",
+          "write",
+          "system"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "partial_relro",
+          "full_relro",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only",
+          "got_hijack"
+        ]
+      },
+      "minimal_probe_shape": "write64(elf.got[\"printf\"], libc.sym[\"system\"]) | send(\"/bin/sh\\0\")",
+      "confirm_oracle_summary": "Later call invokes replacement with controlled arg.",
+      "falsify_oracle_summary": "Full RELRO or no later call.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.heap.chunk_overlap",
+      "path": "knowledge/pwn/heap/chunk-overlap.md",
+      "kind": "primitive",
+      "title": "pwn.heap.chunk_overlap",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "overflow_size(victim); free_alloc_sequence(); edit(overlap, field)",
+      "confirm_oracle_summary": "Two handles overlap same memory.",
+      "falsify_oracle_summary": "Allocator checks fail/no overlap.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.heap.fsop_modern_glibc",
+      "path": "knowledge/pwn/heap/fsop-modern-glibc.md",
+      "kind": "primitive",
+      "title": "pwn.heap.fsop_modern_glibc",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap",
+          "file"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "fsop",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "# craft version-specific FILE fields | trigger flush/exit",
+      "confirm_oracle_summary": "Leak/control path triggers.",
+      "falsify_oracle_summary": "FILE/vtable checks reject.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.heap.house_of_apple2",
+      "path": "knowledge/pwn/heap/house-of-apple2.md",
+      "kind": "primitive",
+      "title": "pwn.heap.house_of_apple2",
+      "tags": {
+        "control": [
+          "arbitrary_write"
+        ],
+        "leak": [
+          "libc",
+          "heap",
+          "file"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "closure": [
+          "fsop",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "craft fake FILE/wide_data | point target FILE fields to fake structures | trigger flush/exit",
+      "confirm_oracle_summary": "Control reaches chosen call path or leaks via FILE path.",
+      "falsify_oracle_summary": "FILE checks fail or wrong version layout.",
+      "do_not_do_yet": [
+        "copying writeup offsets across libc versions",
+        "skipping FILE field sanity checks",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    },
+    {
+      "id": "pwn.heap.house_of_banana",
+      "path": "knowledge/pwn/heap/house-of-banana.md",
+      "kind": "primitive",
+      "title": "pwn.heap.house_of_banana",
+      "tags": {
+        "control": [
+          "arbitrary_write"
+        ],
+        "leak": [
+          "libc",
+          "heap"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "runtime": [
+          "glibc_2_34_plus"
+        ],
+        "anti_pattern": [
+          "wrong_libc"
+        ]
+      },
+      "minimal_probe_shape": "map target structures for exact libc | write controlled pointers | trigger exit/runtime path",
+      "confirm_oracle_summary": "Controlled function path executes.",
+      "falsify_oracle_summary": "Layout/version mismatch or trigger unavailable.",
+      "do_not_do_yet": [
+        "using as first heap idea",
+        "not locking libc/ld build-id",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    },
+    {
+      "id": "pwn.heap.safe_linking_decode",
+      "path": "knowledge/pwn/heap/safe-linking-decode.md",
+      "kind": "primitive",
+      "title": "pwn.heap.safe_linking_decode",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "runtime": [
+          "glibc_2_32_plus"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "real_fd = encoded_fd ^ (chunk_addr >> 12) | encoded_target = target ^ (chunk_addr >> 12)",
+      "confirm_oracle_summary": "Decoded pointer is sensible and poisoning works.",
+      "falsify_oracle_summary": "Chunk address unknown/nonsense decode.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.heap.tcache_poisoning",
+      "path": "knowledge/pwn/heap/tcache-poisoning.md",
+      "kind": "primitive",
+      "title": "pwn.heap.tcache_poisoning",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "runtime": [
+          "glibc_2_32_plus"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "free(a); edit(a, encoded_target) | malloc(size); malloc(size)",
+      "confirm_oracle_summary": "malloc returns target.",
+      "falsify_oracle_summary": "safe-linking/size/checks reject.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.heap.uaf_stale_read",
+      "path": "knowledge/pwn/heap/uaf-stale-read.md",
+      "kind": "primitive",
+      "title": "pwn.heap.uaf_stale_read",
+      "tags": {
+        "control": [
+          "uaf",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "runtime": [
+          "glibc_2_32_plus"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "free(i); show(i)",
+      "confirm_oracle_summary": "Heap/libc/safe-linking metadata leaks.",
+      "falsify_oracle_summary": "Pointer cleared or show blocked.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.heap.uaf_stale_write",
+      "path": "knowledge/pwn/heap/uaf-stale-write.md",
+      "kind": "primitive",
+      "title": "pwn.heap.uaf_stale_write",
+      "tags": {
+        "control": [
+          "uaf",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "free(i); edit(i, payload)",
+      "confirm_oracle_summary": "Metadata/victim field changes.",
+      "falsify_oracle_summary": "Edit blocked or stale pointer invalid.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.heap.unsorted_bin_leak",
+      "path": "knowledge/pwn/heap/unsorted-bin-leak.md",
+      "kind": "primitive",
+      "title": "pwn.heap.unsorted_bin_leak",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "free(large); show(large)",
+      "confirm_oracle_summary": "main_arena/libc pointer appears.",
+      "falsify_oracle_summary": "Chunk goes to tcache/fastbin or no show.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.closure.canary.leak.first",
+      "path": "knowledge/pwn/closure/canary-leak-first.md",
+      "kind": "closure",
+      "title": "canary leak first",
+      "tags": {
+        "control": [
+          "stack_pivot",
+          "arbitrary_write",
+          "fmt"
+        ],
+        "leak": [
+          "stack",
+          "heap",
+          "file"
+        ],
+        "mitigation": [
+          "canary"
+        ],
+        "closure": [
+          "fsop"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.closure.cxx.uaf.dataonly.first",
+      "path": "knowledge/pwn/closure/cxx-uaf-dataonly-first.md",
+      "kind": "closure",
+      "title": "CXX UAF data-only first",
+      "tags": {
+        "control": [
+          "stack_pivot",
+          "arbitrary_write",
+          "uaf",
+          "fmt"
+        ],
+        "leak": [
+          "heap",
+          "file"
+        ],
+        "closure": [
+          "fsop",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.closure.fmt.leak.before.write",
+      "path": "knowledge/pwn/closure/fmt-leak-before-write.md",
+      "kind": "closure",
+      "title": "format string leak before write",
+      "tags": {
+        "control": [
+          "stack_pivot",
+          "arbitrary_write",
+          "fmt"
+        ],
+        "leak": [
+          "libc",
+          "stack",
+          "heap",
+          "file"
+        ],
+        "callsite": [
+          "printf",
+          "write"
+        ],
+        "mitigation": [
+          "pie",
+          "canary"
+        ],
+        "anti_pattern": [
+          "write_before_leak"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.closure.frame.indexed.callsite.leak",
+      "path": "knowledge/pwn/closure/frame-indexed-callsite-leak.md",
+      "kind": "closure",
+      "title": "Frame-Indexed Callsite Leak",
+      "tags": {
+        "control": [
+          "saved_rip",
+          "saved_rbp",
+          "stack_pivot",
+          "fmt"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack"
+        ],
+        "callsite": [
+          "rbp_relative_arg",
+          "original_callsite",
+          "printf",
+          "puts",
+          "write",
+          "system"
+        ],
+        "closure": [
+          "one_gadget"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.closure.free.hook.setcontext.orw",
+      "path": "knowledge/pwn/closure/free_hook_setcontext_orw.md",
+      "kind": "closure",
+      "title": "free_hook -> setcontext+53 -> ORW",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "syscall"
+        ],
+        "leak": [
+          "libc",
+          "stack",
+          "heap",
+          "file"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "seccomp"
+        ],
+        "closure": [
+          "orw",
+          "fsop"
+        ],
+        "anti_pattern": [
+          "shell_over_flag"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.closure.mprotect_shellcode",
+      "path": "knowledge/pwn/closure/mprotect-shellcode.md",
+      "kind": "closure",
+      "title": "pwn.closure.mprotect_shellcode",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "libc",
+          "file"
+        ],
+        "mitigation": [
+          "nx",
+          "seccomp"
+        ],
+        "closure": [
+          "orw",
+          "shellcode",
+          "fsop"
+        ]
+      },
+      "minimal_probe_shape": "mprotect(page, 0x1000, PROT_READ|PROT_WRITE|PROT_EXEC) | read shellcode to page | jmp shellcode",
+      "confirm_oracle_summary": "Shellcode executes or marker syscall observed.",
+      "falsify_oracle_summary": "mprotect denied, page wrong, bad chars, or seccomp blocks exec.",
+      "do_not_do_yet": [
+        "forgetting page alignment",
+        "shellcode badchars/newline truncation",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    },
+    {
+      "id": "pwn.closure.no.canary.no.pie.shortest.rop",
+      "path": "knowledge/pwn/closure/no-canary-no-pie-shortest-rop.md",
+      "kind": "closure",
+      "title": "no canary no PIE shortest ROP",
+      "tags": {
+        "control": [
+          "saved_rip",
+          "stack_pivot",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "callsite": [
+          "printf",
+          "puts",
+          "system"
+        ],
+        "mitigation": [
+          "pie",
+          "canary"
+        ],
+        "closure": [
+          "ret2win",
+          "ret2libc"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.closure.one_gadget_constraints",
+      "path": "knowledge/pwn/closure/one-gadget-constraints.md",
+      "kind": "closure",
+      "title": "pwn.closure.one_gadget_constraints",
+      "tags": {
+        "control": [
+          "saved_rbp",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "one_gadget",
+          "data_only"
+        ],
+        "anti_pattern": [
+          "one_gadget_roulette"
+        ]
+      },
+      "minimal_probe_shape": "# verify rsi==0, rdx==0, [rsp+0x30]==0, writable rbp | payload = chain_to(one_gadget)",
+      "confirm_oracle_summary": "Gadget executes under constraints.",
+      "falsify_oracle_summary": "Constraint not satisfied/crash.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.closure.openat_orw",
+      "path": "knowledge/pwn/closure/openat-orw.md",
+      "kind": "closure",
+      "title": "pwn.closure.openat_orw",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "file"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "seccomp"
+        ],
+        "closure": [
+          "orw",
+          "fsop"
+        ]
+      },
+      "minimal_probe_shape": "openat(-100, \"flag\", 0) | read(fd, buf, size) | write(1, buf, n)",
+      "confirm_oracle_summary": "Flag bytes printed.",
+      "falsify_oracle_summary": "openat denied or path wrong.",
+      "do_not_do_yet": [
+        "using open when only openat is allowed",
+        "forgetting AT_FDCWD=-100",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    },
+    {
+      "id": "pwn.closure.orw_seccomp_file_read",
+      "path": "knowledge/pwn/closure/orw-seccomp-file-read.md",
+      "kind": "closure",
+      "title": "pwn.closure.orw_seccomp_file_read",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap",
+          "file"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "orw",
+          "fsop",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "open(\"flag\",0); read(fd, buf, 0x100); write(1, buf, n)",
+      "confirm_oracle_summary": "Flag bytes printed.",
+      "falsify_oracle_summary": "Syscall denied/path wrong/no buffer.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.closure.partial.relro.got.write.queue",
+      "path": "knowledge/pwn/closure/partial-relro-got-write-queue.md",
+      "kind": "closure",
+      "title": "partial RELRO GOT write queue",
+      "tags": {
+        "control": [
+          "stack_pivot",
+          "arbitrary_write"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "file"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "partial_relro"
+        ],
+        "closure": [
+          "ret2libc",
+          "fsop",
+          "data_only",
+          "got_hijack"
+        ],
+        "anti_pattern": [
+          "write_before_leak"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.closure.pie.base.before.gadget",
+      "path": "knowledge/pwn/closure/pie-base-before-gadget.md",
+      "kind": "closure",
+      "title": "PIE base before gadget",
+      "tags": {
+        "control": [
+          "stack_pivot"
+        ],
+        "leak": [
+          "libc"
+        ],
+        "mitigation": [
+          "pie"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.closure.ret2dlresolve",
+      "path": "knowledge/pwn/closure/ret2dlresolve.md",
+      "kind": "closure",
+      "title": "pwn.closure.ret2dlresolve",
+      "tags": {
+        "control": [
+          "fmt"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "file"
+        ],
+        "callsite": [
+          "system"
+        ],
+        "closure": [
+          "ret2libc",
+          "system_cat_flag"
+        ],
+        "anti_pattern": [
+          "shell_over_flag"
+        ]
+      },
+      "minimal_probe_shape": "build fake Elf64_Rela / Elf64_Sym / string table in .bss | call plt0 with relocation index | argument points to /bin/sh or cat flag",
+      "confirm_oracle_summary": "Resolver calls desired symbol or writes resolved address.",
+      "falsify_oracle_summary": "Dynamic loader path unavailable, fake structs misaligned, or simpler leak route exists.",
+      "do_not_do_yet": [
+        "using ret2dlresolve when a one-stage GOT leak is available",
+        "forgetting alignment of fake Sym/Rela",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    },
+    {
+      "id": "pwn.closure.ret2libc.leak.first",
+      "path": "knowledge/pwn/closure/ret2libc-leak-first.md",
+      "kind": "closure",
+      "title": "ret2libc leak-first closure",
+      "tags": {
+        "control": [
+          "stack_pivot",
+          "fmt",
+          "syscall"
+        ],
+        "leak": [
+          "libc",
+          "file"
+        ],
+        "callsite": [
+          "printf",
+          "puts",
+          "write"
+        ],
+        "mitigation": [
+          "nx",
+          "seccomp"
+        ],
+        "closure": [
+          "ret2libc",
+          "one_gadget",
+          "orw"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.closure.ret2win.direct",
+      "path": "knowledge/pwn/closure/ret2win-direct.md",
+      "kind": "closure",
+      "title": "ret2win direct closure",
+      "tags": {
+        "control": [
+          "saved_rip",
+          "stack_pivot",
+          "arbitrary_write",
+          "fmt"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "heap",
+          "file"
+        ],
+        "callsite": [
+          "system"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary"
+        ],
+        "closure": [
+          "ret2win",
+          "ret2libc",
+          "shellcode"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.closure.seccomp.closure.router",
+      "path": "knowledge/pwn/closure/seccomp-closure-router.md",
+      "kind": "closure",
+      "title": "Seccomp Closure Router",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "libc",
+          "file"
+        ],
+        "callsite": [
+          "write",
+          "system"
+        ],
+        "mitigation": [
+          "seccomp"
+        ],
+        "closure": [
+          "ret2libc",
+          "orw",
+          "fsop",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.closure.setcontext_rop",
+      "path": "knowledge/pwn/closure/setcontext-rop.md",
+      "kind": "closure",
+      "title": "pwn.closure.setcontext_rop",
+      "tags": {
+        "control": [
+          "stack_pivot",
+          "arbitrary_write",
+          "syscall"
+        ],
+        "leak": [
+          "libc",
+          "heap",
+          "file"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "seccomp"
+        ],
+        "runtime": [
+          "glibc_2_27",
+          "glibc_2_34_plus",
+          "glibc_2_35"
+        ],
+        "closure": [
+          "orw",
+          "fsop"
+        ]
+      },
+      "minimal_probe_shape": "write fake frame to heap/bss | overwrite callback/hook -> setcontext+offset | trigger callback",
+      "confirm_oracle_summary": "Registers/rsp load from frame and ORW/read-flag chain executes.",
+      "falsify_oracle_summary": "Wrong offset/layout, hooks removed/unreachable, or frame pointer not controlled.",
+      "do_not_do_yet": [
+        "copying 2.27 setcontext+53 blindly to 2.35+",
+        "not validating frame layout in gdb",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    },
+    {
+      "id": "pwn.closure.static.orw.before.shell",
+      "path": "knowledge/pwn/closure/static-orw-before-shell.md",
+      "kind": "closure",
+      "title": "static ORW before shell",
+      "tags": {
+        "control": [
+          "stack_pivot",
+          "syscall"
+        ],
+        "leak": [
+          "file"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "seccomp"
+        ],
+        "closure": [
+          "orw",
+          "fsop"
+        ],
+        "anti_pattern": [
+          "shell_over_flag"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.closure.system_binsh_vs_system_cat_flag",
+      "path": "knowledge/pwn/closure/system-binsh-vs-system-cat-flag.md",
+      "kind": "closure",
+      "title": "pwn.closure.system_binsh_vs_system_cat_flag",
+      "tags": {
+        "control": [
+          "fmt",
+          "syscall"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "heap",
+          "file"
+        ],
+        "callsite": [
+          "system"
+        ],
+        "mitigation": [
+          "nx",
+          "pie",
+          "canary",
+          "cet",
+          "seccomp"
+        ],
+        "closure": [
+          "ret2libc",
+          "system_cat_flag",
+          "data_only"
+        ],
+        "anti_pattern": [
+          "shell_over_flag"
+        ]
+      },
+      "minimal_probe_shape": "call(system, ptr_to(\"cat flag\")) | # often shorter than interactive /bin/sh",
+      "confirm_oracle_summary": "Flag printed directly.",
+      "falsify_oracle_summary": "system blocked or string unavailable.",
+      "do_not_do_yet": [
+        "Do not promote closure work before this primitive is minimally verified or falsified.",
+        "Complex closure failure does not necessarily falsify the primitive.",
+        "Technique-name-first reasoning before signal-to-primitive compression."
+      ]
+    },
+    {
+      "id": "pwn.runtime.bundled.libc.first",
+      "path": "knowledge/pwn/runtime/bundled-libc-first.md",
+      "kind": "runtime",
+      "title": "Bundled Libc First",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "libc",
+          "heap",
+          "file"
+        ],
+        "mitigation": [
+          "seccomp"
+        ],
+        "runtime": [
+          "glibc_2_32_plus"
+        ],
+        "closure": [
+          "fsop"
+        ],
+        "anti_pattern": [
+          "wrong_libc"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.runtime.exact.read.contracts",
+      "path": "knowledge/pwn/runtime/exact-read-contracts.md",
+      "kind": "runtime",
+      "title": "Exact Read Contracts",
+      "tags": {
+        "leak": [
+          "heap"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.runtime.glibc.version.route.map",
+      "path": "knowledge/pwn/runtime/glibc-version-route-map.md",
+      "kind": "runtime",
+      "title": "glibc Version Route Map",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "syscall"
+        ],
+        "leak": [
+          "libc",
+          "heap",
+          "file"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "runtime": [
+          "glibc_2_23",
+          "glibc_2_27",
+          "glibc_2_31",
+          "glibc_2_32_plus",
+          "glibc_2_34_plus",
+          "glibc_2_35"
+        ],
+        "closure": [
+          "orw",
+          "fsop",
+          "data_only"
+        ],
+        "anti_pattern": [
+          "one_gadget_roulette"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.runtime.musl.heap.differences",
+      "path": "knowledge/pwn/runtime/musl-heap-differences.md",
+      "kind": "runtime",
+      "title": "musl Heap Differences",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "libc",
+          "heap",
+          "file"
+        ],
+        "runtime": [
+          "musl"
+        ],
+        "closure": [
+          "fsop"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.anti.patterns.got.page.bulk.write.pollutes.stdio",
+      "path": "knowledge/pwn/anti-patterns/got-page-bulk-write-pollutes-stdio.md",
+      "kind": "anti-pattern",
+      "title": "GOT Page Bulk Write Pollutes stdio",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "fmt"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack",
+          "file"
+        ],
+        "callsite": [
+          "original_callsite",
+          "printf",
+          "puts",
+          "write"
+        ],
+        "mitigation": [
+          "partial_relro",
+          "full_relro"
+        ],
+        "closure": [
+          "fsop",
+          "got_hijack"
+        ],
+        "anti_pattern": [
+          "got_page_pollution",
+          "write_before_leak"
+        ]
+      },
+      "minimal_probe_shape": "# write only the exact target-sized field first | payload = fit({target_offset: p64(value)}, length=exact_len) | # compare with bulk write that spans stdin/stdout/stderr",
+      "confirm_oracle_summary": "Exact write preserves stdio while bulk write crashes or corrupts output.",
+      "falsify_oracle_summary": "Crash occurs before the write or adjacent stdio/global pointers are not touched.",
+      "do_not_do_yet": [
+        "Treating stdio corruption as a failure of the original callsite leak primitive.",
+        "Using one large read from the GOT page before mapping adjacent globals.",
+        "Bulk GOT-page rewrite before primitive leak validation."
+      ]
+    },
+    {
+      "id": "pwn.anti.patterns.over.reconstructed.fake.stack.before.callsite.probe",
+      "path": "knowledge/pwn/anti-patterns/over-reconstructed-fake-stack-before-callsite-probe.md",
+      "kind": "anti-pattern",
+      "title": "Over-Reconstructed Fake Stack Before Original Callsite Probe",
+      "tags": {
+        "control": [
+          "saved_rbp",
+          "stack_pivot"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "stack"
+        ],
+        "callsite": [
+          "rbp_relative_arg",
+          "original_callsite",
+          "printf",
+          "puts"
+        ],
+        "anti_pattern": [
+          "fake_stack_before_callsite",
+          "got_page_pollution"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.anti.patterns.pwn.anti.patterns",
+      "path": "knowledge/pwn/anti-patterns/pwn-anti-patterns.md",
+      "kind": "anti-pattern",
+      "title": "PWN Anti-Patterns",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "syscall"
+        ],
+        "leak": [
+          "libc",
+          "heap",
+          "file"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "seccomp"
+        ],
+        "closure": [
+          "orw",
+          "fsop"
+        ],
+        "anti_pattern": [
+          "wrong_libc"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.anti.patterns.wrong.libc.anti.pattern",
+      "path": "knowledge/pwn/anti-patterns/wrong-libc-anti-pattern.md",
+      "kind": "anti-pattern",
+      "title": "Wrong Libc / Wrong Base Validation",
+      "tags": {
+        "leak": [
+          "libc",
+          "stack",
+          "heap",
+          "file"
+        ],
+        "closure": [
+          "fsop"
+        ],
+        "anti_pattern": [
+          "wrong_libc"
+        ]
+      },
+      "minimal_probe_shape": "",
+      "confirm_oracle_summary": "",
+      "falsify_oracle_summary": "",
+      "do_not_do_yet": []
+    },
+    {
+      "id": "pwn.mitigation.full_relro",
+      "path": "knowledge/pwn/mitigation/full-relro.md",
+      "kind": "mitigation",
+      "title": "pwn.mitigation.full_relro",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "fmt"
+        ],
+        "leak": [
+          "got",
+          "libc",
+          "heap",
+          "file"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "full_relro"
+        ],
+        "runtime": [
+          "kernel"
+        ],
+        "closure": [
+          "fsop",
+          "data_only",
+          "got_hijack"
+        ]
+      },
+      "minimal_probe_shape": "verify GOT read works | choose non-GOT write target",
+      "confirm_oracle_summary": "GOT read leaks but write denied.",
+      "falsify_oracle_summary": "Writable GOT despite checksec due unusual mapping.",
+      "do_not_do_yet": [
+        "abandoning GOT leak because GOT write blocked",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.mitigation.ibt_endbr64",
+      "path": "knowledge/pwn/mitigation/ibt-endbr64.md",
+      "kind": "mitigation",
+      "title": "pwn.mitigation.ibt_endbr64",
+      "tags": {
+        "leak": [
+          "libc"
+        ],
+        "mitigation": [
+          "cet",
+          "ibt",
+          "shstk"
+        ],
+        "runtime": [
+          "kernel"
+        ]
+      },
+      "minimal_probe_shape": "check crash type | choose ENDBR target for indirect call | test ret path separately",
+      "confirm_oracle_summary": "Crash disappears with ENDBR-valid target.",
+      "falsify_oracle_summary": "IBT not enforced at runtime.",
+      "do_not_do_yet": [
+        "assuming ret is blocked like indirect jmp",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.mitigation.partial_relro",
+      "path": "knowledge/pwn/mitigation/partial-relro.md",
+      "kind": "mitigation",
+      "title": "pwn.mitigation.partial_relro",
+      "tags": {
+        "control": [
+          "arbitrary_write"
+        ],
+        "leak": [
+          "got",
+          "libc"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "mitigation": [
+          "partial_relro",
+          "full_relro"
+        ],
+        "runtime": [
+          "kernel"
+        ]
+      },
+      "minimal_probe_shape": "check memory permissions | test exact write target, not page bulk",
+      "confirm_oracle_summary": "Write to GOT changes later call.",
+      "falsify_oracle_summary": "Full RELRO or page read-only.",
+      "do_not_do_yet": [
+        "bulk GOT writes pollute globals",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.mitigation.shstk",
+      "path": "knowledge/pwn/mitigation/shstk.md",
+      "kind": "mitigation",
+      "title": "pwn.mitigation.shstk",
+      "tags": {
+        "control": [
+          "saved_rip",
+          "arbitrary_write"
+        ],
+        "leak": [
+          "libc",
+          "stack"
+        ],
+        "mitigation": [
+          "cet",
+          "ibt",
+          "shstk"
+        ],
+        "runtime": [
+          "kernel"
+        ],
+        "closure": [
+          "ret2win"
+        ],
+        "anti_pattern": [
+          "wrong_libc"
+        ]
+      },
+      "minimal_probe_shape": "minimal ret overwrite test | observe signal/exception | compare container runtime enforcement",
+      "confirm_oracle_summary": "Ret overwrite blocked by shadow stack behavior.",
+      "falsify_oracle_summary": "Normal ret2win works; property not enforced.",
+      "do_not_do_yet": [
+        "overreacting to SHSTK property alone",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.version.glibc_2_23",
+      "path": "knowledge/pwn/version-gates/glibc-2.23.md",
+      "kind": "runtime",
+      "title": "pwn.version.glibc_2_23",
+      "tags": {
+        "leak": [
+          "libc",
+          "heap"
+        ],
+        "runtime": [
+          "glibc_2_23",
+          "glibc_2_32_plus",
+          "kernel"
+        ]
+      },
+      "minimal_probe_shape": "fingerprint libc build-id | check hooks symbols | choose fastbin/unsorted route only after primitive proof",
+      "confirm_oracle_summary": "Symbol/layout matches 2.23 and chosen primitive works.",
+      "falsify_oracle_summary": "Bundled libc differs or target not 2.23.",
+      "do_not_do_yet": [
+        "assuming tcache exists",
+        "using safe-linking logic",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.version.glibc_2_27",
+      "path": "knowledge/pwn/version-gates/glibc-2.27.md",
+      "kind": "runtime",
+      "title": "pwn.version.glibc_2_27",
+      "tags": {
+        "leak": [
+          "libc",
+          "heap"
+        ],
+        "runtime": [
+          "glibc_2_27",
+          "kernel"
+        ]
+      },
+      "minimal_probe_shape": "fingerprint libc | test tcache lifecycle | verify hook symbols and setcontext offset",
+      "confirm_oracle_summary": "Tcache/hook closure aligns with exact libc.",
+      "falsify_oracle_summary": "Runtime lock points to different libc.",
+      "do_not_do_yet": [
+        "blind setcontext+53 reuse",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.version.glibc_2_31",
+      "path": "knowledge/pwn/version-gates/glibc-2.31.md",
+      "kind": "runtime",
+      "title": "pwn.version.glibc_2_31",
+      "tags": {
+        "control": [
+          "fmt"
+        ],
+        "leak": [
+          "libc",
+          "heap"
+        ],
+        "runtime": [
+          "glibc_2_31",
+          "glibc_2_32_plus",
+          "kernel"
+        ]
+      },
+      "minimal_probe_shape": "fingerprint build-id | check safe-linking behavior | verify hooks symbols",
+      "confirm_oracle_summary": "Primitive route matches observed allocator behavior.",
+      "falsify_oracle_summary": "Safe-linking/hooks assumptions contradict runtime.",
+      "do_not_do_yet": [
+        "wrong safe-linking assumption",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.version.glibc_2_32_plus",
+      "path": "knowledge/pwn/version-gates/glibc-2.32-plus.md",
+      "kind": "runtime",
+      "title": "pwn.version.glibc_2_32_plus",
+      "tags": {
+        "leak": [
+          "libc",
+          "heap"
+        ],
+        "runtime": [
+          "glibc_2_32_plus",
+          "kernel"
+        ]
+      },
+      "minimal_probe_shape": "leak heap chunk address | decode fd = encoded ^ (chunk>>12) | encode target similarly",
+      "confirm_oracle_summary": "Decoded fd is sensible and poisoning works.",
+      "falsify_oracle_summary": "No heap leak or formula wrong.",
+      "do_not_do_yet": [
+        "using target address for xor shift",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.version.glibc_2_34_plus",
+      "path": "knowledge/pwn/version-gates/glibc-2.34-plus.md",
+      "kind": "runtime",
+      "title": "pwn.version.glibc_2_34_plus",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "syscall"
+        ],
+        "leak": [
+          "libc",
+          "heap",
+          "file"
+        ],
+        "runtime": [
+          "glibc_2_34_plus",
+          "kernel"
+        ],
+        "closure": [
+          "orw",
+          "fsop",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "confirm hooks absent/unusable | rank hookless closures | verify exact runtime lock",
+      "confirm_oracle_summary": "Closure avoids removed hooks.",
+      "falsify_oracle_summary": "Hooks actually exist in bundled libc or simpler route works.",
+      "do_not_do_yet": [
+        "forcing __free_hook",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.version.glibc_2_35",
+      "path": "knowledge/pwn/version-gates/glibc-2.35.md",
+      "kind": "runtime",
+      "title": "pwn.version.glibc_2_35",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "libc",
+          "heap",
+          "file"
+        ],
+        "runtime": [
+          "glibc_2_27",
+          "glibc_2_32_plus",
+          "glibc_2_35",
+          "kernel"
+        ],
+        "closure": [
+          "one_gadget",
+          "orw",
+          "fsop"
+        ],
+        "anti_pattern": [
+          "one_gadget_roulette"
+        ]
+      },
+      "minimal_probe_shape": "runtime lock build-id | classify leak | verify one_gadget constraints before trying",
+      "confirm_oracle_summary": "Route works under 2.35 exact layout.",
+      "falsify_oracle_summary": "Crash caused by wrong version/layout.",
+      "do_not_do_yet": [
+        "glibc 2.27 playbook drift",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.version.glibc_2_39",
+      "path": "knowledge/pwn/version-gates/glibc-2.39.md",
+      "kind": "runtime",
+      "title": "pwn.version.glibc_2_39",
+      "tags": {
+        "control": [
+          "syscall"
+        ],
+        "leak": [
+          "libc",
+          "file"
+        ],
+        "callsite": [
+          "original_callsite"
+        ],
+        "mitigation": [
+          "seccomp"
+        ],
+        "runtime": [
+          "glibc_2_39",
+          "kernel"
+        ],
+        "closure": [
+          "orw",
+          "fsop",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "fingerprint build-id | avoid hook assumptions | validate FILE/exit routes with exact layout",
+      "confirm_oracle_summary": "Modern-compatible route proven.",
+      "falsify_oracle_summary": "Old-layout technique fails checks.",
+      "do_not_do_yet": [
+        "using old FILE structs",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.debug.no_current_process_before_breakpoint",
+      "path": "knowledge/pwn/debug-oracles/no-current-process-before-breakpoint.md",
+      "kind": "debug-oracle",
+      "title": "pwn.debug.no_current_process_before_breakpoint",
+      "tags": {
+        "leak": [
+          "libc",
+          "file"
+        ],
+        "runtime": [
+          "kernel"
+        ],
+        "closure": [
+          "fsop"
+        ],
+        "anti_pattern": [
+          "wrong_libc"
+        ]
+      },
+      "minimal_probe_shape": "check payload length/sha256 | map stdin segments | break earlier at read/callsite",
+      "confirm_oracle_summary": "Correct payload reaches breakpoint.",
+      "falsify_oracle_summary": "Even correct payload exits because path condition not met.",
+      "do_not_do_yet": [
+        "debugging ROP when payload file is truncated",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.debug.stdio_crash_after_got_write",
+      "path": "knowledge/pwn/debug-oracles/stdio-crash-after-got-write.md",
+      "kind": "debug-oracle",
+      "title": "pwn.debug.stdio_crash_after_got_write",
+      "tags": {
+        "leak": [
+          "got",
+          "libc"
+        ],
+        "callsite": [
+          "printf",
+          "write"
+        ],
+        "runtime": [
+          "kernel"
+        ]
+      },
+      "minimal_probe_shape": "compare exact write vs bulk write | print section symbols around target",
+      "confirm_oracle_summary": "Exact write avoids crash.",
+      "falsify_oracle_summary": "Crash occurs without touching stdio adjacency.",
+      "do_not_do_yet": [
+        "using bulk write as falsifier for leak primitive",
+        "Do not reuse assumptions from another libc/kernel/build without fingerprinting."
+      ]
+    },
+    {
+      "id": "pwn.advanced.browser_jit_vm_route_gate",
+      "path": "knowledge/pwn/advanced/browser-jit-vm-route-gate.md",
+      "kind": "advanced",
+      "title": "pwn.advanced.browser_jit_vm_route_gate",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "arbitrary_read"
+        ],
+        "mitigation": [
+          "nx",
+          "seccomp"
+        ],
+        "runtime": [
+          "browser"
+        ],
+        "closure": [
+          "shellcode",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "prove type confusion/OOB | derive addrof/fakeobj | build AAR/AAW primitive",
+      "confirm_oracle_summary": "Stable JS/VM primitive exists across runs.",
+      "falsify_oracle_summary": "Optimization/sandbox prevents primitive.",
+      "do_not_do_yet": [
+        "jumping to shellcode before AAR/AAW",
+        "ignoring GC/lifetime",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    },
+    {
+      "id": "pwn.advanced.kernel_uaf_route_gate",
+      "path": "knowledge/pwn/advanced/kernel-uaf-route-gate.md",
+      "kind": "advanced",
+      "title": "pwn.advanced.kernel_uaf_route_gate",
+      "tags": {
+        "control": [
+          "arbitrary_write",
+          "uaf"
+        ],
+        "leak": [
+          "libc",
+          "heap"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "runtime": [
+          "kernel",
+          "qemu"
+        ],
+        "closure": [
+          "ret2libc",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "map ioctl commands and object lifecycle | prove UAF read/write/control | choose cred overwrite or kROP bypass path",
+      "confirm_oracle_summary": "Kernel primitive proven without panic or with controlled panic oracle.",
+      "falsify_oracle_summary": "No reachable UAF/lifetime bug or mitigation path impossible.",
+      "do_not_do_yet": [
+        "userland ret2libc habits in kernel",
+        "not separating kernel/user pointers",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    },
+    {
+      "id": "pwn.advanced.qemu_device_route_gate",
+      "path": "knowledge/pwn/advanced/qemu-device-route-gate.md",
+      "kind": "advanced",
+      "title": "pwn.advanced.qemu_device_route_gate",
+      "tags": {
+        "control": [
+          "stack_pivot",
+          "uaf"
+        ],
+        "callsite": [
+          "write"
+        ],
+        "runtime": [
+          "kernel",
+          "qemu"
+        ],
+        "closure": [
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "map MMIO/PIO operations | prove OOB/read/write in device state | pivot to host leak/control",
+      "confirm_oracle_summary": "Host/device primitive changes observable state or leaks host pointer.",
+      "falsify_oracle_summary": "No reachable device bug or guest isolation prevents primitive.",
+      "do_not_do_yet": [
+        "treating device PWN as normal ELF",
+        "not modeling DMA address translation",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    },
+    {
+      "id": "pwn.advanced.race_userfaultfd",
+      "path": "knowledge/pwn/advanced/race-userfaultfd.md",
+      "kind": "advanced",
+      "title": "pwn.advanced.race_userfaultfd",
+      "tags": {
+        "control": [
+          "uaf"
+        ],
+        "leak": [
+          "heap"
+        ],
+        "runtime": [
+          "kernel"
+        ],
+        "closure": [
+          "ret2win",
+          "data_only"
+        ]
+      },
+      "minimal_probe_shape": "instrument operations and timing | prove before/after state race | stabilize with blocking primitive if allowed",
+      "confirm_oracle_summary": "Race win changes object lifetime/state predictably.",
+      "falsify_oracle_summary": "No timing window or primitive cannot be stabilized.",
+      "do_not_do_yet": [
+        "mutating payloads without measuring race window",
+        "ignoring fork/server model",
+        "Do not apply this advanced card before simpler primitive cards are falsified or blocked."
+      ]
+    }
+  ]
+}

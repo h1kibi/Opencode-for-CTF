@@ -1,0 +1,24 @@
+{
+  "id": "controller-resume-priority",
+  "category": "mixed",
+  "description": "Resume flow should prefer resume packet, then fast handoff, then generic handoff/snapshot before broad notes reread.",
+  "artifacts": [
+    "commands/ctf-resume.md",
+    "templates/ctf_resume_packet.md",
+    "templates/ctf_fast_handoff.md",
+    "templates/ctf_handoff.md",
+    "templates/ctf_evidence_snapshot.md"
+  ],
+  "expected": {
+    "primary_owner": "web",
+    "support_surface": "java",
+    "first_safe_tool": "ctf-source-first-pack",
+    "hard_submode": "resume_priority_order",
+    "bottleneck_family": "restart_state_selection",
+    "source_first": true,
+    "closure_required": false,
+    "handoff_trigger": "interrupted_nontrivial_branch",
+    "stop_rule": "prefer_structured_restart_artifact_over_broad_notes_reread"
+  },
+  "notes": "Controller regression skeleton for resume packet precedence."
+}

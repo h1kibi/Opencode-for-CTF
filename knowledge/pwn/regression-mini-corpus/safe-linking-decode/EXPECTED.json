@@ -1,0 +1,23 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "safe-linking-decode",
+  "sample_type": "metadata-only",
+  "expected_primitive": "pwn.heap.safe_linking_decode",
+  "expected_tags": {
+    "control": [
+      "uaf"
+    ],
+    "leak": [
+      "heap"
+    ],
+    "runtime": [
+      "glibc_2_32_plus"
+    ]
+  },
+  "minimal_probe_shape": "real_fd = encoded_fd ^ (chunk_addr >> 12)",
+  "confirm_oracle": "decoded fd is sensible and poisoning works",
+  "falsify_oracle": "chunk address unknown or formula wrong",
+  "anti_pattern_to_avoid": [
+    "wrong_safe_linking_xor_base"
+  ]
+}

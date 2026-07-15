@@ -1,0 +1,24 @@
+{
+  "scope": {
+    "root": "",
+    "target_files": [],
+    "excluded": []
+  },
+  "stack": {
+    "languages": [],
+    "frameworks": [],
+    "runtime": "",
+    "dependency_files": []
+  },
+  "entrypoints": [],
+  "auth_boundaries": [],
+  "sources": [],
+  "sinks": [],
+  "sanitizers": [],
+  "candidate_findings": [],
+  "candidate_chains": [],
+  "verified_facts": [],
+  "false_positive_checks": [],
+  "priority_areas": [],
+  "next_probes": []
+}

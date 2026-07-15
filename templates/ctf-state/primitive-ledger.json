@@ -1,0 +1,29 @@
+{
+  "primitive": "",
+  "current_privilege": "",
+  "current_boundary": "",
+  "controlled_data": [],
+  "controlled_paths": [],
+  "candidate_flag_locations": [],
+  "candidate_read_paths": [],
+  "privilege_needed": "",
+  "trigger": "",
+  "execution_context": "",
+  "oracle": "",
+  "best_oracle": "",
+  "blockers": [],
+  "likely_flag_path": "",
+  "closure_path_type": "",
+  "downgrade_trigger": "",
+  "why_now": "",
+  "why_not_others": "",
+  "top_closure_probe": "",
+  "closure_probe_queue": [
+    {
+      "order": 1,
+      "probe": "",
+      "success_oracle": "",
+      "kill_condition": ""
+    }
+  ]
+}

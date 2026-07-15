@@ -1,0 +1,19 @@
+{
+  "challenge": {
+    "name": "",
+    "category": "unknown",
+    "flagFormat": "",
+    "target": ""
+  },
+  "phase": "triage",
+  "nextAction": "",
+  "hypotheses": [],
+  "confirmedPrimitives": [],
+  "blockedPaths": [],
+  "riskBudget": {
+    "requests": 20,
+    "concurrency": 1,
+    "uploads": 2,
+    "botTriggers": 2
+  }
+}

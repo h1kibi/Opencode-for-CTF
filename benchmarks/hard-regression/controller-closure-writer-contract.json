@@ -1,0 +1,24 @@
+{
+  "id": "controller-closure-writer-contract",
+  "category": "meta",
+  "description": "Closure command should target canonical closure.json and preserve restart artifacts instead of collapsing endgame state into prose only.",
+  "artifacts": [
+    "commands/ctf-closure.md",
+    "commands/ctf-final.md",
+    "scripts/write-evidence-state.ts",
+    "templates/closure.json",
+    "docs/CTF_EVIDENCE_LAYOUT.md"
+  ],
+  "expected": {
+    "primary_owner": "web",
+    "support_surface": "none",
+    "first_safe_tool": "write-evidence-state",
+    "hard_submode": "closure_writer_contract",
+    "bottleneck_family": "endgame_state_refresh",
+    "source_first": false,
+    "closure_required": true,
+    "handoff_trigger": "primitive_confirmed_endgame",
+    "stop_rule": "update_closure_json_and_preserve_restart_artifacts"
+  },
+  "notes": "Controller regression skeleton for closure/final writer-friendly behavior."
+}

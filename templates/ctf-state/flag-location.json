@@ -1,0 +1,17 @@
+{
+  "primitive": "",
+  "current_boundary": "",
+  "flag_location_type": "",
+  "storage_candidates": [],
+  "read_paths": [],
+  "best_oracle": "",
+  "blockers": [],
+  "closure_owner": "",
+  "top_2_closure_probes": [
+    {
+      "probe": "",
+      "success_oracle": "",
+      "kill_condition": ""
+    }
+  ]
+}

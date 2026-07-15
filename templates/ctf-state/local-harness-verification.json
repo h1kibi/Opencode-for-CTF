@@ -1,0 +1,19 @@
+{
+  "finding_id": "",
+  "target": {
+    "file": "",
+    "symbol": "",
+    "line": 0,
+    "language": ""
+  },
+  "vulnerability_type": "",
+  "source": "",
+  "sink": "",
+  "mock_plan": [],
+  "payloads_tested": [],
+  "success_oracle": "",
+  "observed_signal": "",
+  "verdict": "uncertain",
+  "chain_implication": "none",
+  "false_positive_checks": []
+}

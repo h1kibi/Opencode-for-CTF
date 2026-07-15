@@ -1,0 +1,20 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "partial-pointer-overwrite",
+  "sample_type": "c-source",
+  "expected_primitive": "pwn.primitive.partial_pointer_overwrite",
+  "expected_tags": {
+    "control": [
+      "arbitrary_write"
+    ],
+    "mitigation": [
+      "pie"
+    ]
+  },
+  "minimal_probe_shape": "overwrite low byte(s) of pointer to same-page target",
+  "confirm_oracle": "control reaches nearby target",
+  "falsify_oracle": "same-page/low-byte relation false",
+  "anti_pattern_to_avoid": [
+    "modeling_partial_as_full_write"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "lessons": [
+    {
+      "family": "closure | owner | failure | anti-pattern | source-first | overprobe | flag-location | blocked-vs-falsified | resume",
+      "trigger_signal": "",
+      "wrong_behavior": "",
+      "damage_caused": "",
+      "correction_rule": "",
+      "next_control_action": "",
+      "promotion_trigger": "",
+      "sample_evidence": []
+    }
+  ]
+}
