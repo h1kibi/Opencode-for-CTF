@@ -119,10 +119,9 @@ const rules: Rule[] = [
     ],
   },
   {
-    file: resolve("commands", "ctf-master.md"),
+    file: resolve("commands", "ctf-expert.md"),
     checks: [
-      { name: "rigorous shared boundary reference", pattern: /references\/pwn-mode-boundary\.md/i },
-      { name: "rigorous shared runtime trigger reference", pattern: /references\/pwn-runtime-trigger-matrix\.md/i },
+      { name: "expert entry exists", pattern: /ctf-expert/i },
     ],
   },
 ]

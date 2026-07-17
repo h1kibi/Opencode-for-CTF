@@ -136,14 +136,14 @@ checkContains("docker/Dockerfile.revlab-ubuntu22.04", "GOPROXY")
 checkContains("scripts/build-revlab.ps1", "UseCNMirror")
 checkContains("agents/ctf-rev.md", "ctf-rev-closure-ladder")
 checkContains("agents/ctf-rev.md", "ctf-rev-oob-discipline")
-checkContains("agents/ctf-master.md", "ctf-rev-closure-ladder")
-checkContains("agents/ctf-master.md", "ctf-rev-oob-discipline")
+checkContains("agents/ctf-expert.md", "ctf-rev-closure-ladder")
+checkContains("agents/ctf-expert.md", "ctf-rev-oob-discipline")
 checkContains("agents/ctf-rev.md", "ctf-pcap-carve")
 checkContains("agents/ctf-rev.md", "ctf-go-pclntool")
 checkContains("agents/ctf-fast.md", "ctf-pcap-carve")
 checkContains("agents/ctf-fast.md", "ctf-go-pclntool")
-checkContains("agents/ctf-master.md", "ctf-pcap-carve")
-checkContains("agents/ctf-master.md", "ctf-go-pclntool")
+checkContains("agents/ctf-expert.md", "ctf-pcap-carve")
+checkContains("agents/ctf-expert.md", "ctf-go-pclntool")
 checkContains(
   "docker/Dockerfile.revlab-ubuntu22.04",
   "for c in file strings tshark capinfos tcpdump binwalk upx readelf objdump nm gdb strace ltrace python3 scapy r2 rizin go unzip xxd jq patchelf radare2 qemu-aarch64-static qemu-mips-static qemu-riscv64-static one_gadget seccomp-tools uncompyle6 decompyle3 wasm-objdump wasm2wat GoReSym apktool aapt rr;",

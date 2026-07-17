@@ -36,7 +36,7 @@ export const OPENCODE_CTF_CONFIG_NAMES = ["opencode-for-ctf.jsonc", "opencode-fo
 export const PRIMARY_AGENTS = ["ctf-fast", "ctf-expert"] as const
 
 /** Historical names that must keep working but are not product modes. */
-export const COMPAT_AGENTS = ["ctf-master"] as const
+export const COMPAT_AGENTS = [] as const
 
 /** Default slash entry for new users. */
 export const DEFAULT_ENTRY_COMMAND = "/ctf"

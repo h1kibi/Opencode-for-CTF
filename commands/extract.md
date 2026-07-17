@@ -1,5 +1,5 @@
 ---
-description: Daily utility: Safely list and extract archives into workspace-local extracted/<name> in daily mode
+description: Daily utility: Safely list and extract archives into workspace-local extracted/<name> in non-CTF mode
 agent: daily
 subtask: true
 ---

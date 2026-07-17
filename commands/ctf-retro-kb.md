@@ -1,6 +1,6 @@
 ---
 description: CTF post: Auto-extract solved challenge learnings into SecKB (chain branches, bypass techniques, signals)
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

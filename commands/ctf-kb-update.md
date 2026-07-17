@@ -1,5 +1,5 @@
 ---
-description: CTF post: Controlled SecKB update workflow for ctf-master. Use only after solve/timeout or explicit user request; never during active solving.
+description: CTF post: Controlled SecKB update workflow for ctf-expert. Use only after solve/timeout or explicit user request; never during active solving.
 ---
 
 # /ctf-kb-update - Controlled local SecKB update

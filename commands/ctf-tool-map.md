@@ -1,6 +1,6 @@
 ---
 description: CTF domain: OMO-style CTF tool capability router; map concrete evidence to the best CTF tool and forbidden wrong tools
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

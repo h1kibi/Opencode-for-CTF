@@ -1,6 +1,6 @@
 ---
 description: CTF chain-DAG: Convert SecKB/pattern/live evidence into segmented exploit-chain DAG with OPEN/BLOCKED/DEAD backtracking discipline
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

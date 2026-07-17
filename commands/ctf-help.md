@@ -32,7 +32,7 @@ You only need these for normal work.
 
 ## L2 — advanced / compatibility
 
-Heap mappers, Android macros, Godot helpers, ledger/control-plane commands, and historical aliases (`/ctf-master`, `/ctf-solve`) remain installed for power users and old workflows. They are **not** part of the default product surface.
+Heap mappers, Android macros, Godot helpers, ledger/control-plane commands, and the historical alias `/ctf-solve` remain installed for power users and old workflows. They are **not** part of the default product surface.
 
 ## Runtime routing
 
@@ -49,9 +49,9 @@ Heap mappers, Android macros, Godot helpers, ledger/control-plane commands, and 
 
 | Agent | Role |
 | --- | --- |
-| `ctf-fast` | Primary — lightweight solving |
-| `ctf-expert` | Primary — evidence-driven solving |
-| `ctf-master` | **Compatibility alias → ctf-expert** (do not document as a third mode) |
+| `ctf-fast` | Primary — lightweight CTF solving |
+| `ctf-expert` | Primary — evidence-driven CTF solving |
+| `researcher` | Support primary — local knowledge-base maintenance (not a CTF solve lane) |
 
 Optional args / notes from user:
 $ARGUMENTS

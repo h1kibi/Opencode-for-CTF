@@ -199,7 +199,7 @@ const rules: BenchmarkRule[] = [
           output,
         )
       if (!hasDriftSignal) return "N/A"
-      const hasResponse = /handoff|rerank|shortest closure family|fast-lane target|ctf-master/i.test(output)
+      const hasResponse = /handoff|rerank|shortest closure family|fast-lane target|ctf-expert/i.test(output)
       return hasResponse ? "PASS" : "FAIL"
     },
   },

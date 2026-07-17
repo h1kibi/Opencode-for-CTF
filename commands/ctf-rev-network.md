@@ -43,7 +43,7 @@ Follow `templates/rev-network-replay.md` exactly. Condensed:
 - `ctf-pcap-probe verdict=direct_flag` → verify and stop.
 - 2 failed magic guesses → switch to full `ctf-rev` binary reversing.
 - 3 failed cipher/key combos → re-derive magic/length from binary reversing.
-- 30 min without closure → hand off to `ctf-master` with `inventory.md` + `replay.pcap` + top-3 hypotheses.
+- 30 min without closure → hand off to `ctf-expert` with `inventory.md` + `replay.pcap` + top-3 hypotheses.
 
 ## Required artifacts at handoff
 

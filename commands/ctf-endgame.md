@@ -1,6 +1,6 @@
 ---
 description: CTF endgame: Push a near-final branch from closure discipline into final validation without reopening discovery
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

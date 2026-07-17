@@ -1,6 +1,6 @@
 ---
 description: CTF helper: DeepAudit-derived white-box audit loop for source/archive/bytecode/config challenges
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

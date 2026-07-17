@@ -1,6 +1,6 @@
 ---
 description: CTF hard-open: Build a rigorous opening pack for difficult, complex, multi-artifact, or ambiguous CTF challenges before probing
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

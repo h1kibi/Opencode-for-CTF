@@ -1,6 +1,6 @@
 ---
 description: CTF close: Push an already-strong branch through final closure and flag validation
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 
@@ -11,7 +11,7 @@ $ARGUMENTS
 
 Rules:
 - Use after a strong primitive, near-final candidate path, or credible flag-location model exists.
-- This command is a thin endgame entrypoint. Follow `ctf-master` as the source of truth for fast-path, closure override, and low-noise endgame discipline.
+- This command is a thin endgame entrypoint. Follow `ctf-expert` as the source of truth for fast-path, closure override, and low-noise endgame discipline.
 - If the branch still needs flag-location modeling or closure ranking, prefer `ctf-closure-gate` behavior.
 - If a credible candidate flag or direct extraction path already exists, prefer final validation over more discovery.
 - Prefer or refresh `work/ctf-evidence/<challenge-slug>/closure.json` and `final-verification.txt` when the branch is non-trivial.

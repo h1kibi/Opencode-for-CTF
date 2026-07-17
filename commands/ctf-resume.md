@@ -1,6 +1,6 @@
 ---
 description: CTF control: OMO-style CTF resume gate; recover interrupted solves from notes and decision-state without restarting recon
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

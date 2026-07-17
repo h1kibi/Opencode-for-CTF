@@ -1,6 +1,6 @@
 ---
 description: CTF escalate: Decide whether to continue, switch modes, enter closure, stop, or ask for missing inputs
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

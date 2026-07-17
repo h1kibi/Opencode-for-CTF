@@ -63,6 +63,6 @@ Based on classification:
 ## Success Criteria
 - Flag in `agent_flag.txt`
 - Reproducible exploit command
-- OR: Compact handoff to `ctf-master` if complexity exceeds fast mode
+- OR: Compact handoff to `ctf-expert` if complexity exceeds fast mode
 
 Begin by providing the binary path or challenge description.

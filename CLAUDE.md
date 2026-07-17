@@ -24,7 +24,7 @@ runtime/       — Runtime environment helpers
 ## Product surface
 
 - Default user entry: `/ctf` (auto-route via tool `ctf-route-plan` / `packages/ctf-core/src/router.ts`)
-- Primary agents only: `ctf-fast`, `ctf-expert` (`ctf-master` is compatibility alias)
+- Primary agents only: `ctf-fast`, `ctf-expert` (plus support primary `researcher` for KB maintenance; no ctf-master/daily)
 - Optional user config: `opencode-for-ctf.jsonc` (see `opencode-for-ctf.example.jsonc`, loader in `src/plugin-config.ts`)
 - Tool packs: `src/tool-packs.ts` + `loadCtfTools({ packs })`; defaults skip android/godot; env `OPENCODE_CTF_TOOL_PACKS`
 - OpenCode product constants: `packages/ctf-adapter-opencode`

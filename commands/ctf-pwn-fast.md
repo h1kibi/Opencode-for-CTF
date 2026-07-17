@@ -1,6 +1,6 @@
 ---
 description: Compatibility entry: route a simple/medium PWN fast solve into ctf-fast
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 
@@ -57,7 +57,7 @@ Route pressure:
 - if `ctf-pwn-docker-runner` output is long or truncated, use `saveOutput=true` or rely on truncation auto-save and continue from `output_path` instead of re-running blind.
 - if a higher-priority canonical closure family is still live (`ret2win`, `pivot+bss`, `single leak + replay`, `ORW`), do not widen into shell-aesthetic or heavier routes without a real falsifier.
 
-Escalate to `ctf-master` when runtime alignment, parser effects, unstable leaks, allocator internals, non-trivial seccomp, repeated gdb, or multiple serious families dominate; `references/pwn-mode-boundary.md` is the shared threshold card.
+Escalate to `ctf-expert` when runtime alignment, parser effects, unstable leaks, allocator internals, non-trivial seccomp, repeated gdb, or multiple serious families dominate; `references/pwn-mode-boundary.md` is the shared threshold card.
 
 Autonomy rule:
 - If the next useful action is obvious, the oracle is clear, and there is no strong runtime/helper uncertainty, do not add extra helper steps—edit or run the exploit.

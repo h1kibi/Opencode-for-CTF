@@ -1,6 +1,6 @@
 ---
 description: CTF control panel: Choose the single best next control action for a messy or uncertain hard-solve state
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 
@@ -12,7 +12,7 @@ $ARGUMENTS
 Rules:
 - Use when the branch feels messy, the next command is unclear, or multiple control actions seem plausible.
 - Do not run new probes in this command.
-- This command is a thin control entrypoint. Follow `ctf-master` as the source of truth for anti-formalism, owner discipline, branch discipline, closure override, and stop/escalation behavior.
+- This command is a thin control entrypoint. Follow `ctf-expert` as the source of truth for anti-formalism, owner discipline, branch discipline, closure override, and stop/escalation behavior.
 - Choose the single best next control action from: SNAPSHOT, LEDGER, OWNER, BRANCH, CLOSE, CONTINUE, STOP_GATE, ASK_USER, STOP, or RETRO.
 
 Return exactly one decision with evidence:

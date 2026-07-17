@@ -1,6 +1,6 @@
 ---
 description: CTF control: OMO-style CTF review gate; audit evidence, hypotheses, loops, and next probe without exploiting
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

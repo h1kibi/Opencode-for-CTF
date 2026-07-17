@@ -1,6 +1,6 @@
 ---
 description: CTF owner: Set or refresh the primary category owner and supporting surface for a mixed-evidence challenge
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 
@@ -15,7 +15,7 @@ $ARGUMENTS
 
 Rules:
 - Use when a challenge has mixed-category evidence or the current owner feels unclear.
-- This command is a thin routing entrypoint. Follow `ctf-master` as the source of truth for owner selection and supporting-surface discipline.
+- This command is a thin routing entrypoint. Follow `ctf-expert` as the source of truth for owner selection and supporting-surface discipline.
 - Choose exactly one primary owner and at most one supporting surface.
 - Preferred entrypoint note: `/ctf-owner` is for explicit owner confusion. If you are unsure more broadly which control action is needed, start from `/ctf-control`.
 

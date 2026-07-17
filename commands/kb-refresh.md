@@ -7,7 +7,7 @@ agent: daily
 
 只允许在 `daily` 模式执行。
 
-如果当前在任何 CTF solving agent（如 `ctf-fast` / `ctf-master` / `ctf-web` / `ctf-pwn` 等）中，必须停止并要求切回 `daily`。原因：更新知识库会影响解题速度、污染当前证据上下文、改变检索结果，不允许在解题过程中执行。
+如果当前在任何 CTF solving agent（如 `ctf-fast` / `ctf-expert` / `ctf-web` / `ctf-pwn` 等）中，必须停止并要求切回 `daily`。原因：更新知识库会影响解题速度、污染当前证据上下文、改变检索结果，不允许在解题过程中执行。
 
 ## 目标
 

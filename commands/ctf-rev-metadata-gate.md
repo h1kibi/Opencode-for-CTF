@@ -1,6 +1,6 @@
 ---
 description: CTF REV helper: force a hidden-semantics / metadata-unwind pass before declaring the checker absent
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

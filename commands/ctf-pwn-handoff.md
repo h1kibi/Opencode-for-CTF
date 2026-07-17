@@ -1,6 +1,6 @@
 ---
-description: PWN fast handoff: write compact restart packet for ctf-master
-agent: ctf-master
+description: PWN fast handoff: write compact restart packet for ctf-expert
+agent: ctf-expert
 subtask: false
 ---
 

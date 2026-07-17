@@ -1,6 +1,6 @@
 ---
 description: CTF post: OMO-style lightweight CTF retro; capture winning signal, wasted branch, and reusable pattern feedback
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

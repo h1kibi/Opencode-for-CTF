@@ -1,6 +1,6 @@
 ---
 description: CTF entry: OMO-style CTF route gate for authorized challenges; classify target and choose first safe tool without exploiting
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

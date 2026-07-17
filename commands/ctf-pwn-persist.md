@@ -1,6 +1,6 @@
 ﻿---
 description: "PWN persistent container setup: keep common pwnlab services warm across sessions"
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

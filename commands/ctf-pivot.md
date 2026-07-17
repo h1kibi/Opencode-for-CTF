@@ -1,6 +1,6 @@
 ---
 description: CTF control: OMO-style CTF pivot gate; stop low-information same-family attempts and choose one orthogonal probe
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

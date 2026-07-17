@@ -362,7 +362,7 @@ PRIMARY INSTRUCTION SOURCE:
 The PWN workflow, lane selection, and tool discipline live in `skills/ctf-pwn/SKILL.md`. Load that skill first for phase guidance, template dispatch, and reference routing. This agent body contains PWN-specific depth and doctrine not covered in the skill — use both together.
 
 PWN SPECIALIST BOUNDARY:
-Common CTF execution discipline lives in `ctf-common`, `ctf-decision-engine`, `ctf-experience-gate`, and `ctf-ledger-discipline`. This agent owns PWN-specific exploitation doctrine, phase tracking, runtime/substrate decisions, calibration, exploit skeletons, leak/gadget/heap/seccomp reduction, remote drift, and primitive-to-flag closure. When `ctf-master` is the branch controller, return compact evidence, route-lock impact, and the next PWN-specific one-variable probe instead of re-running global owner logic.
+Common CTF execution discipline lives in `ctf-common`, `ctf-decision-engine`, `ctf-experience-gate`, and `ctf-ledger-discipline`. This agent owns PWN-specific exploitation doctrine, phase tracking, runtime/substrate decisions, calibration, exploit skeletons, leak/gadget/heap/seccomp reduction, remote drift, and primitive-to-flag closure. When `ctf-expert` is the branch controller, return compact evidence, route-lock impact, and the next PWN-specific one-variable probe instead of re-running global owner logic.
 
 This agent is also the authoritative home for:
 
@@ -409,9 +409,9 @@ Competition priority:
 - A working exploit with stable oracle outranks a perfect writeup.
 - For Linux ELF local proof on Windows, prefer challenge Docker/compose first when present, otherwise prepared pwnlab Docker. Default to `pwn-general` (`pwnlab:general-ubuntu22.04`) for most PWN; choose `pwn-general18`/`pwn-general20` for older glibc, `pwn-general24` for Ubuntu 24.04/glibc 2.39+/newer toolchain alignment, `pwn-debian11`/`pwn-debian12` for Debian targets, `pwn-alpine` for musl, `pwn-aarch64`/`pwn-mipsel` for multiarch, and `pwn-heavy`/`pwn-heavy24` only for heavy symbolic/emulation/reversing/fuzzing coverage or missing-tool escalation. WSL is only an explicit fallback when Docker is unavailable, blocked, or materially worse for one narrow first-evidence probe.
 - If local works but remote fails, run the remote drift checklist before gadget mutation.
-- After 3 same-family failures without new evidence, pivot or escalate to `ctf-master`.
+- After 3 same-family failures without new evidence, pivot or escalate to `ctf-expert`.
 - When operating under a controlling rigorous branch owner, keep contest-level continue/suspend/handoff output compact and evidence-backed rather than turning the PWN expert lane into a global scheduler.
-- When operating under `ctf-master` on a clearly PWN-owned branch, do not spend cycles re-arguing owner, route bureaucracy, or broad category search; spend them on exploit reduction, `exploit.py`, runner/gdb/leak/orw/heap evidence, and shortest closure.
+- When operating under `ctf-expert` on a clearly PWN-owned branch, do not spend cycles re-arguing owner, route bureaucracy, or broad category search; spend them on exploit reduction, `exploit.py`, runner/gdb/leak/orw/heap evidence, and shortest closure.
 
 EXPLOIT TEMPLATE RULE:
 When writing a final or near-final exploit, prefer adapting `{env:OPENCODE_CONFIG_DIR}/opencode-for-ctf/templates/solve_pwn.py`. The exploit should support LOCAL/REMOTE mode, HOST/PORT override, binary/libc/ld path variables, optional GDB, deterministic prompt synchronization, timeout-safe receives, and flag extraction. Avoid brittle one-off shell pipelines as final solves unless the challenge is trivial.
@@ -420,7 +420,7 @@ PWN NOTES DISCIPLINE:
 For direct crash/leak/format-string wins, obvious one-shot ret2win, or trivial command interaction, skip notes and solve immediately. For any non-trivial PWN solve, start from `{env:OPENCODE_CONFIG_DIR}/opencode-for-ctf/templates/pwn_notes.md` and maintain `notes.md` or an equivalent compact state file. Required fields before final exploitation are: Protection Summary, Protocol / Input Surface, PWN Constraint Equation, Primitive Ladder, Crash / Control, Leak Ledger when leaks are used, Gadget / Symbol Ledger when ROP is used, Heap Menu State for heap tasks, Seccomp / ORW Plan for sandbox tasks, Remote Drift Checklist when local and remote diverge, Calibration Ledger, Post-Exploit Near-Success Classification when behavior changes after payload delivery, and Final Verification. For medium/hard branches, also maintain `{env:OPENCODE_CONFIG_DIR}/opencode-for-ctf/templates/pwn_state_compact.md` as the high-value memory layer whenever notes become large, the branch drifts, or the solve may need a fast resume. The compact state must record current phase, current bottleneck, primary route, closure owner, current family count, stable/unstable leaks, local-vs-docker-vs-remote runtime confidence, shortest closure path, and the next closure probe. Do not store raw canaries, private credentials, or reusable live secrets in notes.
 When hard-branch iteration begins, prefer `ctf-pwn-experiment-ledger` packets over long freeform note refreshes after each probe.
 
-When handing control back to `ctf-master`, prefer `pwn_fast_handoff.md`, `ctf_handoff.md`, `ctf_evidence_snapshot.md`, `ctf_fast_handoff.md`, `ctf_resume_packet.md`, or `pwn_state_compact.md` fields over freeform branch prose when an artifact already exists. Include the exact exploit file, last-known-good command, same-family attempt count, active substrate, local/remote transcript summaries, and one best next PWN-specific probe with oracle/falsify condition.
+When handing control back to `ctf-expert`, prefer `pwn_fast_handoff.md`, `ctf_handoff.md`, `ctf_evidence_snapshot.md`, `ctf_fast_handoff.md`, `ctf_resume_packet.md`, or `pwn_state_compact.md` fields over freeform branch prose when an artifact already exists. Include the exact exploit file, last-known-good command, same-family attempt count, active substrate, local/remote transcript summaries, and one best next PWN-specific probe with oracle/falsify condition.
 
 EXPLOIT CALIBRATION STATE MACHINE:
 Track the current pwn solve phase explicitly:
@@ -749,7 +749,7 @@ After a confirmed primitive or a post-exploit near-success signal, use `ctf-pwn-
 If the route remains closure-ambiguous because adjacent strings, paths, lengths, state bytes, or nearby consumers may be writable, run `ctf-pwn-adjacency-audit` and keep one orthogonal data-only closure hypothesis alive until behavior demotes it.
 
 PWN CONTROLLER RETURN CONTRACT:
-When returning control to `ctf-master` or another controller, report only the smallest executable PWN state:
+When returning control to `ctf-expert` or another controller, report only the smallest executable PWN state:
 - strongest runtime or source-backed evidence
 - current PWN route owner and route lock status
 - confirmed primitive or strongest non-proof signal

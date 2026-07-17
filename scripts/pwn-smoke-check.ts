@@ -453,7 +453,7 @@ const checks: Check[] = [
     ],
   },
   {
-    file: "agents/ctf-master.md",
+    file: "agents/ctf-expert.md",
     needles: [
       "references/pwn-mode-boundary.md",
       "references/pwn-runtime-trigger-matrix.md",
@@ -490,7 +490,7 @@ const checks: Check[] = [
     file: "commands/ctf-pwn.md",
     needles: [
       "ctf-fast",
-      "/ctf-master",
+      "/ctf-expert",
       "references/pwn-mode-boundary.md",
       "references/pwn-runtime-trigger-matrix.md",
       "Prefer pwntools scripts over fragile shell pipes",
@@ -543,9 +543,9 @@ const checks: Check[] = [
     ],
   },
   {
-    file: "commands/ctf-master.md",
+    file: "commands/ctf-expert.md",
     needles: [
-      "entry: `/ctf`, `/ctf-fast`, `/ctf-master`, `/ctf-fast`",
+      "entry: `/ctf`, `/ctf-fast`, `/ctf-expert`, `/ctf-fast`",
       "state/control: `/ctf-resume`, `/ctf-snapshot`, `/ctf-control`, `/ctf-signal-memory`, `/ctf-evidence`",
       "closure/final: `/ctf-closure`, `/ctf-close`, `/ctf-final`, `/ctf-retro-lite`",
       "references/pwn-mode-boundary.md",
@@ -634,7 +634,7 @@ const checks: Check[] = [
   },
   {
     file: "skills/ctf-pwn/references/pwn-mode-boundary.md",
-    needles: ["# PWN Mode Boundary", "ctf-fast", "ctf-master", "ctf-pwn", "Fast-to-Rigorous Handoff Minimum"],
+    needles: ["# PWN Mode Boundary", "ctf-fast", "ctf-expert", "ctf-pwn", "Fast-to-Rigorous Handoff Minimum"],
   },
   {
     file: "skills/ctf-pwn/references/pwn-runtime-trigger-matrix.md",
@@ -883,7 +883,7 @@ const checks: Check[] = [
   },
   {
     file: "commands/ctf-budget.md",
-    needles: ["Soft-deprecated helper note:", "Prefer `/ctf-hard-open`, `/ctf-master`, or `/ctf-stop-gate`"],
+    needles: ["Soft-deprecated helper note:", "Prefer `/ctf-hard-open`, `/ctf-expert`, or `/ctf-stop-gate`"],
   },
   {
     file: "commands/ctf-owner.md",

@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "description": "CTF agent operating profile. Default user entry is /ctf (auto-route). Primary agents: ctf-fast and ctf-expert. ctf-master remains a compatibility alias for ctf-expert.",
+  "description": "CTF agent operating profile. Default user entry is /ctf (auto-route). Primary CTF agents: ctf-fast and ctf-expert only. researcher remains for knowledge-base maintenance.",
   "default_entrypoints": [
     "/ctf",
     "/ctf-help",
@@ -9,11 +9,11 @@
     "/ctf-resume"
   ],
   "compatibility_entrypoints": [
-    "/ctf-solve",
-    "/ctf-master"
+    "/ctf-solve"
   ],
   "primary_agents": ["ctf-fast", "ctf-expert"],
-  "compatibility_agents": ["ctf-master"],
+  "compatibility_agents": [],
+  "support_primary_agents": ["researcher"],
   "category_subagents": ["ctf-web", "ctf-pwn", "ctf-rev", "ctf-crypto", "ctf-forensics", "ctf-misc"],
   "meta_subagents": ["ctf-scout", "ctf-librarian", "ctf-oracle", "ctf-verifier"],
   "routing": {

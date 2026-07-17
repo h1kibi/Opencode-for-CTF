@@ -1,6 +1,6 @@
 ---
 description: CTF runtime: manage skill-embedded MCP dynamic lifecycle for the current session
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

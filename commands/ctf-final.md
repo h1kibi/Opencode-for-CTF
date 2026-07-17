@@ -1,6 +1,6 @@
 ---
 description: CTF control: OMO-style CTF final gate; validate candidate flag and reproduction path before final reporting
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

@@ -100,7 +100,7 @@ export default tool({
       "next_actions:",
       "- If you need visual understanding, use a vision-capable model or external viewer; current text model cannot read image pixels directly.",
       "- For daily engineering work, use metadata/dimensions/hints to decide whether manual viewing is needed.",
-      "- For CTF/stego tasks, switch to ctf-master and use ctf-stego-probe.",
+      "- For CTF/stego tasks, switch to ctf-expert (or /ctf) and use ctf-stego-probe.",
     ].join("\n")
   },
 })

@@ -1,6 +1,6 @@
 ---
 description: "CTF helper: One-shot observe + infer state + suggest next action (reduces agent cognitive load)"
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

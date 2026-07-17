@@ -24,4 +24,4 @@ Rules:
 - For long Docker transcript debugging, prefer `ctf-pwn-docker-runner` raw log saving and continue from `output_path`.
 - If the branch keeps adding local semantic explanation without shortening the exploit chain, consult `references/pwn-anti-overcomplication.md` and rerank before more same-style probing.
 - Write `exploit.py` or `solve.py` and only verified final flag to `agent_flag.txt`.
-- If the challenge still looks simple after triage, prefer `/ctf-fast`; if runtime alignment, heap/versioning, or closure uncertainty dominate, prefer `/ctf-master`. Use `references/pwn-mode-boundary.md` when the threshold is unclear.
+- If the challenge still looks simple after triage, prefer `/ctf-fast`; if runtime alignment, heap/versioning, or closure uncertainty dominate, prefer `/ctf-expert`. Use `references/pwn-mode-boundary.md` when the threshold is unclear.

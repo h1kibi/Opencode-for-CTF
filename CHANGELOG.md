@@ -31,11 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `skills/ctf-expert/SKILL.md`, `agents/ctf-expert.md`, `commands/ctf-expert.md`, and `ctf-master` alias aligned to one contract: Team Mode + Evidence.md + 3 routes + 4 states + flag direct return + dynamic MCP approval.
+- Removed primary agents `ctf-master` and `daily` from the product surface; CTF primaries are only `ctf-fast` / `ctf-expert`. `researcher` remains for knowledge-base maintenance. Commands that used `agent: ctf-master` now target `ctf-expert`.
+
+- `skills/ctf-expert/SKILL.md`, `agents/ctf-expert.md`, `commands/ctf-expert.md`, and `ctf-expert` alias aligned to one contract: Team Mode + Evidence.md + 3 routes + 4 states + flag direct return + dynamic MCP approval.
 - `approveRequest` lease key fixed to `agent-request:<agent>` (was incorrectly using sessionID).
 - `/ctf` injects a **BINDING** route decision (not a soft hint); `/ctf-fast` and `/ctf-expert` get mode-specific contracts.
 - Default product entry is now `/ctf` (auto-route + solve). `/ctf-help` documents the L0/L1 command surface.
-- `/ctf-solve` and `/ctf-master` are compatibility aliases; primary agents remain `ctf-fast` and `ctf-expert` only.
+- `/ctf-solve` and `/ctf-expert` are compatibility aliases; primary agents remain `ctf-fast` and `ctf-expert` only.
 - Filled `packages/ctf-adapter-opencode` with real OpenCode surface constants + router re-exports (was an empty stub).
 - README / AGENTS / SECURITY / CONTRIBUTING cleanup: portable paths, fixed security advisory URL, Node engines aligned to `>=22.20.0`.
 - Tool registration is pack-filtered at plugin startup: defaults omit rare `android` / `godot` packs.

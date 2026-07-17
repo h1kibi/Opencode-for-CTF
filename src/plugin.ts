@@ -470,7 +470,7 @@ const RuntimePlugin: Plugin = async (input, _options) => {
         } as any)
         return
       }
-      if (cmd === "ctf-expert" || cmd === "ctf-master") {
+      if (cmd === "ctf-expert") {
         rememberSessionSurface(_meta.sessionID, "ctf-expert")
         output.parts = output.parts || []
         output.parts.push({

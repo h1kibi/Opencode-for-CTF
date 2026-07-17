@@ -1,6 +1,6 @@
 ---
 description: Lock a Windows-hosted Linux ELF PWN challenge into one containerized runtime session
-agent: ctf-master
+agent: ctf-expert
 subtask: true
 ---
 

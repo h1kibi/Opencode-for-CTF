@@ -1,6 +1,6 @@
 ---
 description: PWN fast runbox: use prebuilt pwnlab Docker without copying compose templates
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 description: CTF ledger: Refresh hypothesis queue, chain ledger, resume snapshot, and pivot bookkeeping for hard branches
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 
@@ -11,7 +11,7 @@ $ARGUMENTS
 
 Rules:
 - Use when branching is non-trivial, the solve resumed after interruption, pivots are repeating, or the chain ledger feels stale.
-- This command is a thin state-synchronization entrypoint. Follow `ctf-master` as the source of truth for anti-formalism, queue discipline, shared-segment reuse, and pivot rules.
+- This command is a thin state-synchronization entrypoint. Follow `ctf-expert` as the source of truth for anti-formalism, queue discipline, shared-segment reuse, and pivot rules.
 - If the state is already crisp and one obvious low-noise action can win immediately, say so instead of forcing extra ledger ceremony.
 - If unresolved P0/P1/P2 clues exist or high-value signals may have been forgotten, run or inline `/ctf-signal-memory` before changing the top branch. The ledger must preserve signal debt and terminal candidates, not only hypotheses.
 

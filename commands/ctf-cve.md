@@ -1,6 +1,6 @@
 ---
 description: CTF domain: CTF-only CVE/N-day identification and hit-matching workflow
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 
@@ -9,7 +9,7 @@ subtask: false
 Input:
 $ARGUMENTS
 
-Use this command only inside `ctf-master` for authorized CTF/lab tasks. In daily mode, stop and tell the user to switch to `ctf-master` with the configured `agent_cycle` shortcut.
+Use this command only inside `ctf-expert` for authorized CTF/lab tasks. In non-CTF mode, stop and tell the user to switch to `ctf-expert` with the configured `agent_cycle` shortcut.
 
 ## Purpose
 

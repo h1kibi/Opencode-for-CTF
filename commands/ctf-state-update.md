@@ -1,6 +1,6 @@
 ---
 description: CTF control: OMO-style CTF state update gate; maintain a compact resume block and decision summary after phase changes
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

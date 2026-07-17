@@ -1,6 +1,6 @@
 ---
 description: CTF entry: OMO-style CTF solve profile selector; choose speedrun, hard, safe-web, pwn-local, or forensics-direct behavior
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

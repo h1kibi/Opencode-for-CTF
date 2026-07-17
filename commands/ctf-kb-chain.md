@@ -1,6 +1,6 @@
 ---
 description: CTF helper: Query local SecKB for ranked exploit segments and composed chain candidates from recon evidence
-agent: ctf-master
+agent: ctf-expert
 ---
 
 # /ctf-kb-chain - 本地知识库链段/利用链命中

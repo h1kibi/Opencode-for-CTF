@@ -1,6 +1,6 @@
 ---
 description: CTF recovery: Resume a hard challenge from the best evidence snapshot instead of restarting recon
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

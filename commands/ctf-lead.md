@@ -32,4 +32,4 @@ Command layering hint:
 - use `/ctf` for route-only triage
 - use `/ctf-hard-open` for hard ambiguous challenges
 - use `/ctf-fast` for speed-first execution requests under the master controller
-- use `/ctf-master` when disciplined branch control is required
+- use `/ctf-expert` when disciplined branch control is required

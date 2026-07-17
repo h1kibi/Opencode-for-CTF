@@ -4,7 +4,7 @@ description: Use for CTF agent knowledge retrieval and controlled SecKB updates.
 
 # CTF SecKB Retrieval and Update Discipline
 
-Use this skill only inside authorized CTF/lab workflow. In normal daily mode, use it only for maintaining the knowledge base and tooling.
+Use this skill only inside authorized CTF/lab workflow. In normal non-CTF mode, use it only for maintaining the knowledge base and tooling.
 
 ## Hard phase rule
 
@@ -12,7 +12,7 @@ The agent must always classify the current phase before touching SecKB:
 
 - `SOLVE_MODE`: an active challenge is being solved, exploited, probed, fuzzed, reversed, debugged, or validated.
 - `UPDATE_MODE`: the challenge is solved, timed out, explicitly paused for KB maintenance, or the user directly asks to update a knowledge module.
-- `DAILY_KB_MODE`: the user is in normal daily mode and explicitly asks to update, refresh, curate, index, or verify the local SecKB/CVEKB knowledge base. This mode belongs to the daily agent or daily researcher workflow, not to active CTF solving agents.
+- `DAILY_KB_MODE`: the user is in normal non-CTF mode and explicitly asks to update, refresh, curate, index, or verify the local SecKB/CVEKB knowledge base. This mode belongs to the daily agent or daily researcher workflow, not to active CTF solving agents.
 
 ## Structured writeback schema
 

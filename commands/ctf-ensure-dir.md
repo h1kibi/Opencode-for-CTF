@@ -1,6 +1,6 @@
 ---
 description: Recursively create a workspace directory when generic filesystem creation is too strict
-agent: ctf-master
+agent: ctf-expert
 subtask: true
 ---
 

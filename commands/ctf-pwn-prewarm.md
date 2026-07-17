@@ -1,6 +1,6 @@
 ---
 description: PWN environment prewarm: verify or prepare common pwnlab Docker images before a contest
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

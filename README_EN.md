@@ -190,7 +190,7 @@ Legacy `npm run setup` (generates `opencode.json` from `.env`) remains for compa
 | --- | --- | --- |
 | `ctf-fast` | **Primary** | Lightweight, intuition-first solving |
 | `ctf-expert` | **Primary** | Evidence-driven recon → plan → verify → iterate |
-| `ctf-master` | Compatibility | Alias of `ctf-expert` — not a third mode |
+| `researcher` | Support primary | Local knowledge-base maintenance (not a CTF solve lane) |
 | Category specialists | Subagents | `ctf-web`, `ctf-pwn`, `ctf-rev`, `ctf-crypto`, `ctf-forensics` |
 | Support | Subagents | `ctf-scout`, `ctf-librarian`, `ctf-oracle` |
 
@@ -218,7 +218,7 @@ Legacy `npm run setup` (generates `opencode.json` from `.env`) remains for compa
 /ctf-forensics ./artifact.pcap
 ```
 
-> `/ctf-master` and `/ctf-solve` are compatibility aliases. Prefer `/ctf`.
+> `/ctf-solve` is a historical command alias only. Prefer `/ctf`; primary agents are only `ctf-fast` and `ctf-expert`.
 
 ### ctf-expert workflow
 

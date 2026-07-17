@@ -1,6 +1,6 @@
 ---
 description: CTF control: OMO-style CTF stop gate; decide continue, pivot, ask user, final, or retro when progress stalls
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

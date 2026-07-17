@@ -129,11 +129,11 @@ function safeError(error: unknown) {
 }
 
 /**
- * Team Mode controllers: ctf-expert / ctf-master, or a session that /ctf routed to expert
+ * Team Mode controllers: ctf-expert, or a session that /ctf routed to expert
  * (command agent may still report as ctf-fast while session-surface is expert).
  */
 function requireExpert(agent: string, sessionID?: string) {
-  if (agent === TEAM_AGENT || agent === "ctf-master") return
+  if (agent === TEAM_AGENT) return
   if (sessionID && getSessionSurface(sessionID) === "ctf-expert") return
   throw new Error(
     `${TEAM_AGENT} is the only agent allowed to control Team Mode ` +

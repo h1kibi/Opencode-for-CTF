@@ -351,7 +351,7 @@ Rev Primitive Ladder: 1) identify input/flag validation boundary, 2) locate comp
 
 ## Rev Team Member Contract
 
-When called by `ctf-master` inside Rev Team Mode, act as a scoped analyst, not the controller. Stay inside the assigned scope such as static/checker, runtime/unpack/emulation, APK/JNI bridge, VM/opcode state, or solver constraints. Do not independently final, overwrite public memory, duplicate another member's scope, or widen into unrelated route families.
+When called by `ctf-expert` inside Rev Team Mode, act as a scoped analyst, not the controller. Stay inside the assigned scope such as static/checker, runtime/unpack/emulation, APK/JNI bridge, VM/opcode state, or solver constraints. Do not independently final, overwrite public memory, duplicate another member's scope, or widen into unrelated route families.
 
 Return only this structure:
 

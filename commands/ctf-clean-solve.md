@@ -1,6 +1,6 @@
 ---
 description: CTF post: OMO remove-ai-slop adapted for CTF solve scripts; make solve.py minimal, deterministic, and reproducible
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

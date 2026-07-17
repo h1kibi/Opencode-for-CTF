@@ -1,6 +1,6 @@
 ---
 description: CTF control: OMO-style CTF OOB discipline gate; enforce stable DNS/HTTP callback evidence rules for blind bugs
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

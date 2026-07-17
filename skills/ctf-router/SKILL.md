@@ -12,7 +12,7 @@ Use this skill before solving a new CTF challenge. The goal is fast classificati
 
 **Runtime helper:** call tool `ctf-route-plan` with the challenge text/path/URL first. It returns `mode`, `agent`, `skills`, `tool_packs`, and `confidence`. Treat that object as the default plan; this skill supplies methodology when signals are ambiguous.
 
-**Product path:** prefer `/ctf` for users. `/ctf-master` is a compatibility alias of `ctf-expert` only — never present it as a third mode.
+**Product path:** prefer `/ctf` for users. `/ctf-expert` is a compatibility alias of `ctf-expert` only — never present it as a third mode.
 
 | Lane | When |
 | --- | --- |

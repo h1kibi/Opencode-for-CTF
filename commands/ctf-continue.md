@@ -1,6 +1,6 @@
 ---
 description: CTF runtime: inspect or trigger automatic continuation and todo enforcement for the current session
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

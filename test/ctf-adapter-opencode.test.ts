@@ -13,7 +13,7 @@ describe("ctf-adapter-opencode", () => {
   it("exposes the default /ctf entry and two primaries", () => {
     expect(DEFAULT_ENTRY_COMMAND).toBe("/ctf")
     expect(PRIMARY_AGENTS).toEqual(["ctf-fast", "ctf-expert"])
-    expect(COMPAT_AGENTS).toContain("ctf-master")
+    expect(COMPAT_AGENTS).toEqual([])
   })
 
   it("maps modes to primary agents", () => {

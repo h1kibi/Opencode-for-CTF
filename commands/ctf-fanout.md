@@ -1,6 +1,6 @@
 ---
 description: CTF control: OMO-style CTF fanout planner; split medium/hard challenges across scout, librarian, and oracle without exploiting
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 description: CTF entry: OMO-style CTF workspace hygiene check; protect originals, organize work files, and prevent state loss
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

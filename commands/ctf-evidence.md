@@ -1,6 +1,6 @@
 ---
 description: CTF helper: Produce a standard compact evidence block for typed SecKB chain matching
-agent: ctf-master
+agent: ctf-expert
 ---
 
 # /ctf-evidence - 标准 compact evidence 模板

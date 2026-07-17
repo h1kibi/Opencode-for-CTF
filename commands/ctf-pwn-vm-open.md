@@ -1,6 +1,6 @@
 ---
 description: PWN VM opener: binary probe, ELF slice, VM/dispatcher helper, and shortest next reduction step
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

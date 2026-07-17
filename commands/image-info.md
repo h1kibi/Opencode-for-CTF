@@ -15,7 +15,7 @@ Rules:
 - If a local file path like `image.png` is provided, do not use generic file read first; route directly to `image-file-info`.
 - Use `image-file-info` to inspect file type, size, dimensions, metadata, trailing data, embedded zip signature, and text hints.
 - If the user needs visual interpretation, tell them this model lacks vision input and ask for a textual description, OCR text, or a vision-capable model.
-- For CTF/stego image tasks, switch to `ctf-master` and use `ctf-stego-probe` instead.
+- For CTF/stego image tasks, switch to `ctf-expert` and use `ctf-stego-probe` instead.
 
 Typical call:
 

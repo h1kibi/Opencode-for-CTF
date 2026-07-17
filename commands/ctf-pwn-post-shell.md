@@ -1,6 +1,6 @@
 ---
 description: PWN post-shell closure: after likely shell/code execution, run low-noise commands to verify and read flag
-agent: ctf-master
+agent: ctf-expert
 subtask: true
 ---
 

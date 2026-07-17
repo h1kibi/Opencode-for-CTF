@@ -192,7 +192,7 @@ npm run fetch-skills
 | --- | --- | --- |
 | `ctf-fast` | **主 agent** | 轻量快速解题 — 直觉优先、最小工具依赖 |
 | `ctf-expert` | **主 agent** | 证据驱动 — 侦查→分析→路线验证→迭代 |
-| `ctf-master` | 兼容别名 | 等同 `ctf-expert`，不是第三模式 |
+| `researcher` | 支持主 agent | 本地知识库维护（非 CTF 解题车道） |
 | `ctf-web` / `ctf-pwn` / `ctf-rev` / `ctf-crypto` / `ctf-forensics` | 子 agent | 题型专家 |
 | `ctf-scout` / `ctf-librarian` / `ctf-oracle` | 子 agent | 侦察 / 知识库 / 模式推断 |
 
@@ -220,7 +220,7 @@ npm run fetch-skills
 /ctf-forensics ./artifact.pcap
 ```
 
-> `/ctf-master`、`/ctf-solve` 仅为兼容别名。新产品路径请使用 `/ctf`。
+> `/ctf-solve` 仅为历史兼容命令别名。新产品路径请使用 `/ctf`；主 agent 只有 `ctf-fast` / `ctf-expert`。
 
 ### ctf-expert 工作流
 

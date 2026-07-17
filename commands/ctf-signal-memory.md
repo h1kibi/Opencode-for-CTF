@@ -1,6 +1,6 @@
 ---
 description: CTF helper: Maintain high-value signal memory, unresolved signal debt, and terminal candidates across the whole solve
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 description: CTF helper: Manage per-challenge exploit-chain ledger state for rigorous solving
-agent: ctf-master
+agent: ctf-expert
 ---
 
 # /ctf-chain-state - 利用链状态账本

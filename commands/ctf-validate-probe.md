@@ -1,6 +1,6 @@
 ---
 description: CTF control: OMO-style CTF probe validator; require a complete one-variable probe contract before non-trivial tests
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

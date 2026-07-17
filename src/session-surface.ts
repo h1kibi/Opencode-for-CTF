@@ -36,7 +36,7 @@ export function surfaceAgentForTools(
   sessionID: string | undefined | null,
   agentName: string,
 ): string {
-  if (agentName === "ctf-expert" || agentName === "ctf-master") return agentName
+  if (agentName === "ctf-expert") return agentName
   if (sessionID && sessionToolSurface.get(sessionID) === "ctf-expert") return "ctf-expert"
   return agentName
 }

@@ -1,6 +1,6 @@
 ---
 description: Start rigorous Rev Team Mode with public memory and shortest-closure control
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

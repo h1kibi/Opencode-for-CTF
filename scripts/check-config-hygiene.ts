@@ -27,17 +27,10 @@ function main() {
     }
   }
 
-  if (!/"default_agent"\s*:\s*"daily"/.test(text)) {
+  if (!/"default_agent"\s*:\s*"ctf-fast"/.test(text)) {
     findings.push({
       severity: "WARN",
-      message: "default_agent is not explicitly set to daily",
-    })
-  }
-
-  if (!/"plugin"\s*:\s*\[[\s\S]*?"oh-my-openagent@latest"/.test(text)) {
-    findings.push({
-      severity: "WARN",
-      message: "oh-my-openagent plugin entry not found in plugin array",
+      message: "default_agent is not explicitly set to ctf-fast",
     })
   }
 

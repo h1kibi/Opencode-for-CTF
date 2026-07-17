@@ -1,6 +1,6 @@
 ---
 description: CTF closure: Force primitive-to-flag closure with flag-location modeling and closure-probe ranking
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 
@@ -11,7 +11,7 @@ $ARGUMENTS
 
 Rules:
 - Use only after a high-value primitive is confirmed, or when a plausible primitive-to-flag path exists.
-- This command is a thin closure entrypoint. Follow `ctf-master` as the source of truth for direct-win fast-path, closure override, and low-noise endgame behavior.
+- This command is a thin closure entrypoint. Follow `ctf-expert` as the source of truth for direct-win fast-path, closure override, and low-noise endgame behavior.
 - If the branch is not yet in a true endgame state, return that it is not ready rather than forcing closure ceremony.
 - Before ranking closure probes, compress the branch into a closure normal form when applicable: `control`, `code_addr`, `writable_memory`, `replay`, `leak_surface`, `closure_template`.
 - Ask whether a 20-40 line minimum solve sketch is already possible. If yes, treat the branch as true closure mode and demote extra explanation that does not shorten the path.

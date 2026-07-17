@@ -1,6 +1,6 @@
 ---
 description: CTF runtime: create and manage a real multi-session CTF team using lead/member orchestration
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 
@@ -20,7 +20,7 @@ Rules:
 Suggested operation flow:
 1. `ctf-team-mode create_team`
 2. `ctf-team-mode add_member` for exactly the members needed for the current round
-3. In `ctf-master` round validation, prefer up to 3 members aligned to the current top-3 hypotheses
+3. In `ctf-expert` round validation, prefer up to 3 members aligned to the current top-3 hypotheses
 4. `ctf-team-mode create_task` once per member with a narrow prompt
    - hypothesis
    - confirm condition

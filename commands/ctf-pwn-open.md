@@ -1,6 +1,6 @@
 ---
 description: PWN fast opener: artifact map, binary probe, route guess, and exploit template selection
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 

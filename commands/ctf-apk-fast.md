@@ -1,6 +1,6 @@
 ---
 description: Fast-mode Android APK opening sequence for CTF REV
-agent: ctf-master
+agent: ctf-expert
 subtask: false
 ---
 
