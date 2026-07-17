@@ -1,5 +1,5 @@
 ---
-description: Daily utility: List or use local C:\Projects\jdkenv JDK environments
+description: "Daily utility: list or use local JDK environments for Java Web/Rev/CTF work"
 agent: ctf-web
 subtask: true
 ---
@@ -9,19 +9,20 @@ Use `ctf-java-jdk-env` to inspect or run local JDKs for Java Web/rev/CTF work.
 Arguments:
 $ARGUMENTS
 
-Known JDK aliases:
+JDK discovery:
 
-- `7` / `7u21` -> `C:\Projects\jdkenv\jdk-7u21`
-- `8` / `8u121` -> `C:\Projects\jdkenv\jdk-8u121`
-- `8u65` -> `C:\Projects\jdkenv\jdk-8u65`
-- `11` -> `C:\Projects\jdkenv\jdk-11`
-- `17` -> `C:\Projects\jdkenv\jdk-17`
-- `24` -> `C:\Projects\jdkenv\jdk-24`
+- Set `CTF_JDK_ROOT` to the directory that holds your JDK installations
+  (for example `C:\jdkenv` on Windows or `/opt/jdks` on Linux/macOS).
+- The tool resolves version aliases against that root, so a layout like
+  `<CTF_JDK_ROOT>/jdk-8u121`, `<CTF_JDK_ROOT>/jdk-11`, `<CTF_JDK_ROOT>/jdk-17`
+  maps to aliases `8u121`, `11`, `17`.
+- Common aliases: `7` / `7u21`, `8` / `8u121`, `8u65`, `11`, `17`, `24`.
+  Only the versions actually present under `CTF_JDK_ROOT` are usable.
 
 Typical tool actions:
 
 - `list`: enumerate all configured JDKs and versions.
-- `snippet`: emit a PowerShell `JAVA_HOME`/`Path` snippet for one version.
+- `snippet`: emit a shell `JAVA_HOME`/`Path` snippet for one version.
 - `version`: run `java -version` for one version.
 - `jar-list`: list a workspace-relative JAR/WAR with selected JDK's `jar`.
 - `javap`: inspect a workspace-relative `.class` file.

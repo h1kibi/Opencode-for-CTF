@@ -1,0 +1,116 @@
+FROM pwnlab:general-ubuntu24.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=Etc/UTC \
+    LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+    PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      afl++ \
+      autoconf \
+      automake \
+      bc \
+      binwalk \
+      bison \
+      bpfcc-tools \
+      bpftrace \
+      ccache \
+      cpio \
+      cppcheck \
+      device-tree-compiler \
+      dos2unix \
+      dwarves \
+      flex \
+      foremost \
+      gawk \
+      gdb-doc \
+      gettext \
+      graphviz \
+      htop \
+      ipython3 \
+      libasan8 \
+      libboost-all-dev \
+      libbz2-dev \
+      libdw-dev \
+      liblzma-dev \
+      libseccomp-dev \
+      libtool \
+      libubsan1 \
+      llvm \
+      lldb \
+      locales \
+      lua5.4 \
+      meson \
+      ninja-build \
+      p7zip-full \
+      psmisc \
+      python3-capstone \
+      python3-pycryptodome \
+      python3-requests \
+      python3-z3 \
+      rsync \
+      rustc \
+      cargo \
+      shellcheck \
+      sqlite3 \
+      squashfs-tools \
+      tcpdump \
+      time \
+      tree \
+      valgrind \
+      wabt \
+      yara \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN (python3 -m pip install --break-system-packages --upgrade pip setuptools wheel || echo "WARN: optional pip bootstrap failed") \
+    && for pkg in \
+      angr \
+      archinfo \
+      cle \
+      claripy \
+      dpkt \
+      frida-tools \
+      intervaltree \
+      miasm \
+      networkx \
+      pefile \
+      plumbum \
+      psutil \
+      qiling \
+      r2pipe \
+      ROPGadget \
+      scapy \
+      smmap \
+      sortedcontainers \
+      sympy \
+      unicorn \
+      volatility3 \
+      z3-solver; \
+    do \
+      python3 -m pip install --break-system-packages "$pkg" || echo "WARN: optional pip package failed: $pkg"; \
+    done \
+    && python3 -m pip install ropper || echo "WARN: optional pip package failed: ropper" \
+    && for pkg in pwndbg pwninit pwntools; \
+    do \
+      python3 -m pip install --break-system-packages "$pkg" || echo "WARN: optional pip package failed: $pkg; using git/source or preinstalled fallback if available"; \
+    done
+
+RUN cargo install --locked pwninit || true
+
+RUN git clone --depth=1 https://github.com/io12/pwninit /opt/pwninit-src || true \
+    && git clone --depth=1 https://github.com/JonathanSalwan/ROPgadget /opt/ROPgadget-src || true \
+    && git clone --depth=1 https://github.com/sashs/Ropper /opt/ropper-src || true \
+    && git clone --depth=1 https://github.com/radareorg/radare2 /opt/radare2-src || true
+
+RUN printf '#!/usr/bin/env bash\nset +e\necho "[pwnlab-heavy24] tool check"\nfor c in file readelf objdump nm strings checksec gdb gdbserver python3 ROPGadget ropper one_gadget patchelf qemu-x86_64 qemu-i386 strace ltrace tmux vim git curl wget socat seccomp-tools valgrind lldb afl-fuzz binwalk tcpdump yara; do command -v "$c" >/dev/null 2>&1 && echo "OK $c" || echo "MISS $c"; done\npython3 - <<"PY"\nmods = ["pwn", "angr", "claripy", "qiling", "frida", "capstone", "unicorn", "keystone", "z3", "r2pipe", "scapy"]\nfor m in mods:\n    try:\n        __import__(m)\n        print("OK python", m)\n    except Exception as exc:\n        print("MISS python", m, exc)\nPY\n' > /usr/local/bin/pwnlab-heavy-check \
+    && chmod +x /usr/local/bin/pwnlab-heavy-check
+
+WORKDIR /work
+CMD ["bash"]

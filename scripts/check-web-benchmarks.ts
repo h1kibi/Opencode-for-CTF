@@ -12,7 +12,7 @@ const rules: BenchmarkRule[] = [
     check(output) {
       const hasRecon = /Recon Map/i.test(output)
       const hasExploitBeforeRecon = /(?:xss|sqli|injection|exploit|payload|shell)/i.test(
-        output.split(/Recon Map/i)[0] ?? ""
+        output.split(/Recon Map/i)[0] ?? "",
       )
       if (!hasRecon) return "FAIL"
       return hasExploitBeforeRecon ? "FAIL" : "PASS"
@@ -72,14 +72,16 @@ const rules: BenchmarkRule[] = [
     check(output) {
       const hasPrimitive = /(?:Primitive Ledger|confirmed primitive|high-value primitive)/i.test(output)
       if (!hasPrimitive) return "N/A"
-      const hasClosure = /(?:closure path|closure owner|closure probe|flag-location hypothesis|web-closure-matrix)/i.test(output)
+      const hasClosure =
+        /(?:closure path|closure owner|closure probe|flag-location hypothesis|web-closure-matrix)/i.test(output)
       return hasClosure ? "PASS" : "FAIL"
     },
   },
   {
     name: "evidence trail referenced",
     check(output) {
-      const hasEvidence = /(?:work[\\/]ctf-evidence|final-verification|solve-output|ctf_evidence_snapshot|ctf_handoff)/i.test(output)
+      const hasEvidence =
+        /(?:work[\\/]ctf-evidence|final-verification|solve-output|ctf_evidence_snapshot|ctf_handoff)/i.test(output)
       return hasEvidence ? "PASS" : "N/A"
     },
   },
@@ -149,7 +151,9 @@ function runBenchmarks(targetDir: string) {
   if (failures.length > 0) {
     console.log(`- Critical Failures: ${failures.join(", ")}`)
   }
-  console.log("- Recommendations: review failures against `benchmarks/web/<name>/expected_behavior.md` and closure/evidence rules")
+  console.log(
+    "- Recommendations: review failures against `benchmarks/web/<name>/expected_behavior.md` and closure/evidence rules",
+  )
 }
 
 const target = process.argv[2]

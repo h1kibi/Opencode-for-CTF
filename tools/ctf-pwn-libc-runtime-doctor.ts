@@ -1,10 +1,8 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import { lstat, mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { pwnImage, revImage, DOCKER_IMAGES } from "./lib/docker-config.ts"
+import { safeExec } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -12,16 +10,6 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   const rel = path.relative(base, target)
   if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`path must stay inside current workspace: ${input}`)
   return target
-}
-
-async function safeExec(cmd: string, args: string[], cwd: string, timeout = 5000) {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout, maxBuffer: 1024 * 1024 })
-    return `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`.trim()
-  }
 }
 
 function inferVersion(text: string) {
@@ -32,11 +20,40 @@ function inferVersion(text: string) {
 }
 
 function imageForLibc(version: string) {
-  if (/2\.27/.test(version)) return { image: "pwnlab:general-ubuntu18.04", service: "pwn-general18", profile: "general18", reason: "glibc_2.27_maps_to_ubuntu18.04" }
-  if (/2\.28|2\.29|2\.30|2\.31/.test(version)) return { image: "pwnlab:general-ubuntu20.04", service: "pwn-general20", profile: "general20", reason: "glibc_2.28_to_2.31_maps_to_ubuntu20.04" }
-  if (/2\.32|2\.33|2\.34|2\.35/.test(version)) return { image: "pwnlab:general-ubuntu22.04", service: "pwn-general", profile: "general", reason: "glibc_2.32_to_2.35_maps_to_ubuntu22.04" }
-  if (/2\.36|2\.37|2\.38|2\.39|2\.40/.test(version)) return { image: "pwnlab:general-ubuntu24.04", service: "pwn-general24", profile: "general24", reason: "glibc_2.36_plus_maps_to_ubuntu24.04" }
-  return { image: "pwnlab:general-ubuntu22.04", service: "pwn-general", profile: "general", reason: "unknown_glibc_default_general" }
+  if (/2\.27/.test(version))
+    return {
+      image: pwnImage("general-ubuntu18.04"),
+      service: "pwn-general18",
+      profile: "general18",
+      reason: "glibc_2.27_maps_to_ubuntu18.04",
+    }
+  if (/2\.28|2\.29|2\.30|2\.31/.test(version))
+    return {
+      image: pwnImage("general-ubuntu20.04"),
+      service: "pwn-general20",
+      profile: "general20",
+      reason: "glibc_2.28_to_2.31_maps_to_ubuntu20.04",
+    }
+  if (/2\.32|2\.33|2\.34|2\.35/.test(version))
+    return {
+      image: pwnImage("general-ubuntu22.04"),
+      service: "pwn-general",
+      profile: "general",
+      reason: "glibc_2.32_to_2.35_maps_to_ubuntu22.04",
+    }
+  if (/2\.36|2\.37|2\.38|2\.39|2\.40/.test(version))
+    return {
+      image: pwnImage("general-ubuntu24.04"),
+      service: "pwn-general24",
+      profile: "general24",
+      reason: "glibc_2.36_plus_maps_to_ubuntu24.04",
+    }
+  return {
+    image: pwnImage("general-ubuntu22.04"),
+    service: "pwn-general",
+    profile: "general",
+    reason: "unknown_glibc_default_general",
+  }
 }
 
 function detectArch(fileOut: string) {
@@ -48,12 +65,16 @@ function detectArch(fileOut: string) {
 }
 
 export default tool({
-  description: "CTF pwn libc runtime doctor: inspect binary/libc/ld, recommend the correct pwnlab substrate and explicit loader command, and warn when continued validation on a mismatched glibc base is unsafe.",
+  description:
+    "CTF pwn libc runtime doctor: inspect binary/libc/ld, recommend the correct pwnlab substrate and explicit loader command, and warn when continued validation on a mismatched glibc base is unsafe.",
   args: {
     binary: tool.schema.string().describe("Workspace-relative binary path."),
     libc: tool.schema.string().describe("Workspace-relative bundled libc path."),
     ld: tool.schema.string().optional().describe("Workspace-relative loader path if present."),
-    currentImage: tool.schema.string().optional().describe("Current Docker image or substrate label being used, for mismatch warning."),
+    currentImage: tool.schema
+      .string()
+      .optional()
+      .describe("Current Docker image or substrate label being used, for mismatch warning."),
     timeoutMs: tool.schema.number().optional().describe("Timeout for helper commands. Default 5000."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
@@ -67,8 +88,8 @@ export default tool({
 
     const libcRaw = await readFile(libc)
     const libcVersion = inferVersion(libcRaw.toString("latin1"))
-    const binaryFile = await safeExec("file", [binary], path.dirname(binary), timeoutMs)
-    const ldFile = ld ? await safeExec("file", [ld], path.dirname(ld), timeoutMs) : ""
+    const binaryFile = (await safeExec("file", [binary], path.dirname(binary), timeoutMs)).output
+    const ldFile = ld ? (await safeExec("file", [ld], path.dirname(ld), timeoutMs)).output : ""
     const arch = detectArch(binaryFile)
     const runtime = imageForLibc(libcVersion)
     const libcDir = path.posix.dirname(args.libc.replace(/\\/g, "/"))
@@ -78,10 +99,15 @@ export default tool({
       ? `${ldPosix} --library-path ${libcDir} ${binaryPosix}`
       : `LD_PRELOAD=${args.libc.replace(/\\/g, "/")} ${binaryPosix}`
     const dockerRun = `docker run --rm -it --cap-add=SYS_PTRACE --security-opt seccomp=unconfined -v ./:/work -w /work ${runtime.image} bash`
-    const mismatch = args.currentImage && !args.currentImage.includes(runtime.image.split(":")[1].replace("general-", "")) && !args.currentImage.includes(runtime.image)
+    const mismatch =
+      args.currentImage &&
+      !args.currentImage.includes(runtime.image.split(":")[1].replace("general-", "")) &&
+      !args.currentImage.includes(runtime.image)
     const warnings = [
       "bundled_libc_present_force_runtime_lock",
-      ld ? "bundled_loader_present_prefer_explicit_ld_linux_loading" : "no_bundled_loader_found_check_whether_binary_still_binds_to_system_ld",
+      ld
+        ? "bundled_loader_present_prefer_explicit_ld_linux_loading"
+        : "no_bundled_loader_found_check_whether_binary_still_binds_to_system_ld",
       mismatch ? `current_image_mismatch:${args.currentImage}->${runtime.image}` : "",
       libcVersion === "unknown" ? "glibc_version_unparsed_recheck_with_strings_or libc-fingerprint" : "",
       arch !== "amd64" ? `non_default_arch:${arch}` : "",
@@ -108,12 +134,14 @@ export default tool({
       docker_runner_defaults: {
         composeService: runtime.service,
         containerMountRoot: "/work",
-        containerWorkdir: path.posix.dirname(binaryPosix) === "." ? "/work" : path.posix.join("/work", path.posix.dirname(binaryPosix)),
+        containerWorkdir:
+          path.posix.dirname(binaryPosix) === "." ? "/work" : path.posix.join("/work", path.posix.dirname(binaryPosix)),
         runArgs: "--cap-add=SYS_PTRACE --security-opt seccomp=unconfined",
       },
       docker_run: dockerRun,
       warnings,
-      stop_condition: "Do not continue heap/overlap/tcache validation on a mismatched glibc base once bundled libc is present.",
+      stop_condition:
+        "Do not continue heap/overlap/tcache validation on a mismatched glibc base once bundled libc is present.",
     }
     const profileDir = resolveInsideWorkspace(context.directory, "work/pwn-runtime-profiles")
     await mkdir(profileDir, { recursive: true })

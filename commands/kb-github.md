@@ -9,8 +9,8 @@ agent: daily
 
 ## 目标路径
 
-- notes: `C:\Users\Administrator\SecKB\notes`
-- index: `C:\Users\Administrator\SecKB\index\chroma`
+- notes: `{env:SECKB_ROOT}/notes`
+- index: `{env:SECKB_ROOT}/index\chroma`
 
 ## 流程
 
@@ -32,12 +32,12 @@ agent: daily
 
 ### Step 3: 写入 SecKB
 将结果写入：
-`C:\Users\Administrator\SecKB\notes\<module>\<slug>.md`
+`{env:SECKB_ROOT}/notes\<module>\<slug>.md`
 
 推荐通过：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_update.py --module <module> --title "<title>" --stdin --source github --source-url "<repo-or-file-url>" --stack <stack...> --primitive <primitive...> --query "<query>" --query-terms <terms...>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_update.py --module <module> --title "<title>" --stdin --source github --source-url "<repo-or-file-url>" --stack <stack...> --primitive <primitive...> --query "<query>" --query-terms <terms...>
 ```
 
 ### Step 4: 重建索引并验证

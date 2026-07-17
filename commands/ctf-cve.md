@@ -46,12 +46,12 @@ Do not update CVEKB during active solving.
 2. Query local CVEKB read-only:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\cvekb.py cve_lookup <CVE>
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\cvekb.py cve_match_product <product/version terms>
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\cvekb.py cve_related_hits <signal terms>
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\cvekb.py cve_hit_summary <CVE>
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\cvekb.py poc_reference_lookup <CVE>
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\cvekb.py poc_cache_status <CVE>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/cvekb.py cve_lookup <CVE>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/cvekb.py cve_match_product <product/version terms>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/cvekb.py cve_related_hits <signal terms>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/cvekb.py cve_hit_summary <CVE>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/cvekb.py poc_reference_lookup <CVE>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/cvekb.py poc_cache_status <CVE>
 ```
 
 3. Score hits by relevance only:

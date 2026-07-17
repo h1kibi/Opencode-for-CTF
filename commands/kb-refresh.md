@@ -72,7 +72,7 @@ agent: daily
 抓取到候选 URL 后，优先用本地 authority scorer 做一次排序：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\authority_rank.py <url1> <url2> <url3>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/authority_rank.py <url1> <url2> <url3>
 ```
 
 优先保留 `authoritative` / `strong` 级来源，再进入正文提取。
@@ -111,7 +111,7 @@ C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\Sec
 - `java-dependency-to-sink`
 
 ### Step 6: 重建索引
-默认重建 `C:\Users\Administrator\SecKB\index\chroma`。
+默认重建 `{env:SECKB_ROOT}/index\chroma`。
 
 ### Step 7: smoke test
 用至少一个 evidence query 验证新 note 可检索。
@@ -120,7 +120,7 @@ C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\Sec
 必要时运行：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_quality_report.py
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_quality_report.py
 ```
 
 查看：

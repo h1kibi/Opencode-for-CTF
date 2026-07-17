@@ -1,23 +1,29 @@
 import { tool } from "@opencode-ai/plugin"
 import { access, lstat, mkdir, readFile, writeFile } from "node:fs/promises"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
+import { safeExec, execFile } from "./lib/exec-utils.ts"
 import path from "node:path"
 import { inflateRawSync } from "node:zlib"
 import crypto from "node:crypto"
 
-const execFile = promisify(execFileCb)
+type ZipEntry = {
+  name: string
+  method: number
+  compressedSize: number
+  uncompressedSize: number
+  localHeaderOffset: number
+}
 
-type ZipEntry = { name: string; method: number; compressedSize: number; uncompressedSize: number; localHeaderOffset: number }
-
-const HIGH_SIGNAL = /(flag|ctf|check|verify|valid|invalid|success|correct|wrong|fail|serial|license|password|secret|token|key|native|jni|loadLibrary|RegisterNatives|JNI_OnLoad|decrypt|encrypt|decode|encode|base64|xor|aes|des|rc4|md5|sha|frida|xposed|magisk|root|debug|emulator|qemu|TracerPid|dexclassloader|pathclassloader|loadDex|loadClass)/i
-const PACKER_SIGNAL = /(jiagu|bangcle|ijiami|qihoo|tencent|legu|secneo|baiduprotect|sophix|tinker|protect|packer|DexClassLoader|PathClassLoader|loadDex|payload|libshell|stub|shell)/i
+const HIGH_SIGNAL =
+  /(flag|ctf|check|verify|valid|invalid|success|correct|wrong|fail|serial|license|password|secret|token|key|native|jni|loadLibrary|RegisterNatives|JNI_OnLoad|decrypt|encrypt|decode|encode|base64|xor|aes|des|rc4|md5|sha|frida|xposed|magisk|root|debug|emulator|qemu|TracerPid|dexclassloader|pathclassloader|loadDex|loadClass)/i
+const PACKER_SIGNAL =
+  /(jiagu|bangcle|ijiami|qihoo|tencent|legu|secneo|baiduprotect|sophix|tinker|protect|packer|DexClassLoader|PathClassLoader|loadDex|payload|libshell|stub|shell)/i
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
   const target = path.resolve(base, input)
   const rel = path.relative(base, target)
-  if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`target must stay inside the current workspace: ${input}`)
+  if (rel.startsWith("..") || path.isAbsolute(rel))
+    throw new Error(`target must stay inside the current workspace: ${input}`)
   return target
 }
 
@@ -29,27 +35,26 @@ async function exists(cmd: string) {
     try {
       await execFile(cmd, [], { timeout: 2500, maxBuffer: 128 * 1024, shell: process.platform === "win32" })
       return true
-    } catch { return false }
+    } catch {
+      return false
+    }
   }
 }
 
-async function tryExec(cmd: string, args: string[], cwd: string, timeout = 12000) {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout, maxBuffer: 8 * 1024 * 1024, shell: process.platform === "win32" })
-    return { ok: true, output: `${stdout}${stderr ? `\n${stderr}` : ""}`.trim() }
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return { ok: false, output: `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`.trim() }
-  }
+function u16(buf: Buffer, off: number) {
+  return off + 2 <= buf.length ? buf.readUInt16LE(off) : 0
 }
-
-function u16(buf: Buffer, off: number) { return off + 2 <= buf.length ? buf.readUInt16LE(off) : 0 }
-function u32(buf: Buffer, off: number) { return off + 4 <= buf.length ? buf.readUInt32LE(off) : 0 }
+function u32(buf: Buffer, off: number) {
+  return off + 4 <= buf.length ? buf.readUInt32LE(off) : 0
+}
 
 function listZip(buf: Buffer): ZipEntry[] {
   let eocd = -1
   for (let i = buf.length - 22; i >= Math.max(0, buf.length - 0x10000 - 22); i--) {
-    if (u32(buf, i) === 0x06054b50) { eocd = i; break }
+    if (u32(buf, i) === 0x06054b50) {
+      eocd = i
+      break
+    }
   }
   if (eocd < 0) throw new Error("invalid zip/apk: EOCD not found")
   const total = u16(buf, eocd + 10)
@@ -97,8 +102,12 @@ function printableStrings(buf: Buffer, max = 500) {
   return out
 }
 
-function unique<T>(xs: T[]) { return [...new Set(xs)] }
-function firstMatch(text: string, re: RegExp) { return text.match(re)?.[1]?.trim() || "" }
+function unique<T>(xs: T[]) {
+  return [...new Set(xs)]
+}
+function firstMatch(text: string, re: RegExp) {
+  return text.match(re)?.[1]?.trim() || ""
+}
 
 function parseAaptBadging(text: string) {
   return {
@@ -112,21 +121,66 @@ function parseAaptBadging(text: string) {
   }
 }
 
-function route(primarySignals: { native: boolean; java: boolean; packed: boolean; assets: boolean; flagLike: boolean }) {
-  if (primarySignals.flagLike) return { primaryRoute: "direct_flag_or_plaintext", confidence: "medium", firstProbe: "verify candidate strings before broad reversing", fallbackProbe: "ctf-apk-triage with larger maxStrings" }
-  if (primarySignals.native) return { primaryRoute: "native_checker", confidence: "high", firstProbe: "run ctf-android-native-triage on APK or primary lib*.so", fallbackProbe: "ctf-elf-slice keyword=JNI|check|flag|verify" }
-  if (primarySignals.packed) return { primaryRoute: "packed_or_dynamic_loader", confidence: "medium", firstProbe: "use adb/logcat/frida or inspect loader classes/assets before full jadx", fallbackProbe: "apktool no-src + targeted jadx loader package" }
-  if (primarySignals.assets) return { primaryRoute: "assets_or_resource_decode", confidence: "medium", firstProbe: "extract suspicious assets and scan/decode them", fallbackProbe: "targeted jadx for asset open/read/decrypt references" }
-  if (primarySignals.java) return { primaryRoute: "java_kotlin_checker", confidence: "medium", firstProbe: "run ctf-jadx-targeted-slice for check|verify|flag|success|failure", fallbackProbe: "apktool smali grep before full jadx" }
-  return { primaryRoute: "unknown_apk_static", confidence: "low", firstProbe: "targeted dex strings + manifest components, avoid full jadx until route-gated", fallbackProbe: "ctf-rev-team if packed/native/multilayer signals grow" }
+function route(primarySignals: {
+  native: boolean
+  java: boolean
+  packed: boolean
+  assets: boolean
+  flagLike: boolean
+}) {
+  if (primarySignals.flagLike)
+    return {
+      primaryRoute: "direct_flag_or_plaintext",
+      confidence: "medium",
+      firstProbe: "verify candidate strings before broad reversing",
+      fallbackProbe: "ctf-apk-triage with larger maxStrings",
+    }
+  if (primarySignals.native)
+    return {
+      primaryRoute: "native_checker",
+      confidence: "high",
+      firstProbe: "run ctf-android-native-triage on APK or primary lib*.so",
+      fallbackProbe: "ctf-elf-slice keyword=JNI|check|flag|verify",
+    }
+  if (primarySignals.packed)
+    return {
+      primaryRoute: "packed_or_dynamic_loader",
+      confidence: "medium",
+      firstProbe: "use adb/logcat/frida or inspect loader classes/assets before full jadx",
+      fallbackProbe: "apktool no-src + targeted jadx loader package",
+    }
+  if (primarySignals.assets)
+    return {
+      primaryRoute: "assets_or_resource_decode",
+      confidence: "medium",
+      firstProbe: "extract suspicious assets and scan/decode them",
+      fallbackProbe: "targeted jadx for asset open/read/decrypt references",
+    }
+  if (primarySignals.java)
+    return {
+      primaryRoute: "java_kotlin_checker",
+      confidence: "medium",
+      firstProbe: "run ctf-jadx-targeted-slice for check|verify|flag|success|failure",
+      fallbackProbe: "apktool smali grep before full jadx",
+    }
+  return {
+    primaryRoute: "unknown_apk_static",
+    confidence: "low",
+    firstProbe: "targeted dex strings + manifest components, avoid full jadx until route-gated",
+    fallbackProbe: "ctf-rev-team if packed/native/multilayer signals grow",
+  }
 }
 
 export default tool({
-  description: "CTF Android APK quick triage: package/launch activity/permissions, dex/native/assets/packer/JNI high-signal summary and route recommendation without full JADX.",
+  description:
+    "CTF Android APK quick triage: package/launch activity/permissions, dex/native/assets/packer/JNI high-signal summary and route recommendation without full JADX.",
   args: {
     target: tool.schema.string().describe("Workspace-relative APK path"),
     maxStrings: tool.schema.number().optional().describe("Maximum high-signal strings to return. Default 120."),
-    outDir: tool.schema.string().optional().describe("Workspace-relative artifact directory. Default work/apk-triage/<apk-name>"),
+    outDir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative artifact directory. Default work/apk-triage/<apk-name>"),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args, context) {
@@ -137,15 +191,26 @@ export default tool({
     const sha256 = crypto.createHash("sha256").update(buf).digest("hex")
     const entries = listZip(buf)
     const maxStrings = Math.max(20, Math.min(args.maxStrings ?? 120, 500))
-    const outRel = args.outDir || path.join("work", "apk-triage", path.basename(target).replace(/[^A-Za-z0-9_.-]/g, "_"))
+    const outRel =
+      args.outDir || path.join("work", "apk-triage", path.basename(target).replace(/[^A-Za-z0-9_.-]/g, "_"))
     const outDir = resolveInsideWorkspace(context.directory, outRel)
     await mkdir(outDir, { recursive: true })
 
     const cwd = path.dirname(target)
-    const aapt = await tryExec("aapt", ["dump", "badging", target], cwd, 12000)
-    const apkanalyzer = await tryExec("apkanalyzer", ["manifest", "print", target], cwd, 12000)
-    const apkid = await tryExec("apkid", [target], cwd, 12000)
-    const aaptInfo = aapt.ok ? parseAaptBadging(aapt.output) : { package: "", versionCode: "", versionName: "", minSdk: "", targetSdk: "", launchableActivity: "", permissions: [] as string[] }
+    const aapt = await safeExec("aapt", ["dump", "badging", target], cwd, 12000)
+    const apkanalyzer = await safeExec("apkanalyzer", ["manifest", "print", target], cwd, 12000)
+    const apkid = await safeExec("apkid", [target], cwd, 12000)
+    const aaptInfo = aapt.ok
+      ? parseAaptBadging(aapt.output)
+      : {
+          package: "",
+          versionCode: "",
+          versionName: "",
+          minSdk: "",
+          targetSdk: "",
+          launchableActivity: "",
+          permissions: [] as string[],
+        }
 
     const dexEntries = entries.filter((e) => /^classes\d*\.dex$/.test(e.name))
     const libEntries = entries.filter((e) => /^lib\/[^/]+\/[^/]+\.so$/.test(e.name))
@@ -170,20 +235,31 @@ export default tool({
     const allHigh = [...highDex, ...highNative, ...assetEntries.map((e) => e.name)].join("\n")
 
     const loadLibraryCalls = unique(highDex.filter((s) => /loadLibrary|System\.load/i.test(s))).slice(0, 40)
-    const suspiciousAssets = assetEntries.filter((e) => PACKER_SIGNAL.test(e.name) || /flag|key|secret|payload|dex|so|dat|bin|enc|crypt|base64/i.test(e.name) || e.uncompressedSize > 500_000).slice(0, 80)
-    const flagLike = unique([...highDex, ...highNative].filter((s) => /(?:[A-Z0-9_]{2,}\{|flag\{|ctf\{|DASCTF\{|NSSCTF\{|BUUCTF\{)/i.test(s))).slice(0, 20)
+    const suspiciousAssets = assetEntries
+      .filter(
+        (e) =>
+          PACKER_SIGNAL.test(e.name) ||
+          /flag|key|secret|payload|dex|so|dat|bin|enc|crypt|base64/i.test(e.name) ||
+          e.uncompressedSize > 500_000,
+      )
+      .slice(0, 80)
+    const flagLike = unique(
+      [...highDex, ...highNative].filter((s) => /(?:[A-Z0-9_]{2,}\{|flag\{|ctf\{|DASCTF\{|NSSCTF\{|BUUCTF\{)/i.test(s)),
+    ).slice(0, 20)
     const packingSignals = unique([
-      ...entries.map((e) => e.name).filter((n) => PACKER_SIGNAL.test(n) && !/m3_dynamic_|androidx\.dynamicanimation/i.test(n)),
+      ...entries
+        .map((e) => e.name)
+        .filter((n) => PACKER_SIGNAL.test(n) && !/m3_dynamic_|androidx\.dynamicanimation/i.test(n)),
       ...highDex.filter((s) => PACKER_SIGNAL.test(s)),
       ...(apkid.ok ? apkid.output.split(/\r?\n/).filter((l) => PACKER_SIGNAL.test(l)) : []),
     ]).slice(0, 80)
 
-    const nativeLikely = libEntries.length > 0 && (
-      /JNI_OnLoad|RegisterNatives|Java_|loadLibrary/i.test(allHigh)
-      || loadLibraryCalls.length > 0
-      || libEntries.some((e) => /libshell|shell|protect|loader|patch/i.test(e.name))
-      || suspiciousAssets.some((e) => /extract|payload|dex|dat|so/i.test(e.name))
-    )
+    const nativeLikely =
+      libEntries.length > 0 &&
+      (/JNI_OnLoad|RegisterNatives|Java_|loadLibrary/i.test(allHigh) ||
+        loadLibraryCalls.length > 0 ||
+        libEntries.some((e) => /libshell|shell|protect|loader|patch/i.test(e.name)) ||
+        suspiciousAssets.some((e) => /extract|payload|dex|dat|so/i.test(e.name)))
     const primary = route({
       native: nativeLikely,
       java: /check|verify|success|correct|wrong|flag|ctf/i.test(allHigh),
@@ -195,12 +271,34 @@ export default tool({
     const payload = {
       target,
       artifact_dir: outDir,
-      identity: { sha256, size: st.size, package: aaptInfo.package, versionCode: aaptInfo.versionCode, versionName: aaptInfo.versionName, minSdk: aaptInfo.minSdk, targetSdk: aaptInfo.targetSdk, launchableActivity: aaptInfo.launchableActivity },
+      identity: {
+        sha256,
+        size: st.size,
+        package: aaptInfo.package,
+        versionCode: aaptInfo.versionCode,
+        versionName: aaptInfo.versionName,
+        minSdk: aaptInfo.minSdk,
+        targetSdk: aaptInfo.targetSdk,
+        launchableActivity: aaptInfo.launchableActivity,
+      },
       tool_status: { aapt: aapt.ok, apkanalyzer: apkanalyzer.ok, apkid: apkid.ok },
       manifest: { permissions: aaptInfo.permissions, manifest_summary_available: apkanalyzer.ok },
-      dex: { dexCount: dexEntries.length, dexFiles: dexEntries.map((e) => ({ name: e.name, size: e.uncompressedSize })), highValueStrings: highDex.slice(0, maxStrings) },
-      native: { abiList: unique(libEntries.map((e) => e.name.split("/")[1])).sort(), soFiles: libEntries.map((e) => ({ name: e.name, size: e.uncompressedSize })), loadLibraryCalls, suspiciousNativeStrings: highNative.slice(0, maxStrings) },
-      assets: { suspiciousAssets: suspiciousAssets.map((e) => ({ name: e.name, size: e.uncompressedSize })), assetCount: assetEntries.length, certFiles: certEntries.map((e) => e.name) },
+      dex: {
+        dexCount: dexEntries.length,
+        dexFiles: dexEntries.map((e) => ({ name: e.name, size: e.uncompressedSize })),
+        highValueStrings: highDex.slice(0, maxStrings),
+      },
+      native: {
+        abiList: unique(libEntries.map((e) => e.name.split("/")[1])).sort(),
+        soFiles: libEntries.map((e) => ({ name: e.name, size: e.uncompressedSize })),
+        loadLibraryCalls,
+        suspiciousNativeStrings: highNative.slice(0, maxStrings),
+      },
+      assets: {
+        suspiciousAssets: suspiciousAssets.map((e) => ({ name: e.name, size: e.uncompressedSize })),
+        assetCount: assetEntries.length,
+        certFiles: certEntries.map((e) => e.name),
+      },
       packing: { signals: packingSignals, apkid: apkid.ok ? apkid.output.split(/\r?\n/).slice(0, 40) : [] },
       strings: { flagLike, highSignal: unique([...highDex, ...highNative]).slice(0, maxStrings) },
       route_recommendation: primary,
@@ -208,9 +306,21 @@ export default tool({
 
     await writeFile(path.join(outDir, "apk-triage.json"), JSON.stringify(payload, null, 2), "utf8")
     await writeFile(path.join(outDir, "aapt-badging.txt"), aapt.output || "aapt unavailable or failed", "utf8")
-    await writeFile(path.join(outDir, "apkanalyzer-manifest.txt"), apkanalyzer.output || "apkanalyzer unavailable or failed", "utf8")
-    await writeFile(path.join(outDir, "high-signal-strings.txt"), unique([...highDex, ...highNative]).join("\n"), "utf8")
-    await writeFile(path.join(outDir, "zip-entries.txt"), entries.map((e) => `${e.uncompressedSize}\t${e.name}`).join("\n"), "utf8")
+    await writeFile(
+      path.join(outDir, "apkanalyzer-manifest.txt"),
+      apkanalyzer.output || "apkanalyzer unavailable or failed",
+      "utf8",
+    )
+    await writeFile(
+      path.join(outDir, "high-signal-strings.txt"),
+      unique([...highDex, ...highNative]).join("\n"),
+      "utf8",
+    )
+    await writeFile(
+      path.join(outDir, "zip-entries.txt"),
+      entries.map((e) => `${e.uncompressedSize}\t${e.name}`).join("\n"),
+      "utf8",
+    )
 
     if (args.jsonOnly) return JSON.stringify(payload, null, 2)
     return [
@@ -225,13 +335,19 @@ export default tool({
       `assets/raw/xml entries: ${assetEntries.length}`,
       `tools: aapt=${aapt.ok ? "ok" : "missing/fail"} apkanalyzer=${apkanalyzer.ok ? "ok" : "missing/fail"} apkid=${apkid.ok ? "ok" : "missing/fail"}`,
       "permissions:",
-      ...(aaptInfo.permissions.length ? aaptInfo.permissions.slice(0, 30).map((p) => `- ${p}`) : ["- unknown/aapt unavailable"]),
+      ...(aaptInfo.permissions.length
+        ? aaptInfo.permissions.slice(0, 30).map((p) => `- ${p}`)
+        : ["- unknown/aapt unavailable"]),
       "native_libraries:",
-      ...(libEntries.length ? libEntries.slice(0, 40).map((e) => `- ${e.name} (${e.uncompressedSize} bytes)`) : ["- none"]),
+      ...(libEntries.length
+        ? libEntries.slice(0, 40).map((e) => `- ${e.name} (${e.uncompressedSize} bytes)`)
+        : ["- none"]),
       "loadLibrary_or_loader_signals:",
       ...(loadLibraryCalls.length ? loadLibraryCalls.slice(0, 25).map((s) => `- ${s}`) : ["- none"]),
       "suspicious_assets:",
-      ...(suspiciousAssets.length ? suspiciousAssets.slice(0, 30).map((e) => `- ${e.name} (${e.uncompressedSize} bytes)`) : ["- none"]),
+      ...(suspiciousAssets.length
+        ? suspiciousAssets.slice(0, 30).map((e) => `- ${e.name} (${e.uncompressedSize} bytes)`)
+        : ["- none"]),
       "packing_signals:",
       ...(packingSignals.length ? packingSignals.slice(0, 30).map((s) => `- ${s}`) : ["- none"]),
       "flag_like_strings:",

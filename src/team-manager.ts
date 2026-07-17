@@ -1,7 +1,9 @@
 import { teamStateFile } from "./paths.ts"
-import { loadJsonFile, nowIso, saveJsonFile } from "./state-store.ts"
+import { atomicUpdateJsonFile, loadJsonFile, nowIso } from "./state-store.ts"
+import { withFileLock } from "./file-lock.ts"
 import type { TeamMember, TeamMessage, TeamState, TeamTask, TeamTaskStatus } from "./types.ts"
 import type { OpencodeClient } from "@opencode-ai/sdk"
+import { randomUUID } from "node:crypto"
 
 function createEmptyState(teamId: string, leadSessionID: string, directory: string, challengeSlug?: string): TeamState {
   const now = nowIso()
@@ -19,17 +21,25 @@ function createEmptyState(teamId: string, leadSessionID: string, directory: stri
   }
 }
 
-async function loadTeamState(worktree: string, directory: string, teamId: string, leadSessionID: string, challengeSlug?: string) {
-  return loadJsonFile<TeamState>(teamStateFile(worktree, directory, teamId), createEmptyState(teamId, leadSessionID, directory, challengeSlug))
+function statePath(worktree: string, directory: string, teamId: string) {
+  return teamStateFile(worktree, directory, teamId)
 }
 
-async function saveTeamState(worktree: string, directory: string, state: TeamState) {
-  state.updatedAt = nowIso()
-  await saveJsonFile(teamStateFile(worktree, directory, state.teamId), state)
+async function loadTeamState(
+  worktree: string,
+  directory: string,
+  teamId: string,
+  leadSessionID: string,
+  challengeSlug?: string,
+) {
+  return loadJsonFile<TeamState>(
+    statePath(worktree, directory, teamId),
+    createEmptyState(teamId, leadSessionID, directory, challengeSlug),
+  )
 }
 
 function makeId(prefix: string) {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`
+  return `${prefix}_${randomUUID().slice(0, 8)}`
 }
 
 export async function createTeam(args: {
@@ -40,9 +50,12 @@ export async function createTeam(args: {
   challengeSlug?: string
 }) {
   const teamId = args.name.replace(/[^A-Za-z0-9._-]/g, "_").toLowerCase() || makeId("team")
-  const state = await loadTeamState(args.worktree, args.directory, teamId, args.leadSessionID, args.challengeSlug)
-  await saveTeamState(args.worktree, args.directory, state)
-  return state
+  const path = statePath(args.worktree, args.directory, teamId)
+  return atomicUpdateJsonFile<TeamState>(
+    path,
+    createEmptyState(teamId, args.leadSessionID, args.directory, args.challengeSlug),
+    (s) => s,
+  )
 }
 
 export async function addMember(args: {
@@ -54,21 +67,26 @@ export async function addMember(args: {
   agent: string
   description?: string
 }) {
-  const state = await loadTeamState(args.worktree, args.directory, args.teamId, args.leadSessionID)
-  const now = nowIso()
-  const member: TeamMember = {
-    id: makeId("member"),
-    name: args.memberName,
-    role: "member",
-    agent: args.agent,
-    status: "idle",
-    description: args.description,
-    createdAt: now,
-    updatedAt: now,
-  }
-  state.members.push(member)
-  await saveTeamState(args.worktree, args.directory, state)
-  return member
+  const path = statePath(args.worktree, args.directory, args.teamId)
+  return atomicUpdateJsonFile<TeamState>(
+    path,
+    createEmptyState(args.teamId, args.leadSessionID, args.directory),
+    (state) => {
+      const now = nowIso()
+      const member: TeamMember = {
+        id: makeId("member"),
+        name: args.memberName,
+        role: "member",
+        agent: args.agent,
+        status: "idle",
+        description: args.description,
+        createdAt: now,
+        updatedAt: now,
+      }
+      state.members.push(member)
+      return state
+    },
+  )
 }
 
 export async function listTeamState(args: {
@@ -89,17 +107,22 @@ export async function sendTeamMessage(args: {
   to: string
   text: string
 }) {
-  const state = await loadTeamState(args.worktree, args.directory, args.teamId, args.leadSessionID)
-  const message: TeamMessage = {
-    id: makeId("msg"),
-    from: args.from,
-    to: args.to,
-    text: args.text,
-    createdAt: nowIso(),
-  }
-  state.messages.push(message)
-  await saveTeamState(args.worktree, args.directory, state)
-  return message
+  const path = statePath(args.worktree, args.directory, args.teamId)
+  return atomicUpdateJsonFile<TeamState>(
+    path,
+    createEmptyState(args.teamId, args.leadSessionID, args.directory),
+    (state) => {
+      const message: TeamMessage = {
+        id: makeId("msg"),
+        from: args.from,
+        to: args.to,
+        text: args.text,
+        createdAt: nowIso(),
+      }
+      state.messages.push(message)
+      return state
+    },
+  )
 }
 
 export async function createMemberTask(args: {
@@ -112,6 +135,8 @@ export async function createMemberTask(args: {
   title: string
   prompt: string
 }) {
+  // Step 1: Find the member and create a session (no lock needed — API call)
+  const path = statePath(args.worktree, args.directory, args.teamId)
   const state = await loadTeamState(args.worktree, args.directory, args.teamId, args.leadSessionID)
   const member = state.members.find((item) => item.id === args.memberId)
   if (!member) throw new Error(`member not found: ${args.memberId}`)
@@ -140,21 +165,30 @@ export async function createMemberTask(args: {
     },
   })
 
+  // Step 2: Atomically update the state with new task + member status
   const now = nowIso()
-  const task: TeamTask = {
-    id: makeId("task"),
-    memberId: member.id,
-    title: args.title,
-    prompt: args.prompt,
-    status: "running",
-    createdAt: now,
-    updatedAt: now,
-  }
-  member.status = "busy"
-  member.updatedAt = now
-  state.tasks.push(task)
-  await saveTeamState(args.worktree, args.directory, state)
-  return { member, task }
+  return atomicUpdateJsonFile<TeamState>(
+    path,
+    createEmptyState(args.teamId, args.leadSessionID, args.directory),
+    (state) => {
+      const target = state.members.find((m) => m.id === args.memberId)
+      if (!target) return state
+
+      const task: TeamTask = {
+        id: makeId("task"),
+        memberId: target.id,
+        title: args.title,
+        prompt: args.prompt,
+        status: "running",
+        createdAt: now,
+        updatedAt: now,
+      }
+      target.status = "busy"
+      target.updatedAt = now
+      state.tasks.push(task)
+      return state
+    },
+  )
 }
 
 export async function updateTaskStatus(args: {
@@ -166,21 +200,26 @@ export async function updateTaskStatus(args: {
   status: TeamTaskStatus
   resultSummary?: string
 }) {
-  const state = await loadTeamState(args.worktree, args.directory, args.teamId, args.leadSessionID)
-  const task = state.tasks.find((item) => item.id === args.taskId)
-  if (!task) throw new Error(`task not found: ${args.taskId}`)
-  const member = state.members.find((item) => item.id === task.memberId)
-  const now = nowIso()
+  const path = statePath(args.worktree, args.directory, args.teamId)
+  return atomicUpdateJsonFile<TeamState>(
+    path,
+    createEmptyState(args.teamId, args.leadSessionID, args.directory),
+    (state) => {
+      const task = state.tasks.find((item) => item.id === args.taskId)
+      if (!task) throw new Error(`task not found: ${args.taskId}`)
+      const member = state.members.find((item) => item.id === task.memberId)
+      const now = nowIso()
 
-  task.status = args.status
-  task.updatedAt = now
-  if (args.resultSummary !== undefined) task.resultSummary = args.resultSummary
+      task.status = args.status
+      task.updatedAt = now
+      if (args.resultSummary !== undefined) task.resultSummary = args.resultSummary
 
-  if (member) {
-    member.status = args.status === "running" ? "busy" : args.status === "blocked" ? "blocked" : "done"
-    member.updatedAt = now
-  }
+      if (member) {
+        member.status = args.status === "running" ? "busy" : args.status === "blocked" ? "blocked" : "done"
+        member.updatedAt = now
+      }
 
-  await saveTeamState(args.worktree, args.directory, state)
-  return task
+      return state
+    },
+  )
 }

@@ -38,7 +38,7 @@ async function collectMarkdownFiles(dir: string): Promise<string[]> {
   for (const entry of entries) {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) {
-      out.push(...await collectMarkdownFiles(full))
+      out.push(...(await collectMarkdownFiles(full)))
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
       out.push(full)
     }
@@ -48,10 +48,14 @@ async function collectMarkdownFiles(dir: string): Promise<string[]> {
 }
 
 export default tool({
-  description: "Search local CTF Web pattern references for candidate exploit-pattern matches. Use only after recon and attack-queue; it does not execute payloads.",
+  description:
+    "Search local CTF Web pattern references for candidate exploit-pattern matches. Use only after recon and attack-queue; it does not execute payloads.",
   args: {
     query: tool.schema.string().describe("Observed signals, framework, bug family, or primitive to search for"),
-    patternDir: tool.schema.string().optional().describe("Pattern reference directory. Defaults to skills/ctf-web-patterns/references"),
+    patternDir: tool.schema
+      .string()
+      .optional()
+      .describe("Pattern reference directory. Defaults to skills/ctf-web-patterns/references"),
     maxHits: tool.schema.number().optional().describe("Maximum hits to return"),
   },
   async execute(args) {

@@ -65,7 +65,12 @@ function classifyFromMaps(v: bigint, maps: MapRange[]): ClassifiedLeak | undefin
         nextHint: "Check same-size refill and whether freed contents look like a tcache fd.",
       }
     }
-    if (label.includes("libc") || label.includes("libstdc++") || label.includes("libm") || label.includes("libpthread")) {
+    if (
+      label.includes("libc") ||
+      label.includes("libstdc++") ||
+      label.includes("libm") ||
+      label.includes("libpthread")
+    ) {
       return {
         raw: `0x${v.toString(16)}`,
         normalized: `0x${v.toString(16)}`,
@@ -133,7 +138,9 @@ function classifyByHeuristics(v: bigint): ClassifiedLeak {
       reason: maybeStack ? "high userspace range may be stack-like" : "high userspace shared-library-like range",
       pageAlignedBase: pageAlign(v),
       safeLinkingCandidate: false,
-      nextHint: maybeStack ? "Check maps or repeated runs to separate stack from library mappings." : "Pair this with symbol offsets before final libc math.",
+      nextHint: maybeStack
+        ? "Check maps or repeated runs to separate stack from library mappings."
+        : "Pair this with symbol offsets before final libc math.",
     }
   }
 
@@ -184,15 +191,24 @@ function classifyByHeuristics(v: bigint): ClassifiedLeak {
     reason: "range does not confidently match heap/libc/PIE/stack and no maps confirmed it",
     pageAlignedBase: pageAlign(v),
     safeLinkingCandidate: false,
-    nextHint: "Gather maps, repeat the leak, or obtain one more pointer from the same branch before doing final base math.",
+    nextHint:
+      "Gather maps, repeat the leak, or obtain one more pointer from the same branch before doing final base math.",
   }
 }
 
 export default tool({
-  description: "CTF pwn heap leak classifier: classify 5-8 byte pointer-shaped leaks as heap/libc/PIE/stack/anonymous or safe-linking candidates and suggest the next reduction step.",
+  description:
+    "CTF pwn heap leak classifier: classify 5-8 byte pointer-shaped leaks as heap/libc/PIE/stack/anonymous or safe-linking candidates and suggest the next reduction step.",
   args: {
-    leaks: tool.schema.string().describe("One or more leaked pointer values, transcript snippets, or debugger output containing 0x... addresses."),
-    maps: tool.schema.string().optional().describe("Optional /proc/<pid>/maps text or vmmap-like output for stronger classification."),
+    leaks: tool.schema
+      .string()
+      .describe(
+        "One or more leaked pointer values, transcript snippets, or debugger output containing 0x... addresses.",
+      ),
+    maps: tool.schema
+      .string()
+      .optional()
+      .describe("Optional /proc/<pid>/maps text or vmmap-like output for stronger classification."),
     glibc: tool.schema.string().optional().describe("Optional glibc version hint such as 2.31, 2.35, or 'unknown'."),
   },
   async execute(args) {
@@ -200,12 +216,13 @@ export default tool({
     if (leakText.trim().length < 3) return "BLOCK: provide one or more leaked addresses or transcript lines"
 
     const ptrs = parsePointers(leakText)
-    if (!ptrs.length) return [
-      "pwn_heap_leak_classifier:",
-      "- no 0x... values detected",
-      "recommended_next:",
-      "- capture one leak transcript with explicit pointer-shaped output",
-    ].join("\n")
+    if (!ptrs.length)
+      return [
+        "pwn_heap_leak_classifier:",
+        "- no 0x... values detected",
+        "recommended_next:",
+        "- capture one leak transcript with explicit pointer-shaped output",
+      ].join("\n")
 
     const maps = parseMaps(String(args.maps || ""))
     const glibc = String(args.glibc || "unknown").trim() || "unknown"
@@ -231,14 +248,23 @@ export default tool({
 
     const hasSafeLinkingContext = /^2\.(3[1-9]|[4-9]\d)/.test(glibc)
     const recommendations: string[] = []
-    if (rows.some((row) => row.leakClass === "safe_linked_fd_candidate") || (hasSafeLinkingContext && rows.some((row) => row.leakClass === "heap"))) {
-      recommendations.push("Modern glibc context suggests safe-linking may matter; test same-size refill and XOR/key relations before final heap math.")
+    if (
+      rows.some((row) => row.leakClass === "safe_linked_fd_candidate") ||
+      (hasSafeLinkingContext && rows.some((row) => row.leakClass === "heap"))
+    ) {
+      recommendations.push(
+        "Modern glibc context suggests safe-linking may matter; test same-size refill and XOR/key relations before final heap math.",
+      )
     }
     if (rows.some((row) => row.leakClass === "unknown")) {
-      recommendations.push("At least one leak remains unknown-class; do not base final libc/heap/PIE math on it without one more classification probe.")
+      recommendations.push(
+        "At least one leak remains unknown-class; do not base final libc/heap/PIE math on it without one more classification probe.",
+      )
     }
     if (rows.some((row) => row.leakClass === "heap")) {
-      recommendations.push("Heap-like leak present; pair it with allocator action ordering and stale-owner/refill identification.")
+      recommendations.push(
+        "Heap-like leak present; pair it with allocator action ordering and stale-owner/refill identification.",
+      )
     }
     if (rows.some((row) => row.leakClass === "libc")) {
       recommendations.push("Libc-like leak present; verify symbol relation before using it for final closure.")
@@ -249,9 +275,14 @@ export default tool({
       `glibc_hint: ${glibc}`,
       `maps_supplied: ${maps.length ? "yes" : "no"}`,
       "classified:",
-      ...rows.map((row) => `- ${row.raw}: class=${row.leakClass} confidence=${row.confidence} page_base=${row.pageAlignedBase ?? ""} safe_linking_candidate=${row.safeLinkingCandidate} reason=${row.reason}`),
+      ...rows.map(
+        (row) =>
+          `- ${row.raw}: class=${row.leakClass} confidence=${row.confidence} page_base=${row.pageAlignedBase ?? ""} safe_linking_candidate=${row.safeLinkingCandidate} reason=${row.reason}`,
+      ),
       "recommended_next:",
-      ...(recommendations.length ? recommendations.map((item) => `- ${item}`) : ["- Leak classes look coherent; continue with one-variable heap reduction and primitive promotion."]),
+      ...(recommendations.length
+        ? recommendations.map((item) => `- ${item}`)
+        : ["- Leak classes look coherent; continue with one-variable heap reduction and primitive promotion."]),
       "per_leak_next_hint:",
       ...rows.map((row) => `- ${row.raw}: ${row.nextHint}`),
     ].join("\n")

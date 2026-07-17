@@ -2,6 +2,7 @@ import { tool } from "@opencode-ai/plugin"
 import { spawn } from "node:child_process"
 import path from "node:path"
 import { existsSync } from "node:fs"
+import { resolveAllowedPath } from "./lib/path-policy.ts"
 
 type Args = {
   target: string
@@ -17,41 +18,6 @@ function choosePython() {
   return process.env.PYTHON || "python3"
 }
 
-function isSensitivePath(input: string): boolean {
-  const normalized = input.toLowerCase()
-  const base = path.basename(normalized)
-
-  if (
-    base === ".env" ||
-    base.startsWith(".env.") ||
-    base === "id_rsa" ||
-    base === "id_ed25519" ||
-    base.endsWith(".pem") ||
-    base.endsWith(".key") ||
-    base.endsWith(".p12") ||
-    base.endsWith(".pfx")
-  ) {
-    return true
-  }
-
-  return normalized.includes(`${path.sep}.ssh${path.sep}`) ||
-    normalized.includes(`${path.sep}.gnupg${path.sep}`)
-}
-
-function assertInsideAllowedRoots(target: string, roots: string[]) {
-  const resolved = path.resolve(target)
-  const ok = roots.some((root) => {
-    const rr = path.resolve(root)
-    return resolved === rr || resolved.startsWith(rr + path.sep)
-  })
-
-  if (!ok) {
-    throw new Error(
-      `Refusing to read outside allowed roots. target=${resolved}, roots=${roots.join(", ")}`
-    )
-  }
-}
-
 export default tool({
   description:
     "Read and structure local documents such as PDF, DOCX, XLSX, PPTX, CSV, HTML, EPUB, images, archives, and text. Supports PDF page ranges, bounded output, optional OCR, and JSON metadata.",
@@ -64,24 +30,7 @@ export default tool({
     ocr: tool.schema.boolean().optional().describe("Enable OCR for images or image-like documents when available."),
   },
   async execute(args: Args, context: any) {
-    const target = path.resolve(context.directory, args.target)
-
-    if (isSensitivePath(target)) {
-      throw new Error(`Refusing to read sensitive file path: ${args.target}`)
-    }
-
-    const roots = Array.from(
-      new Set(
-        [
-          context.directory,
-          context.worktree,
-          process.env.DOC_AGENT_WORKSPACE,
-          process.env.WORKSPACE,
-        ].filter(Boolean) as string[]
-      )
-    )
-
-    assertInsideAllowedRoots(target, roots)
+    const target = await resolveAllowedPath(args.target, context)
 
     if (!existsSync(target)) {
       throw new Error(`File not found: ${target}`)

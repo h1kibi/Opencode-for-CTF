@@ -91,7 +91,12 @@ const checks: Array<{ file: string; needles: string[] }> = [
   },
   {
     file: "docs/CTF_COMMAND_LAYERS.md",
-    needles: ["## Entry Commands", "## State / Control Commands", "## Closure / Final Commands", "## Soft Deprecation Policy"],
+    needles: [
+      "## Entry Commands",
+      "## State / Control Commands",
+      "## Closure / Final Commands",
+      "## Soft Deprecation Policy",
+    ],
   },
 ]
 

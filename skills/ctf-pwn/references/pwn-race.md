@@ -3,9 +3,9 @@
 Use when evidence contains threads, signals, `pthread`, `fork` servers, timers, `userfaultfd`, TOCTOU, shared global state, reference counters, async GC, callbacks, `sleep/usleep`, large `copy_from_user`, or repeated nondeterministic success/failure.
 
 Imported references:
-- `C:\Users\Administrator\.config\opencode\skills-external\ctf-skills\ctf-pwn\kernel-techniques.md`
-- `C:\Users\Administrator\.config\opencode\skills-external\ctf-skills\ctf-pwn\advanced-exploits-4.md`
-- `C:\Users\Administrator\.config\opencode\skills-external\ctf-skills\ctf-pwn\heap-fsop.md`
+- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\kernel-techniques.md`
+- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\advanced-exploits-4.md`
+- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\heap-fsop.md`
 
 ## Route Gate
 

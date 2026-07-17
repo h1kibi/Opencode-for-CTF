@@ -1,17 +1,27 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
 import { lstat, open } from "node:fs/promises"
 import path from "node:path"
-import { promisify } from "node:util"
-import { buildGoCallHints, buildGoExecutionPlan, buildGoHelperChains, buildGoPivotHints, classifyGoFunctions, collectGoNameCandidates, detectGoFromStrings, findGopclntabOffsets, parseElfSections, parseGoPclntab, type GoPclnFunction } from "./lib/go-elf-analysis.ts"
-
-const execFile = promisify(execFileCb)
+import { safeExec } from "./lib/exec-utils.ts"
+import {
+  buildGoCallHints,
+  buildGoExecutionPlan,
+  buildGoHelperChains,
+  buildGoPivotHints,
+  classifyGoFunctions,
+  collectGoNameCandidates,
+  detectGoFromStrings,
+  findGopclntabOffsets,
+  parseElfSections,
+  parseGoPclntab,
+  type GoPclnFunction,
+} from "./lib/go-elf-analysis.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
   const target = path.resolve(base, input)
   const rel = path.relative(base, target)
-  if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`target must stay inside the current workspace: ${input}`)
+  if (rel.startsWith("..") || path.isAbsolute(rel))
+    throw new Error(`target must stay inside the current workspace: ${input}`)
   return target
 }
 
@@ -51,22 +61,19 @@ async function readWholeFile(target: string) {
 }
 
 async function tryObjdump(target: string, cwd: string) {
-  try {
-    const userBin = path.join(process.env.USERPROFILE || "C:\\Users\\Administrator", "bin", "objdump.cmd")
-    const { stdout, stderr } = await execFile(userBin, ["-d", "-M", "intel", target], {
-      cwd,
-      timeout: 20000,
-      maxBuffer: 4 * 1024 * 1024,
-    })
-    return `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
-  } catch {
-    return ""
-  }
+  const result = await safeExec("objdump", ["-d", "-M", "intel", target], {
+    cwd,
+    timeoutMs: 20000,
+    maxBuffer: 4 * 1024 * 1024,
+  })
+  if (!result.ok) return ""
+  const combined = result.output
+  return combined === "<no output>" ? "" : combined
 }
 
-
 export default tool({
-  description: "CTF Go binary assistant: detect Go ELF clues, surface gopclntab-style function names, separate runtime noise from user code, and recommend the shortest next reversing step.",
+  description:
+    "CTF Go binary assistant: detect Go ELF clues, surface gopclntab-style function names, separate runtime noise from user code, and recommend the shortest next reversing step.",
   args: {
     target: tool.schema.string().describe("Binary file path to inspect"),
     maxStrings: tool.schema.number().optional().describe("Maximum Go-related strings to return. Default 80."),
@@ -80,12 +87,24 @@ export default tool({
     const whole = st.size <= 64 * 1024 * 1024 ? await readWholeFile(target) : sample
     const sections = parseElfSections(whole)
     const gopclntab = sections.find((s) => s.name === ".gopclntab")
-    const pcln = gopclntab && gopclntab.offset + gopclntab.size <= whole.length
-      ? parseGoPclntab(whole.subarray(gopclntab.offset, gopclntab.offset + gopclntab.size), gopclntab.addr)
-      : { header_ok: false, ptr_size: 0, nfunc: 0, text_start: 0, funcname_offset: 0, pcln_offset: 0, functions: [] as GoPclnFunction[] }
+    const pcln =
+      gopclntab && gopclntab.offset + gopclntab.size <= whole.length
+        ? parseGoPclntab(whole.subarray(gopclntab.offset, gopclntab.offset + gopclntab.size), gopclntab.addr)
+        : {
+            header_ok: false,
+            ptr_size: 0,
+            nfunc: 0,
+            text_start: 0,
+            funcname_offset: 0,
+            pcln_offset: 0,
+            functions: [] as GoPclnFunction[],
+          }
     const strings = printableStrings(sample)
     const maxStrings = Math.max(10, Math.min(args.maxStrings ?? 80, 200))
-    const gopclntabOffsets = [...findGopclntabOffsets(sample), ...(gopclntab ? [`0x${gopclntab.offset.toString(16)}`] : [])]
+    const gopclntabOffsets = [
+      ...findGopclntabOffsets(sample),
+      ...(gopclntab ? [`0x${gopclntab.offset.toString(16)}`] : []),
+    ]
     const goSignals = [
       /go build id[:=]/i.test(strings.join("\n")) ? "go.buildid" : "",
       strings.some((s) => s.includes(".gopclntab")) ? ".gopclntab" : "",
@@ -94,15 +113,23 @@ export default tool({
       strings.some((s) => /\/usr\/local\/go\/src\//.test(s)) ? "goroot-source-paths" : "",
       strings.some((s) => /go1\.[0-9]+/.test(s)) ? "go-version-hint" : "",
     ].filter(Boolean)
-    const functionNames = Array.from(new Set([
-      ...strings.filter((s) => /\b(?:main|runtime)\.[A-Za-z0-9_]+\b/.test(s) || /\b(?:fmt|bytes|strings|os|io|encoding\/base64|crypto\/[A-Za-z0-9_\/]+)\.[A-Za-z0-9_]+\b/.test(s)),
-      ...collectGoNameCandidates(whole, 800),
-      ...pcln.functions.map((f) => f.name),
-    ])).slice(0, Math.max(maxStrings, 120))
+    const functionNames = Array.from(
+      new Set([
+        ...strings.filter(
+          (s) =>
+            /\b(?:main|runtime)\.[A-Za-z0-9_]+\b/.test(s) ||
+            /\b(?:fmt|bytes|strings|os|io|encoding\/base64|crypto\/[A-Za-z0-9_\/]+)\.[A-Za-z0-9_]+\b/.test(s),
+        ),
+        ...collectGoNameCandidates(whole, 800),
+        ...pcln.functions.map((f) => f.name),
+      ]),
+    ).slice(0, Math.max(maxStrings, 120))
     const classified = classifyGoFunctions(functionNames)
     const userCodeCandidates = classified.userCode.slice(0, maxStrings)
     const runtimeNoise = classified.runtimeNoise.slice(0, 30)
-    const goVersionHints = Array.from(new Set(strings.flatMap((s) => s.match(/go1\.[0-9]+(?:\.[0-9]+)?/g) ?? []))).slice(0, 10)
+    const goVersionHints = Array.from(
+      new Set(strings.flatMap((s) => s.match(/go1\.[0-9]+(?:\.[0-9]+)?/g) ?? [])),
+    ).slice(0, 10)
     const detected = goSignals.length >= 2 || functionNames.some((s) => s === "main.main")
     const pivots = buildGoPivotHints(pcln.functions)
     const disasm = detected ? await tryObjdump(target, path.dirname(target)) : ""
@@ -116,7 +143,13 @@ export default tool({
       confidence: detected ? "high" : "low",
       go_signals: goSignals,
       gopclntab_offsets: gopclntabOffsets,
-      gopclntab_section: gopclntab ? { offset: `0x${gopclntab.offset.toString(16)}`, size: gopclntab.size, addr: `0x${gopclntab.addr.toString(16)}` } : null,
+      gopclntab_section: gopclntab
+        ? {
+            offset: `0x${gopclntab.offset.toString(16)}`,
+            size: gopclntab.size,
+            addr: `0x${gopclntab.addr.toString(16)}`,
+          }
+        : null,
       pclntab_header_ok: pcln.header_ok,
       pclntab_ptr_size: pcln.ptr_size,
       pclntab_nfunc: pcln.nfunc,
@@ -167,7 +200,14 @@ export default tool({
       "go_version_hints:",
       ...(goVersionHints.length ? goVersionHints.map((x) => `- ${x}`) : ["- none"]),
       "function_address_map:",
-      ...(pcln.functions.length ? pcln.functions.slice(0, 120).map((f) => `- ${f.name}: ${f.entry} (entry_off=${f.entry_offset}, func_off=${f.func_offset}, name_off=${f.name_offset})`) : ["- none"]),
+      ...(pcln.functions.length
+        ? pcln.functions
+            .slice(0, 120)
+            .map(
+              (f) =>
+                `- ${f.name}: ${f.entry} (entry_off=${f.entry_offset}, func_off=${f.func_offset}, name_off=${f.name_offset})`,
+            )
+        : ["- none"]),
       "user_code_candidates:",
       ...(userCodeCandidates.length ? userCodeCandidates.map((x) => `- ${x}`) : ["- none"]),
       "runtime_noise_candidates:",
@@ -177,13 +217,17 @@ export default tool({
       "decoder_like_candidates:",
       ...(classified.decoderLike.length ? classified.decoderLike.slice(0, 60).map((x) => `- ${x}`) : ["- none"]),
       "priority_function_addresses:",
-      ...(pivots.priorityFunctions.length ? pivots.priorityFunctions.map((f) => `- ${f.name}: ${f.entry}`) : ["- none"]),
+      ...(pivots.priorityFunctions.length
+        ? pivots.priorityFunctions.map((f) => `- ${f.name}: ${f.entry}`)
+        : ["- none"]),
       "analysis_pivots:",
       ...(pivots.pivotLines.length ? pivots.pivotLines.map((x) => `- ${x}`) : ["- none"]),
       "call_summary:",
       ...(goCalls.summary.length ? goCalls.summary.map((x) => `- ${x}`) : ["- none"]),
       "helper_chains:",
-      ...(goChains.helperChains.length ? goChains.helperChains.map((c) => `- ${c.chain.join(" -> ")} (${c.reason})`) : ["- none"]),
+      ...(goChains.helperChains.length
+        ? goChains.helperChains.map((c) => `- ${c.chain.join(" -> ")} (${c.reason})`)
+        : ["- none"]),
       `shortest_logic_chain: ${goChains.shortestLogicChain ? goChains.shortestLogicChain.chain.join(" -> ") : "none"}`,
       "best_first_targets:",
       ...(goChains.bestFirstTargets.length ? goChains.bestFirstTargets.map((x) => `- ${x}`) : ["- none"]),

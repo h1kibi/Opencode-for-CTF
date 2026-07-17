@@ -13,7 +13,8 @@ function parseHeadersJson(headersJson?: string, cookie?: string) {
   const headers: Record<string, string> = {}
   if (headersJson?.trim()) {
     const parsed = JSON.parse(headersJson) as Record<string, unknown>
-    for (const [key, value] of Object.entries(parsed)) if (["string", "number", "boolean"].includes(typeof value)) headers[key] = String(value)
+    for (const [key, value] of Object.entries(parsed))
+      if (["string", "number", "boolean"].includes(typeof value)) headers[key] = String(value)
   }
   if (cookie?.trim()) headers.Cookie = cookie.trim()
   return headers
@@ -66,7 +67,9 @@ function hash(text: string) {
 
 function detect(headers: string[], body: string, faviconHash?: string) {
   const combined = `${headers.join("\n")}\n${body}`
-  const appStyle = /__NEXT_DATA__|next\/static|__NUXT__|id=["']root|vite|webpack|<script[^>]+type=["']module/i.test(combined)
+  const appStyle = /__NEXT_DATA__|next\/static|__NUXT__|id=["']root|vite|webpack|<script[^>]+type=["']module/i.test(
+    combined,
+  )
     ? "spa_or_hybrid"
     : /<form|<a\b|<html/i.test(combined)
       ? "server_rendered_or_simple"
@@ -101,19 +104,27 @@ function detect(headers: string[], body: string, faviconHash?: string) {
     /apache/i.test(combined) ? "Apache" : "",
     faviconHash ? `favicon_sha256_16=${faviconHash}` : "",
   ])
-  const highValue = unique([
-    /upload|multipart|type=["']file/i.test(combined) ? "upload/import/file-write" : "",
-    /report|admin.?bot|bot|preview|share|headless|puppeteer|selenium|phantomjs/i.test(combined) ? "admin-bot/browser" : "",
-    /debug|traceback|stack trace|sourceMappingURL|\.map|actuator|\.git|\.env/i.test(combined) ? "debug/source leak" : "",
-    /download|export|file=|path=|render|template|preview/i.test(combined) ? "file-read/render/template" : "",
-    /redirect|next=|return=|url=|callback|webhook/i.test(combined) ? "URL parser/redirect/SSRF-adjacent" : "",
-    /admin|manage|dashboard|role|tenant|owner/i.test(combined) ? "authz/state-machine" : "",
-  ], 40)
+  const highValue = unique(
+    [
+      /upload|multipart|type=["']file/i.test(combined) ? "upload/import/file-write" : "",
+      /report|admin.?bot|bot|preview|share|headless|puppeteer|selenium|phantomjs/i.test(combined)
+        ? "admin-bot/browser"
+        : "",
+      /debug|traceback|stack trace|sourceMappingURL|\.map|actuator|\.git|\.env/i.test(combined)
+        ? "debug/source leak"
+        : "",
+      /download|export|file=|path=|render|template|preview/i.test(combined) ? "file-read/render/template" : "",
+      /redirect|next=|return=|url=|callback|webhook/i.test(combined) ? "URL parser/redirect/SSRF-adjacent" : "",
+      /admin|manage|dashboard|role|tenant|owner/i.test(combined) ? "authz/state-machine" : "",
+    ],
+    40,
+  )
   return { appStyle, framework, apiStyle, auth, infra, highValue }
 }
 
 export default tool({
-  description: "CTF Web fingerprint: httpx-inspired low-cost target profile for authorized black-box Web challenges. Produces app/API/auth/infra style, high-value surfaces, and next-tool routing.",
+  description:
+    "CTF Web fingerprint: httpx-inspired low-cost target profile for authorized black-box Web challenges. Produces app/API/auth/infra style, high-value surfaces, and next-tool routing.",
   args: {
     url: tool.schema.string().describe("Authorized CTF URL."),
     headersJson: tool.schema.string().optional().describe("Optional JSON object of headers."),
@@ -139,8 +150,12 @@ export default tool({
     const next = unique([
       d.appStyle === "spa_or_hybrid" ? "ctf-web-js-surface-map then ctf-web-runtime-map" : "",
       d.apiStyle.length ? "ctf-web-diff-probe on one high-value API route" : "",
-      d.highValue.some((x) => /authz|state/.test(x)) ? "ctf-web-state-machine-map and ctf-web-authz-matrix when accounts/IDs exist" : "",
-      d.highValue.some((x) => /upload|bot|render|redirect/.test(x)) ? "ctf-web-template-check with matched families before payload variants" : "",
+      d.highValue.some((x) => /authz|state/.test(x))
+        ? "ctf-web-state-machine-map and ctf-web-authz-matrix when accounts/IDs exist"
+        : "",
+      d.highValue.some((x) => /upload|bot|render|redirect/.test(x))
+        ? "ctf-web-template-check with matched families before payload variants"
+        : "",
       d.highValue.some((x) => /source leak|debug/.test(x)) ? "fetch leak/source-map artifacts before fuzzing" : "",
       "feed profile and high-value surfaces into ctf-decision-state rank",
     ])

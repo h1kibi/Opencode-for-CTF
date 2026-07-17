@@ -4,7 +4,7 @@ description: CTF post: Controlled SecKB update workflow for ctf-master. Use only
 
 # /ctf-kb-update - Controlled local SecKB update
 
-This command updates the local CTF knowledge base at `C:\Users\Administrator\SecKB`.
+This command updates the local CTF knowledge base at `{env:SECKB_ROOT}`.
 
 ## Phase gate
 
@@ -46,7 +46,7 @@ misc
 3. Search local SecKB first to avoid duplicate notes:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\search.py "<topic>" --limit 5
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/search.py "<topic>" --limit 5
 ```
 
 4. If update requires web research, use AnySearch:
@@ -70,13 +70,13 @@ C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\Sec
 7. Write note through the safe helper:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_update.py --module <module> --title "<title>" --stdin --source anysearch --stack <stack...> --primitive <primitive...>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_update.py --module <module> --title "<title>" --stdin --source anysearch --stack <stack...> --primitive <primitive...>
 ```
 
 8. Verify retrieval. If module is `web/java`, use `--category web --subcategory java`; if module is `pwn`, use `--category pwn`:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\search.py "<pattern query>" --category <category> --limit 5
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/search.py "<pattern query>" --category <category> --limit 5
 ```
 
 ## Strict prohibitions

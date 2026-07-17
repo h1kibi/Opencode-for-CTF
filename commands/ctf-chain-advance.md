@@ -14,19 +14,19 @@ $ARGUMENTS
 ### Observe a segment probe and get next action:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\ctf_chain_advance.py observe <chain_id> <segment_id> "<probe>" "<result>" --differential "<diff>" --blocker "<blocker>"
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/ctf_chain_advance.py observe <chain_id> <segment_id> "<probe>" "<result>" --differential "<diff>" --blocker "<blocker>"
 ```
 
 ### Observe a branch probe and get next action:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\ctf_chain_advance.py observe-branch <chain_id> <branch_id> "<probe>" "<result>" --differential "<diff>"
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/ctf_chain_advance.py observe-branch <chain_id> <branch_id> "<probe>" "<result>" --differential "<diff>"
 ```
 
 ### Get next action suggestion without probing:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\ctf_chain_advance.py next-action <chain_id>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/ctf_chain_advance.py next-action <chain_id>
 ```
 
 ## Rules

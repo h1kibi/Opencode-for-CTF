@@ -16,14 +16,20 @@ function main() {
   const primitive = readEvidenceState(root, "primitive", slug)
   const closure = readEvidenceState(root, "closure", slug)
 
-  console.log(JSON.stringify({
-    preferred_restart_artifact: preferred,
-    route,
-    hypotheses,
-    signal_memory: signalMemory,
-    primitive,
-    closure,
-  }, null, 2))
+  console.log(
+    JSON.stringify(
+      {
+        preferred_restart_artifact: preferred,
+        route,
+        hypotheses,
+        signal_memory: signalMemory,
+        primitive,
+        closure,
+      },
+      null,
+      2,
+    ),
+  )
 }
 
 main()

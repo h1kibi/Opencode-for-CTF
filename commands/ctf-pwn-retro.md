@@ -11,7 +11,7 @@ $ARGUMENTS
 
 ### PWN Retro Workflow
 
-1. Start from `C:\Users\Administrator\.config\opencode\templates\pwn_retro.md`.
+1. Start from `{env:OPENCODE_CONFIG_DIR}/opencode-for-ctf/templates/pwn_retro.md`.
 2. Fill only evidence-backed fields; leave unknowns blank instead of guessing.
 3. Record final status: solved / unsolved / blocked / escalated.
 4. Record the mitigation matrix and final primitive.

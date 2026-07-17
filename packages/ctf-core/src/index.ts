@@ -39,3 +39,15 @@ export function scoreAttackQueue(input: AttackQueueScore): number {
 export function clampScore(value: number): number {
   return Math.max(1, Math.min(5, value))
 }
+
+export {
+  COMMAND_SURFACE,
+  decideRoute,
+  formatRouteDecision,
+  scoreCategories,
+  type CategoryScore,
+  type RouteDecision,
+  type RouteInput,
+  type SolveMode,
+  type ToolPack,
+} from "./router.ts"

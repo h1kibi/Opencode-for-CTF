@@ -26,7 +26,17 @@ for (const tool of [
   checks.push({ name: `tool:${tool}`, ok: existsSync(file) && has(file, /export default tool\(/), detail: file })
 }
 
-for (const cmd of ["ctf-apk.md", "ctf-android-native.md", "ctf-adb-check.md", "ctf-apk-fast.md", "ctf-android-shell.md", "ctf-android-runtime-doctor.md", "ctf-android-dynamic-macro.md", "ctf-dex-patch-map.md", "ctf-android-packed-closure.md"]) {
+for (const cmd of [
+  "ctf-apk.md",
+  "ctf-android-native.md",
+  "ctf-adb-check.md",
+  "ctf-apk-fast.md",
+  "ctf-android-shell.md",
+  "ctf-android-runtime-doctor.md",
+  "ctf-android-dynamic-macro.md",
+  "ctf-dex-patch-map.md",
+  "ctf-android-packed-closure.md",
+]) {
   const file = join(root, "commands", cmd)
   checks.push({ name: `command:${cmd}`, ok: existsSync(file), detail: file })
 }
@@ -43,12 +53,20 @@ for (const tmpl of [
 
 const ctfRev = join(root, "agents", "ctf-rev.md")
 for (const term of ["ctf-apk-triage", "ctf-android-native-triage", "ctf-jadx-targeted-slice", "APK Fast Path"]) {
-  checks.push({ name: `ctf-rev references ${term}`, ok: has(ctfRev, new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))), detail: ctfRev })
+  checks.push({
+    name: `ctf-rev references ${term}`,
+    ok: has(ctfRev, new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))),
+    detail: ctfRev,
+  })
 }
 
 const ctfFast = join(root, "agents", "ctf-fast.md")
 for (const term of ["ctf-apk-triage", "ctf-android-native-triage", "ctf-jadx-targeted-slice"]) {
-  checks.push({ name: `ctf-fast references ${term}`, ok: has(ctfFast, new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))), detail: ctfFast })
+  checks.push({
+    name: `ctf-fast references ${term}`,
+    ok: has(ctfFast, new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))),
+    detail: ctfFast,
+  })
 }
 
 for (const doc of [
@@ -64,10 +82,18 @@ for (const doc of [
   checks.push({ name: `knowledge:${doc}`, ok: existsSync(file), detail: file })
 }
 
-for (const term of ["ctf-android-runtime-doctor", "ctf-dex-patch-map", "ctf-android-dynamic-macro", "ctf-android-packed-closure-helper"]) {
+for (const term of [
+  "ctf-android-runtime-doctor",
+  "ctf-dex-patch-map",
+  "ctf-android-dynamic-macro",
+  "ctf-android-packed-closure-helper",
+]) {
   checks.push({
     name: `knowledge:runtime-equivalence mentions ${term}`,
-    ok: has(join(root, "knowledge", "rev", "android", "runtime-equivalence-and-packed-closure.md"), new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))),
+    ok: has(
+      join(root, "knowledge", "rev", "android", "runtime-equivalence-and-packed-closure.md"),
+      new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    ),
     detail: join(root, "knowledge", "rev", "android", "runtime-equivalence-and-packed-closure.md"),
   })
 }

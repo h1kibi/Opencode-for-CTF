@@ -1,14 +1,15 @@
 {
   "meta": {
     "version": 1,
-    "generated_at": "2026-06-05",
+    "generated_at": "2026-07-16",
     "source_dir": "../../lessons",
-    "description": "Structured lesson index for closure, owner handoff, failure signatures, and anti-pattern retrieval."
+    "description": "Structured lesson index for closure, owner handoff, failure signatures, and anti-pattern retrieval.",
+    "path_type": "relative_to_index_location"
   },
   "lessons": [
     {
       "id": "closure-source-leak",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-source-leak.md",
+      "file": "../../lessons/closure-source-leak.md",
       "family": "closure",
       "category": "all",
       "title": "Source leak closure",
@@ -57,7 +58,7 @@
     },
     {
       "id": "closure-file-read",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-file-read.md",
+      "file": "../../lessons/closure-file-read.md",
       "family": "closure",
       "category": "web",
       "title": "File read closure",
@@ -105,7 +106,7 @@
     },
     {
       "id": "closure-admin-session",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-admin-session.md",
+      "file": "../../lessons/closure-admin-session.md",
       "family": "closure",
       "category": "web",
       "title": "Admin/session closure",
@@ -150,7 +151,7 @@
     },
     {
       "id": "closure-ssrf-internal",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-ssrf-internal.md",
+      "file": "../../lessons/closure-ssrf-internal.md",
       "family": "closure",
       "category": "web",
       "title": "SSRF/internal closure",
@@ -197,7 +198,7 @@
     },
     {
       "id": "closure-db-read",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-db-read.md",
+      "file": "../../lessons/closure-db-read.md",
       "family": "closure",
       "category": "web",
       "title": "DB read closure",
@@ -239,7 +240,7 @@
     },
     {
       "id": "closure-file-write",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-file-write.md",
+      "file": "../../lessons/closure-file-write.md",
       "family": "closure",
       "category": "web",
       "title": "File write closure",
@@ -282,7 +283,7 @@
     },
     {
       "id": "closure-deserialization",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-deserialization.md",
+      "file": "../../lessons/closure-deserialization.md",
       "family": "closure",
       "category": "web",
       "title": "Deserialization closure",
@@ -326,7 +327,7 @@
     },
     {
       "id": "closure-template-injection",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-template-injection.md",
+      "file": "../../lessons/closure-template-injection.md",
       "family": "closure",
       "category": "web",
       "title": "Template injection closure",
@@ -369,7 +370,7 @@
     },
     {
       "id": "closure-jwt-role-forge",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-jwt-role-forge.md",
+      "file": "../../lessons/closure-jwt-role-forge.md",
       "family": "closure",
       "category": "web",
       "title": "JWT/token forge closure",
@@ -412,7 +413,7 @@
     },
     {
       "id": "closure-java-actuator",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-java-actuator.md",
+      "file": "../../lessons/closure-java-actuator.md",
       "family": "closure",
       "category": "web",
       "title": "Java actuator closure",
@@ -459,7 +460,7 @@
     },
     {
       "id": "closure-rev-checker-recovery",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-rev-checker-recovery.md",
+      "file": "../../lessons/closure-rev-checker-recovery.md",
       "family": "closure",
       "category": "reverse",
       "title": "Rev checker recovery closure",
@@ -501,7 +502,7 @@
     },
     {
       "id": "closure-crypto-oracle-to-plaintext",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-crypto-oracle-to-plaintext.md",
+      "file": "../../lessons/closure-crypto-oracle-to-plaintext.md",
       "family": "closure",
       "category": "crypto",
       "title": "Crypto oracle to plaintext closure",
@@ -542,7 +543,7 @@
     },
     {
       "id": "closure-pwn-leak-to-win",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-pwn-leak-to-win.md",
+      "file": "../../lessons/closure-pwn-leak-to-win.md",
       "family": "closure",
       "category": "pwn",
       "title": "Pwn leak to win closure",
@@ -581,7 +582,7 @@
     },
     {
       "id": "owner-web-java-handoff",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\owner-web-java-handoff.md",
+      "file": "../../lessons/owner-web-java-handoff.md",
       "family": "owner",
       "category": "web",
       "title": "Web to Java handoff",
@@ -623,7 +624,7 @@
     },
     {
       "id": "owner-web-rev-handoff",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\owner-web-rev-handoff.md",
+      "file": "../../lessons/owner-web-rev-handoff.md",
       "family": "owner",
       "category": "web",
       "title": "Web to Rev handoff",
@@ -667,7 +668,7 @@
     },
     {
       "id": "owner-web-crypto-handoff",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\owner-web-crypto-handoff.md",
+      "file": "../../lessons/owner-web-crypto-handoff.md",
       "family": "owner",
       "category": "web",
       "title": "Web to Crypto handoff",
@@ -711,7 +712,7 @@
     },
     {
       "id": "owner-web-forensics-handoff",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\owner-web-forensics-handoff.md",
+      "file": "../../lessons/owner-web-forensics-handoff.md",
       "family": "owner",
       "category": "web",
       "title": "Web to Forensics handoff",
@@ -751,7 +752,7 @@
     },
     {
       "id": "failure-medium-value-primitive-drift",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-medium-value-primitive-drift.md",
+      "file": "../../lessons/failure-medium-value-primitive-drift.md",
       "family": "failure",
       "category": "all",
       "title": "Medium-value primitive drift",
@@ -792,7 +793,7 @@
     },
     {
       "id": "failure-source-not-prioritized",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-source-not-prioritized.md",
+      "file": "../../lessons/failure-source-not-prioritized.md",
       "family": "failure",
       "category": "web",
       "title": "Source not prioritized",
@@ -831,7 +832,7 @@
     },
     {
       "id": "failure-flat-differential-branch-not-killed",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-flat-differential-branch-not-killed.md",
+      "file": "../../lessons/failure-flat-differential-branch-not-killed.md",
       "family": "failure",
       "category": "all",
       "title": "Flat differential branch not killed",
@@ -866,7 +867,7 @@
     },
     {
       "id": "failure-owner-should-switch-earlier",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-owner-should-switch-earlier.md",
+      "file": "../../lessons/failure-owner-should-switch-earlier.md",
       "family": "failure",
       "category": "all",
       "title": "Owner should switch earlier",
@@ -904,7 +905,7 @@
     },
     {
       "id": "failure-primitive-confirmed-no-closure-model",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-primitive-confirmed-no-closure-model.md",
+      "file": "../../lessons/failure-primitive-confirmed-no-closure-model.md",
       "family": "failure",
       "category": "all",
       "title": "Primitive confirmed, no closure model",
@@ -941,7 +942,7 @@
     },
     {
       "id": "failure-repeated-proc-enum",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-repeated-proc-enum.md",
+      "file": "../../lessons/failure-repeated-proc-enum.md",
       "family": "failure",
       "category": "web",
       "title": "Repeated proc/environment enumeration",
@@ -981,7 +982,7 @@
     },
     {
       "id": "anti-pattern-reflection-without-secret-route",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-reflection-without-secret-route.md",
+      "file": "../../lessons/anti-pattern-reflection-without-secret-route.md",
       "family": "anti-pattern",
       "category": "web",
       "title": "Reflection without secret route",
@@ -1018,7 +1019,7 @@
     },
     {
       "id": "anti-pattern-ssrf-after-source-acquisition",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-ssrf-after-source-acquisition.md",
+      "file": "../../lessons/anti-pattern-ssrf-after-source-acquisition.md",
       "family": "anti-pattern",
       "category": "web",
       "title": "SSRF after source acquisition",
@@ -1055,7 +1056,7 @@
     },
     {
       "id": "anti-pattern-jwt-decode-without-trust-boundary",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-jwt-decode-without-trust-boundary.md",
+      "file": "../../lessons/anti-pattern-jwt-decode-without-trust-boundary.md",
       "family": "anti-pattern",
       "category": "web",
       "title": "JWT decode without trust boundary",
@@ -1092,7 +1093,7 @@
     },
     {
       "id": "anti-pattern-rce-obsession-when-read-path-exists",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-rce-obsession-when-read-path-exists.md",
+      "file": "../../lessons/anti-pattern-rce-obsession-when-read-path-exists.md",
       "family": "anti-pattern",
       "category": "all",
       "title": "RCE obsession when read path exists",
@@ -1129,7 +1130,7 @@
     },
     {
       "id": "anti-pattern-jwt-decode-without-trust-boundary-hard",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-jwt-decode-without-trust-boundary-hard.md",
+      "file": "../../lessons/anti-pattern-jwt-decode-without-trust-boundary-hard.md",
       "family": "anti-pattern",
       "category": "web",
       "title": "JWT decode without trust boundary (hard-mode)",
@@ -1177,7 +1178,7 @@
     },
     {
       "id": "category-failure-signatures-backlog",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\CATEGORY_FAILURE_SIGNATURES_BACKLOG.md",
+      "file": "../../lessons/CATEGORY_FAILURE_SIGNATURES_BACKLOG.md",
       "family": "misc",
       "category": "all",
       "title": "Category failure signatures backlog",
@@ -1217,7 +1218,7 @@
     },
     {
       "id": "failure-crypto-coppersmith-without-bounds",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-crypto-coppersmith-without-bounds.md",
+      "file": "../../lessons/failure-crypto-coppersmith-without-bounds.md",
       "family": "failure",
       "category": "crypto",
       "title": "Coppersmith without bounds",
@@ -1264,7 +1265,7 @@
     },
     {
       "id": "failure-crypto-custom-algebra-before-family-elimination",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-crypto-custom-algebra-before-family-elimination.md",
+      "file": "../../lessons/failure-crypto-custom-algebra-before-family-elimination.md",
       "family": "failure",
       "category": "crypto",
       "title": "Custom algebra before family elimination",
@@ -1310,7 +1311,7 @@
     },
     {
       "id": "failure-crypto-transcript-not-normalized",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-crypto-transcript-not-normalized.md",
+      "file": "../../lessons/failure-crypto-transcript-not-normalized.md",
       "family": "failure",
       "category": "crypto",
       "title": "Transcript not normalized before attack coding",
@@ -1352,7 +1353,7 @@
     },
     {
       "id": "failure-forensics-memory-sweep-without-target-process",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-forensics-memory-sweep-without-target-process.md",
+      "file": "../../lessons/failure-forensics-memory-sweep-without-target-process.md",
       "family": "failure",
       "category": "forensics",
       "title": "Memory sweep without target process",
@@ -1394,7 +1395,7 @@
     },
     {
       "id": "failure-forensics-packet-reading-before-stream-ranking",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-forensics-packet-reading-before-stream-ranking.md",
+      "file": "../../lessons/failure-forensics-packet-reading-before-stream-ranking.md",
       "family": "failure",
       "category": "forensics",
       "title": "Packet reading before stream ranking",
@@ -1436,7 +1437,7 @@
     },
     {
       "id": "failure-pwn-partial-control-treated-as-full-rce",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-pwn-partial-control-treated-as-full-rce.md",
+      "file": "../../lessons/failure-pwn-partial-control-treated-as-full-rce.md",
       "family": "failure",
       "category": "pwn",
       "title": "Partial control treated as full RCE",
@@ -1482,7 +1483,7 @@
     },
     {
       "id": "failure-pwn-shell-obsession-before-flag-read",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-pwn-shell-obsession-before-flag-read.md",
+      "file": "../../lessons/failure-pwn-shell-obsession-before-flag-read.md",
       "family": "failure",
       "category": "pwn",
       "title": "Shell obsession before easier flag-read closure",
@@ -1528,7 +1529,7 @@
     },
     {
       "id": "failure-pwn-version-roulette-before-route-gating",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-pwn-version-roulette-before-route-gating.md",
+      "file": "../../lessons/failure-pwn-version-roulette-before-route-gating.md",
       "family": "failure",
       "category": "pwn",
       "title": "Version roulette before route gating",
@@ -1571,7 +1572,7 @@
     },
     {
       "id": "failure-rev-patching-before-stable-observation-point",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-rev-patching-before-stable-observation-point.md",
+      "file": "../../lessons/failure-rev-patching-before-stable-observation-point.md",
       "family": "failure",
       "category": "reverse",
       "title": "Patching before stable observation point",
@@ -1616,7 +1617,7 @@
     },
     {
       "id": "failure-rev-symbolic-before-state-extraction",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-rev-symbolic-before-state-extraction.md",
+      "file": "../../lessons/failure-rev-symbolic-before-state-extraction.md",
       "family": "failure",
       "category": "reverse",
       "title": "Symbolic escalation before state-machine extraction",
@@ -1661,7 +1662,7 @@
     },
     {
       "id": "failure-rev-table-constants-read-without-forward-model",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-rev-table-constants-read-without-forward-model.md",
+      "file": "../../lessons/failure-rev-table-constants-read-without-forward-model.md",
       "family": "failure",
       "category": "reverse",
       "title": "Table constants read without forward model",
@@ -1706,7 +1707,7 @@
     },
     {
       "id": "failure-rev-hidden-semantic-carrier-missed",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-rev-hidden-semantic-carrier-missed.md",
+      "file": "../../lessons/failure-rev-hidden-semantic-carrier-missed.md",
       "family": "failure",
       "category": "reverse",
       "title": "Hidden semantic carrier missed",
@@ -1754,163 +1755,374 @@
     },
     {
       "id": "closure-pwn-ret2libc-two-stage",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-pwn-ret2libc-two-stage.md",
+      "file": "../../lessons/closure-pwn-ret2libc-two-stage.md",
       "family": "closure",
       "category": "pwn",
       "title": "Two-stage ret2libc closure",
-      "triggers": ["ret2libc", "two stage leak", "stage one leak", "rip control"],
-      "signals": ["stable first-stage leak needed", "base calculation", "clean return", "stage two chain"],
+      "triggers": [
+        "ret2libc",
+        "two stage leak",
+        "stage one leak",
+        "rip control"
+      ],
+      "signals": [
+        "stable first-stage leak needed",
+        "base calculation",
+        "clean return",
+        "stage two chain"
+      ],
       "better_question": "What is the smallest first-stage leak-and-return chain that proves a stable base before final execution?",
       "stop_rule": "Do not rotate libc guesses, gadgets, or one_gadget candidates before one stable first-stage leak succeeds.",
-      "query_terms": ["ret2libc", "two stage", "leak then execute", "base calculation", "clean return"],
-      "related_pattern_queries": ["pwn ret2libc two stage leak clean return base calculation"],
-      "related_closure_lessons": ["closure-pwn-leak-to-win"],
+      "query_terms": [
+        "ret2libc",
+        "two stage",
+        "leak then execute",
+        "base calculation",
+        "clean return"
+      ],
+      "related_pattern_queries": [
+        "pwn ret2libc two stage leak clean return base calculation"
+      ],
+      "related_closure_lessons": [
+        "closure-pwn-leak-to-win"
+      ],
       "suggested_control_action": "CLOSE",
       "closure_owner_hint": "the pwn branch already holding control and leak recovery"
     },
     {
       "id": "closure-pwn-orw-seccomp",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\closure-pwn-orw-seccomp.md",
+      "file": "../../lessons/closure-pwn-orw-seccomp.md",
       "family": "closure",
       "category": "pwn",
       "title": "ORW/seccomp closure",
-      "triggers": ["seccomp", "sandbox", "shell blocked", "orw"],
-      "signals": ["syscall allowlist", "direct flag path", "open read write", "shell instability"],
+      "triggers": [
+        "seccomp",
+        "sandbox",
+        "shell blocked",
+        "orw"
+      ],
+      "signals": [
+        "syscall allowlist",
+        "direct flag path",
+        "open read write",
+        "shell instability"
+      ],
       "better_question": "Which allowed syscall sequence reaches the flag fastest with the current primitive?",
       "stop_rule": "Do not continue shell-first mutation once seccomp evidence points to ORW or file-read closure.",
-      "query_terms": ["seccomp", "orw", "open read write", "sandbox", "flag read"],
-      "related_pattern_queries": ["pwn seccomp orw open read write syscall allowed shell blocked"],
-      "related_closure_lessons": ["closure-pwn-leak-to-win"],
+      "query_terms": [
+        "seccomp",
+        "orw",
+        "open read write",
+        "sandbox",
+        "flag read"
+      ],
+      "related_pattern_queries": [
+        "pwn seccomp orw open read write syscall allowed shell blocked"
+      ],
+      "related_closure_lessons": [
+        "closure-pwn-leak-to-win"
+      ],
       "suggested_control_action": "CLOSE",
       "closure_owner_hint": "the pwn branch holding the current memory-corruption primitive"
     },
     {
       "id": "failure-pwn-movaps-alignment",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-pwn-movaps-alignment.md",
+      "file": "../../lessons/failure-pwn-movaps-alignment.md",
       "family": "failure",
       "category": "pwn",
       "title": "movaps/alignment crash treated as gadget luck",
-      "triggers": ["movaps", "alignment crash", "ret2libc crash", "system crash"],
-      "signals": ["libc reached", "stack alignment suspect", "ret before system", "wrong gadget rotation"],
+      "triggers": [
+        "movaps",
+        "alignment crash",
+        "ret2libc crash",
+        "system crash"
+      ],
+      "signals": [
+        "libc reached",
+        "stack alignment suspect",
+        "ret before system",
+        "wrong gadget rotation"
+      ],
       "better_question": "Would one clean stack-alignment fix explain the crash before any libc or gadget rotation?",
       "stop_rule": "Test one alignment fix before changing libc, gadget family, or one_gadget candidates.",
-      "query_terms": ["movaps", "stack alignment", "ret2libc crash", "system crash", "alignment ret"],
-      "related_pattern_queries": ["pwn movaps stack alignment ret2libc wrong libc prompt sync"],
+      "query_terms": [
+        "movaps",
+        "stack alignment",
+        "ret2libc crash",
+        "system crash",
+        "alignment ret"
+      ],
+      "related_pattern_queries": [
+        "pwn movaps stack alignment ret2libc wrong libc prompt sync"
+      ],
       "suggested_control_action": "PIVOT",
       "budget_penalty": "freeze gadget/libc roulette until one alignment test is tried"
     },
     {
       "id": "failure-pwn-heap-technique-before-menu-state",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-pwn-heap-technique-before-menu-state.md",
+      "file": "../../lessons/failure-pwn-heap-technique-before-menu-state.md",
       "family": "failure",
       "category": "pwn",
       "title": "Heap technique before menu state reduction",
-      "triggers": ["heap menu", "tcache", "double free", "allocator"],
-      "signals": ["named house guessed early", "menu state unclear", "allocator version unknown", "primitive unproven"],
+      "triggers": [
+        "heap menu",
+        "tcache",
+        "double free",
+        "allocator"
+      ],
+      "signals": [
+        "named house guessed early",
+        "menu state unclear",
+        "allocator version unknown",
+        "primitive unproven"
+      ],
       "better_question": "What exact menu state, allocator version, and concrete heap primitive are proven before choosing a named heap route?",
       "stop_rule": "Do not try named heap techniques until the menu state table, allocator version, and one concrete primitive are verified.",
-      "query_terms": ["heap menu", "allocator version", "tcache", "uaf", "double free", "menu state"],
-      "related_pattern_queries": ["heap menu add delete edit show allocator version primitive proof"],
+      "query_terms": [
+        "heap menu",
+        "allocator version",
+        "tcache",
+        "uaf",
+        "double free",
+        "menu state"
+      ],
+      "related_pattern_queries": [
+        "heap menu add delete edit show allocator version primitive proof"
+      ],
       "suggested_control_action": "LEDGER_OR_PIVOT",
       "budget_penalty": "block named heap technique escalation until menu state is reduced"
     },
     {
       "id": "anti-pattern-pwn-blind-remote-before-local-oracle",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-pwn-blind-remote-before-local-oracle.md",
+      "file": "../../lessons/anti-pattern-pwn-blind-remote-before-local-oracle.md",
       "family": "anti-pattern",
       "category": "pwn",
       "title": "Blind remote mutation before local oracle",
-      "triggers": ["remote only", "timeout", "eof", "local missing"],
-      "signals": ["remote drift", "prompt sync unclear", "libc mismatch suspect", "flat remote retries"],
+      "triggers": [
+        "remote only",
+        "timeout",
+        "eof",
+        "local missing"
+      ],
+      "signals": [
+        "remote drift",
+        "prompt sync unclear",
+        "libc mismatch suspect",
+        "flat remote retries"
+      ],
       "better_question": "What is the smallest local or scripted oracle that proves the current hypothesis before more remote mutation?",
       "stop_rule": "Do not continue blind remote mutation after two flat attempts without a new observation or stronger local/runtime model.",
-      "query_terms": ["remote drift", "local works remote fails", "prompt sync", "libc mismatch", "timeout not shell"],
-      "related_pattern_queries": ["pwn remote drift local works remote fails prompt sync libc mismatch timeout"],
+      "query_terms": [
+        "remote drift",
+        "local works remote fails",
+        "prompt sync",
+        "libc mismatch",
+        "timeout not shell"
+      ],
+      "related_pattern_queries": [
+        "pwn remote drift local works remote fails prompt sync libc mismatch timeout"
+      ],
       "suggested_control_action": "PIVOT",
       "budget_penalty": "shrink remote retry budget until a local or scripted oracle exists"
     },
     {
       "id": "anti-pattern-java-dependency-without-reachability",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-java-dependency-without-reachability.md",
+      "file": "../../lessons/anti-pattern-java-dependency-without-reachability.md",
       "family": "anti-pattern",
       "category": "java-web",
       "title": "Java dependency without reachability",
-      "triggers": ["fastjson", "shiro", "log4j", "jackson", "struts", "snakeyaml", "dependency only"],
-      "signals": ["no route proof", "no parser call", "no config gate", "no controlled data shape", "no oracle"],
+      "triggers": [
+        "fastjson",
+        "shiro",
+        "log4j",
+        "jackson",
+        "struts",
+        "snakeyaml",
+        "dependency only"
+      ],
+      "signals": [
+        "no route proof",
+        "no parser call",
+        "no config gate",
+        "no controlled data shape",
+        "no oracle"
+      ],
       "better_question": "Which request reaches this dependency-controlled parser or sink, with what controlled bytes and what oracle?",
       "stop_rule": "Do not run gadget or CVE payloads until route, config, controlled data shape, and oracle are proven.",
-      "query_terms": ["java dependency", "reachability", "parser route", "controlled bytes", "oracle"],
-      "related_pattern_queries": ["java dependency without reachability route parser config gate oracle"],
+      "query_terms": [
+        "java dependency",
+        "reachability",
+        "parser route",
+        "controlled bytes",
+        "oracle"
+      ],
+      "related_pattern_queries": [
+        "java dependency without reachability route parser config gate oracle"
+      ],
       "suggested_control_action": "DEMOTE"
     },
     {
       "id": "anti-pattern-java-full-decompile-third-party",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-java-full-decompile-third-party.md",
+      "file": "../../lessons/anti-pattern-java-full-decompile-third-party.md",
       "family": "anti-pattern",
       "category": "java-web",
       "title": "Java full decompile third-party waste",
-      "triggers": ["full decompile", "BOOT-INF/lib", "third-party libraries", "dependency decompile first"],
-      "signals": ["app routes unmapped", "sink unmapped", "third-party noise", "no app-owned target class"],
+      "triggers": [
+        "full decompile",
+        "BOOT-INF/lib",
+        "third-party libraries",
+        "dependency decompile first"
+      ],
+      "signals": [
+        "app routes unmapped",
+        "sink unmapped",
+        "third-party noise",
+        "no app-owned target class"
+      ],
       "better_question": "Which app-owned controller, service, mapper, parser, or security class is closest to a route, sink, or flag path?",
       "stop_rule": "Do not full-decompile third-party libraries before app class map, config map, and selected bytecode hints exist.",
-      "query_terms": ["java full decompile", "third party", "app-owned class", "route map", "bytecode hints"],
-      "related_pattern_queries": ["java archive map bytecode hints app classes before third party decompile"],
+      "query_terms": [
+        "java full decompile",
+        "third party",
+        "app-owned class",
+        "route map",
+        "bytecode hints"
+      ],
+      "related_pattern_queries": [
+        "java archive map bytecode hints app classes before third party decompile"
+      ],
       "suggested_control_action": "PIVOT"
     },
     {
       "id": "anti-pattern-java-template-engine-not-confirmed",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-java-template-engine-not-confirmed.md",
+      "file": "../../lessons/anti-pattern-java-template-engine-not-confirmed.md",
       "family": "anti-pattern",
       "category": "java-web",
       "title": "Java template engine not confirmed",
-      "triggers": ["thymeleaf", "freemarker", "jsp", "ssti", "spel"],
-      "signals": ["dependency clue only", "template route unclear", "escaped model data", "no engine differential"],
+      "triggers": [
+        "thymeleaf",
+        "freemarker",
+        "jsp",
+        "ssti",
+        "spel"
+      ],
+      "signals": [
+        "dependency clue only",
+        "template route unclear",
+        "escaped model data",
+        "no engine differential"
+      ],
       "better_question": "Does controlled input reach template name resolution, expression parsing, fragment selection, or only escaped model data?",
       "stop_rule": "After two harmless expression markers produce no engine-specific differential, stop template payload variants.",
-      "query_terms": ["java template engine", "thymeleaf", "freemarker", "expression parsing", "escaped model data"],
-      "related_pattern_queries": ["java template engine confirmed route expression parsing harmless marker"],
+      "query_terms": [
+        "java template engine",
+        "thymeleaf",
+        "freemarker",
+        "expression parsing",
+        "escaped model data"
+      ],
+      "related_pattern_queries": [
+        "java template engine confirmed route expression parsing harmless marker"
+      ],
       "suggested_control_action": "PIVOT"
     },
     {
       "id": "anti-pattern-java-upload-without-served-path",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\anti-pattern-java-upload-without-served-path.md",
+      "file": "../../lessons/anti-pattern-java-upload-without-served-path.md",
       "family": "anti-pattern",
       "category": "java-web",
       "title": "Java upload without served path proof",
-      "triggers": ["upload", "write primitive", "jsp execution", "static readback"],
-      "signals": ["served path unproven", "reload behavior unknown", "canary absent", "overwrite temptation"],
+      "triggers": [
+        "upload",
+        "write primitive",
+        "jsp execution",
+        "static readback"
+      ],
+      "signals": [
+        "served path unproven",
+        "reload behavior unknown",
+        "canary absent",
+        "overwrite temptation"
+      ],
       "better_question": "Where is the file stored, is the path user-controlled, is it served or reloaded, and can a canary be read back?",
       "stop_rule": "Do not attempt JSP shells or overwrites until canary create, readback, and served behavior are proven.",
-      "query_terms": ["java upload", "served path", "readback", "jsp", "canary file"],
-      "related_pattern_queries": ["java upload served path canary readback jsp static resources"],
+      "query_terms": [
+        "java upload",
+        "served path",
+        "readback",
+        "jsp",
+        "canary file"
+      ],
+      "related_pattern_queries": [
+        "java upload served path canary readback jsp static resources"
+      ],
       "suggested_control_action": "DEMOTE"
     },
     {
       "id": "failure-java-auth-filter-before-payload",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-java-auth-filter-before-payload.md",
+      "file": "../../lessons/failure-java-auth-filter-before-payload.md",
       "family": "failure",
       "category": "java-web",
       "title": "Java auth filter before payload",
-      "triggers": ["401", "403", "302", "spring security", "shiro", "servlet filter"],
-      "signals": ["payload depth starts early", "route-auth table missing", "identity unclear", "interceptor unknown"],
+      "triggers": [
+        "401",
+        "403",
+        "302",
+        "spring security",
+        "shiro",
+        "servlet filter"
+      ],
+      "signals": [
+        "payload depth starts early",
+        "route-auth table missing",
+        "identity unclear",
+        "interceptor unknown"
+      ],
       "better_question": "Which identity, session, path, or method reaches the handler and which filter or interceptor blocks it?",
       "stop_rule": "If 401, 403, or 302 dominates, stop payload mutation and build a route-auth table.",
-      "query_terms": ["java auth filter", "spring security", "shiro", "route auth table", "interceptor"],
-      "related_pattern_queries": ["java auth filter spring security shiro route auth table path normalization"],
+      "query_terms": [
+        "java auth filter",
+        "spring security",
+        "shiro",
+        "route auth table",
+        "interceptor"
+      ],
+      "related_pattern_queries": [
+        "java auth filter spring security shiro route auth table path normalization"
+      ],
       "suggested_control_action": "PIVOT"
     },
     {
       "id": "failure-java-boot-fail-no-harness",
-      "file": "C:\\Users\\Administrator\\.config\\opencode\\lessons\\failure-java-boot-fail-no-harness.md",
+      "file": "../../lessons/failure-java-boot-fail-no-harness.md",
       "family": "failure",
       "category": "java-web",
       "title": "Java boot failure needs local harness",
-      "triggers": ["boot fail", "spring app will not start", "db missing", "profile missing", "jdk mismatch"],
-      "signals": ["environment stall", "full boot budget exceeded", "top sink known", "mockable target exists"],
+      "triggers": [
+        "boot fail",
+        "spring app will not start",
+        "db missing",
+        "profile missing",
+        "jdk mismatch"
+      ],
+      "signals": [
+        "environment stall",
+        "full boot budget exceeded",
+        "top sink known",
+        "mockable target exists"
+      ],
       "better_question": "Can the target controller, service, mapper, or parser method be isolated with mocks to prove source-to-sink and oracle?",
       "stop_rule": "Do not spend more than a short setup budget fixing full app boot before writing a harness plan for the top sink.",
-      "query_terms": ["java boot fail", "local harness", "mock request", "mock mapper", "source to sink"],
-      "related_pattern_queries": ["java boot fail local harness verifier mock controller service parser sink"],
+      "query_terms": [
+        "java boot fail",
+        "local harness",
+        "mock request",
+        "mock mapper",
+        "source to sink"
+      ],
+      "related_pattern_queries": [
+        "java boot fail local harness verifier mock controller service parser sink"
+      ],
       "suggested_control_action": "PIVOT"
     }
   ]

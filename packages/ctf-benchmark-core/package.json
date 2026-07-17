@@ -1,0 +1,11 @@
+{
+  "name": "ctf-benchmark-core",
+  "version": "2026.07.0",
+  "description": "CTF benchmark expectations and family definitions",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

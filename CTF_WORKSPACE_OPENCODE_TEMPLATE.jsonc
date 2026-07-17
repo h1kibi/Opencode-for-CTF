@@ -1,12 +1,15 @@
 {
   "$schema": "https://opencode.ai/config.json",
 
-  // Copy this file to your CTF workspace as:
-  //   C:\\Users\\Administrator\\Desktop\\Agent\\ctf-workspace\\opencode.jsonc
-  // or:
-  //   C:\\Users\\Administrator\\Desktop\\Agent\\ctf-workspace\\.opencode\\opencode.jsonc
-  // Then start opencode from the CTF workspace.
-  // Recommended per-challenge structure inside the workspace:
+  // Copy this file into your CTF workspace as either:
+  //   <workspace>/opencode.jsonc
+  //   <workspace>/.opencode/opencode.jsonc
+  // Examples:
+  //   Windows: C:\path\to\ctf-workspace\opencode.jsonc
+  //   Linux/macOS: /path/to/ctf-workspace/opencode.jsonc
+  // Then start OpenCode from that workspace directory.
+  //
+  // Recommended per-challenge layout:
   //   work/<challenge-id>/
   //     evidence.json
   //     endpoint-matrix.md
@@ -19,11 +22,12 @@
   //     .ctf-chain-state.json
   //     solve.py
   //     retro.md
-  // Use one directory per challenge to keep mixed evidence and stale probes from polluting later solves.
+  // Use one directory per challenge so mixed evidence and stale probes do not
+  // pollute later solves.
 
-  "default_agent": "ctf-fast",    // 可选: ctf-fast (轻量快速), ctf-expert (证据驱动全面分析)
+  "default_agent": "ctf-fast", // optional: ctf-fast | ctf-expert
   "snapshot": false,
-  "small_model": "yintu/gpt-5.4",
+  "small_model": "deepseek/deepseek-v4-flash",
 
   "tool_output": {
     "max_lines": 180,

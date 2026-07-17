@@ -1,6 +1,6 @@
 param(
   [string]$TargetDir = ".",
-  [string]$TemplateDir = "C:\Users\Administrator\.config\opencode\templates",
+  [string]$TemplateDir = "{env:OPENCODE_CONFIG_DIR}\templates",
   [ValidateSet("18","20","22","24","i386","general","heavy","general18","general20","general24","heavy24","debian11","debian12","alpine","aarch64","arm64","mipsel","all")]
   [string]$Profile = "general",
   [switch]$Overwrite,
@@ -26,23 +26,23 @@ if (-not (Test-Path -LiteralPath $TemplateDir)) {
 }
 
 $files = @(
-  "docker-compose.revlab.yml",
-  "Dockerfile.pwnlab.ubuntu18.04",
-  "Dockerfile.pwnlab.ubuntu20.04",
-  "Dockerfile.pwnlab.ubuntu22.04",
-  "Dockerfile.pwnlab.ubuntu24.04",
-  "Dockerfile.pwnlab.i386-ubuntu20.04",
-  "Dockerfile.pwnlab.general-ubuntu22.04",
-  "Dockerfile.pwnlab.heavy-ubuntu22.04",
-  "Dockerfile.pwnlab.general-ubuntu24.04",
-  "Dockerfile.pwnlab.heavy-ubuntu24.04",
-  "Dockerfile.pwnlab.general-ubuntu18.04",
-  "Dockerfile.pwnlab.general-ubuntu20.04",
-  "Dockerfile.pwnlab.general-debian11",
-  "Dockerfile.pwnlab.general-debian12",
-  "Dockerfile.pwnlab.general-alpine",
-  "Dockerfile.pwnlab.aarch64",
-  "Dockerfile.pwnlab.mipsel",
+  "docker/docker/docker-compose.revlab.yml",
+  "docker/Dockerfile.pwnlab.ubuntu18.04",
+  "docker/Dockerfile.pwnlab.ubuntu20.04",
+  "docker/Dockerfile.pwnlab.ubuntu22.04",
+  "docker/Dockerfile.pwnlab.ubuntu24.04",
+  "docker/Dockerfile.pwnlab.i386-ubuntu20.04",
+  "docker/Dockerfile.pwnlab.general-ubuntu22.04",
+  "docker/Dockerfile.pwnlab.heavy-ubuntu22.04",
+  "docker/Dockerfile.pwnlab.general-ubuntu24.04",
+  "docker/Dockerfile.pwnlab.heavy-ubuntu24.04",
+  "docker/Dockerfile.pwnlab.general-ubuntu18.04",
+  "docker/Dockerfile.pwnlab.general-ubuntu20.04",
+  "docker/Dockerfile.pwnlab.general-debian11",
+  "docker/Dockerfile.pwnlab.general-debian12",
+  "docker/Dockerfile.pwnlab.general-alpine",
+  "docker/Dockerfile.pwnlab.aarch64",
+  "docker/Dockerfile.pwnlab.mipsel",
   "solve_pwn.py",
   "pwn_notes.md",
   "pwn_state_compact.md",
@@ -102,34 +102,34 @@ $composeProfile = $profileMap[$Profile]
 Write-Host ""
 Write-Host "Suggested commands:"
 if ($composeProfile -eq "heavy") {
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile general build pwn-general"
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile heavy build pwn-heavy"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile general build pwn-general"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile heavy build pwn-heavy"
 } elseif ($composeProfile -eq "heavy24") {
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile general24 build pwn-general24"
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile heavy24 build pwn-heavy24"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile general24 build pwn-general24"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile heavy24 build pwn-heavy24"
 } else {
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile build"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile build"
 }
 if ($composeProfile -eq "i386") {
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile up -d pwn-i386"
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile exec pwn-i386 bash"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile up -d pwn-i386"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile exec pwn-i386 bash"
 } elseif ($composeProfile -eq "general") {
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile up -d pwn-general"
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile exec pwn-general bash"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile up -d pwn-general"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile exec pwn-general bash"
 } elseif ($composeProfile -eq "heavy") {
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile up -d pwn-heavy"
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile exec pwn-heavy bash"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile up -d pwn-heavy"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile exec pwn-heavy bash"
 } elseif ($composeProfile -eq "general24") {
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile up -d pwn-general24"
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile exec pwn-general24 bash"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile up -d pwn-general24"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile exec pwn-general24 bash"
 } elseif ($composeProfile -eq "heavy24") {
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile up -d pwn-heavy24"
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile exec pwn-heavy24 bash"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile up -d pwn-heavy24"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile exec pwn-heavy24 bash"
 } else {
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile up -d pwn-$composeProfile"
-  Write-Host "  docker compose -f docker-compose.revlab.yml --profile $composeProfile exec pwn-$composeProfile bash"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile up -d pwn-$composeProfile"
+  Write-Host "  docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile exec pwn-$composeProfile bash"
 }
-Write-Host "  docker compose -f docker-compose.revlab.yml ps"
+Write-Host "  docker compose -f docker/docker-compose.revlab.yml ps"
 Write-Host ""
 Write-Host "Inside container quick checks:"
 Write-Host "  file ./chall && readelf -h ./chall && objdump -f ./chall && nm -an ./chall | head"
@@ -146,13 +146,13 @@ if ($Build) {
     Push-Location $target
     try {
       if ($composeProfile -eq "heavy") {
-        docker compose -f docker-compose.revlab.yml --profile general build pwn-general
-        docker compose -f docker-compose.revlab.yml --profile heavy build pwn-heavy
+        docker compose -f docker/docker-compose.revlab.yml --profile general build pwn-general
+        docker compose -f docker/docker-compose.revlab.yml --profile heavy build pwn-heavy
       } elseif ($composeProfile -eq "heavy24") {
-        docker compose -f docker-compose.revlab.yml --profile general24 build pwn-general24
-        docker compose -f docker-compose.revlab.yml --profile heavy24 build pwn-heavy24
+        docker compose -f docker/docker-compose.revlab.yml --profile general24 build pwn-general24
+        docker compose -f docker/docker-compose.revlab.yml --profile heavy24 build pwn-heavy24
       } else {
-        docker compose -f docker-compose.revlab.yml --profile $composeProfile build
+        docker compose -f docker/docker-compose.revlab.yml --profile $composeProfile build
       }
     } finally {
       Pop-Location

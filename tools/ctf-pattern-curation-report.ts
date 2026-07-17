@@ -8,7 +8,21 @@ const PLUGIN_ROOT = resolve(__dirname, "..")
 const DEFAULT_INDEX = join(PLUGIN_ROOT, "knowledge", "pattern-cards", "ljagiello-ctf-skills.cards.v9.json")
 const DEFAULT_FEEDBACK = join(PLUGIN_ROOT, "knowledge", "pattern-cards", "feedback.jsonl")
 
-type Card = { id: string; category: string; title: string; source_file: string; curated?: boolean; promoted?: boolean; distilled?: boolean; curation_priority?: number; coverage_score?: number; quality?: number; specificity?: number; concepts?: string[]; subfamilies?: string[] }
+type Card = {
+  id: string
+  category: string
+  title: string
+  source_file: string
+  curated?: boolean
+  promoted?: boolean
+  distilled?: boolean
+  curation_priority?: number
+  coverage_score?: number
+  quality?: number
+  specificity?: number
+  concepts?: string[]
+  subfamilies?: string[]
+}
 type Index = { meta: Record<string, unknown>; cards: Card[] }
 
 function feedbackMap(path: string) {
@@ -27,7 +41,8 @@ function feedbackMap(path: string) {
 }
 
 export default tool({
-  description: "Report highest-priority CTF pattern cards to curate, promote, demote, or review using the v7 index and feedback log.",
+  description:
+    "Report highest-priority CTF pattern cards to curate, promote, demote, or review using the v7 index and feedback log.",
   args: {
     category: tool.schema.string().optional().describe("Optional category filter."),
     maxItems: tool.schema.number().optional().describe("Maximum cards per section. Default 12."),
@@ -50,7 +65,12 @@ export default tool({
       .slice(0, max)
     const promote = cards
       .filter((c) => (fb.get(c.id)?.pos ?? 0) > 0 || (c.distilled && !c.curated))
-      .sort((a, b) => ((fb.get(b.id)?.pos ?? 0) * 10 + (b.curation_priority ?? 0)) - ((fb.get(a.id)?.pos ?? 0) * 10 + (a.curation_priority ?? 0)))
+      .sort(
+        (a, b) =>
+          (fb.get(b.id)?.pos ?? 0) * 10 +
+          (b.curation_priority ?? 0) -
+          ((fb.get(a.id)?.pos ?? 0) * 10 + (a.curation_priority ?? 0)),
+      )
       .slice(0, max)
     function fmt(c: Card) {
       const f = fb.get(c.id)

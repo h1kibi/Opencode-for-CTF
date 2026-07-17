@@ -6,7 +6,8 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
   const target = path.resolve(base, input)
   const rel = path.relative(base, target)
-  if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`target must stay inside the current workspace: ${input}`)
+  if (rel.startsWith("..") || path.isAbsolute(rel))
+    throw new Error(`target must stay inside the current workspace: ${input}`)
   return target
 }
 
@@ -20,15 +21,25 @@ function compact(text: string, max = 8000) {
 }
 
 export default tool({
-  description: "CTF rev live-memory dump helper: generate a conservative Linux dump plan and ready-to-run script skeleton for self-decrypt / post-unpack payload capture at a stable stdout marker.",
+  description:
+    "CTF rev live-memory dump helper: generate a conservative Linux dump plan and ready-to-run script skeleton for self-decrypt / post-unpack payload capture at a stable stdout marker.",
   args: {
     target: tool.schema.string().describe("Workspace-relative binary or launcher path."),
-    marker: tool.schema.string().optional().describe("Stable stdout marker that indicates the dump point has been reached."),
+    marker: tool.schema
+      .string()
+      .optional()
+      .describe("Stable stdout marker that indicates the dump point has been reached."),
     dumpStart: tool.schema.string().optional().describe("Hex/decimal virtual start address to dump, e.g. 0x400000."),
     dumpSize: tool.schema.string().optional().describe("Hex/decimal byte size to dump, e.g. 0x2000."),
     argv: tool.schema.string().optional().describe("Optional argv string to append when launching the target."),
-    workdir: tool.schema.string().optional().describe("Workspace-relative working directory. Default current workspace root."),
-    outDir: tool.schema.string().optional().describe("Workspace-relative output directory for generated helper script. Default work/rev-live-dump."),
+    workdir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative working directory. Default current workspace root."),
+    outDir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative output directory for generated helper script. Default work/rev-live-dump."),
     substrateHint: tool.schema.string().optional().describe("Optional substrate hint: docker | wsl | local-linux."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
@@ -47,40 +58,41 @@ export default tool({
     const dumpFile = normalizeRel(path.relative(context.directory, path.join(outDir, "payload.dump.bin")))
     const scriptPath = path.join(outDir, "rev_live_dump.sh")
 
-    const script = [
-      "#!/usr/bin/env bash",
-      "set -euo pipefail",
-      `TARGET=${JSON.stringify(`./${relTarget}`)}`,
-      `MARKER=${JSON.stringify(marker || "<STDOUT_MARKER>")}`,
-      `DUMP_START=${JSON.stringify(dumpStart)}`,
-      `DUMP_SIZE=${JSON.stringify(dumpSize)}`,
-      `DUMP_OUT=${JSON.stringify(path.posix.join("/work", normalizeRel(path.relative(context.directory, path.join(outDir, "payload.dump.bin")))) )}`,
-      `ARGV=${JSON.stringify(argv)}`,
-      "fifo=$(mktemp -u)",
-      "mkfifo \"$fifo\"",
-      "cleanup() { rm -f \"$fifo\"; }",
-      "trap cleanup EXIT",
-      "if [[ -n \"$ARGV\" ]]; then eval \"$TARGET $ARGV\" < \"$fifo\" | tee /tmp/rev_live_dump.stdout & else \"$TARGET\" < \"$fifo\" | tee /tmp/rev_live_dump.stdout & fi",
-      "pid=$!",
-      "while IFS= read -r line; do",
-      "  if [[ -n \"$MARKER\" && \"$line\" == *\"$MARKER\"* ]]; then",
-      "    python3 - <<'PY' \"$pid\" \"$DUMP_START\" \"$DUMP_SIZE\" \"$DUMP_OUT\"",
-      "import sys",
-      "pid, start_s, size_s, out = sys.argv[1:5]",
-      "start = int(start_s, 0)",
-      "size = int(size_s, 0)",
-      "with open(f'/proc/{pid}/mem', 'rb', buffering=0) as mem:",
-      "    mem.seek(start)",
-      "    data = mem.read(size)",
-      "with open(out, 'wb') as f:",
-      "    f.write(data)",
-      "print(f'WROTE {len(data)} bytes to {out}')",
-      "PY",
-      "    break",
-      "  fi",
-      "done < /tmp/rev_live_dump.stdout",
-      "wait $pid || true",
-    ].join("\n") + "\n"
+    const script =
+      [
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        `TARGET=${JSON.stringify(`./${relTarget}`)}`,
+        `MARKER=${JSON.stringify(marker || "<STDOUT_MARKER>")}`,
+        `DUMP_START=${JSON.stringify(dumpStart)}`,
+        `DUMP_SIZE=${JSON.stringify(dumpSize)}`,
+        `DUMP_OUT=${JSON.stringify(path.posix.join("/work", normalizeRel(path.relative(context.directory, path.join(outDir, "payload.dump.bin")))))}`,
+        `ARGV=${JSON.stringify(argv)}`,
+        "fifo=$(mktemp -u)",
+        'mkfifo "$fifo"',
+        'cleanup() { rm -f "$fifo"; }',
+        "trap cleanup EXIT",
+        'if [[ -n "$ARGV" ]]; then eval "$TARGET $ARGV" < "$fifo" | tee /tmp/rev_live_dump.stdout & else "$TARGET" < "$fifo" | tee /tmp/rev_live_dump.stdout & fi',
+        "pid=$!",
+        "while IFS= read -r line; do",
+        '  if [[ -n "$MARKER" && "$line" == *"$MARKER"* ]]; then',
+        '    python3 - <<\'PY\' "$pid" "$DUMP_START" "$DUMP_SIZE" "$DUMP_OUT"',
+        "import sys",
+        "pid, start_s, size_s, out = sys.argv[1:5]",
+        "start = int(start_s, 0)",
+        "size = int(size_s, 0)",
+        "with open(f'/proc/{pid}/mem', 'rb', buffering=0) as mem:",
+        "    mem.seek(start)",
+        "    data = mem.read(size)",
+        "with open(out, 'wb') as f:",
+        "    f.write(data)",
+        "print(f'WROTE {len(data)} bytes to {out}')",
+        "PY",
+        "    break",
+        "  fi",
+        "done < /tmp/rev_live_dump.stdout",
+        "wait $pid || true",
+      ].join("\n") + "\n"
 
     await writeFile(scriptPath, script, "utf8")
 

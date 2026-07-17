@@ -1,6 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
 import { readFile } from "node:fs/promises"
-import path from "node:path"
+import { resolveAllowedPath } from "./lib/path-policy.ts"
 
 function parseBigints(text: string) {
   const result: Record<string, bigint[]> = {}
@@ -24,15 +24,21 @@ function gcd(a: bigint, b: bigint): bigint {
 }
 
 export default tool({
-  description: "CTF RSA probe: parse n/e/c-style integers from a file or raw text and report bit lengths, common weak public exponents, shared-prime GCDs, and obvious hints.",
+  description:
+    "CTF RSA probe: parse n/e/c-style integers from a file or raw text and report bit lengths, common weak public exponents, shared-prime GCDs, and obvious hints.",
   args: {
     input: tool.schema.string().describe("Path to a text file, or raw text containing RSA parameters"),
   },
   async execute(args, context) {
     let text = args.input
     try {
-      text = await readFile(path.resolve(context.directory, args.input), "utf8")
-    } catch {}
+      const target = await resolveAllowedPath(args.input, context)
+      text = await readFile(target, "utf8")
+    } catch (error) {
+      // Treat non-path input as raw RSA parameter text. Path-looking inputs
+      // that violate the path policy must not silently bypass the restriction.
+      if (/[\\/]/.test(args.input) || /\.[A-Za-z0-9]{1,8}$/.test(args.input.trim())) throw error
+    }
 
     const values = parseBigints(text)
     const lines: string[] = []

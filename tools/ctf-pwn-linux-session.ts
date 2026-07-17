@@ -1,6 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
 import { lstat, mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
+import { pwnImage } from "./lib/docker-config.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -30,10 +31,18 @@ function detectArch(fileOut: string) {
 }
 
 function defaultsForArch(arch: string) {
-  if (arch === "aarch64") return { image: "pwnlab:aarch64", service: "pwn-aarch64", profile: "aarch64", reason: "arch_aarch64" }
-  if (arch === "mipsel") return { image: "pwnlab:mipsel", service: "pwn-mipsel", profile: "mipsel", reason: "arch_mipsel" }
-  if (arch === "i386") return { image: "pwnlab:i386-ubuntu20.04", service: "pwn-i386", profile: "i386", reason: "arch_i386" }
-  return { image: "pwnlab:general-ubuntu22.04", service: "pwn-general", profile: "general", reason: "arch_default_amd64" }
+  if (arch === "aarch64")
+    return { image: pwnImage("aarch64"), service: "pwn-aarch64", profile: "aarch64", reason: "arch_aarch64" }
+  if (arch === "mipsel")
+    return { image: pwnImage("mipsel"), service: "pwn-mipsel", profile: "mipsel", reason: "arch_mipsel" }
+  if (arch === "i386")
+    return { image: pwnImage("i386-ubuntu20.04"), service: "pwn-i386", profile: "i386", reason: "arch_i386" }
+  return {
+    image: pwnImage("general-ubuntu22.04"),
+    service: "pwn-general",
+    profile: "general",
+    reason: "arch_default_amd64",
+  }
 }
 
 function inferVersion(text: string) {
@@ -44,15 +53,40 @@ function inferVersion(text: string) {
 }
 
 function defaultsForLibcVersion(version: string) {
-  if (/2\.27/.test(version)) return { image: "pwnlab:general-ubuntu18.04", service: "pwn-general18", profile: "general18", reason: "glibc_2.27" }
-  if (/2\.28|2\.29|2\.30|2\.31/.test(version)) return { image: "pwnlab:general-ubuntu20.04", service: "pwn-general20", profile: "general20", reason: "glibc_2.28_to_2.31" }
-  if (/2\.32|2\.33|2\.34|2\.35/.test(version)) return { image: "pwnlab:general-ubuntu22.04", service: "pwn-general", profile: "general", reason: "glibc_2.32_to_2.35" }
-  if (/2\.36|2\.37|2\.38|2\.39|2\.40/.test(version)) return { image: "pwnlab:general-ubuntu24.04", service: "pwn-general24", profile: "general24", reason: "glibc_2.36_plus" }
+  if (/2\.27/.test(version))
+    return {
+      image: pwnImage("general-ubuntu18.04"),
+      service: "pwn-general18",
+      profile: "general18",
+      reason: "glibc_2.27",
+    }
+  if (/2\.28|2\.29|2\.30|2\.31/.test(version))
+    return {
+      image: pwnImage("general-ubuntu20.04"),
+      service: "pwn-general20",
+      profile: "general20",
+      reason: "glibc_2.28_to_2.31",
+    }
+  if (/2\.32|2\.33|2\.34|2\.35/.test(version))
+    return {
+      image: pwnImage("general-ubuntu22.04"),
+      service: "pwn-general",
+      profile: "general",
+      reason: "glibc_2.32_to_2.35",
+    }
+  if (/2\.36|2\.37|2\.38|2\.39|2\.40/.test(version))
+    return {
+      image: pwnImage("general-ubuntu24.04"),
+      service: "pwn-general24",
+      profile: "general24",
+      reason: "glibc_2.36_plus",
+    }
   return null
 }
 
 export default tool({
-  description: "CTF PWN Linux session: one-click lock a Linux ELF challenge onto one containerized runtime profile and emit defaults for docker runner, gdb snapshot, expect runner, and exploit iteration.",
+  description:
+    "CTF PWN Linux session: one-click lock a Linux ELF challenge onto one containerized runtime profile and emit defaults for docker runner, gdb snapshot, expect runner, and exploit iteration.",
   args: {
     binary: tool.schema.string().describe("Workspace-relative ELF binary path."),
     libc: tool.schema.string().optional().describe("Workspace-relative bundled libc path when present."),
@@ -60,7 +94,10 @@ export default tool({
     remoteHost: tool.schema.string().optional().describe("Remote host if this session should remember remote context."),
     remotePort: tool.schema.string().optional().describe("Remote port if this session should remember remote context."),
     outDir: tool.schema.string().optional().describe("Workspace-relative output dir. Default work/pwn-linux-sessions."),
-    sessionId: tool.schema.string().optional().describe("Optional stable session id. Default derived from binary name."),
+    sessionId: tool.schema
+      .string()
+      .optional()
+      .describe("Optional stable session id. Default derived from binary name."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args, context) {
@@ -70,7 +107,9 @@ export default tool({
     const raw = await readFile(binaryAbs)
     const fileOut = raw.subarray(0, 0x1000).toString("latin1")
     const arch = detectArchFromBuffer(raw) !== "unknown" ? detectArchFromBuffer(raw) : detectArch(fileOut)
-    const libcVersion = args.libc ? inferVersion((await readFile(resolveInsideWorkspace(context.directory, args.libc))).toString("latin1")) : ""
+    const libcVersion = args.libc
+      ? inferVersion((await readFile(resolveInsideWorkspace(context.directory, args.libc))).toString("latin1"))
+      : ""
     const baseDefaults = defaultsForLibcVersion(libcVersion) || defaultsForArch(arch)
 
     const runtimeProfileId = args.libc
@@ -78,7 +117,8 @@ export default tool({
       : `${path.basename(args.binary).replace(/[^A-Za-z0-9_.-]+/g, "-")}-${baseDefaults.profile}-session`
 
     const binaryPosix = args.binary.replace(/\\/g, "/")
-    const binaryDirPosix = path.posix.dirname(binaryPosix) === "." ? "/work" : path.posix.join("/work", path.posix.dirname(binaryPosix))
+    const binaryDirPosix =
+      path.posix.dirname(binaryPosix) === "." ? "/work" : path.posix.join("/work", path.posix.dirname(binaryPosix))
     const payload = {
       schema_version: "pwn_linux_session.v1",
       session_id: args.sessionId || runtimeProfileId,
@@ -102,9 +142,10 @@ export default tool({
         containerWorkdir: binaryDirPosix,
         runArgs: "--cap-add=SYS_PTRACE --security-opt seccomp=unconfined",
       },
-      explicit_loader_command: args.ld && args.libc
-        ? `${args.ld.replace(/\\/g, "/")} --library-path ${path.posix.dirname(args.libc.replace(/\\/g, "/"))} ${binaryPosix}`
-        : "",
+      explicit_loader_command:
+        args.ld && args.libc
+          ? `${args.ld.replace(/\\/g, "/")} --library-path ${path.posix.dirname(args.libc.replace(/\\/g, "/"))} ${binaryPosix}`
+          : "",
       next_defaults: {
         docker_runner: `ctf-pwn-docker-runner runtimeProfileId=${args.sessionId || runtimeProfileId}`,
         gdb_snapshot: `ctf-pwn-gdb-snapshot runtimeProfileId=${args.sessionId || runtimeProfileId} binary=${args.binary}`,
@@ -122,7 +163,11 @@ export default tool({
     await writeFile(outFile, JSON.stringify(payload, null, 2), "utf8")
     const profileDir = resolveInsideWorkspace(context.directory, "work/pwn-runtime-profiles")
     await mkdir(profileDir, { recursive: true })
-    await writeFile(path.join(profileDir, `${payload.runtime_profile_id}.json`), JSON.stringify(payload, null, 2), "utf8")
+    await writeFile(
+      path.join(profileDir, `${payload.runtime_profile_id}.json`),
+      JSON.stringify(payload, null, 2),
+      "utf8",
+    )
 
     if (args.jsonOnly) return JSON.stringify(payload, null, 2)
     return [

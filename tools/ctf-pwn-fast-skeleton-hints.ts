@@ -1,7 +1,8 @@
 import { tool } from "@opencode-ai/plugin"
 
 export default tool({
-  description: "CTF pwn fast skeleton hints: map a simple-pwn family to the fastest exploit skeleton plan, required first edits, and stop/escalation conditions.",
+  description:
+    "CTF pwn fast skeleton hints: map a simple-pwn family to the fastest exploit skeleton plan, required first edits, and stop/escalation conditions.",
   args: {
     route: tool.schema.string().describe("Route family: ret2win | ret2libc | format | orw | heap-menu"),
     evidence: tool.schema.string().optional().describe("Optional short evidence or mitigation notes to refine hints."),
@@ -9,13 +10,13 @@ export default tool({
   async execute(args) {
     const route = String(args.route || "").toLowerCase()
     const evidence = String(args.evidence || "").toLowerCase()
-  const base = [
+    const base = [
       "fast_skeleton_plan:",
-      "template: C:\\Users\\Administrator\\.config\\opencode\\templates\\solve_pwn.py",
+      "template: {env:OPENCODE_CONFIG_DIR}/templates/solve_pwn.py",
       "rule: build exploit skeleton early, then tighten it with one variable at a time",
     ]
     const map: Record<string, string[]> = {
-      "ret2win": [
+      ret2win: [
         "route_family: ret2win",
         "recommended_template_mode: direct_control_to_win",
         "required_fields:",
@@ -38,7 +39,7 @@ export default tool({
         "stop_if:",
         "- no control after 2 cheap same-family tries",
       ],
-      "ret2libc": [
+      ret2libc: [
         "route_family: ret2libc_two_stage",
         "recommended_template_mode: leak_then_reenter_then_close",
         "required_fields:",
@@ -64,7 +65,7 @@ export default tool({
         "stop_if:",
         "- leak class/base remains unstable or ambiguous",
       ],
-      "format": [
+      format: [
         "route_family: format_leak_first",
         "recommended_template_mode: read_first_format_harness",
         "required_fields:",
@@ -87,7 +88,7 @@ export default tool({
         "stop_if:",
         "- offset/leak shape is unstable after 2-3 controlled passes",
       ],
-      "orw": [
+      orw: [
         "route_family: direct_orw",
         "recommended_template_mode: file_read_closure",
         "required_fields:",
@@ -137,10 +138,15 @@ export default tool({
     if (!map[route]) return "BLOCK: route must be one of ret2win | ret2libc | format | orw | heap-menu"
     const extra: string[] = []
     if (/pie/.test(evidence)) extra.push("- PIE evidence present: do not hardcode final gadgets before a code leak.")
-    if (/canary/.test(evidence)) extra.push("- Canary evidence present: prioritize leak or non-return overwrite before final chain.")
-    if (/seccomp|sandbox/.test(evidence) && route !== "orw") extra.push("- Seccomp/sandbox clue present: closure may prefer ORW/file-read over shell.")
+    if (/canary/.test(evidence))
+      extra.push("- Canary evidence present: prioritize leak or non-return overwrite before final chain.")
+    if (/seccomp|sandbox/.test(evidence) && route !== "orw")
+      extra.push("- Seccomp/sandbox clue present: closure may prefer ORW/file-read over shell.")
     if (/full relro/.test(evidence) && route === "format") extra.push("- Full RELRO: avoid assuming GOT overwrite.")
-    if (/remote drift|remote fail|timeout|eof/.test(evidence)) extra.push("- Remote divergence clue present: do not mutate payload family before isolating transcript/prompt differences.")
+    if (/remote drift|remote fail|timeout|eof/.test(evidence))
+      extra.push(
+        "- Remote divergence clue present: do not mutate payload family before isolating transcript/prompt differences.",
+      )
     return [...base, ...map[route], ...(extra.length ? ["route_specific_warnings:", ...extra] : [])].join("\n")
   },
 })

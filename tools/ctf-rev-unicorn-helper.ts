@@ -6,7 +6,8 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
   const target = path.resolve(base, input)
   const rel = path.relative(base, target)
-  if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`target must stay inside the current workspace: ${input}`)
+  if (rel.startsWith("..") || path.isAbsolute(rel))
+    throw new Error(`target must stay inside the current workspace: ${input}`)
   return target
 }
 
@@ -27,10 +28,13 @@ function printableStrings(buf: Buffer) {
   return Array.from(text.matchAll(/[ -~]{4,}/g), (m) => m[0]).slice(0, 4000)
 }
 
-function uniq<T>(arr: T[]) { return Array.from(new Set(arr)) }
+function uniq<T>(arr: T[]) {
+  return Array.from(new Set(arr))
+}
 
 export default tool({
-  description: "CTF rev Unicorn helper: detect Unicorn/Capstone/Qiling API signals, infer likely arch/mode/register setup, and emit a replay skeleton plan for self-decrypt/emulation challenges.",
+  description:
+    "CTF rev Unicorn helper: detect Unicorn/Capstone/Qiling API signals, infer likely arch/mode/register setup, and emit a replay skeleton plan for self-decrypt/emulation challenges.",
   args: {
     target: tool.schema.string().describe("Binary/script/sample path to inspect"),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
@@ -43,12 +47,19 @@ export default tool({
     const strings = printableStrings(sample)
     const joined = strings.join("\n")
 
-    const unicornApis = uniq(strings.filter((s) => /uc_open|uc_mem_map|uc_mem_write|uc_reg_write|uc_emu_start|uc_hook_add|uc_close/i.test(s))).slice(0, 80)
+    const unicornApis = uniq(
+      strings.filter((s) => /uc_open|uc_mem_map|uc_mem_write|uc_reg_write|uc_emu_start|uc_hook_add|uc_close/i.test(s)),
+    ).slice(0, 80)
     const capstoneApis = uniq(strings.filter((s) => /cs_open|cs_disasm|cs_option|cs_free/i.test(s))).slice(0, 40)
     const qilingApis = uniq(strings.filter((s) => /qiling|ql\.run|ql\.hook|ql\.mem/i.test(s))).slice(0, 40)
-    const archHints = uniq(strings.filter((s) => /UC_ARCH_|UC_MODE_|riscv|mips|arm64|aarch64|x86_64|amd64/i.test(s))).slice(0, 60)
+    const archHints = uniq(
+      strings.filter((s) => /UC_ARCH_|UC_MODE_|riscv|mips|arm64|aarch64|x86_64|amd64/i.test(s)),
+    ).slice(0, 60)
     const regHints = uniq(strings.filter((s) => /UC_[A-Z0-9_]*REG_[A-Z0-9_]+/i.test(s))).slice(0, 80)
-    const memHints = uniq(strings.filter((s) => /0x[0-9a-f]{4,}|map|write|payload|code|data|stack/i.test(s))).slice(0, 80)
+    const memHints = uniq(strings.filter((s) => /0x[0-9a-f]{4,}|map|write|payload|code|data|stack/i.test(s))).slice(
+      0,
+      80,
+    )
     const apiHistogram = {
       uc_open: strings.filter((s) => /uc_open/i.test(s)).length,
       uc_mem_map: strings.filter((s) => /uc_mem_map/i.test(s)).length,
@@ -71,11 +82,12 @@ export default tool({
     else if (/UC_MODE_32|32-bit/i.test(joined)) inferredMode = "32"
 
     const detected = unicornApis.length >= 2 || capstoneApis.length >= 2 || qilingApis.length >= 1
-    const confidence = unicornApis.length >= 4 || (unicornApis.length >= 2 && capstoneApis.length >= 1)
-      ? "high"
-      : detected
-        ? "medium"
-        : "low"
+    const confidence =
+      unicornApis.length >= 4 || (unicornApis.length >= 2 && capstoneApis.length >= 1)
+        ? "high"
+        : detected
+          ? "medium"
+          : "low"
     const liveDumpNeeded = detected && /payload|decrypt|mem_write|uc_mem_write|uc_emu_start|self-decrypt/i.test(joined)
     const markerDrivenDumpPlan = liveDumpNeeded
       ? [
@@ -92,28 +104,32 @@ export default tool({
           "emit a replay script that stops at compare/check PC and prints key registers/memory",
         ]
       : []
-    const replayPlan = detected ? [
-      "identify uc_open arguments to recover arch/mode before disassembling payload",
-      "recover uc_mem_map / uc_mem_write ranges and treat them as payload/data staging regions",
-      "recover uc_reg_write register constants before uc_emu_start; these define initial machine state",
-      "dump live memory after self-decrypt stage, then replay only the final payload rather than the whole wrapper",
-      "stop replay at the compare/check loop or at the first success/failure branch and print registers/memory",
-    ] : ["no strong Unicorn/Qiling/Capstone signal; fall back to generic reverse workflow"]
+    const replayPlan = detected
+      ? [
+          "identify uc_open arguments to recover arch/mode before disassembling payload",
+          "recover uc_mem_map / uc_mem_write ranges and treat them as payload/data staging regions",
+          "recover uc_reg_write register constants before uc_emu_start; these define initial machine state",
+          "dump live memory after self-decrypt stage, then replay only the final payload rather than the whole wrapper",
+          "stop replay at the compare/check loop or at the first success/failure branch and print registers/memory",
+        ]
+      : ["no strong Unicorn/Qiling/Capstone signal; fall back to generic reverse workflow"]
 
-    const skeleton = detected ? [
-      "from unicorn import *",
-      "# arch/mode from uc_open",
-      "mu = Uc(<ARCH>, <MODE>)",
-      "# map recovered regions from uc_mem_map",
-      "mu.mem_map(<BASE>, <SIZE>)",
-      "# write decrypted payload/data from dump or embedded blob",
-      "mu.mem_write(<BASE>, payload_bytes)",
-      "# restore key registers from uc_reg_write",
-      "mu.reg_write(<REG>, <VALUE>)",
-      "# emulate recovered start/end from uc_emu_start",
-      "mu.emu_start(<START>, <END>)",
-      "# print registers / memory of interest",
-    ] : []
+    const skeleton = detected
+      ? [
+          "from unicorn import *",
+          "# arch/mode from uc_open",
+          "mu = Uc(<ARCH>, <MODE>)",
+          "# map recovered regions from uc_mem_map",
+          "mu.mem_map(<BASE>, <SIZE>)",
+          "# write decrypted payload/data from dump or embedded blob",
+          "mu.mem_write(<BASE>, payload_bytes)",
+          "# restore key registers from uc_reg_write",
+          "mu.reg_write(<REG>, <VALUE>)",
+          "# emulate recovered start/end from uc_emu_start",
+          "mu.emu_start(<START>, <END>)",
+          "# print registers / memory of interest",
+        ]
+      : []
     const recommendedNext = detected
       ? liveDumpNeeded
         ? "build a live-memory dump step at the first stable marker, then feed the dumped payload into a Unicorn replay script"

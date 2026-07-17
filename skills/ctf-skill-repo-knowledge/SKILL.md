@@ -9,7 +9,7 @@ compatibility: opencode
 Local mirror:
 
 ```text
-C:\Users\Administrator\.config\opencode\knowledge\ljagiello-ctf-skills
+{env:OPENCODE_CONFIG_DIR}\knowledge\ljagiello-ctf-skills
 ```
 
 Do not add this repository to `skills.paths`: it contains skills with names like `ctf-web`, `ctf-pwn`, and `ctf-crypto` that can conflict with the local curated opencode skills. Treat it as a knowledge base. Use `ctf-lesson-search` first for local closure/owner/failure/anti-pattern lessons, `ctf-pattern-card-search` second for decision-ready offline cards, and `ctf-skill-repo-search` third for full-text context.

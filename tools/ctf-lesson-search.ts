@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs"
-import { join, basename, resolve } from "node:path"
+import { join, basename, dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { tool } from "@opencode-ai/plugin"
 
@@ -45,7 +45,14 @@ type LessonIndex = {
 }
 
 function baseTerms(query: string) {
-  return Array.from(new Set(query.toLowerCase().split(/[^a-z0-9_+.#:-]+/i).filter((x) => x.length >= 2))).slice(0, 32)
+  return Array.from(
+    new Set(
+      query
+        .toLowerCase()
+        .split(/[^a-z0-9_+.#:-]+/i)
+        .filter((x) => x.length >= 2),
+    ),
+  ).slice(0, 32)
 }
 
 function familyOf(name: string) {
@@ -93,10 +100,16 @@ function scoreLesson(file: string, content: string, terms: string[], familyPref:
 }
 
 export default tool({
-  description: "Search local CTF lessons (closure, owner handoff, failure signatures, anti-patterns) and return the best reusable decision units before broader pattern recall.",
+  description:
+    "Search local CTF lessons (closure, owner handoff, failure signatures, anti-patterns) and return the best reusable decision units before broader pattern recall.",
   args: {
-    query: tool.schema.string().describe("Evidence/constraint query. Example: 'source leak closure admin route config env'."),
-    family: tool.schema.string().optional().describe("Optional lesson family: closure | owner | failure | anti-pattern | all."),
+    query: tool.schema
+      .string()
+      .describe("Evidence/constraint query. Example: 'source leak closure admin route config env'."),
+    family: tool.schema
+      .string()
+      .optional()
+      .describe("Optional lesson family: closure | owner | failure | anti-pattern | all."),
     maxHits: tool.schema.number().optional().describe("Maximum hits. Default 6, hard cap 20."),
     lessonDir: tool.schema.string().optional().describe("Optional lesson directory path."),
     indexPath: tool.schema.string().optional().describe("Optional structured lesson index path."),
@@ -113,7 +126,8 @@ export default tool({
       let hits = idx.lessons
         .filter((x) => familyPref === "all" || x.family === familyPref)
         .map((x) => {
-          const hay = `${x.id} ${x.title} ${(x.triggers || []).join(" ")} ${(x.signals || []).join(" ")} ${(x.query_terms || []).join(" ")} ${x.better_question || ""} ${x.stop_rule || ""}`.toLowerCase()
+          const hay =
+            `${x.id} ${x.title} ${(x.triggers || []).join(" ")} ${(x.signals || []).join(" ")} ${(x.query_terms || []).join(" ")} ${x.better_question || ""} ${x.stop_rule || ""}`.toLowerCase()
           let score = 0
           const reasons: string[] = []
           if (familyPref !== "all" && x.family === familyPref) {
@@ -131,7 +145,17 @@ export default tool({
               reasons.push(`index:${t}x${Math.min(count, 8)}`)
             }
           }
-          const action = x.suggested_control_action || (x.family === "closure" ? "CLOSE_OR_CONTINUE" : x.family === "owner" ? "OWNER" : x.family === "failure" ? "LEDGER_OR_PIVOT" : x.family === "anti-pattern" ? "PIVOT_OR_DEMOTE" : "CONTINUE")
+          const action =
+            x.suggested_control_action ||
+            (x.family === "closure"
+              ? "CLOSE_OR_CONTINUE"
+              : x.family === "owner"
+                ? "OWNER"
+                : x.family === "failure"
+                  ? "LEDGER_OR_PIVOT"
+                  : x.family === "anti-pattern"
+                    ? "PIVOT_OR_DEMOTE"
+                    : "CONTINUE")
           return {
             file: x.file,
             family: x.family,
@@ -150,7 +174,8 @@ export default tool({
         })
         .filter((x) => x.score > 0)
       try {
-        const indexedFiles = new Set(idx.lessons.map((x) => x.file.toLowerCase()))
+        const indexDir = dirname(resolve(indexPath))
+        const indexedFiles = new Set(idx.lessons.map((x) => resolve(indexDir, x.file).toLowerCase()))
         for (const file of walk(lessonDir)) {
           if (indexedFiles.has(file.toLowerCase())) continue
           const content = readFileSync(file, "utf8")
@@ -162,7 +187,16 @@ export default tool({
             score,
             reasons: Array.from(new Set(reasons)).slice(0, 10),
             preview: content.replace(/\s+/g, " ").slice(0, 260),
-            action: family === "closure" ? "CLOSE_OR_CONTINUE" : family === "owner" ? "OWNER" : family === "failure" ? "LEDGER_OR_PIVOT" : family === "anti-pattern" ? "PIVOT_OR_DEMOTE" : "CONTINUE",
+            action:
+              family === "closure"
+                ? "CLOSE_OR_CONTINUE"
+                : family === "owner"
+                  ? "OWNER"
+                  : family === "failure"
+                    ? "LEDGER_OR_PIVOT"
+                    : family === "anti-pattern"
+                      ? "PIVOT_OR_DEMOTE"
+                      : "CONTINUE",
             relatedPatternQueries: [],
             relatedFailures: [],
             relatedOwners: [],
@@ -173,9 +207,7 @@ export default tool({
           })
         }
       } catch {}
-      hits = hits
-        .sort((a, b) => b.score - a.score)
-        .slice(0, maxHits)
+      hits = hits.sort((a, b) => b.score - a.score).slice(0, maxHits)
       return [
         `query: ${args.query}`,
         `family: ${familyPref}`,
@@ -187,7 +219,10 @@ export default tool({
         `hits: ${hits.length}`,
         "lessons:",
         ...(hits.length
-          ? hits.map((h, i) => `- #${i + 1} score=${h.score} family=${h.family} action=${h.action}\n  file: ${h.file}\n  reasons: ${h.reasons.join(" | ")}\n  preview: ${h.preview}\n  budget_penalty: ${h.budgetPenalty}\n  owner_flip_trigger: ${h.ownerFlipTrigger}\n  closure_owner_hint: ${h.closureOwnerHint}\n  related_pattern_queries: ${h.relatedPatternQueries.join(" | ") || "none"}\n  related_failure_signatures: ${h.relatedFailures.join(" | ") || "none"}\n  related_owner_lessons: ${h.relatedOwners.join(" | ") || "none"}\n  related_closure_lessons: ${h.relatedClosures.join(" | ") || "none"}`)
+          ? hits.map(
+              (h, i) =>
+                `- #${i + 1} score=${h.score} family=${h.family} action=${h.action}\n  file: ${h.file}\n  reasons: ${h.reasons.join(" | ")}\n  preview: ${h.preview}\n  budget_penalty: ${h.budgetPenalty}\n  owner_flip_trigger: ${h.ownerFlipTrigger}\n  closure_owner_hint: ${h.closureOwnerHint}\n  related_pattern_queries: ${h.relatedPatternQueries.join(" | ") || "none"}\n  related_failure_signatures: ${h.relatedFailures.join(" | ") || "none"}\n  related_owner_lessons: ${h.relatedOwners.join(" | ") || "none"}\n  related_closure_lessons: ${h.relatedClosures.join(" | ") || "none"}`,
+            )
           : ["- none"]),
         "decision_contract:",
         "- Prefer one matching lesson before broader pattern-card or repo recall when the branch is in closure-first, mixed-owner, stale, or anti-pattern territory.",
@@ -215,7 +250,10 @@ export default tool({
       `hits: ${top.length}`,
       "lessons:",
       ...(top.length
-        ? top.map((h, i) => `- #${i + 1} score=${h.score} family=${h.family}\n  file: ${h.file}\n  reasons: ${h.reasons.join(" | ")}\n  preview: ${h.preview}`)
+        ? top.map(
+            (h, i) =>
+              `- #${i + 1} score=${h.score} family=${h.family}\n  file: ${h.file}\n  reasons: ${h.reasons.join(" | ")}\n  preview: ${h.preview}`,
+          )
         : ["- none"]),
       "decision_contract:",
       "- Prefer one matching lesson before broader pattern-card or repo recall when the branch is in closure-first, mixed-owner, stale, or anti-pattern territory.",

@@ -23,32 +23,32 @@ agent: ctf-master
 1. 先查链段：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_segment_match.py "<evidence>" --limit 8
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_segment_match.py "<evidence>" --limit 8
 ```
 
 2. 再组合链候选：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_chain_compose.py "<evidence>" --limit 5
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_chain_compose.py "<evidence>" --state .ctf-chain-state.json --limit 5
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_chain_compose.py "<evidence>" --limit 5
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_chain_compose.py "<evidence>" --state .ctf-chain-state.json --limit 5
 ```
 
 3. 如果 top chains 是 PARTIAL/BLOCKED，把缺失条件/堵点反向生成侦察任务：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_recon_tasks.py "<evidence>" --limit 5
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_recon_tasks.py "<evidence>" --limit 5
 ```
 
 3b. 如果本地没有足够绕过/补证据知识，生成 focused AnySearch 查询建议：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_gap_search_plan.py "<evidence>" --limit 6
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_gap_search_plan.py "<evidence>" --limit 6
 ```
 
 4. 如果链段太少，再查 typed chain templates：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_chain_match.py "<evidence>" --limit 5
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_chain_match.py "<evidence>" --limit 5
 ```
 
 5. 将 top chain 转换成 CTF Chain Ledger 条目，并在后续 hypothesis 中设置 `chainRef=<chain_id>`：

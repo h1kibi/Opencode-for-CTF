@@ -19,7 +19,7 @@ agent: daily
 先运行：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_curate.py
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_curate.py
 ```
 
 ### Step 2: 解读结果
@@ -34,7 +34,7 @@ C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\Sec
 如果用户同意补齐默认 metadata，则运行：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_curate.py --write
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_curate.py --write
 ```
 
 这一步只允许：

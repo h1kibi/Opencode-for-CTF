@@ -1,0 +1,11 @@
+{
+  "name": "ctf-core",
+  "version": "2026.07.0",
+  "description": "Shared CTF core types and scoring utilities",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

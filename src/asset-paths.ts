@@ -3,7 +3,20 @@ import path from "node:path"
 
 const __filename = fileURLToPath(import.meta.url)
 const SRC_DIR = path.dirname(__filename)
-export const PLUGIN_ROOT = path.resolve(SRC_DIR, "..")
+
+function resolvePluginRoot(): string {
+  // Source runs from repo/src.
+  if (path.basename(SRC_DIR) !== "plugin") return path.resolve(SRC_DIR, "..")
+
+  const parent = path.dirname(SRC_DIR)
+  // Repository bundle runs from repo/dist/plugin.
+  if (path.basename(parent) === "dist") return path.resolve(SRC_DIR, "../..")
+
+  // Managed install runs from <opencode-config>/opencode-for-ctf/plugin.
+  return parent
+}
+
+export const PLUGIN_ROOT = resolvePluginRoot()
 
 export function lessonsDir(): string {
   return path.join(PLUGIN_ROOT, "lessons")

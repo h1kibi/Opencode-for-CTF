@@ -219,9 +219,7 @@ function main() {
       confirmed_facts: [
         { fact: "qa rev team memory writable", evidence: "config qa", confidence: "high", owner: "lead" },
       ],
-      high_value_signals: [
-        { signal: "qa-signal", why_it_matters: "validates append merge", status: "closed" },
-      ],
+      high_value_signals: [{ signal: "qa-signal", why_it_matters: "validates append merge", status: "closed" }],
       next_action: { owner: "lead", action: "QA_COMPLETE", tool: "update-rev-team-memory", why: "script smoke passed" },
     })
     writeFileSync(patchFile, patch)
@@ -259,7 +257,11 @@ function main() {
 
   const routeWriter = resolve("scripts", "write-route-state.ts")
   if (existsSync(routeWriter)) {
-    const res = run("node", [routeWriter, "qa-evidence-init", "primary_owner=misc,first_safe_tool=ctf-one-shot-triage"], cwd)
+    const res = run(
+      "node",
+      [routeWriter, "qa-evidence-init", "primary_owner=misc,first_safe_tool=ctf-one-shot-triage"],
+      cwd,
+    )
     writeFileSync(join(outDir, "write-route-state.txt"), `${res.stdout || ""}${res.stderr || ""}`)
     results.push({
       name: "write-route-state",
@@ -293,7 +295,15 @@ function main() {
 
   const closureWriter = resolve("scripts", "write-closure-state.ts")
   if (existsSync(closureWriter)) {
-    const res = run("node", [closureWriter, "qa-evidence-init", "current_primitive=source_leak,closure_owner=web,top_closure_probe=read config path"], cwd)
+    const res = run(
+      "node",
+      [
+        closureWriter,
+        "qa-evidence-init",
+        "current_primitive=source_leak,closure_owner=web,top_closure_probe=read config path",
+      ],
+      cwd,
+    )
     writeFileSync(join(outDir, "write-closure-state.txt"), `${res.stdout || ""}${res.stderr || ""}`)
     results.push({
       name: "write-closure-state",
@@ -310,7 +320,11 @@ function main() {
 
   const unifiedWriter = resolve("scripts", "write-evidence-state.ts")
   if (existsSync(unifiedWriter)) {
-    const res = run("node", [unifiedWriter, "route", "qa-evidence-init", "primary_owner=misc,first_safe_tool=ctf-one-shot-triage"], cwd)
+    const res = run(
+      "node",
+      [unifiedWriter, "route", "qa-evidence-init", "primary_owner=misc,first_safe_tool=ctf-one-shot-triage"],
+      cwd,
+    )
     writeFileSync(join(outDir, "write-evidence-state.txt"), `${res.stdout || ""}${res.stderr || ""}`)
     results.push({
       name: "write-evidence-state",
@@ -378,7 +392,11 @@ function main() {
 
   const inventoryWriter = resolve("scripts", "write-evidence-state.ts")
   if (existsSync(inventoryWriter)) {
-    const res = run("node", [inventoryWriter, "inventory", "qa-evidence-init", "Target=qa,FirstSafeTool=ctf-one-shot-triage"], cwd)
+    const res = run(
+      "node",
+      [inventoryWriter, "inventory", "qa-evidence-init", "Target=qa,FirstSafeTool=ctf-one-shot-triage"],
+      cwd,
+    )
     writeFileSync(join(outDir, "write-inventory-state.txt"), `${res.stdout || ""}${res.stderr || ""}`)
     results.push({
       name: "write-inventory-state",
@@ -395,7 +413,16 @@ function main() {
 
   const hypothesesWriter = resolve("scripts", "write-evidence-state.ts")
   if (existsSync(hypothesesWriter)) {
-    const res = run("node", [hypothesesWriter, "hypotheses", "qa-evidence-init", "primary_owner=misc,next_probe=ctf-one-shot-triage,kill_rule=flat-queue-requires-pivot"], cwd)
+    const res = run(
+      "node",
+      [
+        hypothesesWriter,
+        "hypotheses",
+        "qa-evidence-init",
+        "primary_owner=misc,next_probe=ctf-one-shot-triage,kill_rule=flat-queue-requires-pivot",
+      ],
+      cwd,
+    )
     writeFileSync(join(outDir, "write-hypotheses-state.txt"), `${res.stdout || ""}${res.stderr || ""}`)
     results.push({
       name: "write-hypotheses-state",
@@ -412,7 +439,16 @@ function main() {
 
   const signalWriter = resolve("scripts", "write-evidence-state.ts")
   if (existsSync(signalWriter)) {
-    const res = run("node", [signalWriter, "signal-memory", "qa-evidence-init", "confirmed_assets=source leak,next_one_variable_probe=read config path"], cwd)
+    const res = run(
+      "node",
+      [
+        signalWriter,
+        "signal-memory",
+        "qa-evidence-init",
+        "confirmed_assets=source leak,next_one_variable_probe=read config path",
+      ],
+      cwd,
+    )
     writeFileSync(join(outDir, "write-signal-memory-state.txt"), `${res.stdout || ""}${res.stderr || ""}`)
     results.push({
       name: "write-signal-memory-state",

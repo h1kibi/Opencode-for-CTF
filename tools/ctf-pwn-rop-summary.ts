@@ -1,10 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import path from "node:path"
 import { analyzePwnDisasmText } from "./lib/pwn-disasm-analysis.ts"
-
-const execFile = promisify(execFileCb)
+import { safeExec } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -16,18 +13,11 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   return target
 }
 
-async function safeExec(cmd: string, args: string[], cwd: string, ms = 7000) {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout: ms, maxBuffer: 1024 * 1024 })
-    return `${stdout}${stderr ? `\n${stderr}` : ""}`
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`
-  }
-}
-
 function grepLines(text: string, re: RegExp, limit = 40) {
-  return text.split(/\r?\n/).filter((line) => re.test(line)).slice(0, limit)
+  return text
+    .split(/\r?\n/)
+    .filter((line) => re.test(line))
+    .slice(0, limit)
 }
 
 function collectWritableSections(readelfS: string) {
@@ -35,7 +25,10 @@ function collectWritableSections(readelfS: string) {
   const out: string[] = []
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
-    if (/\]\s+\.(data|bss|got|got\.plt|fini_array|init_array|dynamic)\b/i.test(line) || /\.(data|bss|got|got\.plt|fini_array|init_array|dynamic)\b/.test(line)) {
+    if (
+      /\]\s+\.(data|bss|got|got\.plt|fini_array|init_array|dynamic)\b/i.test(line) ||
+      /\.(data|bss|got|got\.plt|fini_array|init_array|dynamic)\b/.test(line)
+    ) {
       out.push(line.trim())
     }
   }
@@ -43,10 +36,26 @@ function collectWritableSections(readelfS: string) {
 }
 
 function parseSymbols(readelfSyms: string) {
-  const hits = ["win", "print_flag", "system", "puts", "write", "read", "open", "openat", "mprotect", "execve", "__libc_csu_init", "main", "vuln"]
+  const hits = [
+    "win",
+    "print_flag",
+    "system",
+    "puts",
+    "write",
+    "read",
+    "open",
+    "openat",
+    "mprotect",
+    "execve",
+    "__libc_csu_init",
+    "main",
+    "vuln",
+  ]
   const out: Record<string, string> = {}
   for (const name of hits) {
-    const line = readelfSyms.split(/\r?\n/).find((x) => new RegExp(`\\b${name.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\b`).test(x))
+    const line = readelfSyms
+      .split(/\r?\n/)
+      .find((x) => new RegExp(`\\b${name.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\b`).test(x))
     if (line) out[name] = line.trim()
   }
   return out
@@ -69,7 +78,8 @@ function firstNonEmpty(lines: string[]) {
 }
 
 export default tool({
-  description: "CTF pwn ROP summary: gather common gadgets, writable sections, symbol clues, and route hints for ret2win/ROP/syscall branches.",
+  description:
+    "CTF pwn ROP summary: gather common gadgets, writable sections, symbol clues, and route hints for ret2win/ROP/syscall branches.",
   args: {
     binary: tool.schema.string().describe("Workspace-relative ELF binary path."),
     timeoutMs: tool.schema.number().optional().describe("Timeout per external tool call in ms. Default 7000."),
@@ -79,12 +89,18 @@ export default tool({
     const cwd = path.dirname(binary)
     const timeoutMs = Math.max(1000, Math.min(args.timeoutMs ?? 7000, 30000))
 
-    const ropOut = await safeExec("ROPgadget", ["--binary", binary, "--only", "pop|ret|syscall|leave"], cwd, timeoutMs)
-    const readelfS = await safeExec("readelf", ["-S", binary], cwd, timeoutMs)
-    const readelfSyms = await safeExec("readelf", ["-Ws", binary], cwd, timeoutMs)
-    const nmOut = await safeExec("nm", ["-an", binary], cwd, timeoutMs)
-    const stringsOut = await safeExec("strings", [binary], cwd, timeoutMs)
-    const objdumpDisasm = await safeExec("objdump", ["-d", "-M", "intel", binary], cwd, timeoutMs)
+    const ropR = await safeExec("ROPgadget", ["--binary", binary, "--only", "pop|ret|syscall|leave"], cwd, timeoutMs)
+    const ropOut = ropR.output
+    const readelfSR = await safeExec("readelf", ["-S", binary], cwd, timeoutMs)
+    const readelfS = readelfSR.output
+    const readelfSymsR = await safeExec("readelf", ["-Ws", binary], cwd, timeoutMs)
+    const readelfSyms = readelfSymsR.output
+    const nmR = await safeExec("nm", ["-an", binary], cwd, timeoutMs)
+    const nmOut = nmR.output
+    const stringsR = await safeExec("strings", [binary], cwd, timeoutMs)
+    const stringsOut = stringsR.output
+    const objdumpR = await safeExec("objdump", ["-d", "-M", "intel", binary], cwd, timeoutMs)
+    const objdumpDisasm = objdumpR.output
 
     const gadgetMatches = {
       ret: grepLines(ropOut, /:\s*ret\b/i, 8),
@@ -120,22 +136,38 @@ export default tool({
       "red_flag_tags:",
       ...(disasmAnalysis.redFlagTags.length ? disasmAnalysis.redFlagTags.map((x: string) => `- ${x}`) : ["- none"]),
       "constraint_hints:",
-      ...(disasmAnalysis.constraintHints.length ? disasmAnalysis.constraintHints.map((x: string) => `- ${x}`) : ["- none"]),
+      ...(disasmAnalysis.constraintHints.length
+        ? disasmAnalysis.constraintHints.map((x: string) => `- ${x}`)
+        : ["- none"]),
       "stack_layout_hints:",
-      ...(disasmAnalysis.stackLayoutHints.length ? disasmAnalysis.stackLayoutHints.map((x: string) => `- ${x}`) : ["- none"]),
+      ...(disasmAnalysis.stackLayoutHints.length
+        ? disasmAnalysis.stackLayoutHints.map((x: string) => `- ${x}`)
+        : ["- none"]),
       "writable_sections:",
       ...(writableSections.length ? writableSections.map((x) => `- ${x}`) : ["- none"]),
       "gadget_presence:",
       ...Object.entries(gadgetPresence).map(([k, v]) => `- ${k}: ${v}`),
       "gadget_summary:",
-      ...(Object.entries(gadgetMatches).flatMap(([k, arr]) => arr.length ? [`- ${k}:`, ...arr.map((x) => `  - ${x.trim()}`)] : [`- ${k}: none`])),
+      ...Object.entries(gadgetMatches).flatMap(([k, arr]) =>
+        arr.length ? [`- ${k}:`, ...arr.map((x) => `  - ${x.trim()}`)] : [`- ${k}: none`],
+      ),
       "interesting_strings:",
       ...(interestingStrings.length ? interestingStrings.map((x) => `- ${x}`) : ["- none"]),
       "recommended_next:",
-      hints.includes("ret2win_candidate") ? "- Prove offset/control and test the direct win route before wider gadget hunting." : "- Use this summary only after control proof or a clear leak path exists.",
-      hints.includes("arg_control_pop_rdi_present") ? "- `pop rdi ; ret` is present; if a leak and libc/base path exists, prefer shortest argument-controlled ret2libc before gadget roulette." : "- If arg-control gadgets are absent, consider ret2csu, stack pivot, or write/data-only closure paths.",
-      hints.includes("syscall_rop_candidate") ? "- If seccomp or static constraints exist, check whether a syscall-oriented ORW route is shorter than shell closure." : "- If libc route stalls, recheck writable memory and ret2csu/syscall candidates.",
-      ...(disasmAnalysis.routePressure.length ? disasmAnalysis.routePressure.map((x: string) => `- ${x}`) : ["- If a checker-like stack write appears in disassembly, prefer frame-layout reduction before wider gadget drift."]),
+      hints.includes("ret2win_candidate")
+        ? "- Prove offset/control and test the direct win route before wider gadget hunting."
+        : "- Use this summary only after control proof or a clear leak path exists.",
+      hints.includes("arg_control_pop_rdi_present")
+        ? "- `pop rdi ; ret` is present; if a leak and libc/base path exists, prefer shortest argument-controlled ret2libc before gadget roulette."
+        : "- If arg-control gadgets are absent, consider ret2csu, stack pivot, or write/data-only closure paths.",
+      hints.includes("syscall_rop_candidate")
+        ? "- If seccomp or static constraints exist, check whether a syscall-oriented ORW route is shorter than shell closure."
+        : "- If libc route stalls, recheck writable memory and ret2csu/syscall candidates.",
+      ...(disasmAnalysis.routePressure.length
+        ? disasmAnalysis.routePressure.map((x: string) => `- ${x}`)
+        : [
+            "- If a checker-like stack write appears in disassembly, prefer frame-layout reduction before wider gadget drift.",
+          ]),
     ].join("\n")
   },
 })

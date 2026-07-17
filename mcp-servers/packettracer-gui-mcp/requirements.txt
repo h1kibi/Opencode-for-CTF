@@ -1,0 +1,8 @@
+mcp>=1.9.4
+pywinauto>=0.6.8
+pyautogui>=0.9.54
+mss>=9.0.1
+Pillow>=10.4.0
+pygetwindow>=0.0.9
+pywin32>=306
+comtypes>=1.4.5

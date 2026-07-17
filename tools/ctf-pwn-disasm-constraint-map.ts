@@ -1,10 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import path from "node:path"
 import { analyzePwnDisasmText } from "./lib/pwn-disasm-analysis.ts"
-
-const execFile = promisify(execFileCb)
+import { safeExec } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -14,21 +11,18 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   return target
 }
 
-async function safeExec(cmd: string, args: string[], cwd: string, timeout = 12000) {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout, maxBuffer: 4 * 1024 * 1024 })
-    return `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`.trim()
-  }
-}
-
 export default tool({
-  description: "CTF pwn disasm constraint map: turn objdump/source evidence into stack-layout hints, checker-style comparison gates, and overwrite-path pressure for disguised stack-smash branches.",
+  description:
+    "CTF pwn disasm constraint map: turn objdump/source evidence into stack-layout hints, checker-style comparison gates, and overwrite-path pressure for disguised stack-smash branches.",
   args: {
-    binary: tool.schema.string().optional().describe("Workspace-relative ELF binary path. If provided, objdump is collected automatically."),
-    evidence: tool.schema.string().optional().describe("Source snippet, decompilation, or disassembly text when no binary path is provided."),
+    binary: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative ELF binary path. If provided, objdump is collected automatically."),
+    evidence: tool.schema
+      .string()
+      .optional()
+      .describe("Source snippet, decompilation, or disassembly text when no binary path is provided."),
     timeoutMs: tool.schema.number().optional().describe("Timeout per external tool call in ms. Default 12000."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
@@ -39,7 +33,8 @@ export default tool({
     if (args.binary) {
       const target = resolveInsideWorkspace(context.directory, args.binary)
       binary = target
-      evidence = await safeExec("objdump", ["-d", "-M", "intel", target], path.dirname(target), timeoutMs)
+      const objdumpR = await safeExec("objdump", ["-d", "-M", "intel", target], path.dirname(target), timeoutMs)
+      evidence = objdumpR.output
     }
     if (evidence.trim().length < 16) return "BLOCK: provide binary=... or evidence=..."
     const analysis = analyzePwnDisasmText(evidence)

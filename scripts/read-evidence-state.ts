@@ -7,7 +7,9 @@ function main() {
   const slug = process.argv[3]
 
   if (!kind || !slug) {
-    console.log("Usage: node scripts/read-evidence-state.ts <route|primitive|closure|hypotheses|signal-memory|inventory|preferred-restart> <challenge-slug>")
+    console.log(
+      "Usage: node scripts/read-evidence-state.ts <route|primitive|closure|hypotheses|signal-memory|inventory|preferred-restart> <challenge-slug>",
+    )
     process.exit(1)
   }
 

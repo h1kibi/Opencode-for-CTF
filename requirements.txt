@@ -30,6 +30,9 @@ oletools>=0.60.2
 pdfminer.six>=20231228
 pefile>=2023.2.7
 
+# Document extraction (used by doc-read tool, optional)
+# See requirements-docs.txt for document-specific dependencies.
+
 # Notes:
 # - SageMath should usually be installed separately from the official distribution.
 # - Ghidra, IDA Pro, Radare2, JADX GUI, Wireshark/tshark, Volatility, and Docker

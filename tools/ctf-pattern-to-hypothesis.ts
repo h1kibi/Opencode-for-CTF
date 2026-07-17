@@ -63,7 +63,11 @@ function loadIndexWithExtras(indexPath: string) {
 }
 
 function family(card: Card) {
-  return `${card.category}:${card.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60)}`
+  return `${card.category}:${card.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60)}`
 }
 
 function value(card: Card) {
@@ -74,19 +78,27 @@ function value(card: Card) {
 
 function confidence(card: Card, evidence: string) {
   const hay = `${card.title} ${card.trigger} ${card.preconditions?.join(" ") || ""}`.toLowerCase()
-  const ev = evidence.toLowerCase().split(/[^a-z0-9_+.#:-]+/).filter((x) => x.length >= 3)
+  const ev = evidence
+    .toLowerCase()
+    .split(/[^a-z0-9_+.#:-]+/)
+    .filter((x) => x.length >= 3)
   const overlap = ev.filter((t) => hay.includes(t)).length
-  return Math.min(5, Math.max(1, Math.round((overlap >= 5 ? 4 : overlap >= 3 ? 3 : overlap >= 1 ? 2 : 1) + (card.curated ? 1 : 0))))
+  return Math.min(
+    5,
+    Math.max(1, Math.round((overlap >= 5 ? 4 : overlap >= 3 ? 3 : overlap >= 1 ? 2 : 1) + (card.curated ? 1 : 0))),
+  )
 }
 
 function infoGain(card: Card) {
   if (/workflow|pivot/.test(card.kind)) return 4
-  if (/differential|oracle|leak|parser|matrix|triage/.test(`${card.trigger} ${card.first_safe_check}`.toLowerCase())) return 5
+  if (/differential|oracle|leak|parser|matrix|triage/.test(`${card.trigger} ${card.first_safe_check}`.toLowerCase()))
+    return 5
   return 3
 }
 
 export default tool({
-  description: "Convert an offline CTF pattern card into a ctf-decision-state hypothesis and probe contract. Use after ctf-pattern-card-search chooses one card.",
+  description:
+    "Convert an offline CTF pattern card into a ctf-decision-state hypothesis and probe contract. Use after ctf-pattern-card-search chooses one card.",
   args: {
     cardId: tool.schema.string().describe("Pattern card id from ctf-pattern-card-search."),
     evidence: tool.schema.string().describe("Current challenge evidence and constraint equation summary."),
@@ -168,9 +180,13 @@ export default tool({
       `probe_contract_json: ${JSON.stringify(probe)}`,
       `next_tools: ${(card.next_tools || []).join(" | ") || "none"}`,
       "execution_plan:",
-      ...((card.execution_plan || []).length ? (card.execution_plan || []).map((x) => `- ${x}`) : ["- Run the first safe check as one controlled probe."]),
+      ...((card.execution_plan || []).length
+        ? (card.execution_plan || []).map((x) => `- ${x}`)
+        : ["- Run the first safe check as one controlled probe."]),
       "failure_modes_to_avoid:",
-      ...((card.failure_modes || []).length ? (card.failure_modes || []).map((x) => `- ${x}`) : ["- Continuing without a new differential."]),
+      ...((card.failure_modes || []).length
+        ? (card.failure_modes || []).map((x) => `- ${x}`)
+        : ["- Continuing without a new differential."]),
       "next_steps:",
       "- Add hypothesis_json to ctf-decision-state rank/init input.",
       "- Use probe_contract_json before executing the first safe check.",

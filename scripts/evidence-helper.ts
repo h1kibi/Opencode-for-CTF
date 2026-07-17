@@ -12,12 +12,7 @@ export const TARGETS: Record<EvidenceKind, string> = {
   inventory: "inventory.md",
 }
 
-export const PREFERRED_RESTART_FILES = [
-  "resume.md",
-  "fast-handoff.md",
-  "handoff.md",
-  "snapshot.md",
-] as const
+export const PREFERRED_RESTART_FILES = ["resume.md", "fast-handoff.md", "handoff.md", "snapshot.md"] as const
 
 export const STRUCTURED_STATE_FILES = [
   "route.json",
@@ -99,14 +94,9 @@ export function mergeRecord(base: Record<string, unknown>, patch: Record<string,
 
 function writeTextFile(target: string, patch: Record<string, unknown>) {
   const lines = Object.entries(patch).map(([key, value]) => `- ${key}: ${String(value)}`)
-  const content = [
-    "# Structured Update",
-    "",
-    ...lines,
-    "",
-    `- last_updated: ${new Date().toISOString()}`,
-    "",
-  ].join("\n")
+  const content = ["# Structured Update", "", ...lines, "", `- last_updated: ${new Date().toISOString()}`, ""].join(
+    "\n",
+  )
   writeFileSync(target, content)
 }
 

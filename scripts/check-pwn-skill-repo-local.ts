@@ -22,7 +22,14 @@ function walk(dir: string, out: string[] = []) {
 }
 
 function terms(query: string) {
-  return Array.from(new Set(query.toLowerCase().split(/[^a-z0-9_+.#:-]+/i).filter((x) => x.length >= 2))).slice(0, 20)
+  return Array.from(
+    new Set(
+      query
+        .toLowerCase()
+        .split(/[^a-z0-9_+.#:-]+/i)
+        .filter((x) => x.length >= 2),
+    ),
+  ).slice(0, 20)
 }
 
 function scoreFile(rel: string, text: string, termList: string[]) {
@@ -34,7 +41,12 @@ function scoreFile(rel: string, text: string, termList: string[]) {
     if (rel.toLowerCase().includes(t)) score += 8
   }
   if (/knowledge\/pwn\//i.test(rel)) score += 22
-  if (/bundled-libc-first|wrong-libc-anti-pattern|exact-read-contracts|glibc27-fake-stdout-shortplaybook|free_hook-setcontext-orw|seccomp-closure-router|runtime-closure-index/i.test(rel)) score += 80
+  if (
+    /bundled-libc-first|wrong-libc-anti-pattern|exact-read-contracts|glibc27-fake-stdout-shortplaybook|free_hook-setcontext-orw|seccomp-closure-router|runtime-closure-index/i.test(
+      rel,
+    )
+  )
+    score += 80
   return score
 }
 

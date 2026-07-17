@@ -1,10 +1,8 @@
 import { tool } from "@opencode-ai/plugin"
 import { lstat, readdir, readFile } from "node:fs/promises"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { pwnImage, revImage, DOCKER_IMAGES } from "./lib/docker-config.ts"
+import { safeExec } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -22,16 +20,6 @@ async function listFilesSafe(dir: string) {
   return out
 }
 
-async function safeExec(cmd: string, args: string[], cwd: string, ms = 5000) {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout: ms, maxBuffer: 512 * 1024 })
-    return `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`.trim()
-  }
-}
-
 type RuntimeGuess = {
   image: string
   service: string
@@ -40,19 +28,41 @@ type RuntimeGuess = {
 }
 
 function imageForUbuntu(version: string) {
-  if (version === "18.04") return { image: "pwnlab:general-ubuntu18.04", service: "pwn-general18", profile: "general18" }
-  if (version === "20.04") return { image: "pwnlab:general-ubuntu20.04", service: "pwn-general20", profile: "general20" }
-  if (version === "22.04") return { image: "pwnlab:general-ubuntu22.04", service: "pwn-general", profile: "general" }
-  if (version === "24.04") return { image: "pwnlab:general-ubuntu24.04", service: "pwn-general24", profile: "general24" }
+  if (version === "18.04")
+    return { image: pwnImage("general-ubuntu18.04"), service: "pwn-general18", profile: "general18" }
+  if (version === "20.04")
+    return { image: pwnImage("general-ubuntu20.04"), service: "pwn-general20", profile: "general20" }
+  if (version === "22.04") return { image: pwnImage("general-ubuntu22.04"), service: "pwn-general", profile: "general" }
+  if (version === "24.04")
+    return { image: pwnImage("general-ubuntu24.04"), service: "pwn-general24", profile: "general24" }
   return undefined
 }
 
 function imageForDebian(suite: string) {
   const normalized = suite.toLowerCase()
-  if (normalized === "buster" || normalized === "10") return { image: "pwnlab:general-debian11", service: "pwn-debian11", profile: "debian11", reason: "debian_buster_approx_use_debian11_toolbox_or_challenge_runtime_recheck_glibc_2.28" }
-  if (normalized === "bullseye" || normalized === "11") return { image: "pwnlab:general-debian11", service: "pwn-debian11", profile: "debian11", reason: "debian_bullseye_runtime_glibc_2.31" }
-  if (normalized === "bookworm" || normalized === "12") return { image: "pwnlab:general-debian12", service: "pwn-debian12", profile: "debian12", reason: "debian_bookworm_runtime_glibc_2.36" }
-  if (normalized === "trixie" || normalized === "13") return { ...imageForUbuntu("24.04")!, reason: "debian_trixie_approx_runtime_use_ubuntu24.04_recheck_libc" }
+  if (normalized === "buster" || normalized === "10")
+    return {
+      image: pwnImage("general-debian11"),
+      service: "pwn-debian11",
+      profile: "debian11",
+      reason: "debian_buster_approx_use_debian11_toolbox_or_challenge_runtime_recheck_glibc_2.28",
+    }
+  if (normalized === "bullseye" || normalized === "11")
+    return {
+      image: pwnImage("general-debian11"),
+      service: "pwn-debian11",
+      profile: "debian11",
+      reason: "debian_bullseye_runtime_glibc_2.31",
+    }
+  if (normalized === "bookworm" || normalized === "12")
+    return {
+      image: pwnImage("general-debian12"),
+      service: "pwn-debian12",
+      profile: "debian12",
+      reason: "debian_bookworm_runtime_glibc_2.36",
+    }
+  if (normalized === "trixie" || normalized === "13")
+    return { ...imageForUbuntu("24.04")!, reason: "debian_trixie_approx_runtime_use_ubuntu24.04_recheck_libc" }
   return undefined
 }
 
@@ -62,9 +72,12 @@ function isAlpineBase(base: string) {
 
 function imageForLibc(version: string) {
   if (/2\.27/.test(version)) return { ...imageForUbuntu("18.04")!, reason: "glibc_2.27_maps_to_ubuntu18.04" }
-  if (/2\.28|2\.29|2\.30|2\.31/.test(version)) return { ...imageForUbuntu("20.04")!, reason: "glibc_2.28_to_2.31_maps_to_ubuntu20.04" }
-  if (/2\.32|2\.33|2\.34|2\.35/.test(version)) return { ...imageForUbuntu("22.04")!, reason: "glibc_2.32_to_2.35_maps_to_ubuntu22.04" }
-  if (/2\.36|2\.37|2\.38|2\.39|2\.40/.test(version)) return { ...imageForUbuntu("24.04")!, reason: "glibc_2.36_plus_maps_to_ubuntu24.04" }
+  if (/2\.28|2\.29|2\.30|2\.31/.test(version))
+    return { ...imageForUbuntu("20.04")!, reason: "glibc_2.28_to_2.31_maps_to_ubuntu20.04" }
+  if (/2\.32|2\.33|2\.34|2\.35/.test(version))
+    return { ...imageForUbuntu("22.04")!, reason: "glibc_2.32_to_2.35_maps_to_ubuntu22.04" }
+  if (/2\.36|2\.37|2\.38|2\.39|2\.40/.test(version))
+    return { ...imageForUbuntu("24.04")!, reason: "glibc_2.36_plus_maps_to_ubuntu24.04" }
   return undefined
 }
 
@@ -93,20 +106,61 @@ function parseDockerfileBase(text: string) {
   }
 }
 
-function guessRuntime(version: string, arch: string, dockerUbuntuVersion: string, dockerDebianSuite: string, hasAlpineBase: boolean): RuntimeGuess {
+function guessRuntime(
+  version: string,
+  arch: string,
+  dockerUbuntuVersion: string,
+  dockerDebianSuite: string,
+  hasAlpineBase: boolean,
+): RuntimeGuess {
   const archHint = arch.toLowerCase()
-  if (/i386|32-bit|intel 80386|elf32/.test(archHint)) return { image: "pwnlab:i386-ubuntu20.04", service: "pwn-i386", profile: "i386", reason: "binary_arch_i386_overrides_amd64_runtime" }
-  if (/aarch64|arm64/.test(archHint)) return { image: "pwnlab:aarch64", service: "pwn-aarch64", profile: "aarch64", reason: "binary_arch_arm64_requires_multiarch_runtime" }
-  if (/mipsel/.test(archHint) || /mips.*little/.test(archHint)) return { image: "pwnlab:mipsel", service: "pwn-mipsel", profile: "mipsel", reason: "binary_arch_mipsel_requires_multiarch_runtime" }
-  if (/mips/.test(archHint)) return { image: "pwnlab:mipsel", service: "pwn-mipsel", profile: "mipsel", reason: "binary_arch_mips_detected_default_to_mipsel_recheck_endian" }
+  if (/i386|32-bit|intel 80386|elf32/.test(archHint))
+    return {
+      image: pwnImage("i386-ubuntu20.04"),
+      service: "pwn-i386",
+      profile: "i386",
+      reason: "binary_arch_i386_overrides_amd64_runtime",
+    }
+  if (/aarch64|arm64/.test(archHint))
+    return {
+      image: pwnImage("aarch64"),
+      service: "pwn-aarch64",
+      profile: "aarch64",
+      reason: "binary_arch_arm64_requires_multiarch_runtime",
+    }
+  if (/mipsel/.test(archHint) || /mips.*little/.test(archHint))
+    return {
+      image: pwnImage("mipsel"),
+      service: "pwn-mipsel",
+      profile: "mipsel",
+      reason: "binary_arch_mipsel_requires_multiarch_runtime",
+    }
+  if (/mips/.test(archHint))
+    return {
+      image: pwnImage("mipsel"),
+      service: "pwn-mipsel",
+      profile: "mipsel",
+      reason: "binary_arch_mips_detected_default_to_mipsel_recheck_endian",
+    }
   const dockerImage = imageForUbuntu(dockerUbuntuVersion)
   if (dockerImage) return { ...dockerImage, reason: `challenge_dockerfile_base_ubuntu_${dockerUbuntuVersion}` }
   const debianImage = imageForDebian(dockerDebianSuite)
   if (debianImage) return debianImage
-  if (hasAlpineBase) return { image: "pwnlab:general-alpine", service: "pwn-alpine", profile: "alpine", reason: "alpine_musl_base_detected_use_musl_toolbox_do_not_reuse_glibc_offsets" }
+  if (hasAlpineBase)
+    return {
+      image: pwnImage("general-alpine"),
+      service: "pwn-alpine",
+      profile: "alpine",
+      reason: "alpine_musl_base_detected_use_musl_toolbox_do_not_reuse_glibc_offsets",
+    }
   const libcImage = imageForLibc(version)
   if (libcImage) return libcImage
-  return { image: "pwnlab:general-ubuntu22.04", service: "pwn-general", profile: "general", reason: "default_runtime_no_dockerfile_or_libc_version_match_use_comprehensive_general_toolbox" }
+  return {
+    image: pwnImage("general-ubuntu22.04"),
+    service: "pwn-general",
+    profile: "general",
+    reason: "default_runtime_no_dockerfile_or_libc_version_match_use_comprehensive_general_toolbox",
+  }
 }
 
 function inferVersion(text: string) {
@@ -130,7 +184,8 @@ function parseComposeHints(text: string) {
     const context = line.match(/^\s*context:\s*["']?([^"'\s#]+)["']?/i)?.[1]
     if (context) contexts.push(context)
     const service = line.match(/^\s{2}([A-Za-z0-9_.-]+):\s*$/)?.[1]
-    if (service && !["build", "environment", "volumes", "ports", "profiles", "command"].includes(service)) services.push(service)
+    if (service && !["build", "environment", "volumes", "ports", "profiles", "command"].includes(service))
+      services.push(service)
   }
   return {
     services: [...new Set(services)],
@@ -152,11 +207,19 @@ function muslRuntimeNotes(hasAlpineBase: boolean) {
 }
 
 function profileCapabilities(profile: string) {
-  if (profile === "general" || profile === "general20" || profile === "general24" || profile === "debian11" || profile === "debian12") {
+  if (
+    profile === "general" ||
+    profile === "general20" ||
+    profile === "general24" ||
+    profile === "debian11" ||
+    profile === "debian12"
+  ) {
     return "pwntools,gdb,checksec,readelf,objdump,nm,strings,patchelf,ROPgadget,one_gadget,seccomp-tools,strace,ltrace"
   }
-  if (profile === "alpine") return "musl-oriented toolbox,prefer challenge runtime for truth,pwntools/gdb/basic ELF tools"
-  if (profile === "aarch64" || profile === "mipsel" || profile === "i386") return "multiarch toolbox,verify runtime-specific gadget/libc behavior"
+  if (profile === "alpine")
+    return "musl-oriented toolbox,prefer challenge runtime for truth,pwntools/gdb/basic ELF tools"
+  if (profile === "aarch64" || profile === "mipsel" || profile === "i386")
+    return "multiarch toolbox,verify runtime-specific gadget/libc behavior"
   if (profile === "heavy" || profile === "heavy24") return "general toolbox plus symbolic/emulation/reversing extras"
   return "unknown"
 }
@@ -181,9 +244,13 @@ function composeSnippet(service: string, profile: string, image: string, binary:
 }
 
 export default tool({
-  description: "CTF pwn Docker harness planner: inspect challenge files and suggest a Docker/libc debugging plan without mutating the workspace.",
+  description:
+    "CTF pwn Docker harness planner: inspect challenge files and suggest a Docker/libc debugging plan without mutating the workspace.",
   args: {
-    targetDir: tool.schema.string().optional().describe("Workspace-relative challenge directory. Default current workspace."),
+    targetDir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative challenge directory. Default current workspace."),
     binary: tool.schema.string().optional().describe("Workspace-relative binary path if already known."),
     libc: tool.schema.string().optional().describe("Workspace-relative libc path if already known."),
     ld: tool.schema.string().optional().describe("Workspace-relative loader path if already known."),
@@ -202,7 +269,9 @@ export default tool({
       return autoName ? resolveInsideWorkspace(context.directory, path.join(relDir, autoName)) : ""
     }
     const dockerfiles = names.filter((x) => /^dockerfile/i.test(x))
-    const composeFiles = names.filter((x) => /^docker-compose.*\.(yml|yaml)$/i.test(x) || /^compose\.(yml|yaml)$/i.test(x))
+    const composeFiles = names.filter(
+      (x) => /^docker-compose.*\.(yml|yaml)$/i.test(x) || /^compose\.(yml|yaml)$/i.test(x),
+    )
     const binaryAuto = names.find((x) => /(^chall$|^pwn$|^vuln$|\.out$|\.bin$|^main$)/i.test(x)) || ""
     const libcAuto = names.find((x) => /^libc[._-]?.*\.so/i.test(x) || /^libc\.so\.6$/i.test(x)) || ""
     const ldAuto = names.find((x) => /^ld(-linux.*)?\.so/i.test(x)) || ""
@@ -223,7 +292,7 @@ export default tool({
     let arch = "unknown"
     if (binaryPath) {
       const fileOut = await safeExec("file", [binaryPath], path.dirname(binaryPath), timeoutMs)
-      arch = fileOut || "unknown"
+      arch = fileOut.output || "unknown"
     }
 
     const composeInfos = []
@@ -242,12 +311,22 @@ export default tool({
         const info = parseDockerfileBase(await readFile(dockerfilePath, "utf8"))
         dockerfileInfos.push({ name: dockerfile, ...info })
       } catch {
-        dockerfileInfos.push({ name: dockerfile, bases: [], primaryBase: "unreadable_or_missing", ubuntuVersion: "unknown", allUbuntuVersions: [], debianSuite: "unknown", allDebianSuites: [], alpineBase: "unknown" })
+        dockerfileInfos.push({
+          name: dockerfile,
+          bases: [],
+          primaryBase: "unreadable_or_missing",
+          ubuntuVersion: "unknown",
+          allUbuntuVersions: [],
+          debianSuite: "unknown",
+          allDebianSuites: [],
+          alpineBase: "unknown",
+        })
       }
     }
     const dockerUbuntuVersion = dockerfileInfos.find((x) => x.ubuntuVersion !== "unknown")?.ubuntuVersion || "unknown"
     const dockerDebianSuite = dockerfileInfos.find((x) => x.debianSuite !== "unknown")?.debianSuite || "unknown"
-    const hasAlpineBase = dockerfileInfos.some((x) => x.alpineBase !== "unknown") || composeInfos.some((x) => x.alpineImages.length > 0)
+    const hasAlpineBase =
+      dockerfileInfos.some((x) => x.alpineBase !== "unknown") || composeInfos.some((x) => x.alpineImages.length > 0)
     const runtime = guessRuntime(libcVersion, arch, dockerUbuntuVersion, dockerDebianSuite, hasAlpineBase)
     const { image, service, profile } = runtime
     const hasDockerfile = dockerfileInfos.length > 0
@@ -258,10 +337,19 @@ export default tool({
       libcName && !ldName ? "libc_without_loader" : "",
       !hasDockerfile && !libcName ? "no_challenge_dockerfile_or_libc_bundle" : "",
       libcVersion === "unknown" && libcName ? "libc_version_unparsed" : "",
-      dockerfileInfos.length > 0 && dockerUbuntuVersion === "unknown" && dockerDebianSuite === "unknown" && !hasAlpineBase ? "dockerfile_base_not_mapped_to_supported_linux_runtime" : "",
+      dockerfileInfos.length > 0 &&
+      dockerUbuntuVersion === "unknown" &&
+      dockerDebianSuite === "unknown" &&
+      !hasAlpineBase
+        ? "dockerfile_base_not_mapped_to_supported_linux_runtime"
+        : "",
       dockerDebianSuite !== "unknown" ? "debian_base_uses_approximate_pwnlab_mapping_recheck_glibc" : "",
       hasAlpineBase ? "alpine_musl_runtime_detected_glibc_pwnlab_may_not_match" : "",
-      dockerUbuntuVersion !== "unknown" && libcVersion !== "unknown" && imageForLibc(libcVersion)?.image !== imageForUbuntu(dockerUbuntuVersion)?.image ? "dockerfile_libc_version_tension_recheck_runtime" : "",
+      dockerUbuntuVersion !== "unknown" &&
+      libcVersion !== "unknown" &&
+      imageForLibc(libcVersion)?.image !== imageForUbuntu(dockerUbuntuVersion)?.image
+        ? "dockerfile_libc_version_tension_recheck_runtime"
+        : "",
       /aarch64|arm64|mips|i386|32-bit|elf32/i.test(arch) ? "non_default_arch_runtime" : "",
     ].filter(Boolean)
 
@@ -272,9 +360,8 @@ export default tool({
       : libcName
         ? `LD_PRELOAD=${libcName.replace(/\\/g, "/")} ${binaryRel}`
         : "none"
-    const substrateGate = libcName || ldName
-      ? "bundled_libc_present_do_not_validate_heap_or_overlap_on_mismatched_base"
-      : "none"
+    const substrateGate =
+      libcName || ldName ? "bundled_libc_present_do_not_validate_heap_or_overlap_on_mismatched_base" : "none"
     const suggestedRun = `docker run --rm -it --cap-add=SYS_PTRACE --security-opt seccomp=unconfined -v ./:/work -w /work ${image} bash`
     const suggestedCompose = composeSnippet(service, profile, image, binaryRel)
 
@@ -289,24 +376,24 @@ export default tool({
       "dockerfile_runtime_hints:",
       ...(dockerfileInfos.length
         ? dockerfileInfos.flatMap((x) => [
-          `- file: ${x.name}`,
-          `  primary_base: ${x.primaryBase}`,
-          `  ubuntu_version: ${x.ubuntuVersion}`,
-          `  debian_suite: ${x.debianSuite}`,
-          `  alpine_base: ${x.alpineBase}`,
-          `  all_bases: ${x.bases.length ? x.bases.join(", ") : "none"}`,
-        ])
+            `- file: ${x.name}`,
+            `  primary_base: ${x.primaryBase}`,
+            `  ubuntu_version: ${x.ubuntuVersion}`,
+            `  debian_suite: ${x.debianSuite}`,
+            `  alpine_base: ${x.alpineBase}`,
+            `  all_bases: ${x.bases.length ? x.bases.join(", ") : "none"}`,
+          ])
         : ["- none"]),
       "compose_runtime_hints:",
       ...(composeInfos.length
         ? composeInfos.flatMap((x) => [
-          `- file: ${x.name}`,
-          `  services: ${x.services.length ? x.services.join(", ") : "unknown"}`,
-          `  images: ${x.images.length ? x.images.join(", ") : "none"}`,
-          `  contexts: ${x.contexts.length ? x.contexts.join(", ") : "none"}`,
-          `  dockerfiles: ${x.dockerfiles.length ? x.dockerfiles.join(", ") : "none"}`,
-          `  alpine_images: ${x.alpineImages.length ? x.alpineImages.join(", ") : "none"}`,
-        ])
+            `- file: ${x.name}`,
+            `  services: ${x.services.length ? x.services.join(", ") : "unknown"}`,
+            `  images: ${x.images.length ? x.images.join(", ") : "none"}`,
+            `  contexts: ${x.contexts.length ? x.contexts.join(", ") : "none"}`,
+            `  dockerfiles: ${x.dockerfiles.length ? x.dockerfiles.join(", ") : "none"}`,
+            `  alpine_images: ${x.alpineImages.length ? x.alpineImages.join(", ") : "none"}`,
+          ])
         : ["- none"]),
       `binary_arch_hint: ${arch}`,
       `libc_version: ${libcVersion}`,
@@ -326,10 +413,18 @@ export default tool({
       `needs_pwninit: ${needsPwninit ? "yes" : "maybe"}`,
       `remote_drift_risk: ${libcName || ldName || hasDockerfile ? "lower" : "higher"}`,
       "recommended_flow:",
-      hasDockerfile ? "- Prefer the challenge-provided Dockerfile or compose first." : `- No challenge Dockerfile detected; start from ${image}.`,
-      libcName ? `- Bundle-aware route: use ${libcName}${ldName ? ` + ${ldName}` : ""} for local reproduction.` : "- No bundled libc detected; be careful about local/remote mismatch.",
-      explicitLoaderCommand !== "none" ? `- Explicit loader command: ${explicitLoaderCommand}` : "- No explicit loader command available.",
-      needsPwninit ? "- Run pwninit or equivalent patching before long debugger sessions when the binary expects the bundled libc/ld." : "- Patch libc/ld only if the binary clearly depends on a provided runtime.",
+      hasDockerfile
+        ? "- Prefer the challenge-provided Dockerfile or compose first."
+        : `- No challenge Dockerfile detected; start from ${image}.`,
+      libcName
+        ? `- Bundle-aware route: use ${libcName}${ldName ? ` + ${ldName}` : ""} for local reproduction.`
+        : "- No bundled libc detected; be careful about local/remote mismatch.",
+      explicitLoaderCommand !== "none"
+        ? `- Explicit loader command: ${explicitLoaderCommand}`
+        : "- No explicit loader command available.",
+      needsPwninit
+        ? "- Run pwninit or equivalent patching before long debugger sessions when the binary expects the bundled libc/ld."
+        : "- Patch libc/ld only if the binary clearly depends on a provided runtime.",
       "musl_runtime_notes:",
       ...muslRuntimeNotes(hasAlpineBase),
       "risk_signals:",

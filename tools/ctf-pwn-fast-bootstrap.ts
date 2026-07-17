@@ -1,11 +1,8 @@
 import { tool } from "@opencode-ai/plugin"
 import { readdir, readFile, stat } from "node:fs/promises"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
+import { safeExec } from "./lib/exec-utils.ts"
 import path from "node:path"
 import { analyzePwnDisasmText } from "./lib/pwn-disasm-analysis.ts"
-
-const execFile = promisify(execFileCb)
 const TEMPLATE_BY_ROUTE: Record<string, string> = {
   ret2win: "pwn_fast_ret2win.py",
   ret2libc: "pwn_fast_ret2libc.py",
@@ -25,7 +22,12 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
 }
 
 async function exists(file: string) {
-  try { await stat(file); return true } catch { return false }
+  try {
+    await stat(file)
+    return true
+  } catch {
+    return false
+  }
 }
 
 async function walk(root: string, maxFiles: number) {
@@ -43,16 +45,6 @@ async function walk(root: string, maxFiles: number) {
   }
   await rec(root)
   return out
-}
-
-async function tryExec(cmd: string, args: string[], cwd: string, timeout = 5000) {
-  try {
-    const res = await execFile(cmd, args, { cwd, timeout, maxBuffer: 1024 * 1024 })
-    return `${res.stdout}${res.stderr}`.trim()
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return `${e.stdout ?? ""}${e.stderr ?? e.message ?? ""}`.trim()
-  }
 }
 
 function isLikelyBinaryName(file: string) {
@@ -85,24 +77,44 @@ function classifyRoute(evidence: string) {
   if (/malloc|free|realloc|heap/.test(e)) scores["heap-simple"] += 2
   if (/tcache|fastbin|unsorted|double free|uaf|use.after.free/.test(e)) scores["heap-simple"] += 4
   if (/choice|menu|index|add|edit|delete|remove|show|buy|sell|name|desc|description/.test(e)) scores["heap-simple"] += 2
-  if (/new\s+0x1c|memcpy\s*\([^\n]+obj\s*\+\s*8|vtable|function pointer|virtual call|dispatch|object overwrite|adjacent object|double deref|\*\(\*\(/.test(e)) scores["heap-simple"] += 5
+  if (
+    /new\s+0x1c|memcpy\s*\([^\n]+obj\s*\+\s*8|vtable|function pointer|virtual call|dispatch|object overwrite|adjacent object|double deref|\*\(\*\(/.test(
+      e,
+    )
+  )
+    scores["heap-simple"] += 5
 
   if (/shellcode|mprotect|read\(0|gets\(|nx disabled|rwx/.test(e)) scores.shellcode += 4
-  if (/gnu_stack.*rwe|gnu_stack.*rwx|executable stack|jmp rsp|jmp esp|call rsp|call esp|read\(0, rsp|read\(0, esp|short stager|stage-2|stager/.test(e)) scores.shellcode += 5
+  if (
+    /gnu_stack.*rwe|gnu_stack.*rwx|executable stack|jmp rsp|jmp esp|call rsp|call esp|read\(0, rsp|read\(0, esp|short stager|stage-2|stager/.test(
+      e,
+    )
+  )
+    scores.shellcode += 5
   if (/seccomp/.test(e) && /jmp rsp|jmp esp|rwx|executable stack/.test(e)) scores.orw += 3
   if (/win|print_flag|backdoor|give_shell|system\(|cat flag|\/bin\/sh/.test(e)) scores.ret2win += 4
   if (/choice|menu|index|add|edit|delete|remove|show/.test(e) && /system\(|\/bin\/sh/.test(e)) scores.ret2win -= 2
   if (/puts@|puts\b|got|plt|libc|__libc_start_main/.test(e)) scores.ret2libc += 3
-  if (/call.*<read@plt>|call.*<recv@plt>|call.*<fgets@plt>|call.*<gets@plt>/.test(e) && /mov\s+byte ptr\s+\[.*bp-0x[0-9a-f]+\],0x0/.test(e)) scores.raw += 4
+  if (
+    /call.*<read@plt>|call.*<recv@plt>|call.*<fgets@plt>|call.*<gets@plt>/.test(e) &&
+    /mov\s+byte ptr\s+\[.*bp-0x[0-9a-f]+\],0x0/.test(e)
+  )
+    scores.raw += 4
   if (/mov\s+byte ptr\s+\[.*bp[^\n]*\+.*\],/.test(e)) scores.raw += 3
-  if (/cmp\s+dword ptr\s+\[.*bp-0x[0-9a-f]+\],0x[0-9a-f]+/.test(e) && /mov\s+byte ptr\s+\[.*bp[^\n]*\+.*\],/.test(e)) scores.raw += 3
+  if (/cmp\s+dword ptr\s+\[.*bp-0x[0-9a-f]+\],0x[0-9a-f]+/.test(e) && /mov\s+byte ptr\s+\[.*bp[^\n]*\+.*\],/.test(e))
+    scores.raw += 3
 
   const ordered = ["heap-simple", "fmt", "orw", "ret2win", "ret2libc", "shellcode", "raw"] as const
-  const best = ordered.reduce((acc, route) => scores[route] > scores[acc] ? route : acc, "raw")
+  const best = ordered.reduce((acc, route) => (scores[route] > scores[acc] ? route : acc), "raw")
   return { route: best, scores }
 }
 
-function substrate(runtimeArtifacts: { dockerfile: string[]; compose: string[] }, libc: string[], route: string, fileInfo: string) {
+function substrate(
+  runtimeArtifacts: { dockerfile: string[]; compose: string[] },
+  libc: string[],
+  route: string,
+  fileInfo: string,
+) {
   if (runtimeArtifacts.compose.length || runtimeArtifacts.dockerfile.length) return "challenge-docker"
   if (process.platform === "win32" && /elf/i.test(fileInfo)) return "pwnlab-runbox-general"
   if (libc.length || route === "ret2libc" || route === "heap-simple") return "pwnlab-runbox-general"
@@ -120,7 +132,12 @@ async function detectRemoteHints(files: string[]) {
       for (const line of lines) {
         const trimmed = line.trim()
         if (!trimmed) continue
-        if (/remote\s*\(\s*["'][^"']+["']\s*,\s*\d{2,5}\s*\)/i.test(trimmed) || /\bnc\s+[^\s]+\s+\d{2,5}\b/i.test(trimmed) || /\b(?:host|server|remote)\s*[:=]\s*[^\s:]+\b/i.test(trimmed) || /\b[A-Za-z0-9.-]+:\d{2,5}\b/.test(trimmed)) {
+        if (
+          /remote\s*\(\s*["'][^"']+["']\s*,\s*\d{2,5}\s*\)/i.test(trimmed) ||
+          /\bnc\s+[^\s]+\s+\d{2,5}\b/i.test(trimmed) ||
+          /\b(?:host|server|remote)\s*[:=]\s*[^\s:]+\b/i.test(trimmed) ||
+          /\b[A-Za-z0-9.-]+:\d{2,5}\b/.test(trimmed)
+        ) {
           hints.push(`${base}: ${trimmed.slice(0, 140)}`)
           break
         }
@@ -132,9 +149,13 @@ async function detectRemoteHints(files: string[]) {
 }
 
 export default tool({
-  description: "CTF PWN fast bootstrap: scan artifacts, guess route/template/substrate, and recommend the next fast probe without solving.",
+  description:
+    "CTF PWN fast bootstrap: scan artifacts, guess route/template/substrate, and recommend the next fast probe without solving.",
   args: {
-    targetDir: tool.schema.string().optional().describe("Workspace-relative challenge directory. Default current directory."),
+    targetDir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative challenge directory. Default current directory."),
     binary: tool.schema.string().optional().describe("Workspace-relative binary override."),
     maxFiles: tool.schema.number().optional().describe("Maximum files to inspect. Default 120."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
@@ -150,7 +171,9 @@ export default tool({
     const ld = files.filter((f) => /ld-linux|ld-.*\.so/i.test(path.basename(f))).map(rel)
     const dockerfile = files.filter((f) => /^dockerfile/i.test(path.basename(f))).map(rel)
     const compose = files.filter((f) => /docker-compose|compose\.ya?ml/i.test(path.basename(f))).map(rel)
-    const candidates = args.binary ? [resolveInsideWorkspace(context.directory, args.binary)] : files.filter(isLikelyBinaryName).slice(0, 8)
+    const candidates = args.binary
+      ? [resolveInsideWorkspace(context.directory, args.binary)]
+      : files.filter(isLikelyBinaryName).slice(0, 8)
     const binary = candidates[0] ? rel(candidates[0]) : ""
 
     let fileInfo = ""
@@ -160,29 +183,48 @@ export default tool({
     let disasm = ""
     if (binary) {
       const binAbs = resolveInsideWorkspace(context.directory, binary)
-      fileInfo = await tryExec("file", [binAbs], context.directory)
-      programHeaders = await tryExec("readelf", ["-W", "-l", binAbs], context.directory)
-      disasm = await tryExec("objdump", ["-d", "-M", "intel", binAbs], context.directory)
-      symbols = await tryExec("nm", ["-an", binAbs], context.directory)
-      strings = await tryExec("strings", ["-a", binAbs], context.directory)
+      fileInfo = (await safeExec("file", [binAbs], context.directory, 5000)).output
+      programHeaders = (await safeExec("readelf", ["-W", "-l", binAbs], context.directory, 5000)).output
+      disasm = (await safeExec("objdump", ["-d", "-M", "intel", binAbs], context.directory, 5000)).output
+      symbols = (await safeExec("nm", ["-an", binAbs], context.directory, 5000)).output
+      strings = (await safeExec("strings", ["-a", binAbs], context.directory, 5000)).output
       if (!strings) {
         try {
           const raw = await readFile(binAbs)
-          strings = raw.toString("latin1").replace(/[^ -~\n]/g, "\n").split("\n").filter((s) => s.length >= 4).slice(0, 200).join("\n")
+          strings = raw
+            .toString("latin1")
+            .replace(/[^ -~\n]/g, "\n")
+            .split("\n")
+            .filter((s) => s.length >= 4)
+            .slice(0, 200)
+            .join("\n")
         } catch {}
       }
     }
 
-    const interestingSymbols = symbols.split(/\r?\n/).filter((l) => / win|print_flag|backdoor|system|puts|printf|read|gets|main|malloc|free|mprotect|syscall/i.test(l)).slice(0, 18)
-    const interestingStrings = strings.split(/\r?\n/).filter((l) => /flag|win|backdoor|system|\/bin\/sh|%p|%s|malloc|free|choice|menu|name|password/i.test(l)).slice(0, 18)
-    const evidence = [fileInfo, programHeaders, disasm, interestingSymbols.join("\n"), interestingStrings.join("\n")].join("\n")
+    const interestingSymbols = symbols
+      .split(/\r?\n/)
+      .filter((l) => / win|print_flag|backdoor|system|puts|printf|read|gets|main|malloc|free|mprotect|syscall/i.test(l))
+      .slice(0, 18)
+    const interestingStrings = strings
+      .split(/\r?\n/)
+      .filter((l) => /flag|win|backdoor|system|\/bin\/sh|%p|%s|malloc|free|choice|menu|name|password/i.test(l))
+      .slice(0, 18)
+    const evidence = [
+      fileInfo,
+      programHeaders,
+      disasm,
+      interestingSymbols.join("\n"),
+      interestingStrings.join("\n"),
+    ].join("\n")
     const routeDecision = classifyRoute(evidence)
     const route = routeDecision.route
     const selectedTemplate = TEMPLATE_BY_ROUTE[route]
     const selectedSubstrate = substrate({ dockerfile, compose }, libc, route, fileInfo)
     const disasmAnalysis = analyzePwnDisasmText(disasm)
     const remoteHints = await detectRemoteHints(files)
-    const recommendedRunner = process.platform === "win32" && /elf/i.test(fileInfo) ? "ctf-pwn-docker-runner" : "ctf-pwn-runner"
+    const recommendedRunner =
+      process.platform === "win32" && /elf/i.test(fileInfo) ? "ctf-pwn-docker-runner" : "ctf-pwn-runner"
 
     const payload = {
       schema_version: "pwn_fast_bootstrap.v1",
@@ -203,9 +245,10 @@ export default tool({
       template: selectedTemplate,
       substrate: selectedSubstrate,
       recommended_runner: recommendedRunner,
-      host_guardrail: process.platform === "win32" && /elf/i.test(fileInfo)
-        ? "windows_host_linux_elf_default_to_locked_linux_substrate"
-        : "none",
+      host_guardrail:
+        process.platform === "win32" && /elf/i.test(fileInfo)
+          ? "windows_host_linux_elf_default_to_locked_linux_substrate"
+          : "none",
       substrate_gate: libc.length || ld.length ? "bundled_libc_present_force_runtime_doctor" : "none",
       next_probe: binary
         ? libc[0] || ld[0]
@@ -215,17 +258,24 @@ export default tool({
             : `ctf-pwn-template-init route=${route} binary=${binary}${libc[0] ? ` libc=${libc[0]}` : ""}; then edit/run exploit.py`
         : "identify main ELF or run ctf-file-triage",
       handoff_risk: route === "heap-simple" || selectedSubstrate === "challenge-docker" ? "medium" : "low",
-      bootstrap_notes: route === "shellcode"
-        ? ["shellcode fast-lane: verify jmp rsp/exec stack/read-to-stack before raw fallback", "prefer shellcode/orw template over raw when stack execution or short stager evidence exists"]
-        : route === "orw"
-          ? ["orw fast-lane: verify seccomp/syscall surface and direct file-read closure before shell"]
-          : [],
+      bootstrap_notes:
+        route === "shellcode"
+          ? [
+              "shellcode fast-lane: verify jmp rsp/exec stack/read-to-stack before raw fallback",
+              "prefer shellcode/orw template over raw when stack execution or short stager evidence exists",
+            ]
+          : route === "orw"
+            ? ["orw fast-lane: verify seccomp/syscall surface and direct file-read closure before shell"]
+            : [],
       remote_hints: remoteHints,
     }
 
     payload.bootstrap_notes.push(...disasmAnalysis.redFlagNotes)
     payload.bootstrap_notes.push(...disasmAnalysis.routePressure)
-    if (remoteHints.length) payload.bootstrap_notes.push("remote host/port clues detected nearby: keep this bundle in the PWN fast lane even if it first arrives as a zip/archive wrapper")
+    if (remoteHints.length)
+      payload.bootstrap_notes.push(
+        "remote host/port clues detected nearby: keep this bundle in the PWN fast lane even if it first arrives as a zip/archive wrapper",
+      )
 
     if (args.jsonOnly) return JSON.stringify(payload, null, 2)
     return [
@@ -239,7 +289,9 @@ export default tool({
       `compose: ${payload.runtime_artifacts.compose.join(", ")}`,
       `file_info: ${payload.file_info}`,
       `route_guess: ${payload.route_guess}`,
-      `route_scores: ${Object.entries(payload.route_scores).map(([k, v]) => `${k}=${v}`).join(", ")}`,
+      `route_scores: ${Object.entries(payload.route_scores)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(", ")}`,
       `red_flag_tags: ${payload.red_flag_tags.join(", ")}`,
       `constraint_hints: ${payload.constraint_hints.join(" | ")}`,
       `stack_layout_hints: ${payload.stack_layout_hints.join(" | ")}`,

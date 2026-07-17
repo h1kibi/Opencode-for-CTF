@@ -41,10 +41,10 @@ function main() {
     })
   }
 
-  if (!/"instructions"\s*:\s*\[[\s\S]*?"\.\/rules-cn\.md"/.test(text)) {
+  if (!/"instructions"\s*:\s*\[[\s\S]*?"\.\/rules\/zh-rules\.md"/.test(text)) {
     findings.push({
       severity: "WARN",
-      message: "rules-cn.md is not present in instructions[]",
+      message: "rules/zh-rules.md is not present in instructions[]",
     })
   }
 

@@ -25,7 +25,11 @@ const checks: QueryCheck[] = [
   },
   {
     query: "glibc 2.27 fake stdout setcontext+53 short playbook",
-    expectedFileFragments: ["glibc27-fake-stdout-shortplaybook.md", "free_hook-setcontext-orw.md", "runtime-closure-index.md"],
+    expectedFileFragments: [
+      "glibc27-fake-stdout-shortplaybook.md",
+      "free_hook-setcontext-orw.md",
+      "runtime-closure-index.md",
+    ],
     expectedCardIds: ["pwn-curated-glibc27-fake-stdout-shortplaybook", "pwn-closure-free-hook-setcontext-orw"],
   },
 ]
@@ -41,7 +45,14 @@ function walk(dir: string, out: string[] = []) {
 }
 
 function terms(query: string) {
-  return Array.from(new Set(query.toLowerCase().split(/[^a-z0-9_+.#:-]+/i).filter((x) => x.length >= 2)))
+  return Array.from(
+    new Set(
+      query
+        .toLowerCase()
+        .split(/[^a-z0-9_+.#:-]+/i)
+        .filter((x) => x.length >= 2),
+    ),
+  )
 }
 
 function scoreText(rel: string, text: string, query: string) {
@@ -53,13 +64,19 @@ function scoreText(rel: string, text: string, query: string) {
     score += Math.min(c, 10) * (term.length >= 5 ? 3 : 1)
     if (rel.toLowerCase().includes(term)) score += 15
   }
-  if (/bundled-libc-first|wrong-libc-anti-pattern|exact-read-contracts|glibc27-fake-stdout-shortplaybook|free_hook-setcontext-orw|seccomp-closure-router|runtime-closure-index/.test(rel)) score += 120
+  if (
+    /bundled-libc-first|wrong-libc-anti-pattern|exact-read-contracts|glibc27-fake-stdout-shortplaybook|free_hook-setcontext-orw|seccomp-closure-router|runtime-closure-index/.test(
+      rel,
+    )
+  )
+    score += 120
   return score
 }
 
 function scoreCard(card: any, query: string) {
   const t = terms(query)
-  const hay = `${card.title} ${(card.query_aliases || []).join(" ")} ${(card.semantic_tokens || []).join(" ")} ${card.trigger} ${card.keywords?.join(" ") || ""}`.toLowerCase()
+  const hay =
+    `${card.title} ${(card.query_aliases || []).join(" ")} ${(card.semantic_tokens || []).join(" ")} ${card.trigger} ${card.keywords?.join(" ") || ""}`.toLowerCase()
   let score = 0
   for (const term of t) {
     const c = hay.split(term).length - 1

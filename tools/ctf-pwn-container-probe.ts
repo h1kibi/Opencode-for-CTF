@@ -1,9 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExecWithStreams } from "./lib/exec-utils.ts"
 
 function splitArgs(value: string | undefined) {
   return (value || "").split(/\s+/).filter(Boolean).slice(0, 40)
@@ -26,11 +23,14 @@ function parseProbe(output: string) {
 }
 
 function isComposeMissing(output: string) {
-  return /no configuration file provided|cannot find a suitable configuration file|compose\.ya?ml.*not found/i.test(output)
+  return /no configuration file provided|cannot find a suitable configuration file|compose\.ya?ml.*not found/i.test(
+    output,
+  )
 }
 
 export default tool({
-  description: "CTF PWN container probe: verify a chosen Docker/container substrate has pwntools, gdb, ELF tooling, and optional binary triage before the solve starts.",
+  description:
+    "CTF PWN container probe: verify a chosen Docker/container substrate has pwntools, gdb, ELF tooling, and optional binary triage before the solve starts.",
   args: {
     composeService: tool.schema.string().optional().describe("docker compose service name for exec mode."),
     containerName: tool.schema.string().optional().describe("Explicit container name for docker exec mode."),
@@ -68,9 +68,14 @@ export default tool({
       "echo SECCOMP_TOOLS=$(command -v seccomp-tools >/dev/null 2>&1 && echo ok || echo missing)",
       "echo LTRACE=$(command -v ltrace >/dev/null 2>&1 && echo ok || echo missing)",
       "echo STRACE=$(command -v strace >/dev/null 2>&1 && echo ok || echo missing)",
-      binary ? `if [ -f ${JSON.stringify(path.posix.join(containerWorkdir, binary))} ]; then file ${JSON.stringify(path.posix.join(containerWorkdir, binary))}; fi` : "",
-      binary ? `if command -v checksec >/dev/null 2>&1 && [ -f ${JSON.stringify(path.posix.join(containerWorkdir, binary))} ]; then checksec --file=${JSON.stringify(path.posix.join(containerWorkdir, binary))}; fi` : "",
-      binary ? `if [ -f ${JSON.stringify(path.posix.join(containerWorkdir, binary))} ]; then python3 - <<'PY'
+      binary
+        ? `if [ -f ${JSON.stringify(path.posix.join(containerWorkdir, binary))} ]; then file ${JSON.stringify(path.posix.join(containerWorkdir, binary))}; fi`
+        : "",
+      binary
+        ? `if command -v checksec >/dev/null 2>&1 && [ -f ${JSON.stringify(path.posix.join(containerWorkdir, binary))} ]; then checksec --file=${JSON.stringify(path.posix.join(containerWorkdir, binary))}; fi`
+        : "",
+      binary
+        ? `if [ -f ${JSON.stringify(path.posix.join(containerWorkdir, binary))} ]; then python3 - <<'PY'
 from pathlib import Path
 import struct
 p = Path(${JSON.stringify(path.posix.join(containerWorkdir, binary))})
@@ -79,11 +84,20 @@ ok = len(b) >= 20 and b[:4] == b'\x7fELF'
 machine = struct.unpack_from('<H', b, 18)[0] if ok else 0
 print('I386_RUNTIME=' + ('ok' if machine == 3 else 'n/a'))
 print('ELF_INTERPRETER_EXPECTED=' + ('/lib/ld-linux.so.2' if machine == 3 else 'n/a'))
-PY` : "",
-      binary ? `if [ -e /lib/ld-linux.so.2 ]; then echo I386_INTERPRETER=ok; else echo I386_INTERPRETER=missing; fi` : "",
-      binary ? `if [ -e /lib32/libc.so.6 ] || [ -e /usr/lib32/libc.so.6 ] || [ -e /lib/i386-linux-gnu/libc.so.6 ] || [ -e /usr/lib/i386-linux-gnu/libc.so.6 ]; then echo I386_LIBC=ok; else echo I386_LIBC=missing; fi` : "",
-      libc ? `if [ -f ${JSON.stringify(path.posix.join(containerWorkdir, libc))} ]; then strings -a ${JSON.stringify(path.posix.join(containerWorkdir, libc))} | grep -m 3 -E 'GNU C Library|glibc|GLIBC_' || true; fi` : "",
-    ].filter(Boolean).join("; ")
+PY`
+        : "",
+      binary
+        ? `if [ -e /lib/ld-linux.so.2 ]; then echo I386_INTERPRETER=ok; else echo I386_INTERPRETER=missing; fi`
+        : "",
+      binary
+        ? `if [ -e /lib32/libc.so.6 ] || [ -e /usr/lib32/libc.so.6 ] || [ -e /lib/i386-linux-gnu/libc.so.6 ] || [ -e /usr/lib/i386-linux-gnu/libc.so.6 ]; then echo I386_LIBC=ok; else echo I386_LIBC=missing; fi`
+        : "",
+      libc
+        ? `if [ -f ${JSON.stringify(path.posix.join(containerWorkdir, libc))} ]; then strings -a ${JSON.stringify(path.posix.join(containerWorkdir, libc))} | grep -m 3 -E 'GNU C Library|glibc|GLIBC_' || true; fi`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("; ")
 
     const common = ["-w", containerWorkdir]
     let argv: string[] = []
@@ -96,37 +110,66 @@ PY` : "",
       argv = ["compose", "exec", "-T", args.composeService, "bash", "-lc", probeScript]
     } else if (args.composeService && args.useComposeRun) {
       mode = "compose_run"
-      argv = ["compose", "run", "--rm", "-T", ...splitArgs(args.profile ? `--profile ${args.profile}` : ""), args.composeService, "bash", "-lc", probeScript]
+      argv = [
+        "compose",
+        "run",
+        "--rm",
+        "-T",
+        ...splitArgs(args.profile ? `--profile ${args.profile}` : ""),
+        args.composeService,
+        "bash",
+        "-lc",
+        probeScript,
+      ]
     } else if (args.image) {
       mode = "docker_run"
-      argv = ["run", "--rm", "-v", `${context.directory.replace(/\\/g, "/")}:${containerWorkdir}`, ...common, args.image, "bash", "-lc", probeScript]
+      argv = [
+        "run",
+        "--rm",
+        "-v",
+        `${context.directory.replace(/\\/g, "/")}:${containerWorkdir}`,
+        ...common,
+        args.image,
+        "bash",
+        "-lc",
+        probeScript,
+      ]
     } else {
       throw new Error("one of containerName, composeService, or image is required")
     }
 
     let output = ""
     let exitCode: number | string = 0
-    try {
-      const { stdout, stderr } = await execFile("docker", argv, { cwd: context.directory, timeout: timeoutMs, maxBuffer: 3 * 1024 * 1024 })
-      output = `${stdout}${stderr ? `\n${stderr}` : ""}`
-    } catch (err) {
-      const e = err as { stdout?: string; stderr?: string; code?: number | string; signal?: string; message?: string }
-      output = `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`
-      exitCode = e.code ?? e.signal ?? "error"
+    const r = await safeExecWithStreams("docker", argv, {
+      cwd: context.directory,
+      timeoutMs,
+      maxBuffer: 3 * 1024 * 1024,
+    })
+    output = `${r.stdout}${r.stderr ? `\n${r.stderr}` : ""}`
+    if (!r.ok) {
+      exitCode = r.exitCode ?? "error"
     }
 
     if (isComposeMissing(output) && args.image && (mode === "compose_exec" || mode === "compose_run")) {
       mode = "docker_run_fallback"
-      argv = ["run", "--rm", "-v", `${context.directory.replace(/\\/g, "/")}:${containerWorkdir}`, ...common, args.image, "bash", "-lc", probeScript]
-      try {
-        const { stdout, stderr } = await execFile("docker", argv, { cwd: context.directory, timeout: timeoutMs, maxBuffer: 3 * 1024 * 1024 })
-        output = `${stdout}${stderr ? `\n${stderr}` : ""}`
-        exitCode = 0
-      } catch (err) {
-        const e = err as { stdout?: string; stderr?: string; code?: number | string; signal?: string; message?: string }
-        output = `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`
-        exitCode = e.code ?? e.signal ?? "error"
-      }
+      argv = [
+        "run",
+        "--rm",
+        "-v",
+        `${context.directory.replace(/\\/g, "/")}:${containerWorkdir}`,
+        ...common,
+        args.image,
+        "bash",
+        "-lc",
+        probeScript,
+      ]
+      const r2 = await safeExecWithStreams("docker", argv, {
+        cwd: context.directory,
+        timeoutMs,
+        maxBuffer: 3 * 1024 * 1024,
+      })
+      output = `${r2.stdout}${r2.stderr ? `\n${r2.stderr}` : ""}`
+      exitCode = r2.ok ? 0 : (r2.exitCode ?? "error")
     }
 
     const parsed = parseProbe(output)
@@ -165,7 +208,7 @@ PY` : "",
           ? "switch image or install dependencies before starting the solve"
           : parsed.get("ANGR") !== "ok" || parsed.get("CLARIPY") !== "ok" || parsed.get("Z3_SOLVER") !== "ok"
             ? "core pwn toolchain is ready, but symbolic-execution fallback is missing; prefer a fuller pwnlab image before heavy checker/constraint branches"
-          : "lock this container as the active substrate and keep exploit.py/runners inside it",
+            : "lock this container as the active substrate and keep exploit.py/runners inside it",
       output: compact(output),
     }
 

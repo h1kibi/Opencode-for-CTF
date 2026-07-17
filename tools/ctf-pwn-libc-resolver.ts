@@ -1,10 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExec } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -14,16 +11,6 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
     throw new Error(`path must stay inside the current workspace: ${input}`)
   }
   return target
-}
-
-async function safeExec(cmd: string, args: string[], cwd: string, ms = 6000) {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout: ms, maxBuffer: 1024 * 1024 })
-    return `${stdout}${stderr ? `\n${stderr}` : ""}`
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`
-  }
 }
 
 function parseVersion(text: string) {
@@ -79,7 +66,8 @@ function parseOneGadget(text: string) {
 }
 
 export default tool({
-  description: "CTF pwn libc resolver: summarize glibc version, key symbol offsets, /bin/sh, one_gadget hints, and glibc feature gates from a bundled libc.",
+  description:
+    "CTF pwn libc resolver: summarize glibc version, key symbol offsets, /bin/sh, one_gadget hints, and glibc feature gates from a bundled libc.",
   args: {
     libc: tool.schema.string().describe("Workspace-relative libc path."),
     timeoutMs: tool.schema.number().optional().describe("Timeout per helper command in ms. Default 6000."),
@@ -92,9 +80,12 @@ export default tool({
     const text = raw.toString("latin1")
     const version = parseVersion(text)
     const minor = parseMinor(version)
-    const readelfOut = await safeExec("readelf", ["-Ws", libc], cwd, timeoutMs)
-    const nmOut = await safeExec("nm", ["-D", libc], cwd, timeoutMs)
-    const oneGadgetOut = await safeExec("one_gadget", [libc], cwd, timeoutMs)
+    const readelfR = await safeExec("readelf", ["-Ws", libc], cwd, timeoutMs)
+    const readelfOut = readelfR.output
+    const nmR = await safeExec("nm", ["-D", libc], cwd, timeoutMs)
+    const nmOut = nmR.output
+    const oneGadgetR = await safeExec("one_gadget", [libc], cwd, timeoutMs)
+    const oneGadgetOut = oneGadgetR.output
     const lines = `${readelfOut}\n${nmOut}`.split(/\r?\n/)
 
     const symbols = {
@@ -123,8 +114,12 @@ export default tool({
 
     const routeHints = [
       symbols.system !== "unknown" && binshOffset(raw) !== "unknown" ? "ret2libc_system_binsh_candidate" : "",
-      symbols.__free_hook !== "unknown" && minor > -1 && minor < 34 ? "free_hook_overwrite_candidate_if_write_primitive_exists" : "",
-      symbols.__malloc_hook !== "unknown" && minor > -1 && minor < 34 ? "malloc_hook_candidate_if_allocator_route_fits" : "",
+      symbols.__free_hook !== "unknown" && minor > -1 && minor < 34
+        ? "free_hook_overwrite_candidate_if_write_primitive_exists"
+        : "",
+      symbols.__malloc_hook !== "unknown" && minor > -1 && minor < 34
+        ? "malloc_hook_candidate_if_allocator_route_fits"
+        : "",
       symbols.setcontext !== "unknown" ? "setcontext_oriented_route_candidate" : "",
       symbols.mprotect !== "unknown" ? "mprotect_rop_candidate" : "",
       symbols.execve !== "unknown" ? "execve_symbol_available" : "",

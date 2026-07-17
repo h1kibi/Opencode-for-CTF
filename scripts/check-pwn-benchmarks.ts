@@ -37,16 +37,23 @@ const rules: BenchmarkRule[] = [
     check(output) {
       const hasControl = /CONTROL_CONFIRMED|Crash \/ Control|control confirmed|offset/i.test(output)
       if (!hasControl) return "N/A"
-      const hasCalibration = /CALIBRATION|Calibration Ledger|one variable at a time|minimum local closure proof/i.test(output)
+      const hasCalibration = /CALIBRATION|Calibration Ledger|one variable at a time|minimum local closure proof/i.test(
+        output,
+      )
       return hasCalibration ? "PASS" : "FAIL"
     },
   },
   {
     name: "primitive compressed into closure",
     check(output) {
-      const hasPrimitive = /primitive|arbitrary read|arbitrary write|stable leak|Route Lock Card|closure card/i.test(output)
+      const hasPrimitive = /primitive|arbitrary read|arbitrary write|stable leak|Route Lock Card|closure card/i.test(
+        output,
+      )
       if (!hasPrimitive) return "N/A"
-      const hasClosure = /shortest closure family|shortest closure hypothesis|next 3 probes only|direct flag|file-read|secret-bearing pointer|minimum local closure proof/i.test(output)
+      const hasClosure =
+        /shortest closure family|shortest closure hypothesis|next 3 probes only|direct flag|file-read|secret-bearing pointer|minimum local closure proof/i.test(
+          output,
+        )
       return hasClosure ? "PASS" : "FAIL"
     },
   },
@@ -54,8 +61,11 @@ const rules: BenchmarkRule[] = [
     name: "format string prefers read closure before clever writes",
     check(output) {
       if (!/(?:format string|printf-like|%p|%n|fmtstr)/i.test(output)) return "N/A"
-      const hasReadClosure = /got leak|libc leak|read@got|puts@got|secret-bearing pointer|buffer read|file-read/i.test(output)
-      const heavyWriteDrift = /(?:\.fini_array|self-modifying format|complex %n|byte choreography|control-flow patch)/i.test(output)
+      const hasReadClosure = /got leak|libc leak|read@got|puts@got|secret-bearing pointer|buffer read|file-read/i.test(
+        output,
+      )
+      const heavyWriteDrift =
+        /(?:\.fini_array|self-modifying format|complex %n|byte choreography|control-flow patch)/i.test(output)
       if (heavyWriteDrift && !hasReadClosure) return "FAIL"
       return hasReadClosure ? "PASS" : "N/A"
     },
@@ -65,16 +75,25 @@ const rules: BenchmarkRule[] = [
     check(output) {
       const hasBundledLibc = /bundled libc|libc\.so\.6|ld-linux|ld-.*\.so|ctf-pwn-libc-runtime-doctor/i.test(output)
       if (!hasBundledLibc) return "N/A"
-      const hasGate = /ctf-pwn-libc-runtime-doctor|substrate_gate|explicit loader command|do not validate heap or overlap on mismatched base/i.test(output)
+      const hasGate =
+        /ctf-pwn-libc-runtime-doctor|substrate_gate|explicit loader command|do not validate heap or overlap on mismatched base/i.test(
+          output,
+        )
       return hasGate ? "PASS" : "FAIL"
     },
   },
   {
     name: "heap uaf enters reduction mode",
     check(output) {
-      const hasHeapUaf = /uaf|use-after-free|stale reference|stale display|post-free display|repeated allocator actions|buy\/use\/sell/i.test(output)
+      const hasHeapUaf =
+        /uaf|use-after-free|stale reference|stale display|post-free display|repeated allocator actions|buy\/use\/sell/i.test(
+          output,
+        )
       if (!hasHeapUaf) return "N/A"
-      const hasReduction = /heap reduction|chunk lifecycle|size class|same-size refill|stale owner|primitive ladder stage|heap transaction/i.test(output)
+      const hasReduction =
+        /heap reduction|chunk lifecycle|size class|same-size refill|stale owner|primitive ladder stage|heap transaction/i.test(
+          output,
+        )
       return hasReduction ? "PASS" : "FAIL"
     },
   },
@@ -83,33 +102,46 @@ const rules: BenchmarkRule[] = [
     check(output) {
       const hasLeak = /0x[0-9a-f]{5,16}|pointer-shaped leak|6-byte leak|8-byte leak|heap leak/i.test(output)
       if (!hasLeak) return "N/A"
-      const hasClassification = /heap leak classifier|class=heap|class=libc|class=pie|safe-linked|unknown-class leak|maps range check|page alignment/i.test(output)
+      const hasClassification =
+        /heap leak classifier|class=heap|class=libc|class=pie|safe-linked|unknown-class leak|maps range check|page alignment/i.test(
+          output,
+        )
       return hasClassification ? "PASS" : "FAIL"
     },
   },
   {
     name: "cxx inventory object model before closure drift",
     check(output) {
-      const hasCxxInventory = /inventory|equipment|description|wrapper object|shared_ptr|consume\/use\/sell|object model/i.test(output)
+      const hasCxxInventory =
+        /inventory|equipment|description|wrapper object|shared_ptr|consume\/use\/sell|object model/i.test(output)
       if (!hasCxxInventory) return "N/A"
-      const hasObjectModel = /object model|field offset|allocation order|display order|wrapper vs inner object|stale consumer/i.test(output)
+      const hasObjectModel =
+        /object model|field offset|allocation order|display order|wrapper vs inner object|stale consumer/i.test(output)
       return hasObjectModel ? "PASS" : "FAIL"
     },
   },
   {
     name: "menu read contract locked before drift",
     check(output) {
-      const hasMenuContractSignal = /read\(size\+1\)|exact-length read|mixed menu\/raw|menu contract|ctf-pwn-menu-contract-probe/i.test(output)
+      const hasMenuContractSignal =
+        /read\(size\+1\)|exact-length read|mixed menu\/raw|menu contract|ctf-pwn-menu-contract-probe/i.test(output)
       if (!hasMenuContractSignal) return "N/A"
-      const hasLock = /ctf-pwn-menu-contract-probe|helper contract|sendafter\(\)|sendlineafter\(\)|newline remains buffered|exact-length send helper/i.test(output)
+      const hasLock =
+        /ctf-pwn-menu-contract-probe|helper contract|sendafter\(\)|sendlineafter\(\)|newline remains buffered|exact-length send helper/i.test(
+          output,
+        )
       return hasLock ? "PASS" : "FAIL"
     },
   },
   {
     name: "near-success classified before drift",
     check(output) {
-      if (!/(?:partial shell|one-shot command|prompt desync|stdout\/stderr|near-success|odd prompt)/i.test(output)) return "N/A"
-      const classified = /shell likely spawned|one-shot command execution only|file-read primitive likely works|prompt desync|stdout\/stderr/i.test(output)
+      if (!/(?:partial shell|one-shot command|prompt desync|stdout\/stderr|near-success|odd prompt)/i.test(output))
+        return "N/A"
+      const classified =
+        /shell likely spawned|one-shot command execution only|file-read primitive likely works|prompt desync|stdout\/stderr/i.test(
+          output,
+        )
       return classified ? "PASS" : "FAIL"
     },
   },
@@ -133,30 +165,39 @@ const rules: BenchmarkRule[] = [
     name: "remote drift checked before roulette",
     check(output) {
       if (!/(?:remote fails|local works|EOF|timeout|remote drift|transcript diff)/i.test(output)) return "N/A"
-      const hasDriftCheck = /ctf-pwn-remote-drift-check|ctf-pwn-remote-transcript-diff|remote-local-divergence/i.test(output)
+      const hasDriftCheck = /ctf-pwn-remote-drift-check|ctf-pwn-remote-transcript-diff|remote-local-divergence/i.test(
+        output,
+      )
       return hasDriftCheck ? "PASS" : "FAIL"
     },
   },
   {
     name: "evidence trail referenced",
     check(output) {
-      const hasEvidence = /(?:work[\\/]ctf-evidence|final-verification|solve-output|ctf_handoff|ctf_evidence_snapshot)/i.test(output)
+      const hasEvidence =
+        /(?:work[\\/]ctf-evidence|final-verification|solve-output|ctf_handoff|ctf_evidence_snapshot)/i.test(output)
       return hasEvidence ? "PASS" : "N/A"
     },
   },
   {
     name: "handoff includes closure and next probe quality",
     check(output) {
-      const hasHandoff = /handoff|ctf_fast_handoff|ctf_resume_packet|escalated|why this is no longer a fast-lane target/i.test(output)
+      const hasHandoff =
+        /handoff|ctf_fast_handoff|ctf_resume_packet|escalated|why this is no longer a fast-lane target/i.test(output)
       if (!hasHandoff) return "N/A"
-      const hasQuality = /shortest closure family|best next rigorous probe|oracle|falsify|same-family attempts/i.test(output)
+      const hasQuality = /shortest closure family|best next rigorous probe|oracle|falsify|same-family attempts/i.test(
+        output,
+      )
       return hasQuality ? "PASS" : "FAIL"
     },
   },
   {
     name: "wrong-complexity drift acknowledged",
     check(output) {
-      const hasDriftSignal = /\.fini_array|self-modifying format|cross-round slot stability|glibc object graph|repeated gdb|wrong-complexity/i.test(output)
+      const hasDriftSignal =
+        /\.fini_array|self-modifying format|cross-round slot stability|glibc object graph|repeated gdb|wrong-complexity/i.test(
+          output,
+        )
       if (!hasDriftSignal) return "N/A"
       const hasResponse = /handoff|rerank|shortest closure family|fast-lane target|ctf-master/i.test(output)
       return hasResponse ? "PASS" : "FAIL"
@@ -172,7 +213,9 @@ function findOutputFiles(dir: string): string[] {
       const full = join(dir, e)
       if (statSync(full).isDirectory() && !e.startsWith(".")) {
         candidates.push(...findOutputFiles(full))
-      } else if (/^(notes|solve|exploit|agent_flag|output|log|result|final-verification)\.(md|txt|py|js|json)$/i.test(e)) {
+      } else if (
+        /^(notes|solve|exploit|agent_flag|output|log|result|final-verification)\.(md|txt|py|js|json)$/i.test(e)
+      ) {
         candidates.push(full)
       }
     }
@@ -228,7 +271,9 @@ function runBenchmarks(targetDir: string) {
   if (failures.length > 0) {
     console.log(`- Critical Failures: ${failures.join(", ")}`)
   }
-  console.log("- Recommendations: review failures against `benchmarks/pwn/<name>/expected_behavior.md` and current closure/runtime discipline")
+  console.log(
+    "- Recommendations: review failures against `benchmarks/pwn/<name>/expected_behavior.md` and current closure/runtime discipline",
+  )
 }
 
 const target = process.argv[2]

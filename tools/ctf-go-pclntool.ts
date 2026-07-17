@@ -1,45 +1,16 @@
-import { tool } from "@opencode-ai/plugin"
+﻿import { tool } from "@opencode-ai/plugin"
 import { access, lstat, mkdir, writeFile } from "node:fs/promises"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
-const REVLAB_IMAGE = "revlab:ubuntu22.04"
-const PWN_GENERAL_IMAGE = "pwnlab:general-ubuntu22.04"
+import { safeExec, safeExecDocker, shellQuote } from "./lib/exec-utils.ts"
+import { pwnImage, revImage } from "./lib/docker-config.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
   const target = path.resolve(base, input)
   const rel = path.relative(base, target)
-  if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`target must stay inside the current workspace: ${input}`)
+  if (rel.startsWith("..") || path.isAbsolute(rel))
+    throw new Error(`target must stay inside the current workspace: ${input}`)
   return target
-}
-
-async function safeExec(cmd: string, args: string[], cwd: string, ms = 20000): Promise<{ output: string; ok: boolean }> {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout: ms, maxBuffer: 16 * 1024 * 1024 })
-    return { output: `${stdout}${stderr ? `\n[stderr]\n${stderr}` : ""}`.trim(), ok: true }
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string; code?: string }
-    const out = `${e.stdout ?? ""}${e.stderr ? `\n[stderr]\n${e.stderr}` : ""}`.trim()
-    return { output: out || `<failed: ${e.message ?? String(err)}>`, ok: false }
-  }
-}
-
-async function safeExecDocker(workspaceRoot: string, workspaceFile: string, image: string, shellCommand: string, ms = 30000) {
-  const containerWorkdir = "/work"
-  const mountedRoot = workspaceRoot.replace(/\\/g, "/")
-  const rel = path.relative(workspaceRoot, workspaceFile).replace(/\\/g, "/")
-  const targetInContainer = `${containerWorkdir}/${rel}`
-  const command = shellCommand.replaceAll("__TARGET__", targetInContainer)
-  return await safeExec("docker", [
-    "run", "--rm",
-    "-v", `${mountedRoot}:${containerWorkdir}`,
-    "-w", containerWorkdir,
-    image,
-    "bash", "-lc", command,
-  ], workspaceRoot, ms)
 }
 
 async function tryHostGo(): Promise<{ available: boolean; version: string }> {
@@ -48,7 +19,12 @@ async function tryHostGo(): Promise<{ available: boolean; version: string }> {
 }
 
 async function tryDockerImage(image: string): Promise<{ available: boolean; reason: string }> {
-  const { output, ok } = await safeExec("docker", ["image", "inspect", image, "--format", "{{.Id}}"], process.cwd(), 5000)
+  const { output, ok } = await safeExec(
+    "docker",
+    ["image", "inspect", image, "--format", "{{.Id}}"],
+    process.cwd(),
+    5000,
+  )
   if (ok && /sha256:/.test(output)) return { available: true, reason: "" }
   return { available: false, reason: output.split("\n")[0]?.slice(0, 200) || "image_not_present" }
 }
@@ -61,17 +37,52 @@ type GoSymbol = {
 }
 
 const RUNTIME_PREFIXES = [
-  "runtime.", "internal/", "sync.", "syscall.", "type:", "type..", "go:itab.", "go:string.",
-  "reflect.", "os.", "io.", "fmt.", "encoding/", "errors.",
+  "runtime.",
+  "internal/",
+  "sync.",
+  "syscall.",
+  "type:",
+  "type..",
+  "go:itab.",
+  "go:string.",
+  "reflect.",
+  "os.",
+  "io.",
+  "fmt.",
+  "encoding/",
+  "errors.",
 ]
 const STDLIB_PREFIXES = [
-  "encoding/", "crypto/", "hash/", "math/", "strings.", "strconv.", "bytes.", "bufio.", "io.",
-  "os.", "sort.", "time.", "unicode/", "regexp.", "context.", "net/", "html/", "mime/", "text/",
+  "encoding/",
+  "crypto/",
+  "hash/",
+  "math/",
+  "strings.",
+  "strconv.",
+  "bytes.",
+  "bufio.",
+  "io.",
+  "os.",
+  "sort.",
+  "time.",
+  "unicode/",
+  "regexp.",
+  "context.",
+  "net/",
+  "html/",
+  "mime/",
+  "text/",
 ]
 
 function classifyGoSymbol(name: string): GoSymbol["category"] {
   if (!name) return "anonymous"
-  if (name.startsWith("type:") || name.startsWith("type..") || name.startsWith("go:itab.") || name.startsWith("go:string.")) return "type"
+  if (
+    name.startsWith("type:") ||
+    name.startsWith("type..") ||
+    name.startsWith("go:itab.") ||
+    name.startsWith("go:string.")
+  )
+    return "type"
   if (name.startsWith("main.")) return "main"
   if (name.endsWith(".init") || name === "main.init" || name.includes(".init.")) return "init"
   for (const p of RUNTIME_PREFIXES) if (name.startsWith(p)) return "runtime"
@@ -94,11 +105,7 @@ function parseGoNm(text: string): GoSymbol[] {
 function emitRenameScript(symbols: GoSymbol[], maxRenames = 200, format: "ida" | "reva" | "ghidra" = "ida") {
   const want = symbols.filter((s) => ["main", "user", "init"].includes(s.category)).slice(0, maxRenames)
   if (format === "ida") {
-    const lines = [
-      "# IDA Python: rename Go functions from go-pclntool",
-      "import idc, idaapi",
-      "for ea, name in [",
-    ]
+    const lines = ["# IDA Python: rename Go functions from go-pclntool", "import idc, idaapi", "for ea, name in ["]
     for (const s of want) {
       const sanitized = s.name.replace(/[^A-Za-z0-9_]/g, "_").slice(0, 220)
       lines.push(`    (${s.addr}, "${sanitized}"),`)
@@ -137,17 +144,32 @@ function emitRenameScript(symbols: GoSymbol[], maxRenames = 200, format: "ida" |
 }
 
 export default tool({
-  description: "CTF Go pclntool: run go tool nm / go tool objdump (host or revlab docker) for Go-built ELFs, classify symbols (main/user/runtime/stdlib/type), and emit IDA/ReVa/Ghidra rename scripts to stabilize Go function name recovery beyond static pclntab parsing.",
+  description:
+    "CTF Go pclntool: run go tool nm / go tool objdump (host or revlab docker) for Go-built ELFs, classify symbols (main/user/runtime/stdlib/type), and emit IDA/ReVa/Ghidra rename scripts to stabilize Go function name recovery beyond static pclntab parsing.",
   args: {
     target: tool.schema.string().describe("Workspace-relative Go-built binary path."),
-    backend: tool.schema.string().optional().describe("auto | host | docker. Default auto (host first, docker fallback)."),
-    image: tool.schema.string().optional().describe("Docker image override. Default revlab:ubuntu22.04 then pwnlab:general-ubuntu22.04."),
-    objdumpFunctions: tool.schema.string().optional().describe("Comma-separated function names/regex to dump via 'go tool objdump -s'. Default '^main\\.|encode|decode|check|verify|flag'."),
+    backend: tool.schema
+      .string()
+      .optional()
+      .describe("auto | host | docker. Default auto (host first, docker fallback)."),
+    image: tool.schema
+      .string()
+      .optional()
+      .describe("Docker image override. Default revlab:ubuntu22.04 then pwnlab:general-ubuntu22.04."),
+    objdumpFunctions: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Comma-separated function names/regex to dump via 'go tool objdump -s'. Default '^main\\.|encode|decode|check|verify|flag'.",
+      ),
     maxObjdumpFunctions: tool.schema.number().optional().describe("Max functions to objdump. Default 6."),
     maxObjdumpLines: tool.schema.number().optional().describe("Max disasm lines per function. Default 200."),
     renameFormat: tool.schema.string().optional().describe("ida | reva | ghidra. Default ida."),
     maxRenames: tool.schema.number().optional().describe("Max symbols in rename script. Default 200."),
-    outDir: tool.schema.string().optional().describe("Workspace-relative output dir for rename script. Default work/rev-go-pclntool."),
+    outDir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative output dir for rename script. Default work/rev-go-pclntool."),
     timeoutMs: tool.schema.number().optional().describe("Per-command timeout in ms. Default 30000."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
@@ -158,18 +180,22 @@ export default tool({
     if (!st.isFile()) throw new Error("target must be a Go ELF/PE binary file")
 
     const backendArg = (args.backend ?? "auto").toLowerCase()
-    const image = args.image || REVLAB_IMAGE
+    const image = args.image || revImage("ubuntu22.04")
     const objdumpFiltersRaw = args.objdumpFunctions || "^main\\.|encode|decode|check|verify|flag"
-    const objdumpFilters = objdumpFiltersRaw.split(",").map((s) => s.trim()).filter(Boolean)
+    const objdumpFilters = objdumpFiltersRaw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
     const maxObjdumpFunctions = Math.max(1, Math.min(20, args.maxObjdumpFunctions ?? 6))
     const maxObjdumpLines = Math.max(40, Math.min(2000, args.maxObjdumpLines ?? 200))
-    const renameFormat = (["ida", "reva", "ghidra"].includes(args.renameFormat || "") ? args.renameFormat : "ida") as "ida" | "reva" | "ghidra"
+    const renameFormat = (["ida", "reva", "ghidra"].includes(args.renameFormat || "") ? args.renameFormat : "ida") as
+      "ida" | "reva" | "ghidra"
     const maxRenames = Math.max(10, Math.min(2000, args.maxRenames ?? 200))
     const outDir = resolveInsideWorkspace(context.directory, args.outDir || "work/rev-go-pclntool")
     const timeoutMs = Math.max(8000, Math.min(180000, args.timeoutMs ?? 30000))
     await mkdir(outDir, { recursive: true })
 
-    // 选择 backend
+    // 閫夋嫨 backend
     const hostGo = await tryHostGo()
     let chosenBackend: "host" | "docker" = "host"
     let chosenImage = ""
@@ -187,17 +213,17 @@ export default tool({
     } else if (backendArg === "docker") {
       const probe = await tryDockerImage(image)
       if (!probe.available) {
-        const fb = await tryDockerImage(PWN_GENERAL_IMAGE)
+        const fb = await tryDockerImage(pwnImage("general-ubuntu22.04"))
         if (!fb.available) {
           return [
             "go_pclntool: docker forced but image missing",
             `requested_image: ${image} -> ${probe.reason}`,
-            `fallback_image: ${PWN_GENERAL_IMAGE} -> ${fb.reason}`,
-            "advice: docker compose -f templates/docker-compose.revlab.yml --profile revlab build revlab",
+            `fallback_image: ${pwnImage("general-ubuntu22.04")} -> ${fb.reason}`,
+            "advice: docker compose -f docker/docker-compose.revlab.yml --profile revlab build revlab",
           ].join("\n")
         }
-        chosenImage = PWN_GENERAL_IMAGE
-        backendReason = `requested_image_missing_fallback_${PWN_GENERAL_IMAGE}`
+        chosenImage = pwnImage("general-ubuntu22.04")
+        backendReason = `requested_image_missing_fallback_${pwnImage("general-ubuntu22.04")}`
       } else {
         chosenImage = image
         backendReason = `image_present_${image}`
@@ -215,18 +241,18 @@ export default tool({
           chosenImage = image
           backendReason = `host_go_missing_using_${image}`
         } else {
-          const fb = await tryDockerImage(PWN_GENERAL_IMAGE)
+          const fb = await tryDockerImage(pwnImage("general-ubuntu22.04"))
           if (fb.available) {
             chosenBackend = "docker"
-            chosenImage = PWN_GENERAL_IMAGE
-            backendReason = `host_go_missing_image_missing_fallback_${PWN_GENERAL_IMAGE}`
+            chosenImage = pwnImage("general-ubuntu22.04")
+            backendReason = `host_go_missing_image_missing_fallback_${pwnImage("general-ubuntu22.04")}`
           } else {
             return [
               "go_pclntool: no host go and no usable docker image",
               `host_go_probe: ${hostGo.version || "<missing>"}`,
               `requested_image: ${image} -> ${probe.reason}`,
-              `fallback_image: ${PWN_GENERAL_IMAGE} -> ${fb.reason}`,
-              "advice: docker compose -f templates/docker-compose.revlab.yml --profile revlab build revlab",
+              `fallback_image: ${pwnImage("general-ubuntu22.04")} -> ${fb.reason}`,
+              "advice: docker compose -f docker/docker-compose.revlab.yml --profile revlab build revlab",
               "  or install Go on host: https://go.dev/dl/",
             ].join("\n")
           }
@@ -234,7 +260,7 @@ export default tool({
       }
     }
 
-    // 执行 go tool nm
+    // 鎵ц go tool nm
     const runCmd = async (cmd: string) => {
       if (chosenBackend === "host") {
         const tokens = cmd.replace("__TARGET__", target).match(/(?:[^\s"]+|"[^"]*")+/g) || []
@@ -249,11 +275,20 @@ export default tool({
     const nmRes = await runCmd(`go tool nm "__TARGET__"`)
     const symbols = nmRes.ok ? parseGoNm(nmRes.output) : []
 
-    // 分类统计
-    const counts: Record<GoSymbol["category"], number> = { main: 0, user: 0, stdlib: 0, runtime: 0, init: 0, anonymous: 0, type: 0, other: 0 }
+    // 鍒嗙被缁熻
+    const counts: Record<GoSymbol["category"], number> = {
+      main: 0,
+      user: 0,
+      stdlib: 0,
+      runtime: 0,
+      init: 0,
+      anonymous: 0,
+      type: 0,
+      other: 0,
+    }
     for (const s of symbols) counts[s.category]++
 
-    // 选择 objdump 目标
+    // 閫夋嫨 objdump 鐩爣
     const filterRes = objdumpFilters.map((f) => new RegExp(f))
     const objdumpTargets: string[] = []
     const seen = new Set<string>()
@@ -270,10 +305,10 @@ export default tool({
       for (const m of mains) objdumpTargets.push(m.name)
     }
 
-    // 跑 objdump(每个函数)
+    // 璺?objdump(姣忎釜鍑芥暟)
     const objdumpResults: Array<{ name: string; ok: boolean; head: string; tail: string; lineCount: number }> = []
     for (const fname of objdumpTargets) {
-      const escaped = fname.replace(/"/g, "\\\"").replace(/\$/g, "\\$")
+      const escaped = fname.replace(/"/g, '\\"').replace(/\$/g, "\\$")
       const cmd = `go tool objdump -s '^${escaped}$' "__TARGET__"`
       const r = await runCmd(cmd)
       const lines = r.output.split(/\r?\n/)
@@ -286,12 +321,12 @@ export default tool({
       })
     }
 
-    // 生成 rename 脚本
+    // 鐢熸垚 rename 鑴氭湰
     const renameScript = emitRenameScript(symbols, maxRenames, renameFormat)
     const renamePath = path.join(outDir, `rename_${renameFormat}.${renameFormat === "reva" ? "jsonl" : "py"}`)
     await writeFile(renamePath, renameScript, "utf8")
 
-    // 主要 user-code 函数地址清单(用于 IDA/ReVa pivot)
+    // 涓昏 user-code 鍑芥暟鍦板潃娓呭崟(鐢ㄤ簬 IDA/ReVa pivot)
     const userPriority = symbols
       .filter((s) => ["main", "user", "init"].includes(s.category))
       .slice(0, 60)
@@ -303,7 +338,7 @@ export default tool({
       size: st.size,
       backend: chosenBackend,
       backend_reason: backendReason,
-      docker_image: chosenBackend === "docker" ? (chosenImage || image) : null,
+      docker_image: chosenBackend === "docker" ? chosenImage || image : null,
       go_version: versionRes.output.split("\n")[0] || "",
       total_symbols: symbols.length,
       symbol_counts: counts,
@@ -315,13 +350,26 @@ export default tool({
       recommended_next: [] as string[],
     }
 
-    if (!symbols.length) payload.recommended_next.push("go tool nm produced no symbols; verify the binary is Go-built or the binary is fully stripped (.gopclntab may still help — try ctf-go-binary-assist)")
+    if (!symbols.length)
+      payload.recommended_next.push(
+        "go tool nm produced no symbols; verify the binary is Go-built or the binary is fully stripped (.gopclntab may still help 鈥?try ctf-go-binary-assist)",
+      )
     else {
       payload.recommended_next.push(`apply rename script ${payload.rename_script_path} in your decompiler`)
       payload.recommended_next.push("pivot to top user-code addresses in ReVa or ida-pro_decompile")
     }
-    if (objdumpResults.some((r) => r.ok)) payload.recommended_next.push(`inspect objdump output for first user functions: ${objdumpResults.filter((r) => r.ok).slice(0, 3).map((r) => r.name).join(", ")}`)
-    if (chosenBackend === "docker" && backendReason.includes("fallback_pwn-general")) payload.recommended_next.push("revlab image was missing; build it with: docker compose -f templates/docker-compose.revlab.yml --profile revlab build revlab")
+    if (objdumpResults.some((r) => r.ok))
+      payload.recommended_next.push(
+        `inspect objdump output for first user functions: ${objdumpResults
+          .filter((r) => r.ok)
+          .slice(0, 3)
+          .map((r) => r.name)
+          .join(", ")}`,
+      )
+    if (chosenBackend === "docker" && backendReason.includes("fallback_pwn-general"))
+      payload.recommended_next.push(
+        "revlab image was missing; build it with: docker compose -f docker/docker-compose.revlab.yml --profile revlab build revlab",
+      )
 
     if (args.jsonOnly) return JSON.stringify(payload, null, 2)
     return [
@@ -339,10 +387,9 @@ export default tool({
       "objdump_targets:",
       ...(objdumpTargets.length ? objdumpTargets.map((x) => `- ${x}`) : ["- none"]),
       "objdump_results (head):",
-      ...(objdumpResults.length ? objdumpResults.flatMap((r) => [
-        `--- ${r.name} (ok=${r.ok}, lines=${r.lineCount}) ---`,
-        r.head || "<empty>",
-      ]) : ["- none"]),
+      ...(objdumpResults.length
+        ? objdumpResults.flatMap((r) => [`--- ${r.name} (ok=${r.ok}, lines=${r.lineCount}) ---`, r.head || "<empty>"])
+        : ["- none"]),
       "user_priority_top60:",
       ...(userPriority.length ? userPriority.map((x) => `- ${x}`) : ["- none"]),
       `rename_script_path: ${payload.rename_script_path}`,

@@ -1,25 +1,31 @@
 import { tool } from "@opencode-ai/plugin"
 import { access, lstat, open } from "node:fs/promises"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import path from "node:path"
+import { safeExec, safeExecDocker, shellQuote } from "./lib/exec-utils.ts"
+import { pwnImage } from "./lib/docker-config.ts"
 import { analyzePwnDisasmText } from "./lib/pwn-disasm-analysis.ts"
-import { buildGoCallHints, buildGoExecutionPlan, buildGoHelperChains, buildGoPivotHints, classifyGoFunctions, collectGoNameCandidates, detectGoFromStrings, findGopclntabOffsets, parseElfSections, parseGoPclntab } from "./lib/go-elf-analysis.ts"
+import {
+  buildGoCallHints,
+  buildGoExecutionPlan,
+  buildGoHelperChains,
+  buildGoPivotHints,
+  classifyGoFunctions,
+  collectGoNameCandidates,
+  detectGoFromStrings,
+  findGopclntabOffsets,
+  parseElfSections,
+  parseGoPclntab,
+} from "./lib/go-elf-analysis.ts"
 
-const execFile = promisify(execFileCb)
-const DEFAULT_INTERESTING = /(win|flag|backdoor|shell|system|execve|puts|printf|fprintf|sprintf|gets|fgets|read|write|open|openat|sendfile|malloc|calloc|realloc|free|mprotect|mmap|seccomp|alarm|setvbuf|stdin|stdout|stderr|socket|connect|accept|recv|send|dup2|strcpy|strncpy|strcat|memcpy|memcmp|strcmp|strncmp|puts@plt|__libc_start_main|__stack_chk_fail|tcache|unsorted|fastbin|hook|one_gadget|orw)/i
-const WINDOWS_WRAPPERS: Record<string, string[]> = {
-  readelf: ["readelf.cmd"],
-  nm: ["nm.cmd"],
-  objdump: ["objdump.cmd"],
-  strings: ["strings.cmd"],
-}
+const DEFAULT_INTERESTING =
+  /(win|flag|backdoor|shell|system|execve|puts|printf|fprintf|sprintf|gets|fgets|read|write|open|openat|sendfile|malloc|calloc|realloc|free|mprotect|mmap|seccomp|alarm|setvbuf|stdin|stdout|stderr|socket|connect|accept|recv|send|dup2|strcpy|strncpy|strcat|memcpy|memcmp|strcmp|strncmp|puts@plt|__libc_start_main|__stack_chk_fail|tcache|unsorted|fastbin|hook|one_gadget|orw)/i
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
   const target = path.resolve(base, input)
   const rel = path.relative(base, target)
-  if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`target must stay inside the current workspace: ${input}`)
+  if (rel.startsWith("..") || path.isAbsolute(rel))
+    throw new Error(`target must stay inside the current workspace: ${input}`)
   return target
 }
 
@@ -40,63 +46,39 @@ function printableStrings(buf: Buffer) {
   return matches
 }
 
-async function tryExec(cmd: string, args: string[], cwd: string, timeout = 12000) {
-  try {
-    const resolved = await resolveExec(cmd)
-    const { stdout, stderr } = await execFile(resolved, args, { cwd, timeout, maxBuffer: 4 * 1024 * 1024 })
-    return `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`.trim()
+async function toolAwareExec(
+  contextDir: string,
+  workspaceTarget: string,
+  cmd: string,
+  args: string[],
+  timeout = 12000,
+) {
+  const local = await safeExec(cmd, args, path.dirname(workspaceTarget), timeout)
+  if (
+    !/enoent|not recognized as an internal or external command|is not recognized/i.test(local.output) ||
+    process.platform !== "win32"
+  ) {
+    return { output: local.output, source: "host" as const }
   }
-}
-
-async function resolveExec(cmd: string) {
-  if (process.platform !== "win32") return cmd
-  const userBin = path.join(process.env.USERPROFILE || "C:\\Users\\Administrator", "bin")
-  for (const wrapper of WINDOWS_WRAPPERS[cmd] ?? []) {
-    const candidate = path.join(userBin, wrapper)
-    try {
-      await access(candidate)
-      return candidate
-    } catch {
-      // continue
-    }
-  }
-  return cmd
-}
-
-async function tryExecInPwnlab(contextDir: string, workspaceTarget: string, cmd: string, args: string[], timeout = 20000) {
-  const rel = path.relative(contextDir, workspaceTarget).replace(/\\/g, "/")
-  const inContainer = path.posix.join("/work", rel)
-  return await tryExec(
-    "docker",
-    [
-      "run",
-      "--rm",
-      "-v",
-      `${contextDir.replace(/\\/g, "/")}:/work`,
-      "-w",
-      "/work",
-      "pwnlab:general-ubuntu22.04",
-      "bash",
-      "-lc",
-      [cmd, ...args.map((x) => x === workspaceTarget ? inContainer : x)].map((x) => JSON.stringify(x)).join(" "),
-    ],
+  const shellCmd = [
+    JSON.stringify(cmd),
+    ...args.map((a) => (a === workspaceTarget ? JSON.stringify("__TARGET__") : JSON.stringify(a))),
+  ].join(" ")
+  const fallback = await safeExecDocker(
     contextDir,
-    timeout,
+    workspaceTarget,
+    pwnImage("general-ubuntu22.04"),
+    shellCmd,
+    Math.max(timeout, 20000),
   )
-}
-
-async function toolAwareExec(contextDir: string, workspaceTarget: string, cmd: string, args: string[], timeout = 12000) {
-  const local = await tryExec(cmd, args, path.dirname(workspaceTarget), timeout)
-  if (!/enoent|not recognized as an internal or external command|is not recognized/i.test(local) || process.platform !== "win32") {
-    return { output: local, source: "host" as const }
+  return {
+    output: fallback.output,
+    source:
+      /error response from daemon|unable to find image|docker/i.test(fallback.output) &&
+      /enoent|not recognized as an internal or external command/i.test(local.output)
+        ? "host_missing_tool"
+        : ("pwnlab" as const),
   }
-  const fallback = await tryExecInPwnlab(contextDir, workspaceTarget, cmd, args, Math.max(timeout, 20000))
-  return { output: fallback, source: /error response from daemon|unable to find image|docker/i.test(fallback) && /enoent|not recognized as an internal or external command/i.test(local)
-    ? "host_missing_tool"
-    : "pwnlab" as const }
 }
 
 function sliceAroundLines(lines: string[], hitIdx: number, radius: number) {
@@ -116,7 +98,9 @@ function parseHeader(readelfHeader: string) {
 
 function grepSections(readelfSections: string[]) {
   return readelfSections
-    .filter((line) => /\.(text|plt|got|got\.plt|data|bss|rodata|init_array|fini_array|dynamic|symtab|strtab)/.test(line))
+    .filter((line) =>
+      /\.(text|plt|got|got\.plt|data|bss|rodata|init_array|fini_array|dynamic|symtab|strtab)/.test(line),
+    )
     .slice(0, 32)
 }
 
@@ -153,7 +137,9 @@ function collectFunctionLabels(lines: string[], preferred: string[], max = 12) {
       if (!m) continue
       const label = `${m[1]} <${m[2]}>`
       if (seen.has(label)) continue
-      if (/main|_start|start|init|fini|vuln|win|flag|backdoor|menu|handle|check|auth|login|loop|read|print/i.test(m[2])) {
+      if (
+        /main|_start|start|init|fini|vuln|win|flag|backdoor|menu|handle|check|auth|login|loop|read|print/i.test(m[2])
+      ) {
         seen.add(label)
         out.push(label)
         if (out.length >= max) break
@@ -181,7 +167,7 @@ function parseStackLayoutHints(lines: string[]) {
       currentFunction = fn[2]
       continue
     }
-    const refs = Array.from(line.matchAll(/\[(?:r|e)bp([+-])0x([0-9a-f]+)(?:[^\]]*)\]/ig))
+    const refs = Array.from(line.matchAll(/\[(?:r|e)bp([+-])0x([0-9a-f]+)(?:[^\]]*)\]/gi))
     if (!refs.length) continue
     for (const ref of refs) {
       const offset = `${ref[1]}0x${ref[2].toLowerCase()}`
@@ -193,10 +179,15 @@ function parseStackLayoutHints(lines: string[]) {
         lastAddressTakenLine = i
       }
       if (/mov\s+byte ptr\s+\[(?:r|e)bp-0x[0-9a-f]+\],0x0/i.test(line)) slot.tags.add("null-terminator-write")
-      if (/(cmp|add|sub|inc|dec)\s+(?:dword|qword|byte)?\s*ptr\s+\[(?:r|e)bp-0x/i.test(line)) slot.tags.add("counter-or-state")
+      if (/(cmp|add|sub|inc|dec)\s+(?:dword|qword|byte)?\s*ptr\s+\[(?:r|e)bp-0x/i.test(line))
+        slot.tags.add("counter-or-state")
       if (/mov\s+byte ptr\s+\[(?:r|e)bp[^\]]*\+[^\]]*\],/i.test(line)) slot.tags.add("indexed-byte-write")
     }
-    if (/call\s+.*<(read|recv|gets|fgets)@plt>/i.test(line) && lastAddressTakenOffset && i - lastAddressTakenLine <= 6) {
+    if (
+      /call\s+.*<(read|recv|gets|fgets)@plt>/i.test(line) &&
+      lastAddressTakenOffset &&
+      i - lastAddressTakenLine <= 6
+    ) {
       ensure(lastAddressTakenOffset).tags.add("input-buffer")
     }
   }
@@ -240,12 +231,19 @@ function toTargetHint(name: string, functions: Array<{ name: string; entry: stri
 }
 
 export default tool({
-  description: "CTF ELF slice: extract compact ELF metadata, sections, interesting strings/symbols, and function/keyword-focused objdump slices without scrolling huge outputs.",
+  description:
+    "CTF ELF slice: extract compact ELF metadata, sections, interesting strings/symbols, and function/keyword-focused objdump slices without scrolling huge outputs.",
   args: {
     target: tool.schema.string().describe("ELF file path to inspect"),
     keyword: tool.schema.string().optional().describe("Regex keyword for focused strings/symbol/disassembly slices."),
-    functionName: tool.schema.string().optional().describe("Optional function name to center disassembly on, e.g. main or add."),
-    address: tool.schema.string().optional().describe("Optional hex address substring to center disassembly on, e.g. 4012ab."),
+    functionName: tool.schema
+      .string()
+      .optional()
+      .describe("Optional function name to center disassembly on, e.g. main or add."),
+    address: tool.schema
+      .string()
+      .optional()
+      .describe("Optional hex address substring to center disassembly on, e.g. 4012ab."),
     maxStrings: tool.schema.number().optional().describe("Maximum interesting strings to return. Default 60."),
     disasmRadius: tool.schema.number().optional().describe("Lines around each hit. Default 4."),
     maxSlices: tool.schema.number().optional().describe("Maximum disassembly slices to return. Default 8."),
@@ -260,17 +258,21 @@ export default tool({
     const { bytesRead } = await fh.read(head, 0, head.length, 0)
     await fh.close()
     const sample = head.subarray(0, bytesRead)
-    const whole = st.size <= 64 * 1024 * 1024 ? await (async () => {
-      const f = await open(target, "r")
-      try {
-        const out = Buffer.allocUnsafe(st.size)
-        const { bytesRead } = await f.read(out, 0, st.size, 0)
-        return out.subarray(0, bytesRead)
-      } finally {
-        await f.close()
-      }
-    })() : sample
-    if (!sample.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46]))) throw new Error("target is not an ELF file")
+    const whole =
+      st.size <= 64 * 1024 * 1024
+        ? await (async () => {
+            const f = await open(target, "r")
+            try {
+              const out = Buffer.allocUnsafe(st.size)
+              const { bytesRead } = await f.read(out, 0, st.size, 0)
+              return out.subarray(0, bytesRead)
+            } finally {
+              await f.close()
+            }
+          })()
+        : sample
+    if (!sample.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])))
+      throw new Error("target is not an ELF file")
 
     const kw = args.keyword ? new RegExp(args.keyword, "i") : DEFAULT_INTERESTING
     const maxStrings = Math.max(10, Math.min(args.maxStrings ?? 60, 200))
@@ -283,16 +285,22 @@ export default tool({
     const goInfo = detectGoFromStrings(allStrings.map((s) => s.text))
     const sectionsParsed = parseElfSections(whole)
     const gopclntab = sectionsParsed.find((s) => s.name === ".gopclntab")
-    const pcln = gopclntab && gopclntab.offset + gopclntab.size <= whole.length
-      ? parseGoPclntab(whole.subarray(gopclntab.offset, gopclntab.offset + gopclntab.size), gopclntab.addr)
-      : { header_ok: false, ptr_size: 0, nfunc: 0, text_start: 0, funcname_offset: 0, pcln_offset: 0, functions: [] }
-    const goFunctionNameHits = Array.from(new Set([
-      ...goInfo.functionNameHits,
-      ...collectGoNameCandidates(whole, 800),
-      ...pcln.functions.map((f) => f.name),
-    ])).slice(0, 120)
+    const pcln =
+      gopclntab && gopclntab.offset + gopclntab.size <= whole.length
+        ? parseGoPclntab(whole.subarray(gopclntab.offset, gopclntab.offset + gopclntab.size), gopclntab.addr)
+        : { header_ok: false, ptr_size: 0, nfunc: 0, text_start: 0, funcname_offset: 0, pcln_offset: 0, functions: [] }
+    const goFunctionNameHits = Array.from(
+      new Set([
+        ...goInfo.functionNameHits,
+        ...collectGoNameCandidates(whole, 800),
+        ...pcln.functions.map((f) => f.name),
+      ]),
+    ).slice(0, 120)
     const goClassified = classifyGoFunctions(goFunctionNameHits)
-    const gopclntabOffsets = [...findGopclntabOffsets(sample), ...(gopclntab ? [`0x${gopclntab.offset.toString(16)}`] : [])]
+    const gopclntabOffsets = [
+      ...findGopclntabOffsets(sample),
+      ...(gopclntab ? [`0x${gopclntab.offset.toString(16)}`] : []),
+    ]
     const goPivots = buildGoPivotHints(pcln.functions)
 
     const cwd = path.dirname(target)
@@ -301,7 +309,13 @@ export default tool({
     const readelfSymbolsRes = await toolAwareExec(context.directory, target, "readelf", ["-Ws", target], 15000)
     const nmRes = await toolAwareExec(context.directory, target, "nm", ["-an", target], 15000)
     const objdumpHeadersRes = await toolAwareExec(context.directory, target, "objdump", ["-x", target], 15000)
-    const objdumpDisasmRes = await toolAwareExec(context.directory, target, "objdump", ["-d", "-M", "intel", target], 20000)
+    const objdumpDisasmRes = await toolAwareExec(
+      context.directory,
+      target,
+      "objdump",
+      ["-d", "-M", "intel", target],
+      20000,
+    )
     const readelfHeader = readelfHeaderRes.output
     const readelfSections = readelfSectionsRes.output.split(/\r?\n/)
     const readelfSymbols = readelfSymbolsRes.output
@@ -311,10 +325,34 @@ export default tool({
 
     const header = parseHeader(readelfHeader)
     const sectionHits = grepSections(readelfSections)
-    const namedSymbols = parseNamedSymbols(`${readelfSymbols}\n${nmOut}`, ["main", "_start", "start", "vuln", "win", "print_flag", "menu", "handle", "check", "auth", "read_flag"])
-    const symbolLines = readelfSymbols.split(/\r?\n/).filter((line) => kw.test(line)).slice(0, 80)
-    const nmHits = nmOut.split(/\r?\n/).filter((line) => kw.test(line) || /\b(main|_start|start|vuln|win|print_flag|menu|handle|check|auth|read_flag)\b/i.test(line)).slice(0, 80)
-    const headerHits = objdumpHeaders.split(/\r?\n/).filter((line) => kw.test(line) || /NEEDED|INTERP|RPATH|RUNPATH/i.test(line)).slice(0, 80)
+    const namedSymbols = parseNamedSymbols(`${readelfSymbols}\n${nmOut}`, [
+      "main",
+      "_start",
+      "start",
+      "vuln",
+      "win",
+      "print_flag",
+      "menu",
+      "handle",
+      "check",
+      "auth",
+      "read_flag",
+    ])
+    const symbolLines = readelfSymbols
+      .split(/\r?\n/)
+      .filter((line) => kw.test(line))
+      .slice(0, 80)
+    const nmHits = nmOut
+      .split(/\r?\n/)
+      .filter(
+        (line) =>
+          kw.test(line) || /\b(main|_start|start|vuln|win|print_flag|menu|handle|check|auth|read_flag)\b/i.test(line),
+      )
+      .slice(0, 80)
+    const headerHits = objdumpHeaders
+      .split(/\r?\n/)
+      .filter((line) => kw.test(line) || /NEEDED|INTERP|RPATH|RUNPATH/i.test(line))
+      .slice(0, 80)
 
     const disasmLines = objdumpDisasm.split(/\r?\n/)
     const candidateFunctions = collectFunctionLabels(disasmLines, Object.keys(namedSymbols))
@@ -329,7 +367,12 @@ export default tool({
       const fnHit = args.functionName && new RegExp(`<${args.functionName}>`, "i").test(line)
       const kwHit = kw.test(line)
       const addrHit = args.address && line.includes(args.address.replace(/^0x/i, ""))
-      const chainHit = goChains.bestFirstTargets.some((targetName) => line.includes(`<${targetName}>`) || (addrToLineTarget(targetName, pcln.functions) && line.includes(addrToLineTarget(targetName, pcln.functions)!)))
+      const chainHit = goChains.bestFirstTargets.some(
+        (targetName) =>
+          line.includes(`<${targetName}>`) ||
+          (addrToLineTarget(targetName, pcln.functions) &&
+            line.includes(addrToLineTarget(targetName, pcln.functions)!)),
+      )
       if (!fnHit && !kwHit && !addrHit && !chainHit) continue
       disasmSlices.push(sliceAroundLines(disasmLines, i, radius).join("\n"))
       if (disasmSlices.length >= maxSlices) break
@@ -347,7 +390,13 @@ export default tool({
       language_runtime: goInfo.runtime,
       go_signals: goInfo.goSignals,
       gopclntab_offsets: gopclntabOffsets,
-      gopclntab_section: gopclntab ? { offset: `0x${gopclntab.offset.toString(16)}`, size: gopclntab.size, addr: `0x${gopclntab.addr.toString(16)}` } : null,
+      gopclntab_section: gopclntab
+        ? {
+            offset: `0x${gopclntab.offset.toString(16)}`,
+            size: gopclntab.size,
+            addr: `0x${gopclntab.addr.toString(16)}`,
+          }
+        : null,
       pclntab_header_ok: pcln.header_ok,
       pclntab_ptr_size: pcln.ptr_size,
       function_address_map: pcln.functions.slice(0, 120),
@@ -362,9 +411,15 @@ export default tool({
       go_shortest_logic_chain: goChains.shortestLogicChain,
       go_best_first_targets: goChains.bestFirstTargets,
       go_execution_plan: goPlan,
-      preferred_reva_targets: goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "reva")).filter(Boolean),
-      preferred_ida_targets: goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "ida")).filter(Boolean),
-      preferred_slice_targets: goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "slice")).filter(Boolean),
+      preferred_reva_targets: goChains.bestFirstTargets
+        .map((name) => toTargetHint(name, pcln.functions, "reva"))
+        .filter(Boolean),
+      preferred_ida_targets: goChains.bestFirstTargets
+        .map((name) => toTargetHint(name, pcln.functions, "ida"))
+        .filter(Boolean),
+      preferred_slice_targets: goChains.bestFirstTargets
+        .map((name) => toTargetHint(name, pcln.functions, "slice"))
+        .filter(Boolean),
       stack_layout_hints: stackLayoutHints,
       red_flag_tags: disasmAnalysis.redFlagTags,
       constraint_hints: disasmAnalysis.constraintHints,
@@ -415,13 +470,17 @@ export default tool({
       "go_runtime_noise_candidates:",
       ...(goClassified.runtimeNoise.length ? goClassified.runtimeNoise.slice(0, 40).map((x) => `- ${x}`) : ["- none"]),
       "go_priority_function_addresses:",
-      ...(goPivots.priorityFunctions.length ? goPivots.priorityFunctions.map((f) => `- ${f.name}: ${f.entry}`) : ["- none"]),
+      ...(goPivots.priorityFunctions.length
+        ? goPivots.priorityFunctions.map((f) => `- ${f.name}: ${f.entry}`)
+        : ["- none"]),
       "go_analysis_pivots:",
       ...(goPivots.pivotLines.length ? goPivots.pivotLines.map((x) => `- ${x}`) : ["- none"]),
       "go_call_summary:",
       ...(goCalls.summary.length ? goCalls.summary.map((x) => `- ${x}`) : ["- none"]),
       "go_helper_chains:",
-      ...(goChains.helperChains.length ? goChains.helperChains.map((c) => `- ${c.chain.join(" -> ")} (${c.reason})`) : ["- none"]),
+      ...(goChains.helperChains.length
+        ? goChains.helperChains.map((c) => `- ${c.chain.join(" -> ")} (${c.reason})`)
+        : ["- none"]),
       `go_shortest_logic_chain: ${goChains.shortestLogicChain ? goChains.shortestLogicChain.chain.join(" -> ") : "none"}`,
       "go_best_first_targets:",
       ...(goChains.bestFirstTargets.length ? goChains.bestFirstTargets.map((x) => `- ${x}`) : ["- none"]),
@@ -429,17 +488,25 @@ export default tool({
       "go_execution_plan_steps:",
       ...(goPlan.steps.length ? goPlan.steps.map((s) => `- ${s.tool} ${s.target} (${s.note})`) : ["- none"]),
       "preferred_reva_targets:",
-      ...(goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "reva")).filter(Boolean) as string[]).map((x) => `- ${x}`),
+      ...(
+        goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "reva")).filter(Boolean) as string[]
+      ).map((x) => `- ${x}`),
       "preferred_ida_targets:",
-      ...(goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "ida")).filter(Boolean) as string[]).map((x) => `- ${x}`),
+      ...(
+        goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "ida")).filter(Boolean) as string[]
+      ).map((x) => `- ${x}`),
       "preferred_slice_targets:",
-      ...(goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "slice")).filter(Boolean) as string[]).map((x) => `- ${x}`),
+      ...(
+        goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "slice")).filter(Boolean) as string[]
+      ).map((x) => `- ${x}`),
       "stack_layout_hints:",
       ...(stackLayoutHints.length ? stackLayoutHints.map((x: string) => `- ${x}`) : ["- none"]),
       "red_flag_tags:",
       ...(disasmAnalysis.redFlagTags.length ? disasmAnalysis.redFlagTags.map((x: string) => `- ${x}`) : ["- none"]),
       "constraint_hints:",
-      ...(disasmAnalysis.constraintHints.length ? disasmAnalysis.constraintHints.map((x: string) => `- ${x}`) : ["- none"]),
+      ...(disasmAnalysis.constraintHints.length
+        ? disasmAnalysis.constraintHints.map((x: string) => `- ${x}`)
+        : ["- none"]),
       "interesting_symbols:",
       ...(symbolLines.length ? symbolLines.map((x) => `- ${x}`) : ["- none"]),
       "nm_hits:",

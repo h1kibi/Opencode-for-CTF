@@ -57,14 +57,19 @@ function rc4(data: Buffer, key: Buffer) {
   let j = 0
   for (let i = 0; i < 256; i++) {
     j = (j + s[i] + key[i % key.length]) & 0xff
-    const tmp = s[i]; s[i] = s[j]; s[j] = tmp
+    const tmp = s[i]
+    s[i] = s[j]
+    s[j] = tmp
   }
   const out = Buffer.allocUnsafe(data.length)
-  let i = 0; j = 0
+  let i = 0
+  j = 0
   for (let n = 0; n < data.length; n++) {
     i = (i + 1) & 0xff
     j = (j + s[i]) & 0xff
-    const tmp = s[i]; s[i] = s[j]; s[j] = tmp
+    const tmp = s[i]
+    s[i] = s[j]
+    s[j] = tmp
     out[n] = data[n] ^ s[(s[i] + s[j]) & 0xff]
   }
   return out
@@ -121,7 +126,9 @@ function chacha20Decrypt(data: Buffer, key: Buffer, iv: Buffer) {
   if (data.length < 16) throw new Error("chacha20_poly1305 requires at least 16 bytes (tag)")
   const ciphertext = data.subarray(0, data.length - 16)
   const tag = data.subarray(data.length - 16)
-  const d = createDecipheriv("chacha20-poly1305", key, iv) as ReturnType<typeof createDecipheriv> & { setAuthTag: (t: Buffer) => void }
+  const d = createDecipheriv("chacha20-poly1305", key, iv) as ReturnType<typeof createDecipheriv> & {
+    setAuthTag: (t: Buffer) => void
+  }
   d.setAuthTag(tag)
   try {
     return Buffer.concat([d.update(ciphertext), d.final()])
@@ -132,17 +139,28 @@ function chacha20Decrypt(data: Buffer, key: Buffer, iv: Buffer) {
 
 function applyCipher(data: Buffer, cipher: string, key: Buffer, iv: Buffer) {
   switch (cipher) {
-    case "none": return data
-    case "xor_byte": return xorSingleByte(data, key.length ? key[0] : 0)
-    case "xor_key": return xorBytes(data, key)
-    case "xor_positional": return xorPositional(data, key)
-    case "rc4": return rc4(data, key)
-    case "aes_ecb": return aesEcbDecrypt(data, key)
-    case "aes_cbc": return aesCbcDecrypt(data, key, iv)
-    case "aes_ctr": return aesCtrDecrypt(data, key, iv)
-    case "aes_gcm": return aesGcmDecrypt(data, key, iv)
-    case "chacha20_poly1305": return chacha20Decrypt(data, key, iv)
-    default: return data
+    case "none":
+      return data
+    case "xor_byte":
+      return xorSingleByte(data, key.length ? key[0] : 0)
+    case "xor_key":
+      return xorBytes(data, key)
+    case "xor_positional":
+      return xorPositional(data, key)
+    case "rc4":
+      return rc4(data, key)
+    case "aes_ecb":
+      return aesEcbDecrypt(data, key)
+    case "aes_cbc":
+      return aesCbcDecrypt(data, key, iv)
+    case "aes_ctr":
+      return aesCtrDecrypt(data, key, iv)
+    case "aes_gcm":
+      return aesGcmDecrypt(data, key, iv)
+    case "chacha20_poly1305":
+      return chacha20Decrypt(data, key, iv)
+    default:
+      return data
   }
 }
 
@@ -176,7 +194,10 @@ function readLength(buf: Buffer, off: number, size: number, endian: "little" | "
 }
 
 // 简化的 pcap 文件头解析,只支持 libpcap 1.0 经典格式(magic 0xa1b2c3d4 / 0xd4c3b2a1)
-function parsePcapIfPresent(buf: Buffer): { isPcap: boolean; packets: Array<{ offset: number; payload: Buffer; tsSec: number; tsUsec: number; origLen: number }> } {
+function parsePcapIfPresent(buf: Buffer): {
+  isPcap: boolean
+  packets: Array<{ offset: number; payload: Buffer; tsSec: number; tsUsec: number; origLen: number }>
+} {
   if (buf.length < 24) return { isPcap: false, packets: [] }
   const m0 = buf.readUInt32BE(0)
   const m1 = buf.readUInt32LE(0)
@@ -184,8 +205,8 @@ function parsePcapIfPresent(buf: Buffer): { isPcap: boolean; packets: Array<{ of
     return { isPcap: false, packets: [] }
   }
   const littleEndian = m1 === 0xa1b2c3d4 || m1 === 0xa1b2cd34
-  const rd16 = (off: number) => littleEndian ? buf.readUInt16LE(off) : buf.readUInt16BE(off)
-  const rd32 = (off: number) => littleEndian ? buf.readUInt32LE(off) : buf.readUInt32BE(off)
+  const rd16 = (off: number) => (littleEndian ? buf.readUInt16LE(off) : buf.readUInt16BE(off))
+  const rd32 = (off: number) => (littleEndian ? buf.readUInt32LE(off) : buf.readUInt32BE(off))
   const snapLen = rd32(16)
   const linkType = rd32(20)
   const packets: Array<{ offset: number; payload: Buffer; tsSec: number; tsUsec: number; origLen: number }> = []
@@ -260,22 +281,50 @@ type CarvedFrame = {
 const FLAG_RE = /[A-Za-z0-9_@.-]{2,32}\{[^\r\n}]{1,200}\}/g
 
 export default tool({
-  description: "CTF pcap carve: extract custom-protocol frames by magic + length-prefix from pcap or raw stream, apply batch decryption (xor_byte/xor_key/xor_positional/rc4), and flag-scan results.",
+  description:
+    "CTF pcap carve: extract custom-protocol frames by magic + length-prefix from pcap or raw stream, apply batch decryption (xor_byte/xor_key/xor_positional/rc4), and flag-scan results.",
   args: {
     target: tool.schema.string().describe("pcap/pcapng/raw bytes file path"),
-    magic: tool.schema.string().optional().describe("Magic marker as ASCII (e.g. ET3RNUMX) or hex (0x4554...). Required unless mode=auto."),
-    lengthSize: tool.schema.number().optional().describe("Length field size in bytes after magic. 0/1/2/4. Default 0 (split at next magic)."),
+    magic: tool.schema
+      .string()
+      .optional()
+      .describe("Magic marker as ASCII (e.g. ET3RNUMX) or hex (0x4554...). Required unless mode=auto."),
+    lengthSize: tool.schema
+      .number()
+      .optional()
+      .describe("Length field size in bytes after magic. 0/1/2/4. Default 0 (split at next magic)."),
     lengthEndian: tool.schema.string().optional().describe("little | big. Default big."),
     lengthOffset: tool.schema.number().optional().describe("Bytes between magic end and length field. Default 0."),
-    lengthIncludesMagic: tool.schema.boolean().optional().describe("Whether length field counts magic bytes. Default false."),
-    cipher: tool.schema.string().optional().describe("none | xor_byte | xor_key | xor_positional | rc4 | aes_ecb | aes_cbc | aes_ctr | aes_gcm | chacha20_poly1305. Default none."),
+    lengthIncludesMagic: tool.schema
+      .boolean()
+      .optional()
+      .describe("Whether length field counts magic bytes. Default false."),
+    cipher: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "none | xor_byte | xor_key | xor_positional | rc4 | aes_ecb | aes_cbc | aes_ctr | aes_gcm | chacha20_poly1305. Default none.",
+      ),
     key: tool.schema.string().optional().describe("Cipher key as ASCII or hex (0x...). Required for keyed ciphers."),
-    iv: tool.schema.string().optional().describe("IV/nonce as ASCII or hex (0x...). Required for aes_cbc(16B) / aes_ctr(16B) / aes_gcm(>=12B) / chacha20_poly1305(12B)."),
-    scanAppLayerOnly: tool.schema.boolean().optional().describe("If pcap detected, only carve application-layer payloads. Default true."),
+    iv: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "IV/nonce as ASCII or hex (0x...). Required for aes_cbc(16B) / aes_ctr(16B) / aes_gcm(>=12B) / chacha20_poly1305(12B).",
+      ),
+    scanAppLayerOnly: tool.schema
+      .boolean()
+      .optional()
+      .describe("If pcap detected, only carve application-layer payloads. Default true."),
     minFrameSize: tool.schema.number().optional().describe("Minimum frame payload size (excluding magic). Default 1."),
     maxFrameSize: tool.schema.number().optional().describe("Maximum frame payload size. Default 4096."),
     maxFrames: tool.schema.number().optional().describe("Maximum frames to carve. Default 200."),
-    autoTryXorBytes: tool.schema.boolean().optional().describe("When cipher=none, also try all 256 single-byte XOR variants and report flag-like hits. Default false."),
+    autoTryXorBytes: tool.schema
+      .boolean()
+      .optional()
+      .describe(
+        "When cipher=none, also try all 256 single-byte XOR variants and report flag-like hits. Default false.",
+      ),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args, context) {
@@ -383,7 +432,12 @@ export default tool({
           const dec = xorSingleByte(body, b)
           const s = dec.toString("latin1")
           if (FLAG_RE.test(s) || /flag|secret|password|token/i.test(s)) {
-            xorByteHits.push({ frameIndex: f.frameIndex, byte: b, ascii: asciiPreview(dec, 200), flagLike: FLAG_RE.test(s) })
+            xorByteHits.push({
+              frameIndex: f.frameIndex,
+              byte: b,
+              ascii: asciiPreview(dec, 200),
+              flagLike: FLAG_RE.test(s),
+            })
           }
         }
       }
@@ -413,12 +467,28 @@ export default tool({
       recommended_next: [] as string[],
     }
 
-    if (flagCandidates.length) payload.recommended_next.push(`verify flag-like hits: ${flagCandidates.map((f) => `frame#${f.frameIndex}`).slice(0, 5).join(", ")}`)
-    if (xorByteHits.length) payload.recommended_next.push(`try xor_byte variants; first hit frame#${xorByteHits[0].frameIndex} byte=0x${xorByteHits[0].byte.toString(16)}`)
-    if (!frames.length) payload.recommended_next.push(`no frames carved with magic='${magic.toString("latin1")}'; try mode=auto with common magics (PK, ET3RNUMX, FLAG{, etc.) or set scanAppLayerOnly=false`)
+    if (flagCandidates.length)
+      payload.recommended_next.push(
+        `verify flag-like hits: ${flagCandidates
+          .map((f) => `frame#${f.frameIndex}`)
+          .slice(0, 5)
+          .join(", ")}`,
+      )
+    if (xorByteHits.length)
+      payload.recommended_next.push(
+        `try xor_byte variants; first hit frame#${xorByteHits[0].frameIndex} byte=0x${xorByteHits[0].byte.toString(16)}`,
+      )
+    if (!frames.length)
+      payload.recommended_next.push(
+        `no frames carved with magic='${magic.toString("latin1")}'; try mode=auto with common magics (PK, ET3RNUMX, FLAG{, etc.) or set scanAppLayerOnly=false`,
+      )
     const cipherErrors = frames.filter((f) => f.cipherError).map((f) => `frame#${f.frameIndex}: ${f.cipherError}`)
-    if (cipherErrors.length) payload.recommended_next.push(`cipher errors on ${cipherErrors.length} frames: ${cipherErrors[0]}`)
-    if (!payload.recommended_next.length) payload.recommended_next.push("inspect carved frames and verify cipher/key against the protocol spec or success/failure oracle")
+    if (cipherErrors.length)
+      payload.recommended_next.push(`cipher errors on ${cipherErrors.length} frames: ${cipherErrors[0]}`)
+    if (!payload.recommended_next.length)
+      payload.recommended_next.push(
+        "inspect carved frames and verify cipher/key against the protocol spec or success/failure oracle",
+      )
 
     if (args.jsonOnly) return JSON.stringify(payload, null, 2)
     return [
@@ -440,11 +510,26 @@ export default tool({
       `- candidates_scanned: ${candidates.length}`,
       `- frames_carved: ${frames.length}`,
       "frames (first 50):",
-      ...(frames.length ? frames.slice(0, 50).map((f) => `- frame#${f.frameIndex} src=${f.packetIndex >= 0 ? `pkt#${f.packetIndex}` : "whole"} off=${f.magicOffset} len=${f.length}\n   raw_hex=${f.rawHex.slice(0, 96)}...\n   dec_hex=${f.decryptedHex.slice(0, 96)}...\n   dec_ascii=${f.decryptedAscii}\n   flag_like=${f.isFlagLike}`) : ["- none"]),
+      ...(frames.length
+        ? frames
+            .slice(0, 50)
+            .map(
+              (f) =>
+                `- frame#${f.frameIndex} src=${f.packetIndex >= 0 ? `pkt#${f.packetIndex}` : "whole"} off=${f.magicOffset} len=${f.length}\n   raw_hex=${f.rawHex.slice(0, 96)}...\n   dec_hex=${f.decryptedHex.slice(0, 96)}...\n   dec_ascii=${f.decryptedAscii}\n   flag_like=${f.isFlagLike}`,
+            )
+        : ["- none"]),
       "flag_candidates:",
-      ...(flagCandidates.length ? flagCandidates.map((f) => `- frame#${f.frameIndex} ascii=${f.decryptedAscii}`) : ["- none"]),
+      ...(flagCandidates.length
+        ? flagCandidates.map((f) => `- frame#${f.frameIndex} ascii=${f.decryptedAscii}`)
+        : ["- none"]),
       "xor_byte_auto_hits:",
-      ...(xorByteHits.length ? xorByteHits.slice(0, 30).map((h) => `- frame#${h.frameIndex} byte=0x${h.byte.toString(16)} ascii=${h.ascii} flag_like=${h.flagLike}`) : ["- none"]),
+      ...(xorByteHits.length
+        ? xorByteHits
+            .slice(0, 30)
+            .map(
+              (h) => `- frame#${h.frameIndex} byte=0x${h.byte.toString(16)} ascii=${h.ascii} flag_like=${h.flagLike}`,
+            )
+        : ["- none"]),
       "recommended_next:",
       ...payload.recommended_next.map((x) => `- ${x}`),
     ].join("\n")

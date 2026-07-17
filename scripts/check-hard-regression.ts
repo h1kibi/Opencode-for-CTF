@@ -21,11 +21,7 @@ type HardCase = {
   notes?: string
 }
 
-const REQUIRED_STRINGS = [
-  "id",
-  "category",
-  "description",
-]
+const REQUIRED_STRINGS = ["id", "category", "description"]
 
 const REQUIRED_EXPECTED = [
   "primary_owner",
@@ -85,7 +81,9 @@ function main() {
         continue
       }
 
-      console.log(`| ${parsed.id} | PASS | owner=${parsed.expected.primary_owner}, tool=${parsed.expected.first_safe_tool} |`)
+      console.log(
+        `| ${parsed.id} | PASS | owner=${parsed.expected.primary_owner}, tool=${parsed.expected.first_safe_tool} |`,
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       failures.push(`${file}: ${message}`)

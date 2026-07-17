@@ -45,7 +45,7 @@ agent: daily
 先从先知本地审计索引筛候选，而不是直接全网乱抓：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\xianzhi_fetch_batch.py "<query>" --module <module> --limit-candidates 20 --batch-size 5 --json
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/xianzhi_fetch_batch.py "<query>" --module <module> --limit-candidates 20 --batch-size 5 --json
 ```
 
 ### Step 3: 小批量抓取
@@ -61,21 +61,21 @@ C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\Sec
 抓到 clean 正文后，批量 promote：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\xianzhi_promote_batch.py --module <module> --ids <id1> <id2> <id3> --no-index
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/xianzhi_promote_batch.py --module <module> --ids <id1> <id2> <id3> --no-index
 ```
 
 ### Step 5: 统一重建索引
 全部写完后统一重建：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\ingest.py
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/ingest.py
 ```
 
 ### Step 6: smoke test
 用该主题的 evidence query 做一次检索验证：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\search.py "<evidence query>" --category <category> --limit 5
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/search.py "<evidence query>" --category <category> --limit 5
 ```
 
 ## 规则

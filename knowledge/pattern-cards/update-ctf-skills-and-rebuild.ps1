@@ -1,7 +1,7 @@
 # Update local ljagiello/ctf-skills mirror and rebuild pattern card indexes.
 $ErrorActionPreference = "Stop"
-$repo = "C:\Users\Administrator\.config\opencode\knowledge\ljagiello-ctf-skills"
-$cards = "C:\Users\Administrator\.config\opencode\knowledge\pattern-cards"
+$repo = "{env:OPENCODE_CONFIG_DIR}\knowledge\ljagiello-ctf-skills"
+$cards = "{env:OPENCODE_CONFIG_DIR}\knowledge\pattern-cards"
 if (-not (Test-Path -LiteralPath $repo)) { throw "repo not found: $repo" }
 $env:HTTP_PROXY = "http://127.0.0.1:7897"
 $env:HTTPS_PROXY = "http://127.0.0.1:7897"

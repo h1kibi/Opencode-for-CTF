@@ -1,10 +1,8 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
+import { randomUUID } from "node:crypto"
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExecWithStreams } from "./lib/exec-utils.ts"
 const FLAG_RE = /[A-Za-z0-9_@.-]{2,32}\{[^\r\n}]{1,200}\}/g
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
@@ -28,12 +26,24 @@ async function loadRuntimeProfile(contextDir: string, profileId?: string) {
 }
 
 export default tool({
-  description: "CTF pwn post-shell runner: run a short deterministic pwd/ls/cat-flag closure sequence through an exploit script or docker substrate.",
+  description:
+    "CTF pwn post-shell runner: run a short deterministic pwd/ls/cat-flag closure sequence through an exploit script or docker substrate.",
   args: {
-    exploitScript: tool.schema.string().optional().describe("Workspace-relative pwntools exploit script that should leave an interactive shell/tube."),
+    exploitScript: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative pwntools exploit script that should leave an interactive shell/tube."),
     binary: tool.schema.string().optional().describe("Optional binary path for context only."),
-    commandSequence: tool.schema.string().optional().describe("Newline-separated post-shell commands. Defaults to pwd/ls/cat flag paths with minimal shell assumptions."),
-    runtimeProfileId: tool.schema.string().optional().describe("Runtime profile id emitted by ctf-pwn-libc-runtime-doctor."),
+    commandSequence: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Newline-separated post-shell commands. Defaults to pwd/ls/cat flag paths with minimal shell assumptions.",
+      ),
+    runtimeProfileId: tool.schema
+      .string()
+      .optional()
+      .describe("Runtime profile id emitted by ctf-pwn-libc-runtime-doctor."),
     composeService: tool.schema.string().optional().describe("Compose service for docker exec/run."),
     containerName: tool.schema.string().optional().describe("Explicit container name for docker exec."),
     image: tool.schema.string().optional().describe("Docker image for docker run."),
@@ -48,10 +58,15 @@ export default tool({
     const timeoutMs = Math.max(1000, Math.min(args.timeoutMs ?? 20000, 120000))
     const profile = await loadRuntimeProfile(context.directory, args.runtimeProfileId)
     const defaults = profile?.docker_runner_defaults || {}
-    const cmds = String(args.commandSequence || "pwd\nls -la .\nls -la /\ncat /flag 2>/dev/null || true\ncat /flag.txt 2>/dev/null || true\ncat flag 2>/dev/null || true\ncat flag.txt 2>/dev/null || true")
-      .split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
+    const cmds = String(
+      args.commandSequence ||
+        "pwd\nls -la .\nls -la /\ncat /flag 2>/dev/null || true\ncat /flag.txt 2>/dev/null || true\ncat flag 2>/dev/null || true\ncat flag.txt 2>/dev/null || true",
+    )
+      .split(/\r?\n/)
+      .map((x) => x.trim())
+      .filter(Boolean)
     const flagRe = args.flagPattern ? new RegExp(args.flagPattern, "g") : FLAG_RE
-    const tmpDir = resolveInsideWorkspace(context.directory, `work/pwn-post-shell/${Date.now()}-${Math.random().toString(16).slice(2, 8)}`)
+    const tmpDir = resolveInsideWorkspace(context.directory, `work/pwn-post-shell/${randomUUID().slice(0, 12)}`)
     await mkdir(tmpDir, { recursive: true })
     const driver = path.join(tmpDir, "post_shell_driver.py")
     const exploit = args.exploitScript ? resolveInsideWorkspace(context.directory, args.exploitScript) : ""
@@ -98,17 +113,64 @@ print(out)
     let command = "python"
     let argv = [driver]
     let cwd = context.directory
-    if (args.containerName) argv = ["exec", "-w", containerWorkdir, args.containerName, "python3", inContainerDriver], command = "docker"
-    else if (composeService && !args.useComposeRun) argv = ["compose", "exec", "-T", "-w", containerWorkdir, composeService, "python3", inContainerDriver], command = "docker"
-    else if (composeService && args.useComposeRun) argv = ["compose", "run", "--rm", "-T", "-w", containerWorkdir, ...(defaults.runArgs ? String(defaults.runArgs).split(/\s+/).filter(Boolean) : []), composeService, "python3", inContainerDriver], command = "docker"
-    else if (args.image) argv = ["run", "--rm", "-v", `${context.directory.replace(/\\/g, "/")}:${containerMountRoot}`, "-w", containerWorkdir, args.image, "python3", inContainerDriver], command = "docker"
+    if (args.containerName)
+      ((argv = ["exec", "-w", containerWorkdir, args.containerName, "python3", inContainerDriver]),
+        (command = "docker"))
+    else if (composeService && !args.useComposeRun)
+      ((argv = ["compose", "exec", "-T", "-w", containerWorkdir, composeService, "python3", inContainerDriver]),
+        (command = "docker"))
+    else if (composeService && args.useComposeRun)
+      ((argv = [
+        "compose",
+        "run",
+        "--rm",
+        "-T",
+        "-w",
+        containerWorkdir,
+        ...(defaults.runArgs ? String(defaults.runArgs).split(/\s+/).filter(Boolean) : []),
+        composeService,
+        "python3",
+        inContainerDriver,
+      ]),
+        (command = "docker"))
+    else if (args.image)
+      ((argv = [
+        "run",
+        "--rm",
+        "-v",
+        `${context.directory.replace(/\\/g, "/")}:${containerMountRoot}`,
+        "-w",
+        containerWorkdir,
+        args.image,
+        "python3",
+        inContainerDriver,
+      ]),
+        (command = "docker"))
     try {
-      const { stdout, stderr } = await execFile(command, argv, { cwd, timeout: timeoutMs, maxBuffer: 2 * 1024 * 1024 })
+      const { stdout, stderr } = await safeExecWithStreams(command, argv, {
+        cwd,
+        timeoutMs,
+        maxBuffer: 2 * 1024 * 1024,
+      })
       const output = `${stdout}${stderr ? `\n${stderr}` : ""}`
       const flags = Array.from(new Set(output.match(flagRe) || []))
-      const payload = { schema_version: "pwn_post_shell_runner.v1", runtime_profile_id: args.runtimeProfileId || "", commands_sent: cmds, flag_detected: flags.length > 0, flags_found: flags, output: compact(output) }
+      const payload = {
+        schema_version: "pwn_post_shell_runner.v1",
+        runtime_profile_id: args.runtimeProfileId || "",
+        commands_sent: cmds,
+        flag_detected: flags.length > 0,
+        flags_found: flags,
+        output: compact(output),
+      }
       if (args.jsonOnly) return JSON.stringify(payload, null, 2)
-      return ["pwn_post_shell_runner:", `runtime_profile_id: ${payload.runtime_profile_id}`, `flag_detected: ${payload.flag_detected}`, `flags_found: ${flags.length ? flags.join(" | ") : "none"}`, "output_compact:", payload.output].join("\n")
+      return [
+        "pwn_post_shell_runner:",
+        `runtime_profile_id: ${payload.runtime_profile_id}`,
+        `flag_detected: ${payload.flag_detected}`,
+        `flags_found: ${flags.length ? flags.join(" | ") : "none"}`,
+        "output_compact:",
+        payload.output,
+      ].join("\n")
     } finally {
       await rm(tmpDir, { recursive: true, force: true })
     }

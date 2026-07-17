@@ -1,5 +1,5 @@
----
-description: PWN persistent container setup: keep common pwnlab services warm across sessions
+﻿---
+description: "PWN persistent container setup: keep common pwnlab services warm across sessions"
 agent: ctf-master
 subtask: false
 ---
@@ -22,11 +22,11 @@ Checks:
 Recommended workflow:
 1. Ensure templates are present in the challenge workspace with `templates/pwn_env_setup.ps1` if needed.
 2. Start the chosen services with:
-   - `docker compose -f docker-compose.revlab.yml --profile general up -d pwn-general`
-   - `docker compose -f docker-compose.revlab.yml --profile general20 up -d pwn-general20`
-   - `docker compose -f docker-compose.revlab.yml --profile general24 up -d pwn-general24`
-   - `docker compose -f docker-compose.revlab.yml --profile debian12 up -d pwn-debian12`
-   - `docker compose -f docker-compose.revlab.yml --profile alpine up -d pwn-alpine`
+   - `docker compose -f docker/docker-compose.revlab.yml --profile general up -d pwn-general`
+   - `docker compose -f docker/docker-compose.revlab.yml --profile general20 up -d pwn-general20`
+   - `docker compose -f docker/docker-compose.revlab.yml --profile general24 up -d pwn-general24`
+   - `docker compose -f docker/docker-compose.revlab.yml --profile debian12 up -d pwn-debian12`
+   - `docker compose -f docker/docker-compose.revlab.yml --profile alpine up -d pwn-alpine`
 3. Verify each service once with `ctf-pwn-container-probe`.
 4. Keep PWN interaction tools on the same persistent service until the route or runtime is falsified.
 

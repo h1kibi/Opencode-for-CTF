@@ -1,141 +1,32 @@
 {
   "$schema": "https://opencode.ai/config.json",
 
-  // ============================================================
-  // opencode-for-ctf 插件参考配置
-  // ============================================================
-  // 将此文件放入你的 opencode 配置目录（~/.config/opencode/opencode.jsonc）
-  // 或 CTF 工作区根目录，然后根据需要调整 provider、MCP、权限等。
+  // Source-checkout configuration.
   //
-  // 插件路径示例（根据实际路径调整）：
-  //   "file:C:\\Projects\\Agent-projects\\Opencode-for-CTF"
-  // ============================================================
+  // This file is intentionally minimal because OpenCode automatically loads
+  // opencode.jsonc from the current project. Machine-specific paths, provider
+  // credentials, and optional MCP definitions must not live here.
+  //
+  // Recommended installation:
+  //   npm run ctf:install
+  //
+  // The installer safely adds the built plugin, agents, commands, skills, and
+  // rules to the user's OpenCode configuration. Optional MCP profiles remain
+  // disabled until explicitly reviewed and enabled.
 
-  "default_agent": "ctf-fast",   // 可选: ctf-fast (快速) 或 ctf-expert (全面)
-  "small_model": "deepseek/deepseek-v4-flash",
+  "share": "disabled",
 
-  // ---- 加载 opencode-for-ctf 插件 ----
-  // 插件提供: 运行时 hooks（continuation、team-mode、skill MCP lifecycle）
-  "plugin": [
-    "file:C:\\Projects\\Agent-projects\\Opencode-for-CTF"
-  ],
-
-  // ---- CTF Agent 定义 ----
-  // opencode-for-ctf/agents/ 目录下的所有 agent 会自动加载。
-  // 此处可覆盖默认 agent 配置。
-  "agent": {
-    "build": { "disable": true },
-    "plan": { "disable": true }
+  "keybinds": {
+    "leader": "ctrl+x",
+    "agent_cycle": "tab,<leader>j",
+    "agent_cycle_reverse": "shift+tab,<leader>k",
+    "agent_list": "<leader>a"
   },
 
-  // ---- Provider 配置（按需填写你的 API Key） ----
-  "provider": {
-    "deepseek": {
-      "name": "DeepSeek",
-      "npm": "@ai-sdk/openai-compatible",
-      "options": {
-        "baseURL": "https://api.deepseek.com/v1",
-        "apiKey": "{env:DEEPSEEK_API_KEY}"
-      },
-      "models": {
-        "deepseek-v4-pro": { "name": "deepseek-v4-pro" },
-        "deepseek-v4-flash": { "name": "deepseek-v4-flash" }
-      }
-    }
-  },
+  // Managed installation registers the built plugin path. Keep this empty in
+  // the source checkout to avoid a machine-specific absolute path.
+  "plugin": [],
 
-  // ---- CTF Skills ----
-  "skills": {
-    "paths": [
-      "C:\\Projects\\Agent-projects\\Opencode-for-CTF\\skills",
-      "C:\\Projects\\Agent-projects\\Opencode-for-CTF\\skills-external\\ctf-skills"
-    ]
-  },
-
-  // ---- 全局指令文件 ----
-  "instructions": [
-    "C:\\Projects\\Agent-projects\\Opencode-for-CTF\\rules-cn.md",
-    "C:\\Projects\\Agent-projects\\Opencode-for-CTF\\ctf-rules.md"
-  ],
-
-  // ---- MCP 服务（按需启用） ----
-  "mcp": {
-    "filesystem": {
-      "type": "local",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\Administrator"],
-      "enabled": true
-    },
-    "browser": {
-      "type": "local",
-      "command": ["npx", "-y", "chrome-devtools-mcp", "--headless", "--isolated", "--slim"],
-      "enabled": true
-    },
-    "markitdown": {
-      "type": "local",
-      "command": ["npx", "-y", "mcp-markdownify-server"],
-      "enabled": true
-    },
-    "context7": {
-      "type": "remote",
-      "url": "https://mcp.context7.com/mcp",
-      "enabled": true
-    },
-    "github": {
-      "type": "remote",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "enabled": true,
-      "headers": {
-        "Authorization": "Bearer {env:GITHUB_PAT}",
-        "X-MCP-Readonly": "true"
-      }
-    },
-    // ---- 逆向分析工具 ----
-    "ReVa": {
-      "type": "local",
-      "command": ["mcp-reva"],
-      "environment": { "GHIDRA_INSTALL_DIR": "{env:GHIDRA_INSTALL_DIR}" },
-      "enabled": true,
-      "timeout": 120000
-    },
-    "ida-pro": {
-      "type": "local",
-      "command": [
-        "python",
-        "C:\\Projects\\Agent-projects\\Opencode-for-CTF\\runtime\\ida-pro-mcp\\launch_idalib_mcp.py",
-        "--stdio"
-      ],
-      "enabled": false,
-      "timeout": 120000
-    },
-    "flutter-aot": {
-      "type": "local",
-      "command": [
-        "python",
-        "C:\\Projects\\Agent-projects\\Opencode-for-CTF\\runtime\\flutter-aot-mcp\\flutter_aot_mcp.py",
-        "--stdio"
-      ],
-      "enabled": false,
-      "timeout": 3600000
-    },
-    // ---- 知识库 ----
-    "seckb": {
-      "type": "local",
-      "command": ["{env:SECKB_PYTHON}", "{env:SECKB_MCP_SERVER}"],
-      "environment": {
-        "SECKB_ROOT": "{env:SECKB_ROOT}",
-        "SECKB_CONFIG": "{env:SECKB_CONFIG}"
-      },
-      "enabled": false
-    },
-    "cvekb": {
-      "type": "local",
-      "command": ["{env:SECKB_PYTHON}", "{env:CVEKB_MCP_SERVER}"],
-      "environment": { "CVEKB_ROOT": "{env:CVEKB_ROOT}" },
-      "enabled": false
-    }
-  },
-
-  // ---- 权限控制 ----
   "permission": {
     "bash": {
       "*": "ask",
@@ -143,9 +34,6 @@
       "git diff*": "allow",
       "git log*": "allow",
       "git branch*": "allow",
-      "git add*": "ask",
-      "git commit*": "ask",
-      "git push*": "ask",
       "rm *": "deny",
       "Remove-Item *": "deny",
       "del *": "deny"
@@ -159,20 +47,18 @@
       "**/.aws/**": "deny",
       "**/.azure/**": "deny",
       "**/.gcloud/**": "deny",
-      "**/.kube/**": "deny"
+      "**/.kube/**": "deny",
+      "**/.gnupg/**": "deny"
     },
-    "external_directory": { "C:\\**": "allow" },
     "webfetch": "ask",
     "websearch": "ask"
   },
 
-  // ---- 工具输出限制 ----
   "tool_output": {
     "max_lines": 500,
     "max_bytes": 30000
   },
 
-  // ---- 上下文压缩 ----
   "compaction": {
     "auto": true,
     "prune": false,
@@ -180,19 +66,29 @@
     "reserved": 12000
   },
 
-  "share": "disabled",
-
-  // ---- 文件变更监控忽略 ----
   "watcher": {
     "ignore": [
       "**/extracted/**",
       "**/work/**",
-      "**/*.pcap", "**/*.pcapng",
-      "**/*.mem", "**/*.raw", "**/*.img", "**/*.iso",
-      "**/*.zip", "**/*.7z", "**/*.tar", "**/*.gz",
-      "**/*.bin", "**/*.elf", "**/*.exe", "**/*.dll", "**/*.so",
-      "**/*.apk", "**/*.dex",
-      "**/node_modules/**", "**/.git/**"
+      "**/*.pcap",
+      "**/*.pcapng",
+      "**/*.mem",
+      "**/*.raw",
+      "**/*.img",
+      "**/*.iso",
+      "**/*.zip",
+      "**/*.7z",
+      "**/*.tar",
+      "**/*.gz",
+      "**/*.bin",
+      "**/*.elf",
+      "**/*.exe",
+      "**/*.dll",
+      "**/*.so",
+      "**/*.apk",
+      "**/*.dex",
+      "**/node_modules/**",
+      "**/.git/**"
     ]
   }
 }

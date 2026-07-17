@@ -1,0 +1,37 @@
+FROM ubuntu:18.04
+
+ENV DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC LC_ALL=C.UTF-8 LANG=C.UTF-8 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=off PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn TERM=xterm-256color
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN dpkg --add-architecture i386 \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+      build-essential ca-certificates curl file gdb gdbserver git jq ltrace netcat-openbsd \
+      patchelf python3 python3-dev python3-pip python3-setuptools python3-venv qemu-user qemu-user-static \
+      ruby ruby-dev socat strace tmux vim-tiny xxd binutils binutils-multiarch gcc-multilib g++-multilib \
+      libc6:i386 libc6-dbg libc6-dbg:i386 libc6-dev:i386 libstdc++6:i386 libncurses5:i386 libncursesw5:i386 \
+      make nasm wget unzip zip sudo openssh-client procps pkg-config libffi-dev libssl-dev libseccomp-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN (python3 -m pip install 'pip<22' setuptools wheel || true) \
+    && python3 -m pip --version >/dev/null 2>&1 || (curl -fsSL https://bootstrap.pypa.io/pip/3.6/get-pip.py -o /tmp/get-pip.py && python3 /tmp/get-pip.py 'pip<22' setuptools wheel) \
+    && python3 -m pip install --upgrade 'pip<22' setuptools wheel \
+    && for pkg in 'pwntools==4.9.0' 'pyelftools<0.28' ROPGadget capstone unicorn keystone-engine angr claripy z3-solver requests ipython; do \
+      python3 -m pip install "$pkg" || echo "WARN: optional pip package failed: $pkg"; \
+    done \
+    && python3 -m pip install ropper || echo "WARN: optional pip package failed: ropper" \
+    && ((gem install one_gadget -v 1.2.0 --no-document) || (gem sources --add https://rubygems.org/ --remove https://rubygems.org/ >/dev/null 2>&1 || true; gem install one_gadget -v 1.2.0 --no-document) || echo "WARN: optional gem install failed: one_gadget") \
+    && (gem install seccomp-tools -v 1.5.0 --no-document || echo "WARN: optional gem install failed: seccomp-tools") \
+    && printf '#!/usr/bin/env bash\nexec /usr/local/bin/ROPgadget "$@"\n' > /usr/local/bin/ROPGadget \
+    && chmod +x /usr/local/bin/ROPGadget \
+    && printf '#!/usr/bin/env bash\nexec python3 -m pwnlib.commandline.checksec "$@"\n' > /usr/local/bin/checksec \
+    && chmod +x /usr/local/bin/checksec
+
+RUN git clone --depth=1 https://github.com/hugsy/gef.git /opt/gef || true \
+    && if [ -f /opt/gef/gef.py ]; then printf '\nsource /opt/gef/gef.py\n' > /root/.gdbinit; else touch /root/.gdbinit; fi \
+    && printf 'set disassembly-flavor intel\nset pagination off\nset follow-fork-mode child\n' >> /root/.gdbinit \
+    && printf '#!/usr/bin/env bash\nset +e\necho "[pwnlab-general18] tool check"\nfor c in file readelf objdump nm strings checksec gdb gdbserver python3 ROPGadget ropper one_gadget patchelf qemu-i386 strace ltrace tmux vim git curl wget socat seccomp-tools; do command -v "$c" >/dev/null 2>&1 && echo "OK $c" || echo "MISS $c"; done\npython3 - <<"PY"\ntry:\n import pwn; print("OK pwntools")\nexcept Exception as e: print("MISS pwntools", e)\ntry:\n import angr; print("OK angr", angr.__version__)\nexcept Exception as e: print("MISS angr", e)\ntry:\n import claripy; print("OK claripy", getattr(claripy, "__version__", "present"))\nexcept Exception as e: print("MISS claripy", e)\ntry:\n import z3; print("OK z3", z3.get_version_string())\nexcept Exception as e: print("MISS z3", e)\nPY\n' > /usr/local/bin/pwnlab-check \
+    && chmod +x /usr/local/bin/pwnlab-check
+
+WORKDIR /work
+CMD ["bash"]

@@ -17,7 +17,9 @@ function extractPairs(text: string) {
       if (!Number.isNaN(off)) pairs.push({ left: m[1], right: m[3], offset: off })
       continue
     }
-    const m2 = line.match(/\b(chunk[A-Za-z0-9_-]*)\b.*?\b(?:user(?:area)?|payload|data|field)\s*[:=]\s*(0x[0-9a-f]+|\d+)/i)
+    const m2 = line.match(
+      /\b(chunk[A-Za-z0-9_-]*)\b.*?\b(?:user(?:area)?|payload|data|field)\s*[:=]\s*(0x[0-9a-f]+|\d+)/i,
+    )
     if (m2) {
       const off = parseNumberLike(m2[2])
       if (!Number.isNaN(off)) pairs.push({ left: m2[1], right: "user_area", offset: off })
@@ -29,16 +31,37 @@ function extractPairs(text: string) {
 function extractKeywords(text: string) {
   const hits = new Set<string>()
   const lower = text.toLowerCase()
-  for (const key of ["next", "size", "fd", "bk", "fd_nextsize", "bk_nextsize", "prev_size", "header", "user", "payload", "name", "desc", "vtable", "ptr", "fd\x00", "safe-link", "tcache"]) {
+  for (const key of [
+    "next",
+    "size",
+    "fd",
+    "bk",
+    "fd_nextsize",
+    "bk_nextsize",
+    "prev_size",
+    "header",
+    "user",
+    "payload",
+    "name",
+    "desc",
+    "vtable",
+    "ptr",
+    "fd\x00",
+    "safe-link",
+    "tcache",
+  ]) {
     if (lower.includes(key)) hits.add(key)
   }
   return Array.from(hits)
 }
 
 export default tool({
-  description: "CTF PWN heap overlap field mapper: turn overlap notes, chunk layout text, or gdb output into a compact offset-to-field map and likely consumer hints.",
+  description:
+    "CTF PWN heap overlap field mapper: turn overlap notes, chunk layout text, or gdb output into a compact offset-to-field map and likely consumer hints.",
   args: {
-    evidence: tool.schema.string().describe("Heap layout notes, gdb output, overlap sketch, or source/decompilation snippet."),
+    evidence: tool.schema
+      .string()
+      .describe("Heap layout notes, gdb output, overlap sketch, or source/decompilation snippet."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args) {
@@ -46,9 +69,15 @@ export default tool({
     const pairs = extractPairs(text)
     const keywords = extractKeywords(text)
     const recommendations = [
-      pairs.length ? "Translate the strongest pair into one exact overwrite/read check before naming a technique." : "Write the overlap as chunkA_user_offset -> chunkB_field and rerun with one variable changed.",
-      keywords.includes("fd") || keywords.includes("bk") ? "If fd/bk or tcache fields are in range, verify allocator version and safe-linking before poisoning." : "If no allocator metadata is visible, prove the overlap on user data first.",
-      keywords.includes("vtable") ? "Treat the overlap as C++ object-field routing; confirm wrapper/inner object boundaries before FSOP or ROP." : "Keep the object-field consumer explicit: later consumer, later action, later overwrite target.",
+      pairs.length
+        ? "Translate the strongest pair into one exact overwrite/read check before naming a technique."
+        : "Write the overlap as chunkA_user_offset -> chunkB_field and rerun with one variable changed.",
+      keywords.includes("fd") || keywords.includes("bk")
+        ? "If fd/bk or tcache fields are in range, verify allocator version and safe-linking before poisoning."
+        : "If no allocator metadata is visible, prove the overlap on user data first.",
+      keywords.includes("vtable")
+        ? "Treat the overlap as C++ object-field routing; confirm wrapper/inner object boundaries before FSOP or ROP."
+        : "Keep the object-field consumer explicit: later consumer, later action, later overwrite target.",
     ]
     const payload = {
       schema_version: "pwn_heap_overlap_mapper.v1",

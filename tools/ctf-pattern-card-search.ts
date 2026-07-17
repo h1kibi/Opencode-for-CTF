@@ -56,10 +56,27 @@ type Card = {
   evidence_phrases?: string[]
 }
 
-type Index = { meta: { cards: number; generated_at: string; source_repo: string; version?: number; curated_cards?: number; auto_cards?: number }; cards: Card[] }
+type Index = {
+  meta: {
+    cards: number
+    generated_at: string
+    source_repo: string
+    version?: number
+    curated_cards?: number
+    auto_cards?: number
+  }
+  cards: Card[]
+}
 
 function baseTerms(query: string) {
-  return Array.from(new Set(query.toLowerCase().split(/[^a-z0-9_+.#:-]+/i).filter((x) => x.length >= 2))).slice(0, 28)
+  return Array.from(
+    new Set(
+      query
+        .toLowerCase()
+        .split(/[^a-z0-9_+.#:-]+/i)
+        .filter((x) => x.length >= 2),
+    ),
+  ).slice(0, 28)
 }
 
 function phraseMatches(phrase: string, needle: string, terms: string[]) {
@@ -68,7 +85,9 @@ function phraseMatches(phrase: string, needle: string, terms: string[]) {
   const nt = baseTerms(n)
   if (!nt.length) return false
   if (nt.length === 1) return terms.includes(nt[0])
-  return new RegExp(`(^|[^a-z0-9_+.#:-])${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9_+.#:-])`, "i").test(phrase)
+  return new RegExp(`(^|[^a-z0-9_+.#:-])${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9_+.#:-])`, "i").test(
+    phrase,
+  )
 }
 
 function expandTerms(query: string, synonymsPath: string) {
@@ -94,14 +113,27 @@ function expandTerms(query: string, synonymsPath: string) {
 }
 
 function score(card: Card, termList: string[], originalTerms: string[], rawQuery: string) {
-  const hay = `${card.category} ${card.primary_subfamily || ""} ${(card.subfamilies || []).join(" ")} ${(card.concepts || []).join(" ")} ${(card.retrieval_intents || []).join(" ")} ${(card.query_aliases || []).join(" ")} ${(card.semantic_tokens || []).join(" ")} ${(card.semantic_ngrams || []).join(" ")} ${(card.evidence_phrases || []).join(" ")} ${card.kind} ${card.title} ${card.trigger} ${card.keywords?.join(" ") || ""} ${card.snippet} ${card.first_safe_check} ${card.oracle} ${card.source_file}`.toLowerCase()
+  const hay =
+    `${card.category} ${card.primary_subfamily || ""} ${(card.subfamilies || []).join(" ")} ${(card.concepts || []).join(" ")} ${(card.retrieval_intents || []).join(" ")} ${(card.query_aliases || []).join(" ")} ${(card.semantic_tokens || []).join(" ")} ${(card.semantic_ngrams || []).join(" ")} ${(card.evidence_phrases || []).join(" ")} ${card.kind} ${card.title} ${card.trigger} ${card.keywords?.join(" ") || ""} ${card.snippet} ${card.first_safe_check} ${card.oracle} ${card.source_file}`.toLowerCase()
   let s = 0
   const queryLower = rawQuery.toLowerCase()
-  const curatedPwnQuery = /(bundled\s+libc|wrong\s+libc|exact\s+read|size\+1|fake\s+stdout|setcontext\+53|seccomp\s+closure|runtime\s+lock|anti-pattern|menu\s+desync)/i.test(queryLower)
+  const curatedPwnQuery =
+    /(bundled\s+libc|wrong\s+libc|exact\s+read|size\+1|fake\s+stdout|setcontext\+53|seccomp\s+closure|runtime\s+lock|anti-pattern|menu\s+desync)/i.test(
+      queryLower,
+    )
   for (const t of termList) {
     const exact = originalTerms.includes(t)
     const weight = exact ? 1.6 : 0.7
-    if (card.category.toLowerCase() === t || card.kind.toLowerCase() === t || card.primary_subfamily === t || (card.subfamilies || []).includes(t) || (card.concepts || []).includes(t) || (card.retrieval_intents || []).includes(t) || (card.semantic_tokens || []).includes(t)) s += 20 * weight
+    if (
+      card.category.toLowerCase() === t ||
+      card.kind.toLowerCase() === t ||
+      card.primary_subfamily === t ||
+      (card.subfamilies || []).includes(t) ||
+      (card.concepts || []).includes(t) ||
+      (card.retrieval_intents || []).includes(t) ||
+      (card.semantic_tokens || []).includes(t)
+    )
+      s += 20 * weight
     if (card.source_file.toLowerCase().includes(t)) s += 10 * weight
     if (card.title.toLowerCase().includes(t)) s += 10 * weight
     if ((card.keywords || []).includes(t)) s += 7 * weight
@@ -111,15 +143,35 @@ function score(card: Card, termList: string[], originalTerms: string[], rawQuery
   if (card.source === "local-java-web" || card.id.startsWith("java-")) s += 180
   if (card.source === "local-pwn-curated") s += curatedPwnQuery ? 420 : 260
   if (card.source === "local-pwn-curated") {
-    const aliases = [card.title, ...(card.query_aliases || []), ...(card.retrieval_intents || []), ...(card.semantic_tokens || [])].map((x) => String(x).toLowerCase())
+    const aliases = [
+      card.title,
+      ...(card.query_aliases || []),
+      ...(card.retrieval_intents || []),
+      ...(card.semantic_tokens || []),
+    ].map((x) => String(x).toLowerCase())
     if (aliases.some((alias) => alias && queryLower.includes(alias))) s += 1400
     if (aliases.some((alias) => alias && alias.includes(queryLower))) s += 900
   }
-  if (originalTerms.includes("java-web") && ((card.semantic_tokens || []).includes("java-web") || (card.subfamilies || []).includes("java-web"))) s += 260
-  if ((originalTerms.includes("bundled") && originalTerms.includes("libc")) || originalTerms.includes("wrong") || originalTerms.includes("setcontext+53") || originalTerms.includes("size+1") || (originalTerms.includes("exact") && originalTerms.includes("read"))) {
+  if (
+    originalTerms.includes("java-web") &&
+    ((card.semantic_tokens || []).includes("java-web") || (card.subfamilies || []).includes("java-web"))
+  )
+    s += 260
+  if (
+    (originalTerms.includes("bundled") && originalTerms.includes("libc")) ||
+    originalTerms.includes("wrong") ||
+    originalTerms.includes("setcontext+53") ||
+    originalTerms.includes("size+1") ||
+    (originalTerms.includes("exact") && originalTerms.includes("read"))
+  ) {
     if (card.source === "local-pwn-curated") s += 240
   }
-  if (originalTerms.includes("java") && originalTerms.includes("web") && ((card.semantic_tokens || []).includes("java-web") || (card.subfamilies || []).includes("java-web"))) s += 120
+  if (
+    originalTerms.includes("java") &&
+    originalTerms.includes("web") &&
+    ((card.semantic_tokens || []).includes("java-web") || (card.subfamilies || []).includes("java-web"))
+  )
+    s += 120
   s += (card.quality ?? 3) * 3
   s += (card.specificity ?? 3) * 2
   s += card.rank_boost ?? 0
@@ -165,11 +217,22 @@ function loadIndexWithExtras(indexPath: string) {
 }
 
 export default tool({
-  description: "Search enhanced offline pattern cards extracted from ljagiello/ctf-skills plus curated high-value CTF cards. Uses synonym expansion, quality/specificity ranking, and returns decision-ready hypothesis seeds.",
+  description:
+    "Search enhanced offline pattern cards extracted from ljagiello/ctf-skills plus curated high-value CTF cards. Uses synonym expansion, quality/specificity ranking, and returns decision-ready hypothesis seeds.",
   args: {
-    query: tool.schema.string().describe("Evidence/constraint query, not challenge title. Example: 'web include file_get_contents parser mismatch filter'."),
-    category: tool.schema.string().optional().describe("Optional category: web | pwn | crypto | reverse | forensics | misc | all."),
-    kind: tool.schema.string().optional().describe("Optional kind: technique | workflow | pivot | quick-check | note | all."),
+    query: tool.schema
+      .string()
+      .describe(
+        "Evidence/constraint query, not challenge title. Example: 'web include file_get_contents parser mismatch filter'.",
+      ),
+    category: tool.schema
+      .string()
+      .optional()
+      .describe("Optional category: web | pwn | crypto | reverse | forensics | misc | all."),
+    kind: tool.schema
+      .string()
+      .optional()
+      .describe("Optional kind: technique | workflow | pivot | quick-check | note | all."),
     maxHits: tool.schema.number().optional().describe("Maximum hits. Default 8, hard cap 20."),
     indexPath: tool.schema.string().optional().describe("Optional pattern card index path."),
     synonymsPath: tool.schema.string().optional().describe("Optional synonyms JSON path."),
@@ -204,33 +267,35 @@ export default tool({
       `hits: ${hits.length}`,
       "cards:",
       ...(hits.length
-        ? hits.map(({ card, score }, i) => [
-            `- #${i + 1} score=${score} category=${card.category} primary_subfamily=${card.primary_subfamily || card.subfamily || "?"} subfamilies=${(card.subfamilies || []).join("|") || card.subfamily || "?"} confidence=${card.subfamily_confidence ?? "?"} kind=${card.kind} quality=${card.quality ?? "?"} specificity=${card.specificity ?? "?"} curated=${card.curated ? "yes" : "no"} semi_curated=${card.semi_curated ? "yes" : "no"} promoted=${card.promoted ? "yes" : "no"} distilled=${card.distilled ? "yes" : "no"}`,
-            `  id: ${card.id}`,
-            `  concepts: ${(card.concepts || []).join(" | ") || "none"}`,
-            `  retrieval_intents: ${(card.retrieval_intents || []).join(" | ") || "none"}`,
-            `  query_aliases: ${(card.query_aliases || []).join(" | ") || "none"}`,
-            `  coverage_score: ${card.coverage_score ?? "?"} curation_priority=${card.curation_priority ?? "?"} curation_tier=${card.curation_tier || "?"}`,
-            `  review_recommendation: ${card.review_recommendation || "none"}`,
-            `  semantic_tokens: ${(card.semantic_tokens || []).slice(0, 28).join(" | ") || "none"}`,
-            `  evidence_phrases: ${(card.evidence_phrases || []).slice(0, 14).join(" | ") || "none"}`,
-            `  source_file: ${card.source_file}`,
-            `  title: ${card.title}`,
-            `  trigger: ${card.trigger}`,
-            `  preconditions: ${(card.preconditions || []).join(" | ") || "evidence supports this pattern"}`,
-            `  precondition_signals: ${(card.precondition_signals || []).join(" | ") || "none"}`,
-            `  probe_template: ${card.probe_template || card.first_safe_check}`,
-            `  first_safe_check: ${card.first_safe_check}`,
-            `  oracle: ${card.oracle}`,
-            `  confirm: ${card.confirm || "first safe check yields expected oracle"}`,
-            `  falsify: ${card.falsify || "first safe check fails under controlled conditions"}`,
-            `  stop_rule: ${card.stop_rule}`,
-            `  pivot_rule: ${card.pivot_rule}`,
-            `  next_tools: ${(card.next_tools || []).join(" | ") || "none"}`,
-            `  execution_plan: ${(card.execution_plan || []).join(" -> ") || "run first safe check"}`,
-            `  failure_modes: ${(card.failure_modes || []).join(" | ") || "continuing without new differential"}`,
-            `  snippet: ${(card.snippet || card.trigger).replace(/\s+/g, " ").slice(0, 320)}`,
-          ].join("\n"))
+        ? hits.map(({ card, score }, i) =>
+            [
+              `- #${i + 1} score=${score} category=${card.category} primary_subfamily=${card.primary_subfamily || card.subfamily || "?"} subfamilies=${(card.subfamilies || []).join("|") || card.subfamily || "?"} confidence=${card.subfamily_confidence ?? "?"} kind=${card.kind} quality=${card.quality ?? "?"} specificity=${card.specificity ?? "?"} curated=${card.curated ? "yes" : "no"} semi_curated=${card.semi_curated ? "yes" : "no"} promoted=${card.promoted ? "yes" : "no"} distilled=${card.distilled ? "yes" : "no"}`,
+              `  id: ${card.id}`,
+              `  concepts: ${(card.concepts || []).join(" | ") || "none"}`,
+              `  retrieval_intents: ${(card.retrieval_intents || []).join(" | ") || "none"}`,
+              `  query_aliases: ${(card.query_aliases || []).join(" | ") || "none"}`,
+              `  coverage_score: ${card.coverage_score ?? "?"} curation_priority=${card.curation_priority ?? "?"} curation_tier=${card.curation_tier || "?"}`,
+              `  review_recommendation: ${card.review_recommendation || "none"}`,
+              `  semantic_tokens: ${(card.semantic_tokens || []).slice(0, 28).join(" | ") || "none"}`,
+              `  evidence_phrases: ${(card.evidence_phrases || []).slice(0, 14).join(" | ") || "none"}`,
+              `  source_file: ${card.source_file}`,
+              `  title: ${card.title}`,
+              `  trigger: ${card.trigger}`,
+              `  preconditions: ${(card.preconditions || []).join(" | ") || "evidence supports this pattern"}`,
+              `  precondition_signals: ${(card.precondition_signals || []).join(" | ") || "none"}`,
+              `  probe_template: ${card.probe_template || card.first_safe_check}`,
+              `  first_safe_check: ${card.first_safe_check}`,
+              `  oracle: ${card.oracle}`,
+              `  confirm: ${card.confirm || "first safe check yields expected oracle"}`,
+              `  falsify: ${card.falsify || "first safe check fails under controlled conditions"}`,
+              `  stop_rule: ${card.stop_rule}`,
+              `  pivot_rule: ${card.pivot_rule}`,
+              `  next_tools: ${(card.next_tools || []).join(" | ") || "none"}`,
+              `  execution_plan: ${(card.execution_plan || []).join(" -> ") || "run first safe check"}`,
+              `  failure_modes: ${(card.failure_modes || []).join(" | ") || "continuing without new differential"}`,
+              `  snippet: ${(card.snippet || card.trigger).replace(/\s+/g, " ").slice(0, 320)}`,
+            ].join("\n"),
+          )
         : ["- none"]),
       "decision_contract:",
       "- Pick at most one top card as the next hypothesis seed.",

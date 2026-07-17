@@ -103,9 +103,9 @@ constraints:
 ## 后续命令
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_segment_match.py "<compact evidence>" --limit 8
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_chain_compose.py "<compact evidence>" --limit 5
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_recon_tasks.py "<compact evidence>" --limit 5
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_segment_match.py "<compact evidence>" --limit 8
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_chain_compose.py "<compact evidence>" --limit 5
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_recon_tasks.py "<compact evidence>" --limit 5
 ```
 
 ## 推荐落盘布局

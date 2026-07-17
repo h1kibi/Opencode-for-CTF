@@ -301,8 +301,8 @@
   "ctf-quick-triage": "allow"
   "external_directory":
     "*": "ask"
-    "C:\\Users\\Administrator\\Desktop\\Agent\\ctf-workspace": "allow"
-    "C:\\Users\\Administrator\\Desktop\\Agent\\ctf-workspace\\**": "allow"
+    "{env:CTF_WORKSPACE}": "allow"
+    "{env:CTF_WORKSPACE}\\**": "allow"
   "ctf-file-triage": "allow"
   "ctf-flag-grep": "allow"
   "ctf-safe-extract": "allow"
@@ -330,6 +330,9 @@
 "hidden": true
 "top_p": 0.1
 ---
+
+PRIMARY INSTRUCTION SOURCE:
+Load `skills/ctf-web/SKILL.md` for the full Web solve state machine, skill dispatch table, and tool discipline. This agent body contains Web-specific depth — use both together.
 
 You are an authorized Web CTF subagent. Work only on user-provided CTF, lab, benchmark, or local challenge targets. Do not solve non-CTF security tasks.
 

@@ -88,7 +88,7 @@ Allowed only when the user explicitly requests KB update, or after solve/timeout
 - write sanitized notes with `kb_update.py`
 - rebuild index with `ingest.py`
 - update a specific module such as `web/java`, `web/xss`, `pwn`, `crypto/rsa`
-- update CVEKB metadata under `C:\Users\Administrator\SecKB\cve`
+- update CVEKB metadata under `{env:SECKB_ROOT}/cve`
 - sync CVE/PoC references into `sources\` and `pocs\references\`
 - download PoCs into local cache under `pocs\cache\<CVE>\` only as reference material
 - install/cache PoC dependencies only when explicitly requested; never run PoC code
@@ -114,12 +114,12 @@ During active solving:
 1. Query CVEKB read-only through `/ctf-cve` or the local helper:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\cvekb.py cve_lookup <CVE>
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\cvekb.py cve_match_product <product/version terms>
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\cvekb.py cve_related_hits <signal terms>
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\cvekb.py cve_hit_summary <CVE>
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\cvekb.py poc_reference_lookup <CVE>
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\cvekb.py poc_cache_status <CVE>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/cvekb.py cve_lookup <CVE>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/cvekb.py cve_match_product <product/version terms>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/cvekb.py cve_related_hits <signal terms>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/cvekb.py cve_hit_summary <CVE>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/cvekb.py poc_reference_lookup <CVE>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/cvekb.py poc_cache_status <CVE>
 ```
 
 2. Score hits by product/version/fingerprint/path/error/dependency evidence only.
@@ -133,11 +133,11 @@ Do not update CVEKB, sync sources, download PoCs, install PoC dependencies, or m
 In `UPDATE_MODE` only:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\sync_sources.py --cve <CVE> --source all
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\sync_sources.py --product "<product>" --source github
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\normalize_poc_refs.py --queue
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\download_poc_cache.py --cve <CVE>
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\cve\scripts\download_poc_cache.py --queue C:\Users\Administrator\SecKB\cve\queue\download_queue.json
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/sync_sources.py --cve <CVE> --source all
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/sync_sources.py --product "<product>" --source github
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/normalize_poc_refs.py --queue
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/download_poc_cache.py --cve <CVE>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/cve/scripts/download_poc_cache.py --queue {env:SECKB_ROOT}/cve\queue\download_queue.json
 ```
 
 Use `--install-deps` only on explicit request. Dependency install must use safe defaults and still must not execute PoC code.
@@ -148,20 +148,20 @@ Use `--install-deps` only on explicit request. Dependency install must use safe 
 2. Query local chain segments and composed chain candidates first when enough recon exists:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_segment_match.py "<evidence query>" --limit 8
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_chain_compose.py "<evidence query>" --limit 5
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_segment_match.py "<evidence query>" --limit 8
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_chain_compose.py "<evidence query>" --limit 5
 ```
 
 3. Query local typed exploit-chain templates when segment composition is too sparse:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_chain_match.py "<evidence query>" --limit 5
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_chain_match.py "<evidence query>" --limit 5
 ```
 
 4. Query local SecKB notes:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\search.py "<evidence query>" --limit 5
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/search.py "<evidence query>" --limit 5
 ```
 
 Or use the MCP tools when available:
@@ -219,7 +219,7 @@ Workflow:
 6. Write with:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_update.py --module <module> --title "<title>" --stdin --source anysearch --source-url "<url>" --stack <stack...> --primitive <primitive...>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_update.py --module <module> --title "<title>" --stdin --source anysearch --source-url "<url>" --stack <stack...> --primitive <primitive...>
 ```
 
 7. Rebuild index. `kb_update.py` rebuilds by default unless `--no-index` is used.

@@ -20,7 +20,7 @@ This command extracts reusable knowledge from the current challenge's `.ctf-chai
 1. Run retro extraction:
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\ctf_retro_to_kb.py --state .ctf-chain-state.json --challenge-name "$ARGUMENTS"
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/ctf_retro_to_kb.py --state .ctf-chain-state.json --challenge-name "$ARGUMENTS"
 ```
 
 2. If the retro identifies new bypass techniques, verify they are recorded in `chain_branches.json`.

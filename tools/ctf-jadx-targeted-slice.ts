@@ -1,16 +1,14 @@
 import { tool } from "@opencode-ai/plugin"
 import { lstat, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
+import { safeExec } from "./lib/exec-utils.ts"
 import path from "node:path"
 import crypto from "node:crypto"
-
-const execFile = promisify(execFileCb)
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
   const target = path.resolve(base, input)
   const rel = path.relative(base, target)
-  if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`path must stay inside the current workspace: ${input}`)
+  if (rel.startsWith("..") || path.isAbsolute(rel))
+    throw new Error(`path must stay inside the current workspace: ${input}`)
   return target
 }
 async function walk(dir: string, out: string[] = [], max = 8000): Promise<string[]> {
@@ -70,10 +68,14 @@ async function grepApktoolOutput(dir: string, pattern: RegExp, maxHits: number, 
 
 function isFrameworkNoise(file: string) {
   const normalized = file.replace(/\\/g, "/")
-  return /AndroidManifest\.xml$/i.test(normalized)
-    || /\/original\//i.test(normalized)
-    || /\/(androidx|android\/support|kotlin|kotlinx|com\/google\/android\/material|com\/google\/errorprone|org\/intellij)\//i.test(normalized)
-    || /\/R\$[^\/]+\.smali$/i.test(normalized)
+  return (
+    /AndroidManifest\.xml$/i.test(normalized) ||
+    /\/original\//i.test(normalized) ||
+    /\/(androidx|android\/support|kotlin|kotlinx|com\/google\/android\/material|com\/google\/errorprone|org\/intellij)\//i.test(
+      normalized,
+    ) ||
+    /\/R\$[^\/]+\.smali$/i.test(normalized)
+  )
 }
 
 function refineHits(hits: Array<{ file: string; line: number; snippet: string }>, packageHint?: string, maxHits = 20) {
@@ -84,28 +86,33 @@ function refineHits(hits: Array<{ file: string; line: number; snippet: string }>
   }
   return filtered.slice(0, maxHits)
 }
-async function tryExec(cmd: string, args: string[], cwd: string, timeout = 120000) {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout, maxBuffer: 4 * 1024 * 1024, shell: process.platform === "win32" })
-    return { ok: true, output: `${stdout}${stderr ? `\n${stderr}` : ""}`.trim() }
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return { ok: false, output: `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`.trim() }
-  }
-}
 function slice(lines: string[], idx: number, radius: number) {
-  const start = Math.max(0, idx - radius), end = Math.min(lines.length, idx + radius + 1)
-  return lines.slice(start, end).map((l, i) => `${start + i + 1}: ${l}`).join("\n")
+  const start = Math.max(0, idx - radius),
+    end = Math.min(lines.length, idx + radius + 1)
+  return lines
+    .slice(start, end)
+    .map((l, i) => `${start + i + 1}: ${l}`)
+    .join("\n")
 }
 
 export default tool({
-  description: "CTF JADX targeted slice: use existing JADX output or run lightweight JADX, then return grep-like class/method snippets for high-signal Android REV patterns.",
+  description:
+    "CTF JADX targeted slice: use existing JADX output or run lightweight JADX, then return grep-like class/method snippets for high-signal Android REV patterns.",
   args: {
     target: tool.schema.string().describe("Workspace-relative APK path or existing JADX output directory"),
-    patterns: tool.schema.string().optional().describe("Regex patterns. Default flag|check|verify|success|wrong|native|loadLibrary|decrypt|encrypt"),
+    patterns: tool.schema
+      .string()
+      .optional()
+      .describe("Regex patterns. Default flag|check|verify|success|wrong|native|loadLibrary|decrypt|encrypt"),
     packageHint: tool.schema.string().optional().describe("Optional package/class path substring to prioritize"),
-    outDir: tool.schema.string().optional().describe("Workspace-relative JADX output dir. Default work/jadx-cache/<sha-or-name>"),
-    runJadx: tool.schema.boolean().optional().describe("Run jadx if target is an APK and output dir is missing. Default true."),
+    outDir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative JADX output dir. Default work/jadx-cache/<sha-or-name>"),
+    runJadx: tool.schema
+      .boolean()
+      .optional()
+      .describe("Run jadx if target is an APK and output dir is missing. Default true."),
     maxHits: tool.schema.number().optional().describe("Maximum snippets. Default 30."),
     radius: tool.schema.number().optional().describe("Context lines around each hit. Default 4."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
@@ -113,18 +120,31 @@ export default tool({
   async execute(args, context) {
     const target = resolveInsideWorkspace(context.directory, args.target)
     const st = await lstat(target)
-    const pattern = new RegExp(args.patterns || "flag|check|verify|success|correct|wrong|native|loadLibrary|JNI|decrypt|encrypt|base64|xor|secret|password", "i")
+    const pattern = new RegExp(
+      args.patterns ||
+        "flag|check|verify|success|correct|wrong|native|loadLibrary|JNI|decrypt|encrypt|base64|xor|secret|password",
+      "i",
+    )
     let sourceDir = target
     const artifactNotes: string[] = []
     if (st.isFile()) {
       const data = await readFile(target)
       const sha = crypto.createHash("sha256").update(data).digest("hex").slice(0, 16)
-      const outRel = args.outDir || path.join("work", "jadx-cache", `${path.basename(target).replace(/[^A-Za-z0-9_.-]/g, "_")}-${sha}`)
+      const outRel =
+        args.outDir ||
+        path.join("work", "jadx-cache", `${path.basename(target).replace(/[^A-Za-z0-9_.-]/g, "_")}-${sha}`)
       sourceDir = resolveInsideWorkspace(context.directory, outRel)
-      try { await lstat(sourceDir) } catch {
+      try {
+        await lstat(sourceDir)
+      } catch {
         if (args.runJadx === false) throw new Error(`JADX output not found: ${sourceDir}`)
         await mkdir(sourceDir, { recursive: true })
-        const res = await tryExec("jadx", ["--show-bad-code", "--no-res", "-ds", sourceDir, target], path.dirname(target), 180000)
+        const res = await safeExec(
+          "jadx",
+          ["--show-bad-code", "--no-res", "-ds", sourceDir, target],
+          path.dirname(target),
+          180000,
+        )
         artifactNotes.push(`jadx_run_ok=${res.ok}`)
         await writeFile(path.join(sourceDir, "jadx-run.log"), res.output, "utf8")
       }
@@ -134,18 +154,38 @@ export default tool({
       ? files.sort((a, b) => {
           const an = a.replace(/\\/g, "/")
           const bn = b.replace(/\\/g, "/")
-          const ahv = /(MainActivity|ProxyApplication|JniBridge|Shell|Loader|Application|attachBaseContext|extract|decrypt|check|verify)/i.test(path.basename(an)) ? 4 : 0
-          const bhv = /(MainActivity|ProxyApplication|JniBridge|Shell|Loader|Application|attachBaseContext|extract|decrypt|check|verify)/i.test(path.basename(bn)) ? 4 : 0
-          const aScore = (an.includes(args.packageHint!.replace(/\\/g, "/")) ? 4 : 0)
-            + (/\/(smali|sources)\//i.test(an) ? 1 : 0)
-            + ahv
-            - (/\/(androidx|android\/support|kotlin|kotlinx|com\/google\/android\/material|com\/google\/errorprone|org\/intellij)\//i.test(an) ? 3 : 0)
-            - (/\/R\$[^\/]+\.smali$/i.test(an) ? 2 : 0)
-          const bScore = (bn.includes(args.packageHint!.replace(/\\/g, "/")) ? 4 : 0)
-            + (/\/(smali|sources)\//i.test(bn) ? 1 : 0)
-            + bhv
-            - (/\/(androidx|android\/support|kotlin|kotlinx|com\/google\/android\/material|com\/google\/errorprone|org\/intellij)\//i.test(bn) ? 3 : 0)
-            - (/\/R\$[^\/]+\.smali$/i.test(bn) ? 2 : 0)
+          const ahv =
+            /(MainActivity|ProxyApplication|JniBridge|Shell|Loader|Application|attachBaseContext|extract|decrypt|check|verify)/i.test(
+              path.basename(an),
+            )
+              ? 4
+              : 0
+          const bhv =
+            /(MainActivity|ProxyApplication|JniBridge|Shell|Loader|Application|attachBaseContext|extract|decrypt|check|verify)/i.test(
+              path.basename(bn),
+            )
+              ? 4
+              : 0
+          const aScore =
+            (an.includes(args.packageHint!.replace(/\\/g, "/")) ? 4 : 0) +
+            (/\/(smali|sources)\//i.test(an) ? 1 : 0) +
+            ahv -
+            (/\/(androidx|android\/support|kotlin|kotlinx|com\/google\/android\/material|com\/google\/errorprone|org\/intellij)\//i.test(
+              an,
+            )
+              ? 3
+              : 0) -
+            (/\/R\$[^\/]+\.smali$/i.test(an) ? 2 : 0)
+          const bScore =
+            (bn.includes(args.packageHint!.replace(/\\/g, "/")) ? 4 : 0) +
+            (/\/(smali|sources)\//i.test(bn) ? 1 : 0) +
+            bhv -
+            (/\/(androidx|android\/support|kotlin|kotlinx|com\/google\/android\/material|com\/google\/errorprone|org\/intellij)\//i.test(
+              bn,
+            )
+              ? 3
+              : 0) -
+            (/\/R\$[^\/]+\.smali$/i.test(bn) ? 2 : 0)
           return bScore - aScore
         })
       : files
@@ -154,7 +194,13 @@ export default tool({
     const hits: Array<{ file: string; line: number; snippet: string }> = []
     for (const file of prioritized) {
       const normalized = file.replace(/\\/g, "/")
-      if (/\/(androidx|android\/support|kotlin|kotlinx|com\/google\/android\/material|com\/google\/errorprone|org\/intellij)\//i.test(normalized) && hits.length > 0) continue
+      if (
+        /\/(androidx|android\/support|kotlin|kotlinx|com\/google\/android\/material|com\/google\/errorprone|org\/intellij)\//i.test(
+          normalized,
+        ) &&
+        hits.length > 0
+      )
+        continue
       if (/\/R\$[^\/]+\.smali$/i.test(normalized) && hits.length > 0) continue
       const text = await readFile(file, "utf8").catch(() => "")
       if (!text || /\x00/.test(text.slice(0, 512))) continue
@@ -170,18 +216,35 @@ export default tool({
     if (hits.length === 0 && st.isFile()) {
       const apktoolOut = path.join(sourceDir, "apktool-lite")
       await mkdir(apktoolOut, { recursive: true })
-      const apktoolRes = await tryExec("apktool", ["d", "-f", "--no-res", "-o", apktoolOut, target], path.dirname(target), 180000)
+      const apktoolRes = await safeExec(
+        "apktool",
+        ["d", "-f", "--no-res", "-o", apktoolOut, target],
+        path.dirname(target),
+        180000,
+      )
       artifactNotes.push(`apktool_fallback_ok=${apktoolRes.ok}`)
       await writeFile(path.join(sourceDir, "apktool-fallback.log"), apktoolRes.output, "utf8")
       const fallbackHits = await grepApktoolOutput(apktoolOut, pattern, maxHits, radius)
-      for (const hit of fallbackHits) hits.push({ file: path.relative(context.directory, hit.file), line: hit.line, snippet: hit.snippet })
+      for (const hit of fallbackHits)
+        hits.push({ file: path.relative(context.directory, hit.file), line: hit.line, snippet: hit.snippet })
       files = await collectCandidateSourceFiles(sourceDir)
       artifactNotes.push(`apktool_fallback_hits=${fallbackHits.length}`)
     }
     const refinedHits = refineHits(hits, args.packageHint, maxHits)
-    const payload = { target, sourceDir, artifactNotes, fileCount: files.length, pattern: pattern.source, hits: refinedHits }
+    const payload = {
+      target,
+      sourceDir,
+      artifactNotes,
+      fileCount: files.length,
+      pattern: pattern.source,
+      hits: refinedHits,
+    }
     await mkdir(path.join(context.directory, "work", "jadx-slices"), { recursive: true })
-    await writeFile(path.join(context.directory, "work", "jadx-slices", `${path.basename(sourceDir)}.json`), JSON.stringify(payload, null, 2), "utf8")
+    await writeFile(
+      path.join(context.directory, "work", "jadx-slices", `${path.basename(sourceDir)}.json`),
+      JSON.stringify(payload, null, 2),
+      "utf8",
+    )
     if (args.jsonOnly) return JSON.stringify(payload, null, 2)
     return [
       "verdict: jadx_targeted_slice",

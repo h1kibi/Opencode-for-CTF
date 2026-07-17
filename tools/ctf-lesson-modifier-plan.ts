@@ -28,14 +28,25 @@ type LessonIndex = {
 }
 
 function baseTerms(query: string) {
-  return Array.from(new Set(query.toLowerCase().split(/[^a-z0-9_+.#:-]+/i).filter((x) => x.length >= 2))).slice(0, 32)
+  return Array.from(
+    new Set(
+      query
+        .toLowerCase()
+        .split(/[^a-z0-9_+.#:-]+/i)
+        .filter((x) => x.length >= 2),
+    ),
+  ).slice(0, 32)
 }
 
 export default tool({
-  description: "Convert lesson-hit evidence into a compact decision-state modifier plan: penalties, owner flip pressure, closure-first bias, and control action hints.",
+  description:
+    "Convert lesson-hit evidence into a compact decision-state modifier plan: penalties, owner flip pressure, closure-first bias, and control action hints.",
   args: {
     query: tool.schema.string().describe("Evidence/constraint query, not challenge title."),
-    family: tool.schema.string().optional().describe("Optional lesson family: closure | owner | failure | anti-pattern | all."),
+    family: tool.schema
+      .string()
+      .optional()
+      .describe("Optional lesson family: closure | owner | failure | anti-pattern | all."),
     indexPath: tool.schema.string().optional().describe("Optional lesson index path."),
     maxHits: tool.schema.number().optional().describe("Maximum lessons to consider. Default 3."),
   },
@@ -81,7 +92,12 @@ export default tool({
       `index_generated_at: ${idx.meta.generated_at}`,
       `hits: ${hits.length}`,
       "matched_lessons:",
-      ...(hits.length ? hits.map((x, i) => `- #${i + 1} score=${x.score} id=${x.lesson.id} family=${x.lesson.family} action=${x.lesson.suggested_control_action || "none"}`) : ["- none"]),
+      ...(hits.length
+        ? hits.map(
+            (x, i) =>
+              `- #${i + 1} score=${x.score} id=${x.lesson.id} family=${x.lesson.family} action=${x.lesson.suggested_control_action || "none"}`,
+          )
+        : ["- none"]),
       "modifier_plan:",
       `- suggested_control_actions: ${controlActions.join(" | ") || "none"}`,
       `- budget_penalties: ${budgetPenalties.join(" | ") || "none"}`,

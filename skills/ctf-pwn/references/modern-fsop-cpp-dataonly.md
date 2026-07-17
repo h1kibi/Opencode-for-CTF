@@ -3,10 +3,10 @@
 Use when evidence contains `_IO_FILE`, `_IO_2_1_stdout_`, `_IO_wfile_jumps`, FILE/vtable, glibc internals, C++ vtables, callbacks, function-pointer tables, object type confusion, adjacent global strings/paths/lengths, or controlled writes into long-lived memory.
 
 Imported references:
-- `C:\Users\Administrator\.config\opencode\skills-external\ctf-skills\ctf-pwn\heap-fsop.md`
-- `C:\Users\Administrator\.config\opencode\skills-external\ctf-skills\ctf-pwn\heap-techniques.md`
-- `C:\Users\Administrator\.config\opencode\skills-external\ctf-skills\ctf-pwn\heap-techniques-2.md`
-- `C:\Users\Administrator\.config\opencode\skills-external\ctf-skills\ctf-pwn\advanced-exploits.md`
+- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\heap-fsop.md`
+- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\heap-techniques.md`
+- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\heap-techniques-2.md`
+- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\advanced-exploits.md`
 
 ## Route Gate
 

@@ -41,10 +41,18 @@ export type GoExecutionPlan = {
   steps: GoExecutionPlanStep[]
 }
 
-function u16le(buf: Buffer, off: number) { return off + 2 <= buf.length ? buf.readUInt16LE(off) : 0 }
-function u32le(buf: Buffer, off: number) { return off + 4 <= buf.length ? buf.readUInt32LE(off) : 0 }
-function i32le(buf: Buffer, off: number) { return off + 4 <= buf.length ? buf.readInt32LE(off) : 0 }
-function u64le(buf: Buffer, off: number) { return off + 8 <= buf.length ? Number(buf.readBigUInt64LE(off)) : 0 }
+function u16le(buf: Buffer, off: number) {
+  return off + 2 <= buf.length ? buf.readUInt16LE(off) : 0
+}
+function u32le(buf: Buffer, off: number) {
+  return off + 4 <= buf.length ? buf.readUInt32LE(off) : 0
+}
+function i32le(buf: Buffer, off: number) {
+  return off + 4 <= buf.length ? buf.readInt32LE(off) : 0
+}
+function u64le(buf: Buffer, off: number) {
+  return off + 8 <= buf.length ? Number(buf.readBigUInt64LE(off)) : 0
+}
 
 function readCString(buf: Buffer, off: number, maxLen = 512) {
   if (off < 0 || off >= buf.length) return ""
@@ -104,7 +112,11 @@ export function collectGoNameCandidates(buf: Buffer, max = 200) {
   for (let i = 0; i < buf.length - 12 && names.length < max; i++) {
     const s = scanAsciiAt(buf, i, 192)
     if (!s) continue
-    if (/^(?:main|runtime|fmt|bytes|strings|os|io|net|crypto(?:\/[A-Za-z0-9_]+)?|encoding(?:\/[A-Za-z0-9_]+)?)\.[A-Za-z0-9_$.]+$/.test(s)) {
+    if (
+      /^(?:main|runtime|fmt|bytes|strings|os|io|net|crypto(?:\/[A-Za-z0-9_]+)?|encoding(?:\/[A-Za-z0-9_]+)?)\.[A-Za-z0-9_$.]+$/.test(
+        s,
+      )
+    ) {
       if (!seen.has(s)) {
         seen.add(s)
         names.push(s)
@@ -138,19 +150,42 @@ export function classifyGoFunctions(names: string[]) {
   const userCode = names.filter((s) => /^main\./.test(s) && !/^main\.init(\.|$)/.test(s))
   const runtimeNoise = names.filter((s) => /^runtime\./.test(s))
   const initChain = names.filter((s) => /(?:^main\.init|\.init$|\.init\.)/.test(s)).slice(0, 40)
-  const decoderLike = names.filter((s) => /base64|decode|decrypt|unmarshal|parse|check|verify|compare/i.test(s)).slice(0, 60)
+  const decoderLike = names
+    .filter((s) => /base64|decode|decrypt|unmarshal|parse|check|verify|compare/i.test(s))
+    .slice(0, 60)
   return { userCode, runtimeNoise, initChain, decoderLike }
 }
 
-export function parseGoPclntab(section: Buffer, sectionAddr = 0): { header_ok: boolean; ptr_size: number; nfunc: number; text_start: number; funcname_offset: number; pcln_offset: number; functions: GoPclnFunction[] } {
-  if (section.length < 72) return { header_ok: false, ptr_size: 0, nfunc: 0, text_start: 0, funcname_offset: 0, pcln_offset: 0, functions: [] }
+export function parseGoPclntab(
+  section: Buffer,
+  sectionAddr = 0,
+): {
+  header_ok: boolean
+  ptr_size: number
+  nfunc: number
+  text_start: number
+  funcname_offset: number
+  pcln_offset: number
+  functions: GoPclnFunction[]
+} {
+  if (section.length < 72)
+    return { header_ok: false, ptr_size: 0, nfunc: 0, text_start: 0, funcname_offset: 0, pcln_offset: 0, functions: [] }
   const magic = u32le(section, 0)
   const ptrSize = section[7]
   const validMagic = new Set([0xfffffff1, 0xfffffff0, 0xfffffffb, 0xfffffffa])
   const headerOk = validMagic.has(magic) && (ptrSize === 4 || ptrSize === 8)
-  if (!headerOk) return { header_ok: false, ptr_size: ptrSize, nfunc: 0, text_start: 0, funcname_offset: 0, pcln_offset: 0, functions: [] }
+  if (!headerOk)
+    return {
+      header_ok: false,
+      ptr_size: ptrSize,
+      nfunc: 0,
+      text_start: 0,
+      funcname_offset: 0,
+      pcln_offset: 0,
+      functions: [],
+    }
 
-  const word = (off: number) => ptrSize === 8 ? u64le(section, off) : u32le(section, off)
+  const word = (off: number) => (ptrSize === 8 ? u64le(section, off) : u32le(section, off))
   const nfunc = word(8)
   const textStart = word(8 + ptrSize * 2)
   const funcnameOffset = word(8 + ptrSize * 3)
@@ -169,7 +204,12 @@ export function parseGoPclntab(section: Buffer, sectionAddr = 0): { header_ok: b
     if (nameRel < 0) continue
     const name = readCString(section, funcnameOffset + nameRel, 256)
     if (!name) continue
-    if (!/^(?:main|runtime|fmt|bytes|strings|os|io|net|encoding(?:\/[A-Za-z0-9_]+)?|crypto(?:\/[A-Za-z0-9_]+)?)\.[A-Za-z0-9_$.]+$/.test(name)) continue
+    if (
+      !/^(?:main|runtime|fmt|bytes|strings|os|io|net|encoding(?:\/[A-Za-z0-9_]+)?|crypto(?:\/[A-Za-z0-9_]+)?)\.[A-Za-z0-9_$.]+$/.test(
+        name,
+      )
+    )
+      continue
     functions.push({
       entry: `0x${(textStart + entryOff).toString(16)}`,
       entry_offset: `0x${entryOff.toString(16)}`,
@@ -201,7 +241,17 @@ export function detectGoFromStrings(strings: string[]) {
     /\/usr\/local\/go\/src\//i.test(joined) ? "goroot-source-paths" : "",
     /go1\.[0-9]+/.test(joined) ? "go-version-hint" : "",
   ].filter(Boolean)
-  const functionNameHits = Array.from(new Set(strings.filter((s) => /\b(?:main|runtime)\.[A-Za-z0-9_]+\b/.test(s) || /\b(?:fmt|bytes|strings|os|io|encoding(?:\/[A-Za-z0-9_]+)?|crypto(?:\/[A-Za-z0-9_]+)?)\.[A-Za-z0-9_]+\b/.test(s)))).slice(0, 120)
+  const functionNameHits = Array.from(
+    new Set(
+      strings.filter(
+        (s) =>
+          /\b(?:main|runtime)\.[A-Za-z0-9_]+\b/.test(s) ||
+          /\b(?:fmt|bytes|strings|os|io|encoding(?:\/[A-Za-z0-9_]+)?|crypto(?:\/[A-Za-z0-9_]+)?)\.[A-Za-z0-9_]+\b/.test(
+            s,
+          ),
+      ),
+    ),
+  ).slice(0, 120)
   const runtime = goSignals.length >= 2 || functionNameHits.some((x) => x === "main.main") ? "go" : "unknown"
   return { runtime, goSignals, functionNameHits }
 }
@@ -253,7 +303,12 @@ export function buildGoCallHints(disasmText: string, functions: GoPclnFunction[]
       const callsite = `0x${callHit[1].toLowerCase()}`
       const targetAddr = callHit[2].toLowerCase()
       const targetName = addrToName.get(targetAddr) || callHit[3]
-      if (/^(?:main|runtime|fmt|bytes|strings|os|io|net|encoding(?:\/[A-Za-z0-9_]+)?|crypto(?:\/[A-Za-z0-9_]+)?)\.[A-Za-z0-9_$.]+$/.test(targetName) || nameSet.has(targetName)) {
+      if (
+        /^(?:main|runtime|fmt|bytes|strings|os|io|net|encoding(?:\/[A-Za-z0-9_]+)?|crypto(?:\/[A-Za-z0-9_]+)?)\.[A-Za-z0-9_$.]+$/.test(
+          targetName,
+        ) ||
+        nameSet.has(targetName)
+      ) {
         hints.push({ caller: currentCaller, callee: targetName, callsite })
       }
     }
@@ -270,7 +325,11 @@ export function buildGoCallHints(disasmText: string, functions: GoPclnFunction[]
 
 export function buildGoHelperChains(functions: GoPclnFunction[], callHints: GoCallHint[]) {
   const priority = pickPriorityGoFunctions(functions, 12)
-  const decoderLike = new Set(priority.filter((f) => /base64|decode|decrypt|unmarshal|parse|check|verify|compare/i.test(f.name)).map((f) => f.name))
+  const decoderLike = new Set(
+    priority
+      .filter((f) => /base64|decode|decrypt|unmarshal|parse|check|verify|compare/i.test(f.name))
+      .map((f) => f.name),
+  )
   const outgoing = new Map<string, string[]>()
   for (const h of callHints) {
     const list = outgoing.get(h.caller) ?? []
@@ -285,14 +344,21 @@ export function buildGoHelperChains(functions: GoPclnFunction[], callHints: GoCa
     const preferredDirect = direct.filter((x) => decoderLike.has(x) || /^main\./.test(x)).slice(0, 3)
     if (preferredDirect.length) {
       for (const callee of preferredDirect) {
-        chains.push({ root, chain: [root, callee], reason: decoderLike.has(callee) ? "root calls decoder/check-like helper directly" : "root calls custom main.* helper directly" })
+        chains.push({
+          root,
+          chain: [root, callee],
+          reason: decoderLike.has(callee)
+            ? "root calls decoder/check-like helper directly"
+            : "root calls custom main.* helper directly",
+        })
       }
       continue
     }
     for (const mid of direct.slice(0, 5)) {
       const second = outgoing.get(mid) ?? []
       const best = second.find((x) => decoderLike.has(x))
-      if (best) chains.push({ root, chain: [root, mid, best], reason: "two-hop path from root into decoder/check-like helper" })
+      if (best)
+        chains.push({ root, chain: [root, mid, best], reason: "two-hop path from root into decoder/check-like helper" })
     }
   }
 
@@ -301,7 +367,9 @@ export function buildGoHelperChains(functions: GoPclnFunction[], callHints: GoCa
     const key = chain.chain.join(" -> ")
     if (!dedup.has(key)) dedup.set(key, chain)
   }
-  const ordered = Array.from(dedup.values()).sort((a, b) => a.chain.length - b.chain.length || a.root.localeCompare(b.root)).slice(0, 12)
+  const ordered = Array.from(dedup.values())
+    .sort((a, b) => a.chain.length - b.chain.length || a.root.localeCompare(b.root))
+    .slice(0, 12)
   const shortest = ordered[0] ?? null
   return {
     helperChains: ordered,
@@ -318,10 +386,16 @@ export function buildGoExecutionPlan(functions: GoPclnFunction[], bestFirstTarge
     if (!fn) continue
     steps.push({ tool: "reva", target: fn.entry, note: `${name} decompile first in ReVa` })
     steps.push({ tool: "ida", target: fn.entry, note: `${name} decompile in ida-pro if ReVa output is ambiguous` })
-    steps.push({ tool: "slice", target: fn.entry.replace(/^0x/i, ""), note: `${name} focused ELF slice around entry address` })
+    steps.push({
+      tool: "slice",
+      target: fn.entry.replace(/^0x/i, ""),
+      note: `${name} focused ELF slice around entry address`,
+    })
   }
   return {
-    summary: bestFirstTargets.length ? `default first-pass order: ${bestFirstTargets.join(" -> ")}` : "no structured Go execution plan",
+    summary: bestFirstTargets.length
+      ? `default first-pass order: ${bestFirstTargets.join(" -> ")}`
+      : "no structured Go execution plan",
     steps: steps.slice(0, 12),
   }
 }

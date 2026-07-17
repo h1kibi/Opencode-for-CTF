@@ -1,0 +1,55 @@
+# Dev / local only — not part of the published tarball
+.claude/
+.github/
+.tmp-*/
+.verify-*/
+coverage/
+test/
+src/
+tools/
+packages/
+docker/
+docs/
+*.tgz
+*.tsbuildinfo
+opencode.json
+opencode.jsonc
+CLAUDE.md
+AGENTS.md
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+ROADMAP.md
+RELEASE_CHECKLIST.md
+CTF_WORKSPACE_OPENCODE_TEMPLATE.jsonc
+eslint.config.*
+prettier.config.*
+tsconfig*.json
+vitest.config.*
+
+# External skills are opt-in (fetch-skills + OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS)
+skills-external/
+
+# Non-runtime repo assets (also omitted from package.json files)
+benchmarks/
+retros/
+patches/
+requirements-docs.txt
+
+# Pattern-card generation / intermediate versions.
+# Runtime only needs the current v9 index + curated subsets (see src/asset-paths.ts).
+knowledge/pattern-cards/ljagiello-ctf-skills.cards.json
+knowledge/pattern-cards/ljagiello-ctf-skills.cards.v2.json
+knowledge/pattern-cards/ljagiello-ctf-skills.cards.v3.json
+knowledge/pattern-cards/ljagiello-ctf-skills.cards.v4.json
+knowledge/pattern-cards/ljagiello-ctf-skills.cards.v5.json
+knowledge/pattern-cards/ljagiello-ctf-skills.cards.v6.json
+knowledge/pattern-cards/ljagiello-ctf-skills.cards.v7.json
+knowledge/pattern-cards/ljagiello-ctf-skills.cards.v8.json
+knowledge/pattern-cards/build-*.cjs
+knowledge/pattern-cards/smoke-*.cjs
+knowledge/pattern-cards/update-*.ps1
+knowledge/pattern-cards/curation-candidates.json
+
+# Local MCP dependency trees (sources are listed explicitly in package.json files)
+mcp-servers/**/node_modules/
+mcp-servers/*/package-lock.json

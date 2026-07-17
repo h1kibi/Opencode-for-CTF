@@ -1,0 +1,25 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC LC_ALL=C.UTF-8 LANG=C.UTF-8 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn TERM=xterm-256color
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      build-essential ca-certificates curl file gdb-multiarch gdbserver git jq ltrace netcat-openbsd \
+      patchelf python3 python3-dev python3-pip python3-setuptools python3-venv qemu-user qemu-user-static \
+      ruby ruby-dev socat strace tmux vim-tiny xxd binutils binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+      libc6-arm64-cross libc6-dev-arm64-cross libstdc++6-arm64-cross make nasm wget unzip zip ripgrep sudo openssh-client procps pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN (python3 -m pip install --upgrade pip setuptools wheel || echo "WARN: optional pip bootstrap failed") \
+    && for pkg in pwntools ROPGadget capstone unicorn keystone-engine pyelftools angr claripy z3-solver requests ipython; do \
+      python3 -m pip install "$pkg" || echo "WARN: optional pip package failed: $pkg"; \
+    done \
+    && python3 -m pip install ropper || echo "WARN: optional pip package failed: ropper"
+
+RUN printf 'set architecture aarch64\nset disassembly-flavor intel\nset pagination off\n' > /root/.gdbinit \
+    && printf '#!/usr/bin/env bash\nset +e\necho "[pwnlab-aarch64] multiarch tool check"\nfor c in file aarch64-linux-gnu-readelf aarch64-linux-gnu-objdump aarch64-linux-gnu-nm aarch64-linux-gnu-gcc gdb-multiarch qemu-aarch64 python3 ROPGadget ropper patchelf strace tmux vim git curl wget socat; do command -v "$c" >/dev/null 2>&1 && echo "OK $c" || echo "MISS $c"; done\npython3 - <<"PY"\ntry:\n import pwn; print("OK pwntools")\nexcept Exception as e: print("MISS pwntools", e)\ntry:\n import angr; print("OK angr", angr.__version__)\nexcept Exception as e: print("MISS angr", e)\ntry:\n import claripy; print("OK claripy", getattr(claripy, "__version__", "present"))\nexcept Exception as e: print("MISS claripy", e)\ntry:\n import z3; print("OK z3", z3.get_version_string())\nexcept Exception as e: print("MISS z3", e)\nPY\n' > /usr/local/bin/pwnlab-check \
+    && chmod +x /usr/local/bin/pwnlab-check
+
+WORKDIR /work
+CMD ["bash"]

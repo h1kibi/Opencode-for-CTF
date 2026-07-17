@@ -171,8 +171,8 @@
   "ctf-quick-triage": "allow"
   "external_directory":
     "*": "allow"
-    "C:\\Users\\Administrator\\Desktop\\Agent\\ctf-workspace": "allow"
-    "C:\\Users\\Administrator\\Desktop\\Agent\\ctf-workspace\\**": "allow"
+    "{env:CTF_WORKSPACE}": "allow"
+    "{env:CTF_WORKSPACE}\\**": "allow"
   "ctf-file-triage": "allow"
   "ctf-flag-grep": "allow"
   "ctf-safe-extract": "allow"

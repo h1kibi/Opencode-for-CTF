@@ -2,7 +2,7 @@ import { tool } from "@opencode-ai/plugin"
 import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
 import { lstat, open, readdir } from "node:fs/promises"
-import path from "node:path"
+import { resolveAllowedPath } from "./lib/path-policy.ts"
 
 const SAMPLE_BYTES = 1024 * 1024
 
@@ -29,9 +29,15 @@ function routeHints(name: string, buf: Buffer, strings: string[]) {
   const joined = strings.join("\n").toLowerCase()
   const hints = new Set<string>()
   if (/https?:\/\//i.test(joined) || /<html|flask|django|express|php|cookie|jwt/.test(joined)) hints.add("web")
-  if (/\.elf|\.so$|\.exe$|\.dll$/.test(lower) || buf.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) || buf.subarray(0, 2).toString() === "MZ") hints.add("pwn/rev")
+  if (
+    /\.elf|\.so$|\.exe$|\.dll$/.test(lower) ||
+    buf.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) ||
+    buf.subarray(0, 2).toString() === "MZ"
+  )
+    hints.add("pwn/rev")
   if (/rsa|ecc|aes|nonce|cipher|encrypt|decrypt|modulus|private key|public key/.test(joined)) hints.add("crypto")
-  if (/\.pcap|\.pcapng|\.mem|\.raw|\.vmdk|\.img|\.docx|\.pdf|\.png|\.jpg|\.wav|\.zip|\.7z|\.rar/.test(lower)) hints.add("forensics")
+  if (/\.pcap|\.pcapng|\.mem|\.raw|\.vmdk|\.img|\.docx|\.pdf|\.png|\.jpg|\.wav|\.zip|\.7z|\.rar/.test(lower))
+    hints.add("forensics")
   if (/jail|sandbox|game|blockchain|solidity|wasm|protobuf/.test(joined)) hints.add("misc")
   return Array.from(hints)
 }
@@ -59,24 +65,35 @@ async function readSample(target: string, maxBytes = SAMPLE_BYTES) {
 }
 
 export default tool({
-  description: "CTF file triage: report type hints, size, sha256, magic bytes, entropy, strings highlights, embedded URLs/emails/IPs, directory/archive listing hints, and likely CTF routing.",
+  description:
+    "CTF file triage: report type hints, size, sha256, magic bytes, entropy, strings highlights, embedded URLs/emails/IPs, directory/archive listing hints, and likely CTF routing.",
   args: {
     target: tool.schema.string().describe("File or directory path to triage"),
   },
   async execute(args, context) {
-    const target = path.resolve(context.directory, args.target)
+    const target = await resolveAllowedPath(args.target, context)
     const stat = await lstat(target)
     if (stat.isDirectory()) {
       const entries = await readdir(target, { withFileTypes: true })
-      return entries.slice(0, 200).map((entry) => `${entry.isDirectory() ? "dir " : "file"}\t${entry.name}`).join("\n")
+      return entries
+        .slice(0, 200)
+        .map((entry) => `${entry.isDirectory() ? "dir " : "file"}\t${entry.name}`)
+        .join("\n")
     }
 
     const sample = await readSample(target)
     const strings = printableStrings(sample)
     const urls = Array.from(new Set(strings.join("\n").match(/https?:\/\/[^\s"'<>]+/g) ?? [])).slice(0, 30)
-    const emails = Array.from(new Set(strings.join("\n").match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) ?? [])).slice(0, 30)
+    const emails = Array.from(
+      new Set(strings.join("\n").match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) ?? []),
+    ).slice(0, 30)
     const ips = Array.from(new Set(strings.join("\n").match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g) ?? [])).slice(0, 30)
-    const magic = sample.subarray(0, 32).toString("hex").match(/.{1,2}/g)?.join(" ") ?? ""
+    const magic =
+      sample
+        .subarray(0, 32)
+        .toString("hex")
+        .match(/.{1,2}/g)
+        ?.join(" ") ?? ""
     const archiveLike = /\.(zip|7z|rar|tar|gz|bz2|xz|jar|apk|docx|xlsx|pptx)$/i.test(target)
     const hints = routeHints(target, sample, strings)
 

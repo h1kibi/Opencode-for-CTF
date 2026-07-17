@@ -1,4 +1,5 @@
 import { tool } from "@opencode-ai/plugin"
+import { resolveAllowedPath } from "./lib/path-policy.ts"
 
 const stateChangingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"])
 
@@ -83,14 +84,16 @@ function parsePlaintextApiList(content: string): ApiEntry[] {
 }
 
 export default tool({
-  description: "CTF API map: scan JSON OpenAPI/Swagger specs or captured plaintext API path lists and produce a route table with auth guess, object-id detection, state-changing flag, candidate bug classes, and first safe checks.",
+  description:
+    "CTF API map: scan JSON OpenAPI/Swagger specs or captured plaintext API path lists and produce a route table with auth guess, object-id detection, state-changing flag, candidate bug classes, and first safe checks.",
   args: {
-    file: tool.schema.string().describe("Path to an OpenAPI/Swagger JSON file, or a plaintext API path list such as `GET /api/users/{id}`"),
+    file: tool.schema
+      .string()
+      .describe("Path to an OpenAPI/Swagger JSON file, or a plaintext API path list such as `GET /api/users/{id}`"),
   },
-  async execute(args) {
+  async execute(args, context) {
     const fs = await import("fs/promises")
-    const path = await import("path")
-    const filePath = path.resolve(args.file)
+    const filePath = await resolveAllowedPath(args.file, context)
 
     let content: string
     try {

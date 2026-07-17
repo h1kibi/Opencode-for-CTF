@@ -2,7 +2,8 @@ import { tool } from "@opencode-ai/plugin"
 import { createRuntimeClientForServer } from "../src/sdk.ts"
 
 export default tool({
-  description: "CTF runtime self-test: validate local Team Mode, continuation, and skill-MCP runtime against a running OpenCode server.",
+  description:
+    "CTF runtime self-test: validate local Team Mode, continuation, and skill-MCP runtime against a running OpenCode server.",
   args: {
     serverUrl: tool.schema.string().describe("Running OpenCode server URL, e.g. http://127.0.0.1:4100"),
     testAgent: tool.schema.string().optional().describe("Agent to use for session prompt test. Default daily."),
@@ -51,15 +52,17 @@ export default tool({
       mcpServerCount: mcpStatus.data ? Object.keys(mcpStatus.data).length : 0,
     }
 
-    return args.jsonOnly ? JSON.stringify(payload, null, 2) : [
-      "ctf_runtime_selftest:",
-      `serverUrl: ${args.serverUrl}`,
-      `sessionID: ${sessionID}`,
-      `agentCount: ${payload.agentCount}`,
-      `hasAgent(${agentName}): ${payload.hasDailyAgent}`,
-      `todoCount: ${payload.todoCount}`,
-      `mcpServerCount: ${payload.mcpServerCount}`,
-      "promptAsync: submitted",
-    ].join("\n")
+    return args.jsonOnly
+      ? JSON.stringify(payload, null, 2)
+      : [
+          "ctf_runtime_selftest:",
+          `serverUrl: ${args.serverUrl}`,
+          `sessionID: ${sessionID}`,
+          `agentCount: ${payload.agentCount}`,
+          `hasAgent(${agentName}): ${payload.hasDailyAgent}`,
+          `todoCount: ${payload.todoCount}`,
+          `mcpServerCount: ${payload.mcpServerCount}`,
+          "promptAsync: submitted",
+        ].join("\n")
   },
 })

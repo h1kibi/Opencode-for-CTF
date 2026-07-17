@@ -1,51 +1,58 @@
 ---
-description: Route an authorized CTF challenge with evidence-weighted triage
-agent: ctf-router
+description: "Default CTF entry — auto-route category/mode (BINDING), then solve to flag or confirmed dead end"
+agent: ctf-fast
+subtask: false
 ---
 
-Use `ctf-router` and do not deep-solve unless the task is trivial.
+# /ctf — Default solve entry
+
+**This is the only command most users need.**
+
+> **Agent note:** Frontmatter `agent: ctf-fast` is the OpenCode default shell only.
+> The plugin injects a **BINDING** route. If `primary_session_agent` is `ctf-expert`,
+> you **must** immediately call `ctf-handoff lane=expert` and then follow the expert contract.
+> Session tool surface is already switched; Team Mode is allowed after handoff.
 
 Challenge info:
 $ARGUMENTS
 
-Recommended route profiles:
-- Existing branch with `work/ctf-evidence/<challenge-slug>/` already populated -> prefer `/ctf-resume <context>` before fresh routing.
-- Unknown/simple challenge with unclear category but likely low ceremony -> prefer `/ctf-fast <context>` as a fast execution request under `ctf-master`.
-- Clear ELF/libc/checksec/crash/control evidence -> prefer `/ctf-fast <context>` as the fast lane, even when source, libc, ld, or Docker artifacts are present, unless those artifacts create real branch complexity.
-- Source-rich, Java, Docker, archive-heavy, multi-service, or ambiguous hard branch -> prefer `/ctf-hard-open <context>`.
-- Already confirmed primitive or near-final candidate -> prefer `/ctf-closure <context>` or `/ctf-final <context>` instead of broad route-only output.
+## Pipeline (mandatory — binding)
 
-Route-only workflow:
-1. Inventory artifacts, services, target scope, and flag format.
-2. If there is already a populated `work/ctf-evidence/<challenge-slug>/` branch or restart packet, recommend `/ctf-resume ...` instead of re-running broad triage.
-3. Prefer `ctf:evidence-doctor <challenge-slug>` once a stable slug exists and the branch is no longer trivial.
-4. If the challenge is clearly hard, source-rich, multi-artifact, or category-ambiguous, recommend `/ctf-hard-open` instead of forcing early deep solve.
-5. Create or update the evidence-weighted triage section in `notes.md`.
-6. Score likely categories by evidence, confidence, and cheapest verification.
-7. Recommend exactly one next command:
-   - `/ctf-web ...`
-   - `/ctf-pwn ...`
-   - `/ctf-rev ...`
-   - `/ctf-crypto ...`
-   - `/ctf-forensics ...`
-   - `/ctf-misc ...`
-   - `/ctf-hard-open ...`
-   - `/ctf-fast ...`
-   - `/ctf-master ...`
-   - `/ctf-resume ...`
-8. Do not deeply solve unless the category is obvious and the next step is trivial.
+1. **Authorize** — only authorized CTF / lab / local targets.
+2. **Read the injected ROUTE DECISION** (plugin hook). It applied `opencode-for-ctf.jsonc` → `default_mode`.
+3. **Hard handoff if needed**
+   - `primary_session_agent: ctf-expert` (or mode expert/resume) → call **`ctf-handoff lane=expert`** first, then load skill `ctf-expert`.
+   - `primary_session_agent: ctf-fast` → stay on fast allowlist; optional `ctf-handoff lane=fast` to lock surface.
+4. **Optional refresh** — `ctf-route-plan` if new signals (`hasEvidenceBranch=true` when evidence branch exists).
+5. **Execute the lane**
+   - **fast** → lightweight allowlist, intuition-first, no Team Mode / Evidence ceremony.
+   - **expert** → Evidence.md, exactly 3 routes, concurrent workers with `routeId`, dynamic MCP approve.
+6. **Solve** — flag, exhausted routes, or blocked on user resource.
+7. **Escalate** — from fast only: `ESCALATE: ctf-expert` then `ctf-handoff lane=expert`.
 
-Routing bias:
-- Prefer `/ctf-fast` for obviously simple one-hop tasks or quick fast-lane validation.
-- Prefer `/ctf-master` or `/ctf-hard-open` for source, archives, Docker, bytecode, many artifacts, or competing owners.
-- Prefer direct category command only when one owner is already strongly favored by evidence.
+## Mode guide
 
-Timebox strategy:
-- First 3 minutes: classify category and inventory files/services.
-- Next 7 minutes: test top 3 hypotheses only.
-- If no progress after 10 minutes: write a stuck summary and choose a new branch.
-- If no progress after 20 minutes: generate `failure_report.md` with missing signals.
+| Route result | Meaning |
+| --- | --- |
+| `fast` | Intuition-first, minimal tooling, short budget |
+| `expert` | Evidence.md, 3-route plan, Team Mode concurrency |
+| `resume` | Continue existing evidence branch (expert) |
 
-Do not guess flags.
-Do not use hidden benchmark metadata.
-Do not attack unrelated systems.
+## Config
+
+`default_mode` in `opencode-for-ctf.jsonc` (`auto` \| `fast` \| `expert`) biases `/ctf` when mode is not forced.
+
+`tool_packs` controls which packs load at OpenCode startup (process registry). Expert uses the full registered set; fast is further filtered by allowlist + session surface.
+
+## Do not
+
+- Do not ignore the BINDING route block or skip `ctf-handoff` when primary is expert.
+- Do not re-run broad triage when an evidence branch already answers the question.
+- Do not invent flags or attack out-of-scope systems.
+
+## Explicit overrides
+
+- Force fast: `/ctf-fast ...`
+- Force expert: `/ctf-expert ...`
+- Known category: `/ctf-web|pwn|rev|crypto|forensics|misc ...`
+- Help: `/ctf-help`

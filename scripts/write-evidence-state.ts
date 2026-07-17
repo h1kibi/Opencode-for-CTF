@@ -6,7 +6,9 @@ function main() {
   const patchRaw = process.argv[4]
 
   if (!kind || !(kind in TARGETS) || !slug || !patchRaw) {
-    console.log("Usage: node scripts/write-evidence-state.ts <route|primitive|closure> <challenge-slug> '<json-patch|key=value,...>'")
+    console.log(
+      "Usage: node scripts/write-evidence-state.ts <route|primitive|closure> <challenge-slug> '<json-patch|key=value,...>'",
+    )
     process.exit(1)
   }
 

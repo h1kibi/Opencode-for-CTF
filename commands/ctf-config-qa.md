@@ -4,7 +4,7 @@ agent: daily
 subtask: false
 ---
 
-Run a focused QA pass for changes under `C:\Users\Administrator\.config\opencode` that affect CTF agents, skills, tools, commands, templates, or benchmark behavior.
+Run a focused QA pass for changes under `{env:OPENCODE_CONFIG_DIR}` that affect CTF agents, skills, tools, commands, templates, or benchmark behavior.
 
 QA scope:
 $ARGUMENTS

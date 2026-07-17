@@ -1,4 +1,4 @@
----
+﻿---
 description: CTF PWN: Bootstrap/doctor a Docker-based pwnlab environment and lock the analysis substrate
 agent: ctf-pwn
 subtask: true
@@ -62,9 +62,9 @@ Get-Command file, readelf, objdump, nm, strings, checksec -ErrorAction SilentlyC
 
 ### Prebuilt pwnlab Templates
 
-Available under `C:\Users\Administrator\.config\opencode\templates`:
+Available under `{env:OPENCODE_CONFIG_DIR}\templates`:
 
-- `docker-compose.revlab.yml`
+- `docker/docker-compose.revlab.yml`
 - `Dockerfile.pwnlab.ubuntu18.04`
 - `Dockerfile.pwnlab.ubuntu20.04`
 - `Dockerfile.pwnlab.ubuntu22.04`
@@ -93,7 +93,7 @@ Available under `C:\Users\Administrator\.config\opencode\templates`:
 3. Otherwise copy pwnlab templates into the challenge workspace with:
 
 ```powershell
-& "C:\Users\Administrator\.config\opencode\templates\pwn_env_setup.ps1" -TargetDir . -Profile general
+& "{env:OPENCODE_CONFIG_DIR}/opencode-for-ctf/templates/pwn_env_setup.ps1" -TargetDir . -Profile general
 ```
 
 Use `-Profile general` for the default comprehensive Ubuntu 22.04 PWN toolbox, `-Profile heavy` for maximal Ubuntu 22.04 coverage, `-Profile general24` / `-Profile heavy24` for Ubuntu 24.04/glibc 2.39+ alignment, `-Profile general18` / `-Profile general20` for older glibc, `-Profile debian11` / `-Profile debian12` for Debian-aligned targets, `-Profile alpine` for musl, `-Profile aarch64` / `-Profile mipsel` for multiarch, or `-Profile i386` for 32-bit x86.
@@ -101,19 +101,19 @@ Use `-Profile general` for the default comprehensive Ubuntu 22.04 PWN toolbox, `
 4. Build the selected profile:
 
 ```powershell
-docker compose -f docker-compose.revlab.yml --profile general build
+docker compose -f docker/docker-compose.revlab.yml --profile general build
 ```
 
 5. Start the selected profile in persistent mode:
 
 ```powershell
-docker compose -f docker-compose.revlab.yml --profile general up -d pwn-general
+docker compose -f docker/docker-compose.revlab.yml --profile general up -d pwn-general
 ```
 
 6. Enter the running container:
 
 ```powershell
-docker compose -f docker-compose.revlab.yml --profile general exec pwn-general bash
+docker compose -f docker/docker-compose.revlab.yml --profile general exec pwn-general bash
 ```
 
 7. Inside container, verify:
@@ -128,13 +128,13 @@ gdb -q ./chall
 8. Re-enter later without losing the container state:
 
 ```powershell
-docker compose -f docker-compose.revlab.yml --profile general exec pwn-general bash
+docker compose -f docker/docker-compose.revlab.yml --profile general exec pwn-general bash
 ```
 
 9. Stop the persistent container when the branch is paused:
 
 ```powershell
-docker compose -f docker-compose.revlab.yml --profile general stop pwn-general
+docker compose -f docker/docker-compose.revlab.yml --profile general stop pwn-general
 ```
 
 ### Output Contract

@@ -1,6 +1,6 @@
 ---
 name: ctf-router
-description: Use at the beginning of authorized CTF tasks to classify the challenge category, identify files/services, choose the smallest useful agent/toolset, and select the next specialized ctf-* skill.
+description: Use at the beginning of authorized CTF tasks to classify the challenge category, identify files/services, choose the smallest useful agent/toolset, and select the next specialized ctf-* skill. Prefer tool ctf-route-plan for a machine-readable decision.
 compatibility: opencode
 ---
 
@@ -9,6 +9,16 @@ compatibility: opencode
 ## Purpose
 
 Use this skill before solving a new CTF challenge. The goal is fast classification and the smallest effective workflow, not deep exploitation.
+
+**Runtime helper:** call tool `ctf-route-plan` with the challenge text/path/URL first. It returns `mode`, `agent`, `skills`, `tool_packs`, and `confidence`. Treat that object as the default plan; this skill supplies methodology when signals are ambiguous.
+
+**Product path:** prefer `/ctf` for users. `/ctf-master` is a compatibility alias of `ctf-expert` only — never present it as a third mode.
+
+| Lane | When |
+| --- | --- |
+| `fast` / `/ctf-fast` | Strong single-category signals, simple one-hop |
+| `expert` / `/ctf-expert` | Source-rich, multi-artifact, ambiguous, or hard |
+| `resume` / `/ctf-resume` | Existing `work/ctf-evidence/<slug>/` branch |
 
 ## Scope
 

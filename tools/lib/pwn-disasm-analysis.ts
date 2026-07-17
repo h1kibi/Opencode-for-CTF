@@ -35,7 +35,7 @@ export function analyzePwnDisasmText(text: string): PwnDisasmAnalysis {
       continue
     }
 
-    const refs = Array.from(line.matchAll(/\[(?:r|e)bp([+-])0x([0-9a-f]+)(?:[^\]]*)\]/ig))
+    const refs = Array.from(line.matchAll(/\[(?:r|e)bp([+-])0x([0-9a-f]+)(?:[^\]]*)\]/gi))
     for (const ref of refs) {
       const offset = `${ref[1]}0x${ref[2].toLowerCase()}`
       const slot = ensure(offset)
@@ -45,50 +45,77 @@ export function analyzePwnDisasmText(text: string): PwnDisasmAnalysis {
         lastAddressTakenLine = i
       }
       if (/mov\s+byte ptr\s+\[(?:r|e)bp-0x[0-9a-f]+\],0x0/i.test(line)) slot.tags.add("null-terminator-write")
-      if (/(cmp|add|sub|inc|dec)\s+(?:dword|qword|byte)?\s*ptr\s+\[(?:r|e)bp-0x/i.test(line)) slot.tags.add("counter-or-state")
+      if (/(cmp|add|sub|inc|dec)\s+(?:dword|qword|byte)?\s*ptr\s+\[(?:r|e)bp-0x/i.test(line))
+        slot.tags.add("counter-or-state")
       if (/mov\s+byte ptr\s+\[(?:r|e)bp[^\]]*\+[^\]]*\],/i.test(line)) slot.tags.add("indexed-byte-write")
     }
 
-    if (/call\s+.*<(read|recv|gets|fgets)@plt>/i.test(line) && lastAddressTakenOffset && i - lastAddressTakenLine <= 6) {
+    if (
+      /call\s+.*<(read|recv|gets|fgets)@plt>/i.test(line) &&
+      lastAddressTakenOffset &&
+      i - lastAddressTakenLine <= 6
+    ) {
       ensure(lastAddressTakenOffset).tags.add("input-buffer")
     }
 
     const cmpImm = line.match(/cmp\s+(?:dword|qword|byte)?\s*ptr\s+\[(?:r|e)bp-0x([0-9a-f]+)\],0x([0-9a-f]+)/i)
     if (cmpImm) {
-      constraintHints.push(`${currentFunction || "?"}: stack local -0x${cmpImm[1].toLowerCase()} compared against 0x${cmpImm[2].toLowerCase()}`)
+      constraintHints.push(
+        `${currentFunction || "?"}: stack local -0x${cmpImm[1].toLowerCase()} compared against 0x${cmpImm[2].toLowerCase()}`,
+      )
     }
     const cmpReg = line.match(/cmp\s+(?:dword|qword|byte)?\s*ptr\s+\[(?:r|e)bp-0x([0-9a-f]+)\],\s*([a-z][a-z0-9]+)/i)
     if (cmpReg) {
-      constraintHints.push(`${currentFunction || "?"}: stack local -0x${cmpReg[1].toLowerCase()} compared against register ${cmpReg[2]}`)
+      constraintHints.push(
+        `${currentFunction || "?"}: stack local -0x${cmpReg[1].toLowerCase()} compared against register ${cmpReg[2]}`,
+      )
     }
     const jne = line.match(/\bj(e|ne|g|ge|l|le|a|ae|b|be)\b\s+([0-9a-fx<>_+.@-]+)/i)
     if (jne && constraintHints.length) {
-      constraintHints.push(`${currentFunction || "?"}: branch ${jne[0].trim()} follows a nearby comparison; treat as checker gate, not just normal loop flow`)
+      constraintHints.push(
+        `${currentFunction || "?"}: branch ${jne[0].trim()} follows a nearby comparison; treat as checker gate, not just normal loop flow`,
+      )
     }
   }
 
-  if (/call.*<read@plt>|call.*<recv@plt>|call.*<fgets@plt>|call.*<gets@plt>/.test(lower) && /mov\s+byte ptr\s+\[.*bp-0x[0-9a-f]+\],0x0/.test(lower)) {
+  if (
+    /call.*<read@plt>|call.*<recv@plt>|call.*<fgets@plt>|call.*<gets@plt>/.test(lower) &&
+    /mov\s+byte ptr\s+\[.*bp-0x[0-9a-f]+\],0x0/.test(lower)
+  ) {
     redFlagTags.push("off-by-null/full-length-terminator")
-    redFlagNotes.push("exact-length stack read plus explicit null-termination: suspect off-by-null or full-length terminator overwrite when the returned length reaches the buffer boundary")
+    redFlagNotes.push(
+      "exact-length stack read plus explicit null-termination: suspect off-by-null or full-length terminator overwrite when the returned length reaches the buffer boundary",
+    )
   }
   if (/mov\s+byte ptr\s+\[.*bp[^\n]*\+.*\],/.test(lower)) {
     redFlagTags.push("indexed-stack-byte-write")
-    redFlagNotes.push("indexed BYTE write into an rbp/ebp-relative stack region: treat this as a single-byte arbitrary stack write candidate if the index is clobberable")
+    redFlagNotes.push(
+      "indexed BYTE write into an rbp/ebp-relative stack region: treat this as a single-byte arbitrary stack write candidate if the index is clobberable",
+    )
   }
-  if (/cmp\s+dword ptr\s+\[.*bp-0x[0-9a-f]+\],0x[0-9a-f]+/.test(lower) && /mov\s+byte ptr\s+\[.*bp[^\n]*\+.*\],/.test(lower)) {
+  if (
+    /cmp\s+dword ptr\s+\[.*bp-0x[0-9a-f]+\],0x[0-9a-f]+/.test(lower) &&
+    /mov\s+byte ptr\s+\[.*bp[^\n]*\+.*\],/.test(lower)
+  ) {
     redFlagTags.push("checker-loop-stack-smash")
-    redFlagNotes.push("checker-style loop plus indexed stack write: do not assume a benign multi-round protocol first; test whether one oversized packet can corrupt the loop/state variable, saved rbp, or a return-adjacent byte")
+    redFlagNotes.push(
+      "checker-style loop plus indexed stack write: do not assume a benign multi-round protocol first; test whether one oversized packet can corrupt the loop/state variable, saved rbp, or a return-adjacent byte",
+    )
   }
   if (/read\s*\([^,]+,[^,]+,\s*0x100\s*\)/.test(lower)) {
     redFlagTags.push("single-large-packet-candidate")
-    redFlagNotes.push("single large packet stage detected: verify whether one send can populate the whole stack frame before modeling the challenge as many clean rounds")
+    redFlagNotes.push(
+      "single large packet stage detected: verify whether one send can populate the whole stack frame before modeling the challenge as many clean rounds",
+    )
   }
 
   if (redFlagTags.includes("checker-loop-stack-smash") || redFlagTags.includes("single-large-packet-candidate")) {
     routePressure.push("prefer raw/checker-stack-smash lane before broad symbolic-constraint or gadget-first drift")
   }
   if (redFlagTags.includes("off-by-null/full-length-terminator")) {
-    routePressure.push("test max-length input and terminator side-effects before assuming a pure arithmetic/checker problem")
+    routePressure.push(
+      "test max-length input and terminator side-effects before assuming a pure arithmetic/checker problem",
+    )
   }
 
   const stackLayoutHints = Array.from(frameMap.entries())

@@ -12,11 +12,16 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
 
 function lineHits(text: string) {
   const lines = text.split(/\r?\n/)
-  return lines.filter((line) => /\b(node|script|text|signal|ext_resource|sub_resource|load_steps|instance|autoload)\b/i.test(line)).slice(0, 120)
+  return lines
+    .filter((line) =>
+      /\b(node|script|text|signal|ext_resource|sub_resource|load_steps|instance|autoload)\b/i.test(line),
+    )
+    .slice(0, 120)
 }
 
 export default tool({
-  description: "CTF Godot resource direct reader: summarize key textual fields from .tscn/.tres/.import-like files without dumping huge raw content.",
+  description:
+    "CTF Godot resource direct reader: summarize key textual fields from .tscn/.tres/.import-like files without dumping huge raw content.",
   args: {
     target: tool.schema.string().describe("Workspace-relative .tscn/.tres/.import/.remap/.gd/.txt-like file."),
     maxLines: tool.schema.number().optional().describe("Maximum matched lines to return. Default 120."),

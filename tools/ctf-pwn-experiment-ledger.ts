@@ -17,15 +17,20 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
   const target = path.resolve(base, input)
   const rel = path.relative(base, target)
-  if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`path must stay inside the current workspace: ${input}`)
+  if (rel.startsWith("..") || path.isAbsolute(rel))
+    throw new Error(`path must stay inside the current workspace: ${input}`)
   return target
 }
 
 export default tool({
-  description: "CTF pwn experiment ledger: append or summarize structured hard-pwn probe/oracle/delta packets for low-overhead experiment memory.",
+  description:
+    "CTF pwn experiment ledger: append or summarize structured hard-pwn probe/oracle/delta packets for low-overhead experiment memory.",
   args: {
     operation: tool.schema.string().describe("append | summarize"),
-    ledgerFile: tool.schema.string().optional().describe("Workspace-relative JSONL ledger path. Default work/pwn_experiment_ledger.jsonl"),
+    ledgerFile: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative JSONL ledger path. Default work/pwn_experiment_ledger.jsonl"),
     stage: tool.schema.string().optional().describe("Solve stage or bottleneck label."),
     probe: tool.schema.string().optional().describe("The exact one-variable experiment or probe."),
     oracle: tool.schema.string().optional().describe("Expected observation / oracle."),
@@ -57,7 +62,9 @@ export default tool({
         owner: String(args.owner || "pwn"),
       }
       let previous = ""
-      try { previous = await readFile(ledger, "utf8") } catch {}
+      try {
+        previous = await readFile(ledger, "utf8")
+      } catch {}
       const content = previous + JSON.stringify(entry) + "\n"
       await writeFile(ledger, content, "utf8")
       return [
@@ -75,12 +82,23 @@ export default tool({
     }
 
     let raw = ""
-    try { raw = await readFile(ledger, "utf8") } catch { return `BLOCK: ledger file not found: ${ledgerRel}` }
+    try {
+      raw = await readFile(ledger, "utf8")
+    } catch {
+      return `BLOCK: ledger file not found: ${ledgerRel}`
+    }
     const lines = raw.split(/\r?\n/).filter(Boolean)
-    const entries = lines.map((line) => {
-      try { return JSON.parse(line) as Entry } catch { return null }
-    }).filter(Boolean) as Entry[]
-    if (!entries.length) return ["pwn_experiment_ledger:", "operation: summarize", `ledger_file: ${ledgerRel}`, "entries: 0"].join("\n")
+    const entries = lines
+      .map((line) => {
+        try {
+          return JSON.parse(line) as Entry
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean) as Entry[]
+    if (!entries.length)
+      return ["pwn_experiment_ledger:", "operation: summarize", `ledger_file: ${ledgerRel}`, "entries: 0"].join("\n")
     const maxEntries = Math.max(1, Math.min(args.maxEntries ?? 8, 20))
     const recent = entries.slice(-maxEntries)
     return [

@@ -3,11 +3,11 @@
 Use when evidence contains JavaScript engine, browser runtime, JIT compiler, wasm, bytecode VM, interpreter type tags, addrof/fakeobj, OOB array, RWX JIT pages, GC, slices/views/aliases, dispatch tables, or emulator/sandbox language primitives.
 
 Imported references:
-- `C:\Users\Administrator\.config\opencode\skills-external\ctf-skills\ctf-pwn\advanced-exploits.md`
-- `C:\Users\Administrator\.config\opencode\skills-external\ctf-skills\ctf-pwn\advanced-exploits-2.md`
-- `C:\Users\Administrator\.config\opencode\skills-external\ctf-skills\ctf-pwn\advanced-exploits-3.md`
-- `C:\Users\Administrator\.config\opencode\skills-external\ctf-skills\ctf-pwn\advanced-exploits-4.md`
-- `C:\Users\Administrator\.config\opencode\skills-external\ctf-skills\ctf-pwn\sandbox-escape.md`
+- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\advanced-exploits.md`
+- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\advanced-exploits-2.md`
+- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\advanced-exploits-3.md`
+- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\advanced-exploits-4.md`
+- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\sandbox-escape.md`
 
 ## Route Gate
 

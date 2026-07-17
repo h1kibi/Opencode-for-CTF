@@ -11,20 +11,45 @@ function classify(line: string): Entry | null {
   const normalized = line.trim()
   if (!normalized) return null
   const cases: Array<{ re: RegExp; operation: string; params: string[]; evidence: string }> = [
-    { re: /\b(add|alloc|create|new)\b/i, operation: "alloc", params: ["index?", "size?", "content?"], evidence: "allocation-like keyword" },
-    { re: /\b(delete|free|remove|destroy|drop)\b/i, operation: "free", params: ["index?"], evidence: "free-like keyword" },
-    { re: /\b(edit|update|write|set)\b/i, operation: "edit", params: ["index?", "content?", "size?"], evidence: "edit-like keyword" },
-    { re: /\b(show|print|view|read|dump|display)\b/i, operation: "show", params: ["index?"], evidence: "readback-like keyword" },
+    {
+      re: /\b(add|alloc|create|new)\b/i,
+      operation: "alloc",
+      params: ["index?", "size?", "content?"],
+      evidence: "allocation-like keyword",
+    },
+    {
+      re: /\b(delete|free|remove|destroy|drop)\b/i,
+      operation: "free",
+      params: ["index?"],
+      evidence: "free-like keyword",
+    },
+    {
+      re: /\b(edit|update|write|set)\b/i,
+      operation: "edit",
+      params: ["index?", "content?", "size?"],
+      evidence: "edit-like keyword",
+    },
+    {
+      re: /\b(show|print|view|read|dump|display)\b/i,
+      operation: "show",
+      params: ["index?"],
+      evidence: "readback-like keyword",
+    },
     { re: /\b(exit|quit)\b/i, operation: "exit", params: [], evidence: "termination keyword" },
   ]
-  for (const c of cases) if (c.re.test(normalized)) return { line: normalized, operation: c.operation, params: c.params, evidence: c.evidence }
+  for (const c of cases)
+    if (c.re.test(normalized))
+      return { line: normalized, operation: c.operation, params: c.params, evidence: c.evidence }
   return null
 }
 
 export default tool({
-  description: "CTF pwn heap menu map: turn observed menu lines or notes into a compact heap state table and first safe reduction questions.",
+  description:
+    "CTF pwn heap menu map: turn observed menu lines or notes into a compact heap state table and first safe reduction questions.",
   args: {
-    evidence: tool.schema.string().describe("Menu text, notes, source snippets, or operation names from a heap-style challenge."),
+    evidence: tool.schema
+      .string()
+      .describe("Menu text, notes, source snippets, or operation names from a heap-style challenge."),
   },
   async execute(args) {
     const raw = args.evidence || ""
@@ -60,9 +85,14 @@ export default tool({
       "pwn_heap_menu_map:",
       `operations_detected: ${operations.filter((x) => byOp.has(x)).join(", ") || "none"}`,
       "operation_table:",
-      ...operations.map((op) => byOp.has(op)
-        ? `- ${op}: ${byOp.get(op)!.map((e) => `${e.line} [${e.params.join(", ")}]`).join(" | ")}`
-        : `- ${op}: none`),
+      ...operations.map((op) =>
+        byOp.has(op)
+          ? `- ${op}: ${byOp
+              .get(op)!
+              .map((e) => `${e.line} [${e.params.join(", ")}]`)
+              .join(" | ")}`
+          : `- ${op}: none`,
+      ),
       "high_value_signals:",
       ...(signals.length ? signals.map((x) => `- ${x}`) : ["- none"]),
       "first_reduction_questions:",

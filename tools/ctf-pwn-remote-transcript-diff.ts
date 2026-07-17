@@ -1,7 +1,10 @@
 import { tool } from "@opencode-ai/plugin"
 
 function normalizeLines(text: string) {
-  return text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
+  return text
+    .split(/\r?\n/)
+    .map((x) => x.trim())
+    .filter(Boolean)
 }
 
 function commonPrefixLen(a: string, b: string) {
@@ -11,7 +14,8 @@ function commonPrefixLen(a: string, b: string) {
 }
 
 export default tool({
-  description: "CTF pwn remote transcript diff: compare local and remote transcripts to isolate prompt, EOF, timeout, leak-shape, and pacing differences.",
+  description:
+    "CTF pwn remote transcript diff: compare local and remote transcripts to isolate prompt, EOF, timeout, leak-shape, and pacing differences.",
   args: {
     localTranscript: tool.schema.string().describe("Local transcript or runner output."),
     remoteTranscript: tool.schema.string().describe("Remote transcript or runner output."),
@@ -19,7 +23,8 @@ export default tool({
   async execute(args) {
     const local = String(args.localTranscript || "")
     const remote = String(args.remoteTranscript || "")
-    if (local.trim().length < 3 || remote.trim().length < 3) return "BLOCK: provide both localTranscript and remoteTranscript"
+    if (local.trim().length < 3 || remote.trim().length < 3)
+      return "BLOCK: provide both localTranscript and remoteTranscript"
 
     const ll = normalizeLines(local)
     const rl = normalizeLines(remote)
@@ -60,7 +65,9 @@ export default tool({
       "remote_tail:",
       `- ${remotePromptish || "none"}`,
       "ranked_differences:",
-      ...(ranked.length ? ranked.map((x) => `- ${x}`) : ["- transcripts are broadly similar; test one environment or payload assumption next"]),
+      ...(ranked.length
+        ? ranked.map((x) => `- ${x}`)
+        : ["- transcripts are broadly similar; test one environment or payload assumption next"]),
       "recommended_next:",
       "- Isolate the last-known-good stage before changing gadgets or offsets.",
       "- If prompt_or_pacing_mismatch appears, re-test recvuntil/sendafter boundaries first.",

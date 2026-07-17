@@ -1,0 +1,11 @@
+{
+  "name": "ctf-adapter-opencode",
+  "version": "2026.07.0",
+  "description": "OpenCode-facing surface for opencode-for-ctf: command tiers, config basenames, and re-exports of the shared category router.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

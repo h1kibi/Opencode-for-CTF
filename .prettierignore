@@ -1,0 +1,9 @@
+dist/
+coverage/
+node_modules/
+skills-external/
+runtime/state/
+mcp-servers/*/node_modules/
+package-lock.json
+*.min.js
+knowledge/**/*.json

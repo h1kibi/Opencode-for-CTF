@@ -1,8 +1,8 @@
-import { existsSync, readFileSync } from "node:fs"
+﻿import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 
-// 自检:确认所有新增文件/字符串/钩子都已落地
-// 不实际执行 docker build / pull (那些需要用户授权)
+// 鑷:纭鎵€鏈夋柊澧炴枃浠?瀛楃涓?閽╁瓙閮藉凡钀藉湴
+// 涓嶅疄闄呮墽琛?docker build / pull (閭ｄ簺闇€瑕佺敤鎴锋巿鏉?
 
 const root = process.cwd()
 const checks: Array<{ name: string; ok: boolean; detail?: string }> = []
@@ -41,37 +41,40 @@ function checkOccurrenceCount(rel: string, needle: string, expected: number) {
 }
 
 // Phase A
-checkFile("templates/Dockerfile.revlab-ubuntu22.04")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "tshark")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "capinfos")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "binwalk")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "upx-ucl")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "golang-go")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "pycryptodome")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "scapy")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "revlab-check")
-checkOccurrenceCount("templates/Dockerfile.revlab-ubuntu22.04", "echo \"[revlab] tool check (v2)\"", 1)
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "qemu-aarch64-static")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "one_gadget")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "seccomp-tools")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "cdn.opensuse.org/repositories/home:/RizinOrg/xUbuntu_22.04/Release.key")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "apt-get install -y --no-install-recommends rizin")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "uncompyle6")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "decompyle3")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "wasm-objdump")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "wasm2wat")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "GoReSym")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "apktool")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "rr")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "qiling")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "triton-library")
+checkFile("docker/Dockerfile.revlab-ubuntu22.04")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "tshark")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "capinfos")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "binwalk")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "upx-ucl")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "golang-go")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "pycryptodome")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "scapy")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "revlab-check")
+checkOccurrenceCount("docker/Dockerfile.revlab-ubuntu22.04", 'echo "[revlab] tool check (v2)"', 1)
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "qemu-aarch64-static")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "one_gadget")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "seccomp-tools")
+checkContains(
+  "docker/Dockerfile.revlab-ubuntu22.04",
+  "cdn.opensuse.org/repositories/home:/RizinOrg/xUbuntu_22.04/Release.key",
+)
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "apt-get install -y --no-install-recommends rizin")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "uncompyle6")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "decompyle3")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "wasm-objdump")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "wasm2wat")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "GoReSym")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "apktool")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "rr")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "qiling")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "triton-library")
 
-checkContains("templates/docker-compose.revlab.yml", "revlab:")
-checkContains("templates/docker-compose.revlab.yml", "Dockerfile.revlab-ubuntu22.04")
-checkContains("templates/docker-compose.revlab.yml", "revlab")
-checkContains("templates/docker-compose.revlab.yml", "pull_policy: if_not_present")
-checkContains("templates/docker-compose.revlab.yml", "NET_ADMIN")
-checkContains("templates/docker-compose.revlab.yml", "NET_RAW")
+checkContains("docker/docker-compose.revlab.yml", "revlab:")
+checkContains("docker/docker-compose.revlab.yml", "Dockerfile.revlab-ubuntu22.04")
+checkContains("docker/docker-compose.revlab.yml", "revlab")
+checkContains("docker/docker-compose.revlab.yml", "pull_policy: if_not_present")
+checkContains("docker/docker-compose.revlab.yml", "NET_ADMIN")
+checkContains("docker/docker-compose.revlab.yml", "NET_RAW")
 
 // Phase B
 checkFile("tools/ctf-pcap-carve.ts")
@@ -110,7 +113,7 @@ checkFile("commands/ctf-rev-network.md")
 checkContains("commands/ctf-rev-network.md", "rev-network-replay")
 checkContains("commands/ctf-rev-network.md", "revlab:ubuntu22.04")
 
-// Phase 扩展检查: REV knowledge / closure-ladder / oob-discipline / AES / mirror / permissions
+// Phase 鎵╁睍妫€鏌? REV knowledge / closure-ladder / oob-discipline / AES / mirror / permissions
 checkFile("knowledge/rev/elf-pe/elf-checker-slice.md")
 checkFile("knowledge/rev/elf-pe/pe-malware-rev-workflow.md")
 checkFile("knowledge/rev/vm-bytecode/vm-bytecode-workflow.md")
@@ -127,9 +130,9 @@ checkContains("skills/ctf-rev-oob-discipline/SKILL.md", "response-serving")
 checkContains("tools/ctf-pcap-carve.ts", "createDecipheriv")
 checkContains("tools/ctf-pcap-carve.ts", "aes_gcm")
 checkContains("tools/ctf-pcap-carve.ts", "chacha20_poly1305")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "APT_MIRROR")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "PIP_INDEX_URL")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "GOPROXY")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "APT_MIRROR")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "PIP_INDEX_URL")
+checkContains("docker/Dockerfile.revlab-ubuntu22.04", "GOPROXY")
 checkContains("scripts/build-revlab.ps1", "UseCNMirror")
 checkContains("agents/ctf-rev.md", "ctf-rev-closure-ladder")
 checkContains("agents/ctf-rev.md", "ctf-rev-oob-discipline")
@@ -141,7 +144,10 @@ checkContains("agents/ctf-fast.md", "ctf-pcap-carve")
 checkContains("agents/ctf-fast.md", "ctf-go-pclntool")
 checkContains("agents/ctf-master.md", "ctf-pcap-carve")
 checkContains("agents/ctf-master.md", "ctf-go-pclntool")
-checkContains("templates/Dockerfile.revlab-ubuntu22.04", "for c in file strings tshark capinfos tcpdump binwalk upx readelf objdump nm gdb strace ltrace python3 scapy r2 rizin go unzip xxd jq patchelf radare2 qemu-aarch64-static qemu-mips-static qemu-riscv64-static one_gadget seccomp-tools uncompyle6 decompyle3 wasm-objdump wasm2wat GoReSym apktool aapt rr;")
+checkContains(
+  "docker/Dockerfile.revlab-ubuntu22.04",
+  "for c in file strings tshark capinfos tcpdump binwalk upx readelf objdump nm gdb strace ltrace python3 scapy r2 rizin go unzip xxd jq patchelf radare2 qemu-aarch64-static qemu-mips-static qemu-riscv64-static one_gadget seccomp-tools uncompyle6 decompyle3 wasm-objdump wasm2wat GoReSym apktool aapt rr;",
+)
 
 const failed = checks.filter((c) => !c.ok)
 console.log("# Revlab Doctor")

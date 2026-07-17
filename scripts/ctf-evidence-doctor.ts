@@ -125,7 +125,9 @@ function main() {
     rows,
     "evidence_files_present",
     existingFiles.length > 0 ? "PASS" : "FAIL",
-    existingFiles.length > 0 ? `${existingFiles.length} tracked evidence files present` : "no tracked evidence files present",
+    existingFiles.length > 0
+      ? `${existingFiles.length} tracked evidence files present`
+      : "no tracked evidence files present",
   )
 
   console.log("# CTF Evidence Doctor\n")

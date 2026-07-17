@@ -54,7 +54,7 @@ next_probe:
 7. If no pwnlab files exist, use:
 
 ```powershell
-& "C:\Users\Administrator\.config\opencode\templates\pwn_env_setup.ps1" -TargetDir . -Profile 22
+& "{env:OPENCODE_CONFIG_DIR}/opencode-for-ctf/templates/pwn_env_setup.ps1" -TargetDir . -Profile 22
 ```
 
 8. Build only after asking if the image may need pulling or significant disk/time.

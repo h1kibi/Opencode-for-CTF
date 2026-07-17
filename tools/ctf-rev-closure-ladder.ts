@@ -31,7 +31,10 @@ const REV_CLOSURE_LADDER: ClosureCandidate[] = [
     rank: 1,
     family: "direct_flag_plaintext",
     description: "Flag or plaintext already visible in strings/memory/decrypted output. Verify once and stop.",
-    prerequisites: ["flag-like string found in binary/pcap/memory dump", "no obfuscation layer between storage and output"],
+    prerequisites: [
+      "flag-like string found in binary/pcap/memory dump",
+      "no obfuscation layer between storage and output",
+    ],
     confirmOracle: "string matches expected flag format and is accepted by binary/remote",
     falsifyCondition: "string is decoy/placeholder/sample; binary rejects it",
     estimatedCost: "low",
@@ -64,7 +67,11 @@ const REV_CLOSURE_LADDER: ClosureCandidate[] = [
     rank: 4,
     family: "unicorn_qiling_replay",
     description: "Recover arch/mode/map/register/start/end from emulation API calls. Replay checker in isolation.",
-    prerequisites: ["Unicorn/Qiling/Capstone API signals detected", "arch/mode inferred", "payload bytes available (from dump or embedded)"],
+    prerequisites: [
+      "Unicorn/Qiling/Capstone API signals detected",
+      "arch/mode inferred",
+      "payload bytes available (from dump or embedded)",
+    ],
     confirmOracle: "replay output matches native behavior for 1-2 known test inputs",
     falsifyCondition: "replay diverges from native; missing register state or memory mapping",
     estimatedCost: "medium",
@@ -86,7 +93,11 @@ const REV_CLOSURE_LADDER: ClosureCandidate[] = [
     rank: 6,
     family: "z3_constraints",
     description: "Encode checker as bit-vector constraints. Solve with z3.",
-    prerequisites: ["constraints collected from branch conditions", "input length and domain known", "width/signedness verified"],
+    prerequisites: [
+      "constraints collected from branch conditions",
+      "input length and domain known",
+      "width/signedness verified",
+    ],
     confirmOracle: "z3 model accepted by binary",
     falsifyCondition: "z3 unsat or model rejected; constraint encoding wrong (width/signedness/truncation)",
     estimatedCost: "medium",
@@ -97,7 +108,11 @@ const REV_CLOSURE_LADDER: ClosureCandidate[] = [
     rank: 7,
     family: "angr_symbolic",
     description: "Symbolic execution with find/avoid addresses. Bounded input.",
-    prerequisites: ["success/failure addresses known", "input channel and max length known", "no severe anti-symbolic on checker path"],
+    prerequisites: [
+      "success/failure addresses known",
+      "input channel and max length known",
+      "no severe anti-symbolic on checker path",
+    ],
     confirmOracle: "angr model accepted by binary",
     falsifyCondition: "path explosion; no model found; anti-symbolic behavior blocks exploration",
     estimatedCost: "high",
@@ -108,7 +123,12 @@ const REV_CLOSURE_LADDER: ClosureCandidate[] = [
     rank: 8,
     family: "vm_lifter",
     description: "Lift VM dispatcher/opcode handlers to Python. Emulate or emit z3 constraints per instruction.",
-    prerequisites: ["dispatcher loop identified", "opcode table mapped", "bytecode blob located", "3-5 high-frequency handlers labeled"],
+    prerequisites: [
+      "dispatcher loop identified",
+      "opcode table mapped",
+      "bytecode blob located",
+      "3-5 high-frequency handlers labeled",
+    ],
     confirmOracle: "lifted VM execution matches native trace for controlled input",
     falsifyCondition: "handler semantics wrong; opcode mapping incomplete; state layout incorrect",
     estimatedCost: "high",
@@ -174,11 +194,22 @@ function rankCandidates(evidence: {
 }
 
 export default tool({
-  description: "CTF REV closure ladder: rank REV-specific closure candidates (direct flag, checker extraction, runtime dump, unicorn replay, transform inversion, z3, angr, VM lifter, patch bypass) from confirmed primitive/checker/runtime evidence. Emits falsify conditions and recommended tools, parallel to ctf-pwn-closure-router.",
+  description:
+    "CTF REV closure ladder: rank REV-specific closure candidates (direct flag, checker extraction, runtime dump, unicorn replay, transform inversion, z3, angr, VM lifter, patch bypass) from confirmed primitive/checker/runtime evidence. Emits falsify conditions and recommended tools, parallel to ctf-pwn-closure-router.",
   args: {
-    evidence: tool.schema.string().describe("Compact evidence summary: primitive, checker boundary, runtime state, signals (flag string / checker / packed / unicorn / transform / z3 / angr / VM). Free text; tool will parse keywords."),
-    primitive: tool.schema.string().optional().describe("Confirmed or suspected primitive, e.g. 'checker at 0x401234 with XOR table at 0x405060'."),
-    outDir: tool.schema.string().optional().describe("Workspace-relative output dir for closure plan. Default work/rev-closure-ladder."),
+    evidence: tool.schema
+      .string()
+      .describe(
+        "Compact evidence summary: primitive, checker boundary, runtime state, signals (flag string / checker / packed / unicorn / transform / z3 / angr / VM). Free text; tool will parse keywords.",
+      ),
+    primitive: tool.schema
+      .string()
+      .optional()
+      .describe("Confirmed or suspected primitive, e.g. 'checker at 0x401234 with XOR table at 0x405060'."),
+    outDir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative output dir for closure plan. Default work/rev-closure-ladder."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args, context) {
@@ -211,7 +242,8 @@ export default tool({
       candidates_ranked: candidates.length,
       top_candidate: topCandidate,
       all_candidates: candidates,
-      promotion_rule: "A higher-rank candidate may be promoted only when the lower-rank candidate is falsified by a real oracle, the higher-rank is provably cheaper, or strong evidence already exists.",
+      promotion_rule:
+        "A higher-rank candidate may be promoted only when the lower-rank candidate is falsified by a real oracle, the higher-rank is provably cheaper, or strong evidence already exists.",
       recommended_next: [] as string[],
     }
 
@@ -222,10 +254,14 @@ export default tool({
       plan.recommended_next.push(`recommended tool: ${topCandidate.recommendedTool}`)
     }
     if (candidates.length > 1) {
-      plan.recommended_next.push(`NEXT fallback: rank#${candidates[1].rank} ${candidates[1].family} if top is falsified`)
+      plan.recommended_next.push(
+        `NEXT fallback: rank#${candidates[1].rank} ${candidates[1].family} if top is falsified`,
+      )
     }
     if (candidates.length === 0) {
-      plan.recommended_next.push("no closure candidate matched; run ctf-binary-probe / ctf-elf-slice / ctf-rev-pe-slice to gather more signals")
+      plan.recommended_next.push(
+        "no closure candidate matched; run ctf-binary-probe / ctf-elf-slice / ctf-rev-pe-slice to gather more signals",
+      )
     }
 
     const planPath = path.join(outDir, "closure-plan.json")
@@ -238,12 +274,19 @@ export default tool({
       `- evidence_summary: ${args.evidence.slice(0, 200)}`,
       `- primitive: ${plan.primitive}`,
       "parsed_signals:",
-      ...Object.entries(parsed).filter(([, v]) => v).map(([k, v]) => `- ${k}: ${typeof v === "string" ? v.slice(0, 100) : v}`),
+      ...Object.entries(parsed)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `- ${k}: ${typeof v === "string" ? v.slice(0, 100) : v}`),
       `- candidates_ranked: ${candidates.length}`,
       topCandidate ? `- top_candidate: rank#${topCandidate.rank} ${topCandidate.family}` : "- top_candidate: none",
       "",
       "candidates (ranked):",
-      ...(candidates.length ? candidates.map((c) => `- rank#${c.rank} ${c.family} (cost=${c.estimatedCost}, state_indep=${c.stateIndependence})\n  desc: ${c.description}\n  confirm: ${c.confirmOracle}\n  falsify: ${c.falsifyCondition}\n  tool: ${c.recommendedTool}`) : ["- none"]),
+      ...(candidates.length
+        ? candidates.map(
+            (c) =>
+              `- rank#${c.rank} ${c.family} (cost=${c.estimatedCost}, state_indep=${c.stateIndependence})\n  desc: ${c.description}\n  confirm: ${c.confirmOracle}\n  falsify: ${c.falsifyCondition}\n  tool: ${c.recommendedTool}`,
+          )
+        : ["- none"]),
       "",
       "promotion_rule:",
       `  ${plan.promotion_rule}`,

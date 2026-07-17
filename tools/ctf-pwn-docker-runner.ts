@@ -3,6 +3,7 @@ import { lstat, mkdir, readFile, writeFile } from "node:fs/promises"
 import { spawn } from "node:child_process"
 import path from "node:path"
 import crypto from "node:crypto"
+import { pwnImage, revImage, DOCKER_IMAGES } from "./lib/docker-config.ts"
 
 const pposix = path.posix
 
@@ -21,7 +22,7 @@ function validateContainerPosixPath(input: string, field: string, options?: { al
     throw new Error(`${field} must be an absolute POSIX path inside the container`)
   }
   const normalized = pposix.normalize(input)
-  if (!(options?.allowRoot) && normalized === "/") {
+  if (!options?.allowRoot && normalized === "/") {
     throw new Error(`${field} must not be '/'; use a workspace mount path such as /work or a subdirectory under it`)
   }
   return normalized
@@ -61,7 +62,10 @@ function tailLines(s: string, count: number) {
 }
 
 function lastNonEmptyLines(s: string, count = 40) {
-  const lines = s.split(/\r?\n/).map((x) => x.trimEnd()).filter((x) => x.trim())
+  const lines = s
+    .split(/\r?\n/)
+    .map((x) => x.trimEnd())
+    .filter((x) => x.trim())
   return lines.slice(Math.max(0, lines.length - count))
 }
 
@@ -69,7 +73,10 @@ function detectPromptHint(s: string) {
   const lines = lastNonEmptyLines(s, 20)
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i]
-    if (/(choice|menu|index|size|len|length|content|name|desc|description|prompt|select|option)\s*[:>]+\s*$/i.test(line)) return line
+    if (
+      /(choice|menu|index|size|len|length|content|name|desc|description|prompt|select|option)\s*[:>]+\s*$/i.test(line)
+    )
+      return line
     if (/[$#>]\s*$/.test(line)) return line
   }
   return ""
@@ -79,8 +86,19 @@ function detectShellSignal(s: string) {
   return /\buid=\d+\(|\bgid=\d+\(|\$\s*$|#\s*$|\b\/bin\/sh\b|\b\/bin\/bash\b|SHELL_OK/i.test(s)
 }
 
-async function runStreamed(command: string, argv: string[], options: { cwd: string; timeoutMs: number; maxOutputBytes: number; stopOnRegex?: RegExp }) {
-  return await new Promise<{ stdout: string; stderr: string; exitCode: number | string; timedOut: boolean; stoppedOnRegex: boolean; outputTruncated: boolean }>((resolve) => {
+async function runStreamed(
+  command: string,
+  argv: string[],
+  options: { cwd: string; timeoutMs: number; maxOutputBytes: number; stopOnRegex?: RegExp },
+) {
+  return await new Promise<{
+    stdout: string
+    stderr: string
+    exitCode: number | string
+    timedOut: boolean
+    stoppedOnRegex: boolean
+    outputTruncated: boolean
+  }>((resolve) => {
     const child = spawn(command, argv, {
       cwd: options.cwd,
       stdio: ["ignore", "pipe", "pipe"],
@@ -115,7 +133,11 @@ async function runStreamed(command: string, argv: string[], options: { cwd: stri
       const joined = `${Buffer.concat(outChunks, outBytes).toString("utf8")}\n${Buffer.concat(errChunks, errBytes).toString("utf8")}`
       if (options.stopOnRegex.test(joined)) {
         stoppedOnRegex = true
-        try { child.kill() } catch { /* ignore */ }
+        try {
+          child.kill()
+        } catch {
+          /* ignore */
+        }
       }
     }
 
@@ -144,7 +166,11 @@ async function runStreamed(command: string, argv: string[], options: { cwd: stri
 
     const timer = setTimeout(() => {
       timedOut = true
-      try { child.kill() } catch { /* ignore */ }
+      try {
+        child.kill()
+      } catch {
+        /* ignore */
+      }
     }, options.timeoutMs)
   })
 }
@@ -163,44 +189,130 @@ async function artifactMeta(contextDir: string, file: string, containerMountRoot
   const abs = resolveInsideWorkspace(contextDir, file)
   const buf = await readFile(abs)
   const rel = path.relative(contextDir, abs).replace(/\\/g, "/")
-  return { host_path: abs, container_path: pposix.join(containerMountRoot, rel), rel_path: rel, size: buf.length, sha256: crypto.createHash("sha256").update(buf).digest("hex") }
+  return {
+    host_path: abs,
+    container_path: pposix.join(containerMountRoot, rel),
+    rel_path: rel,
+    size: buf.length,
+    sha256: crypto.createHash("sha256").update(buf).digest("hex"),
+  }
 }
 
 function isComposeMissing(output: string) {
-  return /no configuration file provided|cannot find a suitable configuration file|compose\.ya?ml.*not found/i.test(output)
+  return /no configuration file provided|cannot find a suitable configuration file|compose\.ya?ml.*not found/i.test(
+    output,
+  )
 }
 
 export default tool({
-  description: "CTF pwn Docker runner: write or run a workspace-local script inside a Docker container/profile to avoid PowerShell/docker quoting interference.",
+  description:
+    "CTF pwn Docker runner: write or run a workspace-local script inside a Docker container/profile to avoid PowerShell/docker quoting interference.",
   args: {
     script: tool.schema.string().optional().describe("Bash script content to execute inside Docker."),
-    pythonInline: tool.schema.string().optional().describe("Inline Python code to run via python3 without manually writing a shell wrapper."),
-    gdbInline: tool.schema.string().optional().describe("Inline gdb command script content for light one-shot debugger experiments."),
+    pythonInline: tool.schema
+      .string()
+      .optional()
+      .describe("Inline Python code to run via python3 without manually writing a shell wrapper."),
+    gdbInline: tool.schema
+      .string()
+      .optional()
+      .describe("Inline gdb command script content for light one-shot debugger experiments."),
     gdbTarget: tool.schema.string().optional().describe("Workspace-relative binary path used with gdbInline."),
-    workdir: tool.schema.string().optional().describe("Workspace-relative working directory on the host. Default current workspace root."),
-    timeoutMs: tool.schema.number().optional().describe("Execution timeout in milliseconds. Default 15000, hard cap 120000."),
-    envJson: tool.schema.string().optional().describe("Optional JSON object of environment variables for the in-container process."),
-    scriptPath: tool.schema.string().optional().describe("Workspace-relative path to write the script. Default work/docker_probe.sh."),
-    composeService: tool.schema.string().optional().describe("docker compose service name. Used for exec mode or compose run mode."),
-    runtimeProfileId: tool.schema.string().optional().describe("Runtime profile id emitted by ctf-pwn-libc-runtime-doctor. Supplies composeService/containerWorkdir/runArgs/env defaults when omitted."),
+    workdir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative working directory on the host. Default current workspace root."),
+    timeoutMs: tool.schema
+      .number()
+      .optional()
+      .describe("Execution timeout in milliseconds. Default 15000, hard cap 120000."),
+    envJson: tool.schema
+      .string()
+      .optional()
+      .describe("Optional JSON object of environment variables for the in-container process."),
+    scriptPath: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative path to write the script. Default work/docker_probe.sh."),
+    composeService: tool.schema
+      .string()
+      .optional()
+      .describe("docker compose service name. Used for exec mode or compose run mode."),
+    runtimeProfileId: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Runtime profile id emitted by ctf-pwn-libc-runtime-doctor. Supplies composeService/containerWorkdir/runArgs/env defaults when omitted.",
+      ),
     containerName: tool.schema.string().optional().describe("Explicit container name for docker exec mode."),
     profile: tool.schema.string().optional().describe("Optional compose profile hint for reporting only."),
-    image: tool.schema.string().optional().describe("Docker image for docker run mode when no existing container/service should be used."),
-    useComposeRun: tool.schema.boolean().optional().describe("Use 'docker compose run --rm <service>' instead of exec. Default false."),
-    containerWorkdir: tool.schema.string().optional().describe("In-container working directory. Default is the mounted workspace mirror under /work."),
-    containerMountRoot: tool.schema.string().optional().describe("Container path where the host workspace is mounted for docker run mode and script path resolution. Default /work."),
-    runArgs: tool.schema.string().optional().describe("Optional extra arguments for docker run or docker compose run, e.g. '--cap-add=SYS_PTRACE --security-opt seccomp=unconfined'."),
-    maxOutputBytes: tool.schema.number().optional().describe("Maximum combined stdout/stderr bytes to retain. Default 262144."),
-    stopOnRegex: tool.schema.string().optional().describe("Optional regex; stop collection early once stdout/stderr matches it."),
-    tailOnly: tool.schema.boolean().optional().describe("Return only the last useful response lines after folding repeated menu noise. Default false."),
-    saveOutput: tool.schema.boolean().optional().describe("Save raw stdout/stderr to a workspace log file. Default false, but truncation auto-saves."),
-    outputPath: tool.schema.string().optional().describe("Workspace-relative log path for raw output. Default work/docker_runner_logs/<timestamp>.log."),
-    payloadText: tool.schema.string().optional().describe("Optional payload text to save as a workspace artifact and expose via OPENCODE_STAGE_PAYLOAD_FILE."),
-    payloadHex: tool.schema.string().optional().describe("Optional hex payload to save as a workspace artifact and expose via OPENCODE_STAGE_PAYLOAD_FILE."),
-    payloadFile: tool.schema.string().optional().describe("Workspace-relative payload file to expose via OPENCODE_STAGE_PAYLOAD_FILE without rewriting it."),
+    image: tool.schema
+      .string()
+      .optional()
+      .describe("Docker image for docker run mode when no existing container/service should be used."),
+    useComposeRun: tool.schema
+      .boolean()
+      .optional()
+      .describe("Use 'docker compose run --rm <service>' instead of exec. Default false."),
+    containerWorkdir: tool.schema
+      .string()
+      .optional()
+      .describe("In-container working directory. Default is the mounted workspace mirror under /work."),
+    containerMountRoot: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Container path where the host workspace is mounted for docker run mode and script path resolution. Default /work.",
+      ),
+    runArgs: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Optional extra arguments for docker run or docker compose run, e.g. '--cap-add=SYS_PTRACE --security-opt seccomp=unconfined'.",
+      ),
+    maxOutputBytes: tool.schema
+      .number()
+      .optional()
+      .describe("Maximum combined stdout/stderr bytes to retain. Default 262144."),
+    stopOnRegex: tool.schema
+      .string()
+      .optional()
+      .describe("Optional regex; stop collection early once stdout/stderr matches it."),
+    tailOnly: tool.schema
+      .boolean()
+      .optional()
+      .describe("Return only the last useful response lines after folding repeated menu noise. Default false."),
+    saveOutput: tool.schema
+      .boolean()
+      .optional()
+      .describe("Save raw stdout/stderr to a workspace log file. Default false, but truncation auto-saves."),
+    outputPath: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative log path for raw output. Default work/docker_runner_logs/<timestamp>.log."),
+    payloadText: tool.schema
+      .string()
+      .optional()
+      .describe("Optional payload text to save as a workspace artifact and expose via OPENCODE_STAGE_PAYLOAD_FILE."),
+    payloadHex: tool.schema
+      .string()
+      .optional()
+      .describe("Optional hex payload to save as a workspace artifact and expose via OPENCODE_STAGE_PAYLOAD_FILE."),
+    payloadFile: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative payload file to expose via OPENCODE_STAGE_PAYLOAD_FILE without rewriting it."),
     payloadLabel: tool.schema.string().optional().describe("Optional label used in saved payload artifact names."),
-    artifactFiles: tool.schema.string().optional().describe("Comma/newline-separated workspace files to hash and map host/container before execution."),
-    showArtifactManifest: tool.schema.boolean().optional().describe("Print artifact manifest for script/payload/binary/libc/ld before execution. Default false unless artifactFiles/runtimeProfileId/payloadFile is present."),
+    artifactFiles: tool.schema
+      .string()
+      .optional()
+      .describe("Comma/newline-separated workspace files to hash and map host/container before execution."),
+    showArtifactManifest: tool.schema
+      .boolean()
+      .optional()
+      .describe(
+        "Print artifact manifest for script/payload/binary/libc/ld before execution. Default false unless artifactFiles/runtimeProfileId/payloadFile is present.",
+      ),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON summary only. Default false."),
   },
   async execute(args, context) {
@@ -232,7 +344,9 @@ export default tool({
     }
     if (!synthesizedScript) throw new Error("one of script, pythonInline, or gdbInline is required")
 
-    const content = synthesizedScript.startsWith("#!") ? synthesizedScript : `#!/usr/bin/env bash\nset -euo pipefail\n${synthesizedScript}\n`
+    const content = synthesizedScript.startsWith("#!")
+      ? synthesizedScript
+      : `#!/usr/bin/env bash\nset -euo pipefail\n${synthesizedScript}\n`
     await writeFile(scriptPath, content, "utf8")
 
     const extraEnv: Record<string, string> = {}
@@ -275,12 +389,14 @@ export default tool({
     const containerMountRoot = validateContainerPosixPath(effectiveContainerMountRoot, "containerMountRoot")
     const relFromWorkspace = path.relative(context.directory, scriptPath).replace(/\\/g, "/")
     const relWorkdirFromWorkspace = path.relative(context.directory, workdir).replace(/\\/g, "/")
-    const defaultContainerWorkdir = !relWorkdirFromWorkspace || relWorkdirFromWorkspace === "."
-      ? containerMountRoot
-      : pposix.join(containerMountRoot, relWorkdirFromWorkspace)
-    const containerWorkdir = args.containerWorkdir || profileDefaults.containerWorkdir
-      ? validateContainerPosixPath(args.containerWorkdir || profileDefaults.containerWorkdir, "containerWorkdir")
-      : defaultContainerWorkdir
+    const defaultContainerWorkdir =
+      !relWorkdirFromWorkspace || relWorkdirFromWorkspace === "."
+        ? containerMountRoot
+        : pposix.join(containerMountRoot, relWorkdirFromWorkspace)
+    const containerWorkdir =
+      args.containerWorkdir || profileDefaults.containerWorkdir
+        ? validateContainerPosixPath(args.containerWorkdir || profileDefaults.containerWorkdir, "containerWorkdir")
+        : defaultContainerWorkdir
     const inContainerScript = pposix.join(containerMountRoot, relFromWorkspace)
     const artifactInputs = new Set<string>()
     artifactInputs.add(path.relative(context.directory, scriptPath).replace(/\\/g, "/"))
@@ -288,24 +404,37 @@ export default tool({
     if (runtimeProfile?.binary) artifactInputs.add(String(runtimeProfile.binary))
     if (runtimeProfile?.libc) artifactInputs.add(String(runtimeProfile.libc))
     if (runtimeProfile?.ld) artifactInputs.add(String(runtimeProfile.ld))
-    for (const item of String(args.artifactFiles || "").split(/[\r\n,]+/).map((x) => x.trim()).filter(Boolean)) artifactInputs.add(item)
+    for (const item of String(args.artifactFiles || "")
+      .split(/[\r\n,]+/)
+      .map((x) => x.trim())
+      .filter(Boolean))
+      artifactInputs.add(item)
     const artifactManifest = [] as any[]
     if (args.showArtifactManifest || args.artifactFiles || args.runtimeProfileId || payloadPath) {
       for (const item of artifactInputs) {
-        try { artifactManifest.push(await artifactMeta(context.directory, item, containerMountRoot)) }
-        catch (err) { artifactManifest.push({ rel_path: item, error: String((err as Error).message || err) }) }
+        try {
+          artifactManifest.push(await artifactMeta(context.directory, item, containerMountRoot))
+        } catch (err) {
+          artifactManifest.push({ rel_path: item, error: String((err as Error).message || err) })
+        }
       }
     }
-    const envExports = Object.entries(extraEnv).map(([k, v]) => `export ${k}=${JSON.stringify(v)}`).join("; ")
+    const envExports = Object.entries(extraEnv)
+      .map(([k, v]) => `export ${k}=${JSON.stringify(v)}`)
+      .join("; ")
     const shellCmd = `${envExports ? `${envExports}; ` : ""}chmod +x ${JSON.stringify(inContainerScript)} && bash ${JSON.stringify(inContainerScript)}`
 
     const hasExecTarget = Boolean(args.containerName) || (Boolean(effectiveComposeService) && !args.useComposeRun)
     const hasRunTarget = Boolean(args.image) || (Boolean(effectiveComposeService) && Boolean(args.useComposeRun))
     if (!hasExecTarget && !hasRunTarget) {
-      throw new Error("one of containerName, composeService (exec), image, or composeService+useComposeRun (run mode) is required")
+      throw new Error(
+        "one of containerName, composeService (exec), image, or composeService+useComposeRun (run mode) is required",
+      )
     }
     if (hasRunTarget && !isInsideContainerTree(containerWorkdir, containerMountRoot)) {
-      throw new Error(`containerWorkdir must stay under containerMountRoot for docker run/compose run mode: ${containerWorkdir} is outside ${containerMountRoot}`)
+      throw new Error(
+        `containerWorkdir must stay under containerMountRoot for docker run/compose run mode: ${containerWorkdir} is outside ${containerMountRoot}`,
+      )
     }
 
     const runArgs = splitArgs(effectiveRunArgs)
@@ -355,15 +484,34 @@ export default tool({
         stoppedOnRegex = res.stoppedOnRegex
         outputTruncated = res.outputTruncated
         successByRegex = res.stoppedOnRegex && !res.timedOut
-        if (isComposeMissing(`${stdout}\n${stderr}`) && (args.image || runtimeProfile?.recommended_image || profileDefaults.composeService)) {
+        if (
+          isComposeMissing(`${stdout}\n${stderr}`) &&
+          (args.image || runtimeProfile?.recommended_image || profileDefaults.composeService)
+        ) {
           mode = "docker_run_fallback"
-          const fallbackImage = args.image || (runtimeProfile as any)?.recommended_image || "pwnlab:general-ubuntu22.04"
+          const fallbackImage =
+            args.image || (runtimeProfile as any)?.recommended_image || pwnImage("general-ubuntu22.04")
           const envArgs = Object.entries(extraEnv).flatMap(([k, v]) => ["-e", `${k}=${v}`])
           invoked = [
-            "run", "--rm", "-v", `${context.directory.replace(/\\/g, "/")}:${containerMountRoot}`, "-w", containerWorkdir,
-            ...envArgs, ...runArgs, fallbackImage, "bash", "-lc", shellCmd,
+            "run",
+            "--rm",
+            "-v",
+            `${context.directory.replace(/\\/g, "/")}:${containerMountRoot}`,
+            "-w",
+            containerWorkdir,
+            ...envArgs,
+            ...runArgs,
+            fallbackImage,
+            "bash",
+            "-lc",
+            shellCmd,
           ]
-          const fallbackRes = await runStreamed("docker", invoked, { cwd: context.directory, timeoutMs, maxOutputBytes, stopOnRegex })
+          const fallbackRes = await runStreamed("docker", invoked, {
+            cwd: context.directory,
+            timeoutMs,
+            maxOutputBytes,
+            stopOnRegex,
+          })
           stdout = fallbackRes.stdout
           stderr = fallbackRes.stderr
           exitCode = fallbackRes.exitCode
@@ -375,7 +523,18 @@ export default tool({
       } else if (effectiveComposeService && args.useComposeRun) {
         mode = "compose_run"
         const envArgs = Object.entries(extraEnv).flatMap(([k, v]) => ["-e", `${k}=${v}`])
-        invoked = ["compose", "run", "--rm", "-T", ...envArgs, ...runArgs, effectiveComposeService, "bash", "-lc", shellCmd]
+        invoked = [
+          "compose",
+          "run",
+          "--rm",
+          "-T",
+          ...envArgs,
+          ...runArgs,
+          effectiveComposeService,
+          "bash",
+          "-lc",
+          shellCmd,
+        ]
         const res = await runStreamed("docker", invoked, {
           cwd: context.directory,
           timeoutMs,
@@ -391,13 +550,29 @@ export default tool({
         successByRegex = res.stoppedOnRegex && !res.timedOut
         if (isComposeMissing(`${stdout}\n${stderr}`) && (args.image || (runtimeProfile as any)?.recommended_image)) {
           mode = "docker_run_fallback"
-          const fallbackImage = args.image || (runtimeProfile as any)?.recommended_image || "pwnlab:general-ubuntu22.04"
+          const fallbackImage =
+            args.image || (runtimeProfile as any)?.recommended_image || pwnImage("general-ubuntu22.04")
           const envArgs = Object.entries(extraEnv).flatMap(([k, v]) => ["-e", `${k}=${v}`])
           invoked = [
-            "run", "--rm", "-v", `${context.directory.replace(/\\/g, "/")}:${containerMountRoot}`, "-w", containerWorkdir,
-            ...envArgs, ...runArgs, fallbackImage, "bash", "-lc", shellCmd,
+            "run",
+            "--rm",
+            "-v",
+            `${context.directory.replace(/\\/g, "/")}:${containerMountRoot}`,
+            "-w",
+            containerWorkdir,
+            ...envArgs,
+            ...runArgs,
+            fallbackImage,
+            "bash",
+            "-lc",
+            shellCmd,
           ]
-          const fallbackRes = await runStreamed("docker", invoked, { cwd: context.directory, timeoutMs, maxOutputBytes, stopOnRegex })
+          const fallbackRes = await runStreamed("docker", invoked, {
+            cwd: context.directory,
+            timeoutMs,
+            maxOutputBytes,
+            stopOnRegex,
+          })
           stdout = fallbackRes.stdout
           stderr = fallbackRes.stderr
           exitCode = fallbackRes.exitCode
@@ -438,7 +613,14 @@ export default tool({
         successByRegex = res.stoppedOnRegex && !res.timedOut
       }
     } catch (err) {
-      const e = err as { stdout?: string; stderr?: string; code?: number | string; signal?: string; killed?: boolean; message?: string }
+      const e = err as {
+        stdout?: string
+        stderr?: string
+        code?: number | string
+        signal?: string
+        killed?: boolean
+        message?: string
+      }
       stdout = e.stdout ?? ""
       stderr = e.stderr ?? e.message ?? ""
       exitCode = e.code ?? e.signal ?? "error"
@@ -450,7 +632,8 @@ export default tool({
     let outputSaved = false
     let outputPath = ""
     if (args.saveOutput || outputTruncated) {
-      const outputRel = args.outputPath || `work/docker_runner_logs/${new Date().toISOString().replace(/[:.]/g, "-")}.log`
+      const outputRel =
+        args.outputPath || `work/docker_runner_logs/${new Date().toISOString().replace(/[:.]/g, "-")}.log`
       const outputAbs = resolveInsideWorkspace(context.directory, outputRel)
       await mkdir(path.dirname(outputAbs), { recursive: true })
       await writeFile(outputAbs, rawOutput, "utf8")
@@ -465,12 +648,16 @@ export default tool({
     const promptHint = detectPromptHint(rawOutput)
     const shellSignal = detectShellSignal(rawOutput)
     const terminationClass = successByRegex
-      ? (String(exitCode).toUpperCase().includes("SIGTERM") || String(exitCode) === "15" ? "forced_stop_after_success" : "regex_success")
+      ? String(exitCode).toUpperCase().includes("SIGTERM") || String(exitCode) === "15"
+        ? "forced_stop_after_success"
+        : "regex_success"
       : timedOut
         ? "timeout_without_signal"
         : shellSignal && !timedOut
           ? "transport_eof_after_success"
-          : /segmentation fault|sigsegv|core dumped|illegal instruction|sigill|sigabrt|abort|bus error|sigbus/i.test(rawOutput.toLowerCase())
+          : /segmentation fault|sigsegv|core dumped|illegal instruction|sigill|sigabrt|abort|bus error|sigbus/i.test(
+                rawOutput.toLowerCase(),
+              )
             ? "process_crash"
             : "clean_exit_or_unknown"
     const containerPathTable = [
@@ -484,7 +671,11 @@ export default tool({
     const summary = {
       schema_version: "pwn_docker_runner.v4",
       mode,
-      root_cause_category: timedOut ? "challenge_timeout_or_wait" : String(exitCode) === "error" ? "tool_failure_or_container_invocation" : "process_completed",
+      root_cause_category: timedOut
+        ? "challenge_timeout_or_wait"
+        : String(exitCode) === "error"
+          ? "tool_failure_or_container_invocation"
+          : "process_completed",
       script_path: scriptPath,
       in_container_script: inContainerScript,
       workdir,
@@ -510,7 +701,9 @@ export default tool({
       tail_only: tailOnly,
       invoked,
       script_bytes: Buffer.byteLength(savedScript, "utf8"),
-      env_defaults_applied: ["TERM", "TERMCAP", "PYTHONUNBUFFERED"].filter((k) => Object.prototype.hasOwnProperty.call(extraEnv, k)),
+      env_defaults_applied: ["TERM", "TERMCAP", "PYTHONUNBUFFERED"].filter((k) =>
+        Object.prototype.hasOwnProperty.call(extraEnv, k),
+      ),
       artifact_manifest: artifactManifest,
     }
 
@@ -550,7 +743,13 @@ export default tool({
       "path_equivalence:",
       ...containerPathTable.map((x) => `- ${x}`),
       "artifact_manifest:",
-      ...(artifactManifest.length ? artifactManifest.map((a) => a.error ? `- ${a.rel_path}: ERROR ${a.error}` : `- ${a.rel_path}: host=${a.host_path} container=${a.container_path} size=${a.size} sha256=${a.sha256}`) : ["- none"]),
+      ...(artifactManifest.length
+        ? artifactManifest.map((a) =>
+            a.error
+              ? `- ${a.rel_path}: ERROR ${a.error}`
+              : `- ${a.rel_path}: host=${a.host_path} container=${a.container_path} size=${a.size} sha256=${a.sha256}`,
+          )
+        : ["- none"]),
       "contract:",
       "- exec modes require an existing compose service or container.",
       "- run modes can start a temporary container via image or composeService+useComposeRun.",

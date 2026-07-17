@@ -30,7 +30,17 @@ function main() {
   const parsed = JSON.parse(readFileSync(indexPath, "utf8")) as LessonIndex
   const lessons = parsed.lessons ?? []
   const weak = lessons.filter((lesson) => {
-    return !lesson.id || !lesson.file || !lesson.family || !lesson.title || !lesson.triggers?.length || !lesson.signals?.length || !lesson.better_question || !lesson.stop_rule || !lesson.query_terms?.length
+    return (
+      !lesson.id ||
+      !lesson.file ||
+      !lesson.family ||
+      !lesson.title ||
+      !lesson.triggers?.length ||
+      !lesson.signals?.length ||
+      !lesson.better_question ||
+      !lesson.stop_rule ||
+      !lesson.query_terms?.length
+    )
   })
 
   console.log("# Lesson Index Readiness\n")

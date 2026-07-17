@@ -1,10 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
 import { lstat, mkdir, readFile, writeFile } from "node:fs/promises"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExecWithStreams } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -73,15 +70,21 @@ function filterKnownWslNoise(s: string) {
 }
 
 function firstUsefulLine(s: string) {
-  return stripAnsi(s)
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find(Boolean) || ""
+  return (
+    stripAnsi(s)
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find(Boolean) || ""
+  )
 }
 
 function countNoiseRemoved(original: string, filtered: string) {
-  const originalLines = stripAnsi(original).split(/\r?\n/).filter((line) => line.trim()).length
-  const filteredLines = stripAnsi(filtered).split(/\r?\n/).filter((line) => line.trim()).length
+  const originalLines = stripAnsi(original)
+    .split(/\r?\n/)
+    .filter((line) => line.trim()).length
+  const filteredLines = stripAnsi(filtered)
+    .split(/\r?\n/)
+    .filter((line) => line.trim()).length
   return Math.max(0, originalLines - filteredLines)
 }
 
@@ -102,7 +105,8 @@ function classifyFailure(detail: string, timedOut: boolean, exitCode: number | s
   if (/command not found|not recognized as an internal or external command/i.test(text)) return "command_not_found"
   if (/no such file or directory|cannot find the file|not found/i.test(text)) return "missing_file"
   if (/permission denied|access is denied|operation not permitted/i.test(text)) return "permission_denied"
-  if (!healthOk && (/wsl/i.test(text) || /failed to translate|mount.*failed|distribution.*not found/i.test(text))) return "wsl_startup_failure"
+  if (!healthOk && (/wsl/i.test(text) || /failed to translate|mount.*failed|distribution.*not found/i.test(text)))
+    return "wsl_startup_failure"
   if (String(exitCode) !== "0") return "script_execution_failure"
   return "unknown"
 }
@@ -129,31 +133,49 @@ function suggestedFix(kind: FailureKind) {
 }
 
 async function runWslHealth(wslWorkdir: string, wslScript: string, timeoutMs: number) {
-  try {
-    const res = await execFile("wsl", [
+  const { stdout, stderr } = await safeExecWithStreams(
+    "wsl",
+    [
       "bash",
       "-lc",
       `test -d ${JSON.stringify(wslWorkdir)} && test -f ${JSON.stringify(wslScript)} && command -v bash >/dev/null && echo __WSL_HEALTH_OK__`,
-    ], { timeout: Math.min(timeoutMs, 8000), maxBuffer: 256 * 1024 })
-    const output = `${res.stdout ?? ""}\n${res.stderr ?? ""}`
-    return { ok: output.includes("__WSL_HEALTH_OK__"), detail: output.trim() || "health probe produced no output" }
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return { ok: false, detail: `${e.stdout ?? ""}${e.stderr ?? ""}${e.message ? `\n${e.message}` : ""}`.trim() || "health probe failed" }
-  }
+    ],
+    { timeoutMs: Math.min(timeoutMs, 8000), maxBuffer: 256 * 1024 },
+  )
+  const output = `${stdout}\n${stderr}`
+  return { ok: output.includes("__WSL_HEALTH_OK__"), detail: output.trim() || "health probe produced no output" }
 }
 
 export default tool({
-  description: "CTF pwn WSL runner: write or run a workspace-local script under WSL to avoid PowerShell/WSL quoting interference.",
+  description:
+    "CTF pwn WSL runner: write or run a workspace-local script under WSL to avoid PowerShell/WSL quoting interference.",
   args: {
     script: tool.schema.string().describe("Bash script content to execute under WSL."),
-    workdir: tool.schema.string().optional().describe("Workspace-relative working directory. Default current workspace root."),
-    timeoutMs: tool.schema.number().optional().describe("Execution timeout in milliseconds. Default 15000, hard cap 120000."),
-    envJson: tool.schema.string().optional().describe("Optional JSON object of environment variables for the WSL process."),
-    suppressKnownNoise: tool.schema.boolean().optional().describe("Filter known WSL localhost/NAT/proxy stderr noise. Default true."),
-    scriptPath: tool.schema.string().optional().describe("Workspace-relative path to write the script. Default work/wsl_probe.sh."),
+    workdir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative working directory. Default current workspace root."),
+    timeoutMs: tool.schema
+      .number()
+      .optional()
+      .describe("Execution timeout in milliseconds. Default 15000, hard cap 120000."),
+    envJson: tool.schema
+      .string()
+      .optional()
+      .describe("Optional JSON object of environment variables for the WSL process."),
+    suppressKnownNoise: tool.schema
+      .boolean()
+      .optional()
+      .describe("Filter known WSL localhost/NAT/proxy stderr noise. Default true."),
+    scriptPath: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative path to write the script. Default work/wsl_probe.sh."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON summary only. Default false."),
-    healthOnly: tool.schema.boolean().optional().describe("Run only a quiet WSL health check for startup, mount, and script visibility. Default false."),
+    healthOnly: tool.schema
+      .boolean()
+      .optional()
+      .describe("Run only a quiet WSL health check for startup, mount, and script visibility. Default false."),
   },
   async execute(args, context) {
     const workdirRel = args.workdir || "."
@@ -166,7 +188,9 @@ export default tool({
     const scriptPath = resolveInsideWorkspace(context.directory, scriptRel)
     await mkdir(path.dirname(scriptPath), { recursive: true })
 
-    const content = args.script.startsWith("#!") ? args.script : `#!/usr/bin/env bash\nset -euo pipefail\n${args.script}\n`
+    const content = args.script.startsWith("#!")
+      ? args.script
+      : `#!/usr/bin/env bash\nset -euo pipefail\n${args.script}\n`
     await writeFile(scriptPath, content, "utf8")
 
     const extraEnv: Record<string, string> = {}
@@ -198,42 +222,42 @@ export default tool({
         noise_lines_removed: countNoiseRemoved(health.detail, filteredHealthDetail),
         health_detail: compact(filteredHealthDetail, 4000),
       }
-      return args.jsonOnly ? JSON.stringify(payload, null, 2) : [
-        "pwn_wsl_runner:",
-        "- schema_version: pwn_wsl_runner.v2",
-        "- health_only: true",
-        `- wsl_ok: ${health.ok}`,
-        `- failure_kind: ${healthFailureKind}`,
-        `- primary_error_line: ${firstUsefulLine(filteredHealthDetail || health.detail) || "none"}`,
-        `- suggested_fix: ${suggestedFix(healthFailureKind)}`,
-        `- noise_lines_removed: ${countNoiseRemoved(health.detail, filteredHealthDetail)}`,
-        `- wsl_workdir: ${wslWorkdir}`,
-        `- wsl_script_path: ${wslScript}`,
-        "health_detail:",
-        compact(filteredHealthDetail, 4000),
-      ].join("\n")
+      return args.jsonOnly
+        ? JSON.stringify(payload, null, 2)
+        : [
+            "pwn_wsl_runner:",
+            "- schema_version: pwn_wsl_runner.v2",
+            "- health_only: true",
+            `- wsl_ok: ${health.ok}`,
+            `- failure_kind: ${healthFailureKind}`,
+            `- primary_error_line: ${firstUsefulLine(filteredHealthDetail || health.detail) || "none"}`,
+            `- suggested_fix: ${suggestedFix(healthFailureKind)}`,
+            `- noise_lines_removed: ${countNoiseRemoved(health.detail, filteredHealthDetail)}`,
+            `- wsl_workdir: ${wslWorkdir}`,
+            `- wsl_script_path: ${wslScript}`,
+            "health_detail:",
+            compact(filteredHealthDetail, 4000),
+          ].join("\n")
     }
-    const envPrefix = Object.entries(extraEnv).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(" ")
+    const envPrefix = Object.entries(extraEnv)
+      .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+      .join(" ")
     const bashCmd = `${envPrefix ? `${envPrefix} ` : ""}bash ${JSON.stringify(wslScript)}`
 
     let stdout = ""
     let stderr = ""
     let exitCode: number | string = 0
     let timedOut = false
-    try {
-      const res = await execFile("wsl", ["bash", "-lc", `cd ${JSON.stringify(wslWorkdir)} && ${bashCmd}`], {
-        cwd: context.directory,
-        timeout: timeoutMs,
-        maxBuffer: 2 * 1024 * 1024,
-      })
-      stdout = res.stdout
-      stderr = res.stderr
-    } catch (err) {
-      const e = err as { stdout?: string; stderr?: string; code?: number | string; signal?: string; killed?: boolean; message?: string }
-      stdout = e.stdout ?? ""
-      stderr = e.stderr ?? e.message ?? ""
-      exitCode = e.code ?? e.signal ?? "error"
-      timedOut = Boolean(e.killed) || /timed out|timeout/i.test(String(e.message ?? ""))
+    const res = await safeExecWithStreams("wsl", ["bash", "-lc", `cd ${JSON.stringify(wslWorkdir)} && ${bashCmd}`], {
+      cwd: context.directory,
+      timeoutMs,
+      maxBuffer: 2 * 1024 * 1024,
+    })
+    stdout = res.stdout
+    stderr = res.stderr
+    if (!res.ok) {
+      exitCode = res.exitCode ?? "error"
+      timedOut = /timeout|timed out/i.test(res.stderr)
     }
 
     const savedScript = await readFile(scriptPath, "utf8")

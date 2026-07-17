@@ -1,23 +1,132 @@
 {
   "name": "opencode-for-ctf",
-  "version": "2026.07.0",
+  "version": "0.1.0",
   "description": "CTF agent plugin for opencode — multi-agent orchestration, evidence-based solving, PWN/Web/Rev/Crypto/Forensics tools, knowledge base, and runtime hooks.",
-  "private": true,
+  "license": "MIT",
+  "homepage": "https://github.com/h1kibi/Opencode-for-CTF#readme",
+  "keywords": [
+    "opencode",
+    "ctf",
+    "plugin",
+    "security",
+    "capture-the-flag"
+  ],
+  "bugs": "https://github.com/h1kibi/Opencode-for-CTF/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/h1kibi/Opencode-for-CTF.git"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
   "type": "module",
-  "main": "./src/plugin.ts",
+  "main": "./dist/plugin/index.js",
+  "exports": {
+    ".": "./dist/plugin/index.js"
+  },
+  "engines": {
+    "node": ">=22.20.0"
+  },
+  "bin": {
+    "opencode-for-ctf": "./scripts/cli.mjs"
+  },
+  "preferGlobal": false,
+  "files": [
+    "agents",
+    "commands",
+    "dist/plugin",
+    "knowledge/lessons",
+    "knowledge/pwn",
+    "knowledge/rev",
+    "knowledge/pwn-patterns.md",
+    "knowledge/weak-modules-hard-backlog.md",
+    "knowledge/pattern-cards/ljagiello-ctf-skills.cards.v9.json",
+    "knowledge/pattern-cards/java-web",
+    "knowledge/pattern-cards/pwn-curated.cards.v1.json",
+    "knowledge/pattern-cards/synonyms.json",
+    "knowledge/pattern-cards/curated-cards.json",
+    "lessons",
+    "mcp-servers/wireshark-mcp/README.md",
+    "mcp-servers/wireshark-mcp/package.json",
+    "mcp-servers/wireshark-mcp/server.js",
+    "mcp-servers/packettracer-gui-mcp/README.md",
+    "mcp-servers/packettracer-gui-mcp/requirements.txt",
+    "mcp-servers/packettracer-gui-mcp/server.py",
+    "requirements.txt",
+    "rules",
+    "runtime/README.md",
+    "runtime/win-env",
+    "runtime/wsl-env",
+    "skills",
+    "templates",
+    "third_party",
+    "scripts/lib",
+    "scripts/cli.mjs",
+    "scripts/install.mjs",
+    "scripts/upgrade.mjs",
+    "scripts/uninstall.mjs",
+    "scripts/status.mjs",
+    "scripts/doctor-install.mjs",
+    "scripts/release-check.mjs",
+    "scripts/build-plugin.mjs",
+    "scripts/fetch-skills.mjs",
+    "scripts/setup.mjs",
+    "README.md",
+    "README_EN.md",
+    "INSTALL.md",
+    "SECURITY.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    ".env.example",
+    "opencode-for-ctf.example.jsonc"
+  ],
   "scripts": {
-    "lint": "tsc --noEmit",
+    "check": "tsc --noEmit && npm run check:content && vitest run",
+    "check:content": "node scripts/validate-content.mjs",
+    "build:plugin": "node scripts/build-plugin.mjs",
+    "lint": "tsc --noEmit && eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"{src,tools,scripts,test,packages}/**/*.{ts,js,mjs,cjs,json,md}\" \"*.{json,md,mjs}\"",
+    "format:check": "prettier --check \"{src,tools,scripts,test,packages}/**/*.{ts,js,mjs,cjs,json,md}\" \"*.{json,md,mjs}\"",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
     "tools:verify": "tsx scripts/verify-ctf-tooling.ts",
-    "doctor": "tsx scripts/doctor.ts"
+    "doctor": "node scripts/doctor-install.mjs",
+    "doctor:tooling": "tsx scripts/doctor.ts",
+    "setup": "node scripts/setup.mjs",
+    "ctf:install": "node scripts/install.mjs",
+    "ctf:upgrade": "node scripts/upgrade.mjs",
+    "ctf:status": "node scripts/status.mjs",
+    "ctf:uninstall": "node scripts/uninstall.mjs",
+    "ctf:doctor": "node scripts/doctor-install.mjs",
+    "ctf:help": "node scripts/cli.mjs help",
+    "release:check": "node scripts/release-check.mjs",
+    "prepack": "npm run build:plugin && npm run release:check",
+    "pack:check": "npm run prepack && npm pack --dry-run",
+    "fetch-skills": "node scripts/fetch-skills.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
     "@opencode-ai/plugin": "^1.17.0",
-    "@opencode-ai/sdk": "^1.0.0"
+    "@opencode-ai/sdk": "^1.0.0",
+    "jsonc-parser": "^3.3.1",
+    "proper-lockfile": "^4.1.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^25.9.1",
+    "@types/proper-lockfile": "^4.1.4",
+    "@vitest/coverage-v8": "^3.2.7",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.7.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.5",
     "tsx": "^4.20.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.64.0",
+    "vitest": "^3.1.0"
   },
   "opencode": {
     "type": "plugin",
@@ -29,5 +138,9 @@
       "ctf-tools",
       "ctf-commands"
     ]
+  },
+  "ctf": {
+    "manifest": "ctf-agent.manifest.json",
+    "note": "Agent config, entrypoints, and required tool/index manifests. See ctf-agent.manifest.json and agents/*.md."
   }
 }

@@ -14,7 +14,8 @@ function parseHeadersJson(headersJson?: string) {
   if (headersJson?.trim()) {
     const parsed = JSON.parse(headersJson) as Record<string, unknown>
     for (const [key, value] of Object.entries(parsed)) {
-      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") headers[key] = String(value)
+      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+        headers[key] = String(value)
     }
   }
   return headers
@@ -69,9 +70,24 @@ function hash(text: string) {
   return createHash("sha256").update(text).digest("hex").slice(0, 16)
 }
 
-type Cell = { label: string; object: string; status: number; length: number; hash: string; location: string; snippet: string }
+type Cell = {
+  label: string
+  object: string
+  status: number
+  length: number
+  hash: string
+  location: string
+  snippet: string
+}
 
-async function requestCell(label: string, object: string, url: URL, method: string, headers: Record<string, string>, body?: string): Promise<Cell> {
+async function requestCell(
+  label: string,
+  object: string,
+  url: URL,
+  method: string,
+  headers: Record<string, string>,
+  body?: string,
+): Promise<Cell> {
   const init: RequestInit = { method, headers }
   if (body && method !== "GET" && method !== "HEAD") init.body = body
   const response = await fetchWithTimeout(url, init)
@@ -92,18 +108,27 @@ function visible(cell: Cell) {
 }
 
 export default tool({
-  description: "CTF Web authz matrix v8: compare anonymous/user_a/user_b access to one or two object IDs for IDOR, horizontal/vertical authz, workflow replay, and CSRF-ish boundary clues. Low-volume and differential, not a fuzzer.",
+  description:
+    "CTF Web authz matrix v8: compare anonymous/user_a/user_b access to one or two object IDs for IDOR, horizontal/vertical authz, workflow replay, and CSRF-ish boundary clues. Low-volume and differential, not a fuzzer.",
   args: {
-    urlTemplate: tool.schema.string().describe("Endpoint URL or URL template. Use {{id}} where objectIdA/objectIdB should be inserted."),
+    urlTemplate: tool.schema
+      .string()
+      .describe("Endpoint URL or URL template. Use {{id}} where objectIdA/objectIdB should be inserted."),
     method: tool.schema.string().optional().describe("HTTP method. Default GET."),
     headersJson: tool.schema.string().optional().describe("Base JSON headers without Cookie."),
-    bodyTemplate: tool.schema.string().optional().describe("Optional body template. Use {{id}} for object IDs. Ignored for GET/HEAD."),
+    bodyTemplate: tool.schema
+      .string()
+      .optional()
+      .describe("Optional body template. Use {{id}} for object IDs. Ignored for GET/HEAD."),
     userACookie: tool.schema.string().optional().describe("Cookie for user A / owner A."),
     userBCookie: tool.schema.string().optional().describe("Cookie for user B / non-owner."),
     objectIdA: tool.schema.string().optional().describe("Object ID owned by user A. Default empty."),
     objectIdB: tool.schema.string().optional().describe("Object ID owned by user B. Optional."),
     includeAnonymous: tool.schema.boolean().optional().describe("Include anonymous request. Default true."),
-    csrfHeaderName: tool.schema.string().optional().describe("Optional CSRF header to remove in one comparison, e.g. X-CSRF-Token."),
+    csrfHeaderName: tool.schema
+      .string()
+      .optional()
+      .describe("Optional CSRF header to remove in one comparison, e.g. X-CSRF-Token."),
   },
   async execute(args) {
     const method = normalizeMethod(args.method)
@@ -142,7 +167,9 @@ export default tool({
         const url = new URL(normalizeUrl(applyTemplate(args.urlTemplate, id)))
         const body = method === "GET" || method === "HEAD" ? undefined : applyTemplate(args.bodyTemplate, id)
         try {
-          cells.push(await requestCell(`${owner.label}_no_${args.csrfHeaderName}`, id || "<none>", url, method, headers, body))
+          cells.push(
+            await requestCell(`${owner.label}_no_${args.csrfHeaderName}`, id || "<none>", url, method, headers, body),
+          )
         } catch (err) {
           errors.push(`${owner.label}/csrf-removed: ${err}`)
         }
@@ -159,11 +186,19 @@ export default tool({
     const aB = by("user_a", objectB)
     const bB = by("user_b", objectB)
 
-    if (anonA && visible(anonA) && aA && visible(aA)) findings.push("anonymous can access the same object class as authenticated user; check public-by-design vs auth bypass")
-    if (aA && bA && visible(aA) && visible(bA) && bA.status === aA.status) findings.push("user_b can access objectIdA with a similar successful status: horizontal IDOR candidate")
-    if (aB && bB && visible(bB) && visible(aB) && aB.status === bB.status && objectB !== "<none>") findings.push("user_a can access objectIdB with a similar successful status: reciprocal horizontal IDOR candidate")
+    if (anonA && visible(anonA) && aA && visible(aA))
+      findings.push(
+        "anonymous can access the same object class as authenticated user; check public-by-design vs auth bypass",
+      )
+    if (aA && bA && visible(aA) && visible(bA) && bA.status === aA.status)
+      findings.push("user_b can access objectIdA with a similar successful status: horizontal IDOR candidate")
+    if (aB && bB && visible(bB) && visible(aB) && aB.status === bB.status && objectB !== "<none>")
+      findings.push(
+        "user_a can access objectIdB with a similar successful status: reciprocal horizontal IDOR candidate",
+      )
     const csrfCell = cells.find((c) => c.label.includes("_no_"))
-    if (csrfCell && visible(csrfCell)) findings.push("request still succeeds after removing nominated CSRF header; CSRF/origin boundary candidate")
+    if (csrfCell && visible(csrfCell))
+      findings.push("request still succeeds after removing nominated CSRF header; CSRF/origin boundary candidate")
     if (!findings.length) findings.push("no obvious authz differential from this small matrix")
 
     const newDifferential = findings.some((x) => !x.startsWith("no obvious"))
@@ -171,13 +206,21 @@ export default tool({
       `verdict: ${newDifferential ? "authz_differential_candidate" : "authz_no_obvious_delta"}`,
       `method: ${method}`,
       "matrix:",
-      ...cells.map((c) => `- actor=${c.label} object=${c.object} status=${c.status} len=${c.length} hash=${c.hash} location=${c.location || "none"} snippet=${c.snippet || "none"}`),
+      ...cells.map(
+        (c) =>
+          `- actor=${c.label} object=${c.object} status=${c.status} len=${c.length} hash=${c.hash} location=${c.location || "none"} snippet=${c.snippet || "none"}`,
+      ),
       "findings:",
       ...findings.map((x) => `- ${x}`),
       "recommended_next:",
       ...(newDifferential
-        ? ["- confirm with a second harmless object/action and then feed observe into ctf-decision-state", "- do not escalate to destructive actions until ownership and flag path are modeled"]
-        : ["- rerank; try a different object class, workflow step, optional field, or state transition if evidence supports it"]),
+        ? [
+            "- confirm with a second harmless object/action and then feed observe into ctf-decision-state",
+            "- do not escalate to destructive actions until ownership and flag path are modeled",
+          ]
+        : [
+            "- rerank; try a different object class, workflow step, optional field, or state transition if evidence supports it",
+          ]),
       "decision_state_observe_hint:",
       `- {"family":"authz_matrix","result":"${newDifferential ? "differential" : "no_differential"}","newDifferential":${newDifferential},"evidence":"${findings.join("; ").replace(/"/g, "'")}"}`,
       "errors:",

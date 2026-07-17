@@ -14,7 +14,8 @@ function parseHeadersJson(headersJson?: string, cookie?: string) {
   if (headersJson?.trim()) {
     const parsed = JSON.parse(headersJson) as Record<string, unknown>
     for (const [key, value] of Object.entries(parsed)) {
-      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") headers[key] = String(value)
+      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+        headers[key] = String(value)
     }
   }
   if (cookie?.trim()) headers.Cookie = cookie.trim()
@@ -144,21 +145,41 @@ function mutateBody(body: string | undefined, parameter: string, value: string) 
 }
 
 export default tool({
-  description: "CTF Web differential probe v8: run exactly one baseline and one mutant request for an authorized endpoint. Tests method/content-type/header/cookie/query/body/duplicate-param/path-normalization/encoding/auth-state/cache-key differentials and returns an observation suitable for ctf-decision-state observe.",
+  description:
+    "CTF Web differential probe v8: run exactly one baseline and one mutant request for an authorized endpoint. Tests method/content-type/header/cookie/query/body/duplicate-param/path-normalization/encoding/auth-state/cache-key differentials and returns an observation suitable for ctf-decision-state observe.",
   args: {
     url: tool.schema.string().describe("Authorized endpoint URL."),
-    variant: tool.schema.string().describe("query | duplicate_param | body | content_type | header | cookie | method | path_normalization | encoding | auth_state | cache_key"),
+    variant: tool.schema
+      .string()
+      .describe(
+        "query | duplicate_param | body | content_type | header | cookie | method | path_normalization | encoding | auth_state | cache_key",
+      ),
     method: tool.schema.string().optional().describe("Baseline method. Default GET."),
     headersJson: tool.schema.string().optional().describe("Baseline JSON headers."),
     cookie: tool.schema.string().optional().describe("Baseline Cookie header."),
     body: tool.schema.string().optional().describe("Baseline request body. Ignored for GET/HEAD."),
-    parameter: tool.schema.string().optional().describe("Parameter/key to mutate for query/body/duplicate_param/encoding."),
-    baselineValue: tool.schema.string().optional().describe("Baseline value to set when variant needs a controlled baseline."),
-    mutantValue: tool.schema.string().optional().describe("Mutant value/header/cookie/content-type. Default harmless marker."),
+    parameter: tool.schema
+      .string()
+      .optional()
+      .describe("Parameter/key to mutate for query/body/duplicate_param/encoding."),
+    baselineValue: tool.schema
+      .string()
+      .optional()
+      .describe("Baseline value to set when variant needs a controlled baseline."),
+    mutantValue: tool.schema
+      .string()
+      .optional()
+      .describe("Mutant value/header/cookie/content-type. Default harmless marker."),
     mutantHeaderName: tool.schema.string().optional().describe("Header to mutate for variant=header."),
     mutantMethod: tool.schema.string().optional().describe("Method for variant=method. Default OPTIONS."),
-    pathStyle: tool.schema.string().optional().describe("For path_normalization: dot_segment | double_slash | encoded_slash | semicolon."),
-    allowStateChanging: tool.schema.boolean().optional().describe("Required for unsafe mutant methods beyond GET/HEAD/OPTIONS."),
+    pathStyle: tool.schema
+      .string()
+      .optional()
+      .describe("For path_normalization: dot_segment | double_slash | encoded_slash | semicolon."),
+    allowStateChanging: tool.schema
+      .boolean()
+      .optional()
+      .describe("Required for unsafe mutant methods beyond GET/HEAD/OPTIONS."),
   },
   async execute(args) {
     const baseUrl = new URL(normalizeUrl(args.url))
@@ -227,7 +248,11 @@ export default tool({
     const b = await doRequest("mutant", mutant, mutantMethod, mutantHeaders, mutantBody)
     const deltas = diffSummary(a, b)
     const newDifferential = deltas.some((x) => x !== "no_observable_delta")
-    const confidence = newDifferential ? (deltas.some((x) => x.startsWith("status") || x.includes("location") || x.includes("set-cookie")) ? 0.72 : 0.55) : 0.18
+    const confidence = newDifferential
+      ? deltas.some((x) => x.startsWith("status") || x.includes("location") || x.includes("set-cookie"))
+        ? 0.72
+        : 0.55
+      : 0.18
     const hypothesis = newDifferential
       ? `${variant} affects observable response; promote only if repeated or linked to flag/control primitive`
       : `${variant} did not produce an observable differential under this baseline`

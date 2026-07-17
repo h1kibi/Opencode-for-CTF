@@ -1,9 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExec } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -15,23 +12,31 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   return target
 }
 
-async function safeExec(cmd: string, args: string[], cwd: string, ms = 7000) {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout: ms, maxBuffer: 1024 * 1024 })
-    return `${stdout}${stderr ? `\n${stderr}` : ""}`
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`
-  }
-}
-
 function grepLines(text: string, re: RegExp, limit = 30) {
-  return text.split(/\r?\n/).filter((line) => re.test(line)).slice(0, limit).map((line) => line.trim())
+  return text
+    .split(/\r?\n/)
+    .filter((line) => re.test(line))
+    .slice(0, limit)
+    .map((line) => line.trim())
 }
 
 function summarizeSyscalls(text: string) {
   const lower = text.toLowerCase()
-  const names = ["open", "openat", "read", "write", "sendfile", "readv", "writev", "mprotect", "mmap", "execve", "rt_sigreturn", "sigreturn", "syscall"]
+  const names = [
+    "open",
+    "openat",
+    "read",
+    "write",
+    "sendfile",
+    "readv",
+    "writev",
+    "mprotect",
+    "mmap",
+    "execve",
+    "rt_sigreturn",
+    "sigreturn",
+    "syscall",
+  ]
   return names.filter((name) => new RegExp(`\\b${name}\\b`).test(lower))
 }
 
@@ -44,40 +49,42 @@ function inferArch(text: string) {
 }
 
 function abiHints(arch: string) {
-  if (arch === "amd64") return [
-    "syscall_number: rax",
-    "arg0: rdi",
-    "arg1: rsi",
-    "arg2: rdx",
-    "arg3: r10",
-    "ORW typical: open/openat(path, flags), read(fd, buf, size), write(1, buf, n)",
-  ]
-  if (arch === "i386") return [
-    "syscall_number: eax",
-    "arg0: ebx",
-    "arg1: ecx",
-    "arg2: edx",
-    "interrupt: int 0x80 or sysenter when available",
-    "ORW typical: open(path, flags), read(fd, buf, size), write(1, buf, n)",
-  ]
-  if (arch === "arm64") return [
-    "syscall_number: x8",
-    "arg0: x0",
-    "arg1: x1",
-    "arg2: x2",
-    "arg3: x3",
-    "ORW typical: openat(AT_FDCWD, path, flags), read(fd, buf, size), write(1, buf, n)",
-  ]
-  return [
-    "arch_unknown: run file/readelf first and map syscall number plus argument registers before building ORW",
-  ]
+  if (arch === "amd64")
+    return [
+      "syscall_number: rax",
+      "arg0: rdi",
+      "arg1: rsi",
+      "arg2: rdx",
+      "arg3: r10",
+      "ORW typical: open/openat(path, flags), read(fd, buf, size), write(1, buf, n)",
+    ]
+  if (arch === "i386")
+    return [
+      "syscall_number: eax",
+      "arg0: ebx",
+      "arg1: ecx",
+      "arg2: edx",
+      "interrupt: int 0x80 or sysenter when available",
+      "ORW typical: open(path, flags), read(fd, buf, size), write(1, buf, n)",
+    ]
+  if (arch === "arm64")
+    return [
+      "syscall_number: x8",
+      "arg0: x0",
+      "arg1: x1",
+      "arg2: x2",
+      "arg3: x3",
+      "ORW typical: openat(AT_FDCWD, path, flags), read(fd, buf, size), write(1, buf, n)",
+    ]
+  return ["arch_unknown: run file/readelf first and map syscall number plus argument registers before building ORW"]
 }
 
 function routeDecision(syscalls: string[], gadgetText: string, evidence: string) {
   const all = `${syscalls.join(" ")}\n${gadgetText}\n${evidence}`.toLowerCase()
   const hasSyscall = /syscall/.test(all)
   const hasOrw = /\bopen(at)?\b/.test(all) && /\bread\b/.test(all) && /\bwrite\b/.test(all)
-  const shellBlocked = /seccomp|sandbox|execve.*(deny|block|kill|not allowed)|no execve|shell.*(blocked|fails|denied)/.test(all)
+  const shellBlocked =
+    /seccomp|sandbox|execve.*(deny|block|kill|not allowed)|no execve|shell.*(blocked|fails|denied)/.test(all)
   const execveAllowed = /\bexecve\b/.test(all) && !shellBlocked
   if (shellBlocked && hasOrw) return "prefer_direct_file_read_or_orw_route_over_shell"
   if (hasOrw && hasSyscall) return "orw_route_candidate_if_register_control_and_flag_path_exist"
@@ -87,10 +94,14 @@ function routeDecision(syscalls: string[], gadgetText: string, evidence: string)
 }
 
 export default tool({
-  description: "CTF pwn syscall/ORW checker: summarize syscall gadgets, seccomp clues, and whether shell or direct open-read-write file-read routing is better.",
+  description:
+    "CTF pwn syscall/ORW checker: summarize syscall gadgets, seccomp clues, and whether shell or direct open-read-write file-read routing is better.",
   args: {
     binary: tool.schema.string().optional().describe("Workspace-relative ELF binary path."),
-    evidence: tool.schema.string().optional().describe("Optional pasted evidence from checksec/seccomp-tools/ROPgadget/notes."),
+    evidence: tool.schema
+      .string()
+      .optional()
+      .describe("Optional pasted evidence from checksec/seccomp-tools/ROPgadget/notes."),
     seccompReport: tool.schema.string().optional().describe("Optional pasted seccomp allowlist or sandbox report."),
     timeoutMs: tool.schema.number().optional().describe("Timeout per helper command in ms. Default 7000."),
   },
@@ -107,10 +118,14 @@ export default tool({
     if (args.binary) {
       binary = resolveInsideWorkspace(context.directory, args.binary)
       cwd = path.dirname(binary)
-      fileOut = await safeExec("file", [binary], cwd, timeoutMs)
-      ropOut = await safeExec("ROPgadget", ["--binary", binary, "--only", "pop|syscall|int|ret"], cwd, timeoutMs)
-      readelfOut = await safeExec("readelf", ["-Ws", binary], cwd, timeoutMs)
-      stringsOut = await safeExec("strings", [binary], cwd, timeoutMs)
+      const fileR = await safeExec("file", [binary], cwd, timeoutMs)
+      fileOut = fileR.output
+      const ropR = await safeExec("ROPgadget", ["--binary", binary, "--only", "pop|syscall|int|ret"], cwd, timeoutMs)
+      ropOut = ropR.output
+      const readelfR = await safeExec("readelf", ["-Ws", binary], cwd, timeoutMs)
+      readelfOut = readelfR.output
+      const stringsR = await safeExec("strings", [binary], cwd, timeoutMs)
+      stringsOut = stringsR.output
     }
 
     const combined = [fileOut, ropOut, readelfOut, stringsOut, evidence].join("\n")
@@ -123,7 +138,11 @@ export default tool({
       rsi_ecx: grepLines(ropOut, /pop (rsi|ecx)/i, 6),
       rdx_edx: grepLines(ropOut, /pop (rdx|edx)/i, 6),
     }
-    const seccompClues = grepLines(combined, /seccomp|sandbox|bpf|prctl|openat|execve|EPERM|SIGSYS|allow|deny|kill/i, 40)
+    const seccompClues = grepLines(
+      combined,
+      /seccomp|sandbox|bpf|prctl|openat|execve|EPERM|SIGSYS|allow|deny|kill/i,
+      40,
+    )
     const fileReadStrings = grepLines(stringsOut, /flag|\.txt|\/home|\/proc|read|open/i, 20)
     const decision = routeDecision(syscalls, ropOut, evidence)
     const hasOrwNames = syscalls.includes("open") || syscalls.includes("openat")
@@ -141,16 +160,22 @@ export default tool({
       "syscall_gadgets:",
       ...(syscallGadgets.length ? syscallGadgets.map((x) => `- ${x}`) : ["- none"]),
       "register_control_gadgets:",
-      ...Object.entries(registerGadgets).flatMap(([k, v]) => v.length ? [`- ${k}:`, ...v.map((x) => `  - ${x}`)] : [`- ${k}: none`]),
+      ...Object.entries(registerGadgets).flatMap(([k, v]) =>
+        v.length ? [`- ${k}:`, ...v.map((x) => `  - ${x}`)] : [`- ${k}: none`],
+      ),
       "seccomp_or_sandbox_clues:",
       ...(seccompClues.length ? seccompClues.map((x) => `- ${x}`) : ["- none"]),
       "file_read_strings:",
       ...(fileReadStrings.length ? fileReadStrings.map((x) => `- ${x}`) : ["- none"]),
       "orw_prerequisite_checks:",
-      hasOrwNames ? "- open/openat evidence exists; confirm pathname control or writable flag path string." : "- open/openat evidence missing; inspect seccomp allowlist or use existing file descriptor route.",
+      hasOrwNames
+        ? "- open/openat evidence exists; confirm pathname control or writable flag path string."
+        : "- open/openat evidence missing; inspect seccomp allowlist or use existing file descriptor route.",
       "- Confirm read buffer is writable and large enough.",
       "- Confirm write/sendfile/readv closure to stdout/socket is allowed.",
-      syscallGadgets.length ? "- Confirm syscall number and argument register control for target arch." : "- Find a syscall/int 0x80/SROP path before choosing pure syscall ORW.",
+      syscallGadgets.length
+        ? "- Confirm syscall number and argument register control for target arch."
+        : "- Find a syscall/int 0x80/SROP path before choosing pure syscall ORW.",
       "shell_route_checks:",
       "- Use shell only if execve is allowed and /bin/sh plus argument/register constraints are satisfiable.",
       "- If execve is blocked by seccomp or sandbox, stop shell mutation and switch to direct file-read/ORW closure.",

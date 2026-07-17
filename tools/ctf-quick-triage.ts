@@ -14,12 +14,23 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   return target
 }
 
-
 const SAMPLE_BYTES = 256 * 1024
 const FULL_TEXT_BYTES = 1024 * 1024
 const FLAG_RE = /[A-Za-z0-9_@.-]{2,32}\{[^\r\n}]{1,200}\}/g
-const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", ".next", "__pycache__", "venv", ".venv", "target", ".cache"])
-const TEXT_EXT = /\.(txt|md|py|js|mjs|cjs|ts|tsx|jsx|json|yaml|yml|toml|ini|env|html|css|php|java|kt|go|rs|c|cc|cpp|h|hpp|sage|sh|sql|xml|log|conf|cfg|properties|gradle|Dockerfile)$/i
+const SKIP_DIRS = new Set([
+  ".git",
+  "node_modules",
+  "dist",
+  "build",
+  ".next",
+  "__pycache__",
+  "venv",
+  ".venv",
+  "target",
+  ".cache",
+])
+const TEXT_EXT =
+  /\.(txt|md|py|js|mjs|cjs|ts|tsx|jsx|json|yaml|yml|toml|ini|env|html|css|php|java|kt|go|rs|c|cc|cpp|h|hpp|sage|sh|sql|xml|log|conf|cfg|properties|gradle|Dockerfile)$/i
 const ARCHIVE_EXT = /\.(zip|jar|war|apk|docx|xlsx|pptx|7z|rar|tar|tar\.gz|tgz|gz|bz2|xz)$/i
 const MEDIA_EXT = /\.(png|jpg|jpeg|gif|bmp|wav|mp3|mp4|pdf|pcap|pcapng|raw|mem|img|iso)$/i
 const BINARY_EXT = /\.(elf|exe|dll|so|bin|out)$/i
@@ -80,7 +91,8 @@ function priorityScore(rel: string) {
   const lower = rel.toLowerCase()
   let score = 0
   for (const pattern of HIGH_VALUE_PATTERNS) if (pattern.test(base) || pattern.test(rel)) score += 20
-  if (/^(src|app|server|routes?|controllers?|templates?|views?|api|lib|www|public|static)([\\/]|$)/i.test(rel)) score += 8
+  if (/^(src|app|server|routes?|controllers?|templates?|views?|api|lib|www|public|static)([\\/]|$)/i.test(rel))
+    score += 8
   if (TEXT_EXT.test(base)) score += 5
   if (ARCHIVE_EXT.test(base) || MEDIA_EXT.test(base) || BINARY_EXT.test(base)) score += 7
   if (/\.map$/i.test(base) || /sourcemap/i.test(lower)) score += 6
@@ -126,10 +138,31 @@ function scoreHints(name: string, sample: Buffer, strings: string[]) {
   const lower = name.toLowerCase()
   const joined = strings.join("\n").toLowerCase()
   const hints = new Set<string>()
-  if (/package\.json|requirements\.txt|pyproject\.toml|pom\.xml|go\.mod|composer\.json|routes?|controllers?|templates?|flask|django|fastapi|express|spring|servlet|jwt|cookie|session|csrf|graphql|api\//.test(joined) || /\.(html|php|jsp|js|ts|war|jar)$/i.test(lower)) hints.add("web")
-  if (/\.elf|\.so$|\.exe$|\.dll$/.test(lower) || sample.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) || sample.subarray(0, 2).toString() === "MZ") hints.add("pwn/rev")
-  if (/rsa|ecc|aes|nonce|cipher|encrypt|decrypt|modulus|private key|public key|\bn\s*[:=]|\be\s*[:=]|\bc\s*[:=]/.test(joined)) hints.add("crypto")
-  if (/\.pcap|\.pcapng|\.mem|\.raw|\.vmdk|\.img|\.iso|\.docx|\.pdf|\.png|\.jpg|\.jpeg|\.wav|\.zip|\.7z|\.rar|\.tar|\.gz/.test(lower)) hints.add("forensics")
+  if (
+    /package\.json|requirements\.txt|pyproject\.toml|pom\.xml|go\.mod|composer\.json|routes?|controllers?|templates?|flask|django|fastapi|express|spring|servlet|jwt|cookie|session|csrf|graphql|api\//.test(
+      joined,
+    ) ||
+    /\.(html|php|jsp|js|ts|war|jar)$/i.test(lower)
+  )
+    hints.add("web")
+  if (
+    /\.elf|\.so$|\.exe$|\.dll$/.test(lower) ||
+    sample.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) ||
+    sample.subarray(0, 2).toString() === "MZ"
+  )
+    hints.add("pwn/rev")
+  if (
+    /rsa|ecc|aes|nonce|cipher|encrypt|decrypt|modulus|private key|public key|\bn\s*[:=]|\be\s*[:=]|\bc\s*[:=]/.test(
+      joined,
+    )
+  )
+    hints.add("crypto")
+  if (
+    /\.pcap|\.pcapng|\.mem|\.raw|\.vmdk|\.img|\.iso|\.docx|\.pdf|\.png|\.jpg|\.jpeg|\.wav|\.zip|\.7z|\.rar|\.tar|\.gz/.test(
+      lower,
+    )
+  )
+    hints.add("forensics")
   if (/jail|sandbox|game|blockchain|solidity|wasm|protobuf|qr|captcha|maze/.test(joined)) hints.add("misc")
   if (/sourceMappingURL|\.map$/.test(joined) || /\.map$/i.test(lower)) hints.add("source-map")
   return Array.from(hints)
@@ -160,7 +193,11 @@ async function readHeadTail(target: string, size: number, maxBytes = SAMPLE_BYTE
     const tail = Buffer.alloc(tailBytes)
     const headRead = await fd.read(head, 0, headBytes, 0)
     const tailRead = await fd.read(tail, 0, tailBytes, Math.max(0, size - tailBytes))
-    return Buffer.concat([head.subarray(0, headRead.bytesRead), Buffer.from("\n--TAIL-SAMPLE--\n"), tail.subarray(0, tailRead.bytesRead)])
+    return Buffer.concat([
+      head.subarray(0, headRead.bytesRead),
+      Buffer.from("\n--TAIL-SAMPLE--\n"),
+      tail.subarray(0, tailRead.bytesRead),
+    ])
   } finally {
     await fd.close()
   }
@@ -199,14 +236,21 @@ async function collectFiles(root: string, maxFiles: number) {
   const candidates = await collectCandidates(root, Math.max(maxFiles * 8, 800))
   return candidates
     .map((file) => ({ file, rel: path.relative(root, file) || path.basename(file) }))
-    .sort((a, b) => priorityScore(b.rel) - priorityScore(a.rel) || relDepth(a.rel) - relDepth(b.rel) || a.rel.localeCompare(b.rel))
+    .sort(
+      (a, b) =>
+        priorityScore(b.rel) - priorityScore(a.rel) || relDepth(a.rel) - relDepth(b.rel) || a.rel.localeCompare(b.rel),
+    )
     .slice(0, maxFiles)
     .map((x) => x.file)
 }
 
 async function safeReadText(file: string, size: number, sample: Buffer) {
   if (size <= FULL_TEXT_BYTES && looksTextual(file, sample)) {
-    try { return await readFile(file, "utf8") } catch { return sample.toString("utf8") }
+    try {
+      return await readFile(file, "utf8")
+    } catch {
+      return sample.toString("utf8")
+    }
   }
   return looksTextual(file, sample) ? sample.toString("utf8") : sample.toString("latin1")
 }
@@ -216,13 +260,21 @@ function topScores(infos: FileInfo[]) {
   for (const info of infos) {
     for (const hint of info.routeHints) {
       if (hint === "web" || hint === "source-map") scores.web += 3
-      if (hint === "pwn/rev") { scores.pwn += 2; scores.rev += 2 }
+      if (hint === "pwn/rev") {
+        scores.pwn += 2
+        scores.rev += 2
+      }
       if (hint === "crypto") scores.crypto += 4
       if (hint === "forensics") scores.forensics += 3
       if (hint === "misc") scores.misc += 2
     }
     const rel = info.rel.toLowerCase()
-    if (/dockerfile|compose|requirements|pyproject|package\.json|pom\.xml|templates?|routes?|controllers?|app\.py|server\.js|index\.php|\.map$/.test(rel)) scores.web += 2
+    if (
+      /dockerfile|compose|requirements|pyproject|package\.json|pom\.xml|templates?|routes?|controllers?|app\.py|server\.js|index\.php|\.map$/.test(
+        rel,
+      )
+    )
+      scores.web += 2
     if (/checksec|libc|ld-linux|vuln|chall|pwn|\.so$/.test(rel)) scores.pwn += 2
     if (/main|crack|license|keygen|apk|dex|\.so$|exe$|elf$/.test(rel)) scores.rev += 2
     if (/rsa|cipher|crypto|encrypt|decrypt|public|private|nonce/.test(rel)) scores.crypto += 2
@@ -233,10 +285,12 @@ function topScores(infos: FileInfo[]) {
 
 function archiveHint(file: string, magic: string) {
   const lower = file.toLowerCase()
-  if (/\.(zip|jar|war|apk|docx|xlsx|pptx)$/.test(lower) || magic.startsWith("50 4b")) return "zip-like: use ctf-safe-extract first"
+  if (/\.(zip|jar|war|apk|docx|xlsx|pptx)$/.test(lower) || magic.startsWith("50 4b"))
+    return "zip-like: use ctf-safe-extract first"
   if (/\.7z$/.test(lower) || magic.startsWith("37 7a bc af 27 1c")) return "7z archive: use ctf-safe-extract first"
   if (/(\.tar|\.tar\.gz|\.tgz|\.gz|\.bz2|\.xz)$/.test(lower)) return "tar/compressed: use ctf-safe-extract first"
-  if (/\.(png|jpg|jpeg|wav|bmp|gif)$/.test(lower)) return "media/stego candidate: run ctf-stego-probe before heavy carving"
+  if (/\.(png|jpg|jpeg|wav|bmp|gif)$/.test(lower))
+    return "media/stego candidate: run ctf-stego-probe before heavy carving"
   if (/\.(pcap|pcapng)$/.test(lower)) return "packet capture: run ctf-pcap-probe before manual tshark"
   return undefined
 }
@@ -244,7 +298,8 @@ function archiveHint(file: string, magic: string) {
 function shouldTrustDirectFlagHit(file: string, sample: Buffer, textual: boolean) {
   const lower = file.toLowerCase()
   if (textual) return true
-  if (/\.(txt|md|json|yaml|yml|ini|cfg|log|conf|py|js|ts|php|java|c|cpp|h|html|xml|sql|sage|sh)$/i.test(lower)) return true
+  if (/\.(txt|md|json|yaml|yml|ini|cfg|log|conf|py|js|ts|php|java|c|cpp|h|html|xml|sql|sage|sh)$/i.test(lower))
+    return true
   if (/\.(zip|jar|war|apk|docx|xlsx|pptx|7z|rar|tar|tar\.gz|tgz|gz|bz2|xz)$/i.test(lower)) return false
   if (/\.(png|jpg|jpeg|gif|bmp|wav|mp3|mp4|pdf|pcap|pcapng|raw|mem|img|iso)$/i.test(lower)) return false
   if (sample.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))) return false
@@ -253,7 +308,11 @@ function shouldTrustDirectFlagHit(file: string, sample: Buffer, textual: boolean
 
 function webSourceHint(rel: string, text: string) {
   const lower = `${rel}\n${text.slice(0, 20000)}`.toLowerCase()
-  if (/app\.py|server\.(js|ts)|index\.php|routes?|controllers?|templates?|dockerfile|package\.json|requirements\.txt|pom\.xml|spring|flask|express|django|fastapi|laravel|servlet/.test(lower)) {
+  if (
+    /app\.py|server\.(js|ts)|index\.php|routes?|controllers?|templates?|dockerfile|package\.json|requirements\.txt|pom\.xml|spring|flask|express|django|fastapi|laravel|servlet/.test(
+      lower,
+    )
+  ) {
     return `${rel}: web source indicator; run ctf-web-source-map before manual route review`
   }
   return undefined
@@ -264,7 +323,12 @@ function remoteEndpointHint(rel: string, text: string) {
   for (const line of lines) {
     const trimmed = line.trim()
     if (!trimmed) continue
-    if (/remote\s*\(\s*["'][^"']+["']\s*,\s*\d{2,5}\s*\)/i.test(trimmed) || /\bnc\s+[^\s]+\s+\d{2,5}\b/i.test(trimmed) || /\b(?:host|server|remote)\s*[:=]\s*[^\s:]+\b/i.test(trimmed) || /\b[A-Za-z0-9.-]+:\d{2,5}\b/.test(trimmed)) {
+    if (
+      /remote\s*\(\s*["'][^"']+["']\s*,\s*\d{2,5}\s*\)/i.test(trimmed) ||
+      /\bnc\s+[^\s]+\s+\d{2,5}\b/i.test(trimmed) ||
+      /\b(?:host|server|remote)\s*[:=]\s*[^\s:]+\b/i.test(trimmed) ||
+      /\b[A-Za-z0-9.-]+:\d{2,5}\b/.test(trimmed)
+    ) {
       return `${rel}: remote endpoint clue; ${trimmed.slice(0, 160)}`
     }
   }
@@ -272,11 +336,14 @@ function remoteEndpointHint(rel: string, text: string) {
 }
 
 function looksLikePwnArchive(rel: string) {
-  return /(?:^|[\\/])(chall|challenge|pwn|vuln|rop|fmt|heap|baby|main|bin|elf)[^\\/]*\.(zip|jar|7z|rar|tar|tgz|gz)$/i.test(rel)
+  return /(?:^|[\\/])(chall|challenge|pwn|vuln|rop|fmt|heap|baby|main|bin|elf)[^\\/]*\.(zip|jar|7z|rar|tar|tgz|gz)$/i.test(
+    rel,
+  )
 }
 
 export default tool({
-  description: "CTF quick triage: prioritized one-shot inventory, flag grep, archive/RSA/web/pwn/rev/crypto/forensics scoring, and recommended next actions for fast routing.",
+  description:
+    "CTF quick triage: prioritized one-shot inventory, flag grep, archive/RSA/web/pwn/rev/crypto/forensics scoring, and recommended next actions for fast routing.",
   args: {
     target: tool.schema.string().default(".").describe("File or directory path to triage"),
     maxFiles: tool.schema.number().optional().describe("Maximum files to inspect. Default 160."),
@@ -301,7 +368,12 @@ export default tool({
       const rel = path.relative(target, file) || path.basename(file)
       const sample = await readHeadTail(file, stat.size)
       const strings = printableStrings(sample)
-      const magic = sample.subarray(0, 16).toString("hex").match(/.{1,2}/g)?.join(" ") ?? ""
+      const magic =
+        sample
+          .subarray(0, 16)
+          .toString("hex")
+          .match(/.{1,2}/g)
+          ?.join(" ") ?? ""
       const text = await safeReadText(file, stat.size, sample)
       const textual = looksTextual(file, sample)
       const directFlagTrusted = shouldTrustDirectFlagHit(file, sample, textual)
@@ -310,17 +382,27 @@ export default tool({
       const ah = archiveHint(file, magic)
       if (ah) archiveHints.push(`${rel}: ${ah}`)
       if (!directFlagTrusted && /\.(zip|jar|war|apk|docx|xlsx|pptx|7z|rar|tar|tar\.gz|tgz|gz|bz2|xz)$/i.test(rel)) {
-        sourceMapHints.push(`${rel}: archive/container text was not trusted for direct flag hits; prefer extraction before declaring direct_flag`)
+        sourceMapHints.push(
+          `${rel}: archive/container text was not trusted for direct flag hits; prefer extraction before declaring direct_flag`,
+        )
       }
-      if (/\b(n|e|c|p|q|dp|dq|phi)\d*\b\s*[:=]\s*(0x[0-9a-fA-F]+|\d+)/.test(text) || /BEGIN (RSA )?(PUBLIC|PRIVATE) KEY/.test(text)) {
+      if (
+        /\b(n|e|c|p|q|dp|dq|phi)\d*\b\s*[:=]\s*(0x[0-9a-fA-F]+|\d+)/.test(text) ||
+        /BEGIN (RSA )?(PUBLIC|PRIVATE) KEY/.test(text)
+      ) {
         rsaHints.push(`${rel}: RSA-like parameters/key material present; run ctf-rsa-probe`)
       }
       const wsh = webSourceHint(rel, text)
       if (wsh) webSourceHints.push(wsh)
       const reh = remoteEndpointHint(rel, text)
       if (reh) remoteHints.push(reh)
-      if (/sourceMappingURL=|\.map$/i.test(`${rel}\n${text.slice(0, 10000)}`)) sourceMapHints.push(`${rel}: source map indicator; fetch/review map before fuzzing`)
-      if (BINARY_EXT.test(rel) || sample.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) || sample.subarray(0, 2).toString() === "MZ") {
+      if (/sourceMappingURL=|\.map$/i.test(`${rel}\n${text.slice(0, 10000)}`))
+        sourceMapHints.push(`${rel}: source map indicator; fetch/review map before fuzzing`)
+      if (
+        BINARY_EXT.test(rel) ||
+        sample.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) ||
+        sample.subarray(0, 2).toString() === "MZ"
+      ) {
         binaryHints.push(`${rel}: binary candidate; run ctf-binary-probe`)
       }
 
@@ -343,17 +425,29 @@ export default tool({
     const next: string[] = []
     const firstRel = (line: string) => line.split(":", 1)[0] || "."
     const pwnArchiveHints = archiveHints.filter((x) => looksLikePwnArchive(firstRel(x)))
-    const pwnBundlePreferred = archiveHints.length > 0 && remoteHints.length > 0 && (binaryHints.length > 0 || pwnArchiveHints.length > 0)
-    if (allFlags.length) next.push("verify the top flag hit with at most one read/grep action, then write only the verified flag to agent_flag.txt")
-    if (archiveHints.length) next.push("run ctf-safe-extract once on archive-like files, then rerun ctf-quick-triage on extracted output if needed")
+    const pwnBundlePreferred =
+      archiveHints.length > 0 && remoteHints.length > 0 && (binaryHints.length > 0 || pwnArchiveHints.length > 0)
+    if (allFlags.length)
+      next.push(
+        "verify the top flag hit with at most one read/grep action, then write only the verified flag to agent_flag.txt",
+      )
+    if (archiveHints.length)
+      next.push(
+        "run ctf-safe-extract once on archive-like files, then rerun ctf-quick-triage on extracted output if needed",
+      )
     if (rsaHints.length) next.push("run ctf-rsa-probe on the RSA-like file/text before spawning ctf-crypto")
-    if (webSourceHints.length || sourceMapHints.length) next.push("run ctf-web-source-map on the source tree before manual Web review")
+    if (webSourceHints.length || sourceMapHints.length)
+      next.push("run ctf-web-source-map on the source tree before manual Web review")
     if (binaryHints.length) next.push("run ctf-binary-probe before manual checksec/readelf/strings sequences")
-    if (pwnBundlePreferred) next.push("treat the archive + remote-endpoint bundle as PWN-first: extract once, then run ctf-pwn-fast-bootstrap or ctf-binary-probe on the extracted ELF before archive/forensics branching")
+    if (pwnBundlePreferred)
+      next.push(
+        "treat the archive + remote-endpoint bundle as PWN-first: extract once, then run ctf-pwn-fast-bootstrap or ctf-binary-probe on the extracted ELF before archive/forensics branching",
+      )
     if (best?.[0] === "web") next.push("inspect manifest, routes, config, templates, and entrypoint before broad grep")
     if (best?.[0] === "pwn") next.push("find crash/control/leak primitive, then write exploit.py")
     if (best?.[0] === "rev") next.push("start static: strings/imports/main/constants, then derive solve.py")
-    if (best?.[0] === "forensics") next.push("use ctf-pcap-probe/ctf-stego-probe/metadata before heavier carving or volatility")
+    if (best?.[0] === "forensics")
+      next.push("use ctf-pcap-probe/ctf-stego-probe/metadata before heavier carving or volatility")
     if (!next.length) next.push("start with highest-score category or inspect the largest/most suspicious files")
 
     let verdict = best?.[0] ?? "unknown"
@@ -362,18 +456,61 @@ export default tool({
     let nextTarget = "."
     let spawnSubagent = "maybe"
     let directSolve = "no"
-    if (allFlags.length) { verdict = "direct_flag"; confidence = "high"; nextTool = "none"; nextTarget = firstRel(allFlags[0]); spawnSubagent = "no"; directSolve = "yes" }
-    else if (pwnBundlePreferred) { verdict = "pwn_bundle"; confidence = "high"; nextTool = "ctf-safe-extract"; nextTarget = firstRel(pwnArchiveHints[0] || archiveHints[0]); spawnSubagent = "no" }
-    else if (archiveHints.length) { verdict = "archive_or_media"; confidence = "high"; nextTool = archiveHints[0].includes("packet capture") ? "ctf-pcap-probe" : archiveHints[0].includes("media/stego") ? "ctf-stego-probe" : "ctf-safe-extract"; nextTarget = firstRel(archiveHints[0]); spawnSubagent = "no" }
-    else if (rsaHints.length) { verdict = "rsa"; confidence = "high"; nextTool = "ctf-rsa-probe"; nextTarget = firstRel(rsaHints[0]); spawnSubagent = "no" }
-    else if (sourceMapHints.length || webSourceHints.length) { verdict = "web_source"; confidence = "medium"; nextTool = "ctf-web-source-map"; nextTarget = "."; spawnSubagent = "no" }
-    else if (binaryHints.length) { verdict = "binary"; confidence = "medium"; nextTool = "ctf-binary-probe"; nextTarget = firstRel(binaryHints[0]); spawnSubagent = "no" }
+    if (allFlags.length) {
+      verdict = "direct_flag"
+      confidence = "high"
+      nextTool = "none"
+      nextTarget = firstRel(allFlags[0])
+      spawnSubagent = "no"
+      directSolve = "yes"
+    } else if (pwnBundlePreferred) {
+      verdict = "pwn_bundle"
+      confidence = "high"
+      nextTool = "ctf-safe-extract"
+      nextTarget = firstRel(pwnArchiveHints[0] || archiveHints[0])
+      spawnSubagent = "no"
+    } else if (archiveHints.length) {
+      verdict = "archive_or_media"
+      confidence = "high"
+      nextTool = archiveHints[0].includes("packet capture")
+        ? "ctf-pcap-probe"
+        : archiveHints[0].includes("media/stego")
+          ? "ctf-stego-probe"
+          : "ctf-safe-extract"
+      nextTarget = firstRel(archiveHints[0])
+      spawnSubagent = "no"
+    } else if (rsaHints.length) {
+      verdict = "rsa"
+      confidence = "high"
+      nextTool = "ctf-rsa-probe"
+      nextTarget = firstRel(rsaHints[0])
+      spawnSubagent = "no"
+    } else if (sourceMapHints.length || webSourceHints.length) {
+      verdict = "web_source"
+      confidence = "medium"
+      nextTool = "ctf-web-source-map"
+      nextTarget = "."
+      spawnSubagent = "no"
+    } else if (binaryHints.length) {
+      verdict = "binary"
+      confidence = "medium"
+      nextTool = "ctf-binary-probe"
+      nextTarget = firstRel(binaryHints[0])
+      spawnSubagent = "no"
+    }
 
-    const tree = infos.slice(0, 90).map((i) => `${i.rel}\t${i.size} bytes\tpri=${i.priority}\t${i.routeHints.join(",") || "-"}\tH=${i.entropy?.toFixed(2)}`)
+    const tree = infos
+      .slice(0, 90)
+      .map(
+        (i) =>
+          `${i.rel}\t${i.size} bytes\tpri=${i.priority}\t${i.routeHints.join(",") || "-"}\tH=${i.entropy?.toFixed(2)}`,
+      )
     const highlights = infos
       .filter((i) => i.routeHints.length || i.flags?.length || i.priority >= 18)
       .slice(0, 36)
-      .map((i) => `${i.rel}: hints=${i.routeHints.join(",") || "-"}; strings=${(i.strings ?? []).slice(0, 3).join(" | ")}`)
+      .map(
+        (i) => `${i.rel}: hints=${i.routeHints.join(",") || "-"}; strings=${(i.strings ?? []).slice(0, 3).join(" | ")}`,
+      )
 
     return [
       `target: ${target}`,
@@ -404,7 +541,9 @@ export default tool({
       "highlights:",
       ...(highlights.length ? highlights.map((x) => `- ${x}`) : ["- none"]),
       "recommended_next:",
-      ...Array.from(new Set(next)).slice(0, 6).map((x) => `- ${x}`),
+      ...Array.from(new Set(next))
+        .slice(0, 6)
+        .map((x) => `- ${x}`),
     ].join("\n")
   },
 })

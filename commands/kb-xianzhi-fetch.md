@@ -18,17 +18,17 @@ agent: daily
 
 把公开先知文章抓到本地：
 
-- `C:\Users\Administrator\SecKB\sources\xianzhi\raw`
-- `C:\Users\Administrator\SecKB\sources\xianzhi\clean`
-- `C:\Users\Administrator\SecKB\sources\xianzhi\metadata`
-- `C:\Users\Administrator\SecKB\sources\xianzhi\summaries`
+- `{env:SECKB_ROOT}/sources\xianzhi\raw`
+- `{env:SECKB_ROOT}/sources\xianzhi\clean`
+- `{env:SECKB_ROOT}/sources\xianzhi\metadata`
+- `{env:SECKB_ROOT}/sources\xianzhi\summaries`
 
 ## 执行方式
 
 优先使用本地抓取脚本：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\sources\xianzhi\xianzhi_fetch_article.py <id-or-url> --json
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/sources\xianzhi\xianzhi_fetch_article.py <id-or-url> --json
 ```
 
 如果返回 `anti-bot-challenge-page`、`listing-or-homepage-pattern`、`generic-title-with-navigation-signals` 等质量门错误，切换到浏览器态抓取：
@@ -43,10 +43,10 @@ C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\Sec
 4. 将正文先保存成 UTF-8 文本文件，再传给落盘脚本，避免 PowerShell here-string 或终端编码链路把中文正文变成 `????`：
 
 ```powershell
-$tmp = "C:\Users\Administrator\SecKB\sources\xianzhi\raw\<id>.browser-body.txt"
+$tmp = "{env:SECKB_ROOT}/sources\xianzhi\raw\<id>.browser-body.txt"
 # 图片元数据 JSON 也单独写成 UTF-8 文件，例如 <id>.browser-images.json
 # 先把 browser_evaluate 结果按 UTF-8 写入 $tmp
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\sources\xianzhi\xianzhi_save_extracted.py --id <id> --url "<url>" --kind <t|news|browser> --title "<title>" --body-file "$tmp" --images-file "<images-json>" --json --force
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/sources\xianzhi\xianzhi_save_extracted.py --id <id> --url "<url>" --kind <t|news|browser> --title "<title>" --body-file "$tmp" --images-file "<images-json>" --json --force
 ```
 
 默认使用代理：`http://127.0.0.1:7897`

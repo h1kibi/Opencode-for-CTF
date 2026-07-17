@@ -16,12 +16,12 @@ agent: daily
 
 ### Test 2: 本地 SecKB 检索
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\search.py "测试 knowledge base retrieval" --limit 3
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/search.py "测试 knowledge base retrieval" --limit 3
 ```
 
 ### Test 3: 索引环境
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe -c "import chromadb; import sentence_transformers; print('SecKB index runtime ready')"
+{env:SECKB_ROOT}/.venv\Scripts\python.exe -c "import chromadb; import sentence_transformers; print('SecKB index runtime ready')"
 ```
 
 ### Test 4: 写入链路 smoke test

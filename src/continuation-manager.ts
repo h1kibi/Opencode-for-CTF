@@ -3,10 +3,10 @@ import { continuationInterruptFile, continuationStateFile } from "./paths.ts"
 import { isFutureIso, isoPlusMs, loadJsonFile, nowIso, removeFileIfExists, saveJsonFile } from "./state-store.ts"
 import type { ContinuationInterruptMarker, ContinuationState } from "./types.ts"
 
-const AUTO_NUDGE_COOLDOWN_MS = 90_000
+const AUTO_NUDGE_COOLDOWN_MS = 300_000 // 5 minutes between automatic nudges
 const USER_INTERRUPT_SUPPRESS_MS = 10 * 60_000
 const PROMPT_FAILURE_BACKOFF_MS = 5 * 60_000
-const CONTINUATION_AGENT = "ctf-master"
+const CONTINUATION_AGENT = "ctf-expert"
 
 function defaultState(sessionID: string, directory: string): ContinuationState {
   const now = nowIso()
@@ -61,7 +61,12 @@ export async function markContinuationInterruptedByUser(worktree: string, sessio
   return state
 }
 
-export async function clearContinuationUserPause(worktree: string, sessionID: string, directory: string, messageID?: string) {
+export async function clearContinuationUserPause(
+  worktree: string,
+  sessionID: string,
+  directory: string,
+  messageID?: string,
+) {
   const state = await loadContinuationState(worktree, sessionID, directory)
   state.pausedByUser = false
   state.pauseReason = undefined
@@ -78,7 +83,12 @@ export async function clearContinuationUserPause(worktree: string, sessionID: st
   return state
 }
 
-export async function noteContinuationSessionStatus(worktree: string, sessionID: string, directory: string, status: "idle" | "busy" | "retry") {
+export async function noteContinuationSessionStatus(
+  worktree: string,
+  sessionID: string,
+  directory: string,
+  status: "idle" | "busy" | "retry",
+) {
   const state = await loadContinuationState(worktree, sessionID, directory)
   state.lastSessionStatus = status
   if (status === "busy" || status === "retry") {
@@ -88,10 +98,13 @@ export async function noteContinuationSessionStatus(worktree: string, sessionID:
   return state
 }
 
-function summarizeTodos(todos: Todo[]) {
+/** @visibleForTesting */
+export function summarizeTodos(todos: Todo[]) {
   const pending = todos.filter((todo) => todo.status === "pending")
   const inProgress = todos.filter((todo) => todo.status === "in_progress")
-  const high = todos.filter((todo) => todo.priority === "high" && todo.status !== "completed" && todo.status !== "cancelled")
+  const high = todos.filter(
+    (todo) => todo.priority === "high" && todo.status !== "completed" && todo.status !== "cancelled",
+  )
   return {
     total: todos.length,
     pending: pending.length,
@@ -100,11 +113,13 @@ function summarizeTodos(todos: Todo[]) {
   }
 }
 
-function buildNudgeKey(summary: ReturnType<typeof summarizeTodos>, state: ContinuationState) {
+/** @visibleForTesting */
+export function buildNudgeKey(summary: ReturnType<typeof summarizeTodos>, state: ContinuationState) {
   return [state.lastMessageID || "nomsg", summary.pending, summary.inProgress, summary.highOpen].join("|")
 }
 
-function needsContinuationPrompt(summary: ReturnType<typeof summarizeTodos>, state: ContinuationState) {
+/** @visibleForTesting */
+export function needsContinuationPrompt(summary: ReturnType<typeof summarizeTodos>, state: ContinuationState) {
   if (!state.enabled) return false
   if (state.mode !== "ctf") return false
   if (state.lastAgent !== CONTINUATION_AGENT) return false
@@ -116,7 +131,8 @@ function needsContinuationPrompt(summary: ReturnType<typeof summarizeTodos>, sta
   return false
 }
 
-function buildSuppressionReason(state: ContinuationState) {
+/** @visibleForTesting */
+export function buildSuppressionReason(state: ContinuationState) {
   if (!state.enabled) return "disabled"
   if (state.mode !== "ctf") return "mode_not_allowed"
   if (state.lastAgent !== CONTINUATION_AGENT) return "agent_not_allowed"
@@ -134,7 +150,8 @@ async function hasRecentDirectoryInterrupt(worktree: string, directory: string) 
   return isFutureIso(isoPlusMsFrom(marker.interruptedAt, USER_INTERRUPT_SUPPRESS_MS))
 }
 
-function isoPlusMsFrom(startIso: string, ms: number) {
+/** @visibleForTesting */
+export function isoPlusMsFrom(startIso: string, ms: number) {
   const start = Date.parse(startIso)
   if (Number.isNaN(start)) return undefined
   return new Date(start + ms).toISOString()
@@ -167,7 +184,7 @@ export async function continuationCheck(args: {
     return { shouldNudge: false, summary, suppressionReason }
   }
 
-  if (!args.force && await hasRecentDirectoryInterrupt(args.worktree, args.directory)) {
+  if (!args.force && (await hasRecentDirectoryInterrupt(args.worktree, args.directory))) {
     await saveContinuationState(args.worktree, state)
     return { shouldNudge: false, summary, suppressionReason: "recent_user_interrupt" }
   }
@@ -184,9 +201,10 @@ export async function continuationCheck(args: {
     return { shouldNudge: false, summary, suppressionReason: "unchanged_todo_state" }
   }
 
-  const prompt = state.mode === "ctf"
-    ? "Continue the active CTF branch. Use the current strongest evidence, do not restart broad recon, and execute the single best next low-risk probe or closure action. If state is stale, refresh the structured evidence packet first."
-    : "Continue the unfinished work. Pick up the current in-progress todo, do the next concrete step, and do not stop at explanation if implementation or verification remains."
+  const prompt =
+    state.mode === "ctf"
+      ? "Continue the active CTF branch. Use the current strongest evidence, do not restart broad recon, and execute the single best next low-risk probe or closure action. If state is stale, refresh the structured evidence packet first."
+      : "Continue the unfinished work. Pick up the current in-progress todo, do the next concrete step, and do not stop at explanation if implementation or verification remains."
 
   try {
     await args.client.session.promptAsync({

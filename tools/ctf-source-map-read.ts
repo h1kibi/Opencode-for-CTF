@@ -15,7 +15,8 @@ function preview(text: string, max = 1200) {
 }
 
 export default tool({
-  description: "CTF source map read: list sources, extract sourcesContent by source name, or search symbols across a .map file without manual scripting.",
+  description:
+    "CTF source map read: list sources, extract sourcesContent by source name, or search symbols across a .map file without manual scripting.",
   args: {
     target: tool.schema.string().describe("Workspace-relative source map JSON file."),
     operation: tool.schema.string().describe("list | extract | search"),
@@ -37,15 +38,39 @@ export default tool({
     if (args.operation === "list") {
       const rows = sources.map((src, i) => ({ index: i, source: src, hasContent: typeof contents[i] === "string" }))
       if (args.jsonOnly) return JSON.stringify({ target, count: rows.length, rows: rows.slice(0, maxResults) }, null, 2)
-      return ["CTF_SOURCE_MAP_READ:", `- target: ${target}`, `- operation: list`, `- count: ${rows.length}`, "- sources:", ...rows.slice(0, maxResults).map((r) => `  [${r.index}] hasContent=${r.hasContent} ${r.source}`)].join("\n")
+      return [
+        "CTF_SOURCE_MAP_READ:",
+        `- target: ${target}`,
+        `- operation: list`,
+        `- count: ${rows.length}`,
+        "- sources:",
+        ...rows.slice(0, maxResults).map((r) => `  [${r.index}] hasContent=${r.hasContent} ${r.source}`),
+      ].join("\n")
     }
 
     if (args.operation === "extract") {
       const q = args.sourceName || ""
-      const hits = sources.map((src, i) => ({ index: i, source: src, content: contents[i] || "" })).filter((row) => q ? row.source.includes(q) : true).slice(0, maxResults)
-      const payload = { target, operation: "extract", hits: hits.map((row) => ({ index: row.index, source: row.source, contentPreview: preview(String(row.content || ""), 4000) })) }
+      const hits = sources
+        .map((src, i) => ({ index: i, source: src, content: contents[i] || "" }))
+        .filter((row) => (q ? row.source.includes(q) : true))
+        .slice(0, maxResults)
+      const payload = {
+        target,
+        operation: "extract",
+        hits: hits.map((row) => ({
+          index: row.index,
+          source: row.source,
+          contentPreview: preview(String(row.content || ""), 4000),
+        })),
+      }
       if (args.jsonOnly) return JSON.stringify(payload, null, 2)
-      return ["CTF_SOURCE_MAP_READ:", `- target: ${target}`, `- operation: extract`, `- hits: ${hits.length}`, ...hits.map((row) => `--- [${row.index}] ${row.source}\n${preview(String(row.content || ""), 1200)}`)].join("\n")
+      return [
+        "CTF_SOURCE_MAP_READ:",
+        `- target: ${target}`,
+        `- operation: extract`,
+        `- hits: ${hits.length}`,
+        ...hits.map((row) => `--- [${row.index}] ${row.source}\n${preview(String(row.content || ""), 1200)}`),
+      ].join("\n")
     }
 
     if (args.operation === "search") {
@@ -62,7 +87,13 @@ export default tool({
       }
       const payload = { target, operation: "search", hits: out }
       if (args.jsonOnly) return JSON.stringify(payload, null, 2)
-      return ["CTF_SOURCE_MAP_READ:", `- target: ${target}`, `- operation: search`, `- hits: ${out.length}`, ...out.map((row) => `--- [${row.index}] ${row.source}\n${row.preview}`)].join("\n")
+      return [
+        "CTF_SOURCE_MAP_READ:",
+        `- target: ${target}`,
+        `- operation: search`,
+        `- hits: ${out.length}`,
+        ...out.map((row) => `--- [${row.index}] ${row.source}\n${row.preview}`),
+      ].join("\n")
     }
 
     throw new Error(`unsupported operation: ${args.operation}`)

@@ -90,3 +90,42 @@ export type SkillMcpState = {
   leases: SkillMcpLease[]
   updatedAt: string
 }
+
+// ---- Dynamic MCP Switch (agent-level MCP management) ----
+
+export type ServerWeight = "light" | "medium" | "heavy"
+
+export type ServerGroup = "recon" | "analysis" | "knowledge" | "debug"
+
+export type McpRequestStatus = "pending" | "approved" | "denied"
+
+export type McpServerMeta = {
+  id: string
+  description: string
+  weight: ServerWeight
+  group: ServerGroup
+  categories: string[]
+  config: Record<string, unknown>
+  timeout?: number
+  envRequired?: string[]
+}
+
+export type AgentMcpRequest = {
+  id: string
+  agent: string
+  sessionID: string
+  serverName: string
+  reason: string
+  status: McpRequestStatus
+  decidedBy?: string
+  decidedNote?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type AgentMcpState = {
+  version: number
+  activeProfiles: Array<{ agent: string; sessionID: string; serverNames: string[] }>
+  requests: AgentMcpRequest[]
+  updatedAt: string
+}

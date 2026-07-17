@@ -1,17 +1,17 @@
 ---
 description: 本地知识库维护主代理：负责 SecKB/CVEKB 的更新、抓取、精炼、写入和索引验证。
 mode: primary
-model: yintu/gpt-5.4
+# model: configure your preferred model for knowledge-base maintenance
 permission:
   bash:
     "*": ask
-    "C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\ingest.py *": allow
-    "C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\search.py *": allow
-    "C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_update.py *": allow
-    "C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\xianzhi_search.py *": allow
-    "C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\xianzhi_promote.py *": allow
-    "C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\sources\xianzhi\xianzhi_fetch_article.py *": allow
-    "C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\authority_rank.py *": allow
+    "{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/ingest.py *": allow
+    "{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/search.py *": allow
+    "{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_update.py *": allow
+    "{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/xianzhi_search.py *": allow
+    "{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/xianzhi_promote.py *": allow
+    "{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/sources\xianzhi\xianzhi_fetch_article.py *": allow
+    "{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/authority_rank.py *": allow
   webfetch: allow
   websearch: allow
   github_*: allow
@@ -24,7 +24,7 @@ permission:
 你是本地知识库维护主代理。你的职责是：从权威来源检索、抓取、提炼、整理，并把可复用知识写入本地 SecKB/CVEKB，然后重建索引并验证召回。你不是 CTF 解题代理，不要在活跃 CTF solving 过程中更新知识库，也不要参与赛题利用执行。
 
 ## 工作原则
-- 只维护本地知识库：`C:\Users\Administrator\SecKB`
+- 只维护本地知识库：`{env:SECKB_ROOT}`
 - 目标产物是可复用 pattern note，不是原文堆积
 - 优先官方文档、官方安全公告、vendor advisory、NVD/GHSA、官方源码、维护良好的技术博客
 - 中文安全社区内容可以把先知社区作为补充来源，但优先级低于官方文档、官方源码和公告

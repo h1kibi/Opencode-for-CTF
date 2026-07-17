@@ -1,11 +1,9 @@
 import { tool } from "@opencode-ai/plugin"
+import { randomUUID } from "node:crypto"
 import { lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import os from "node:os"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExecWithStreams } from "./lib/exec-utils.ts"
 const FLAG_RE = /[A-Za-z0-9_@.-]{2,32}\{[^\r\n}]{1,200}\}/g
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
@@ -54,10 +52,16 @@ function computeSleepMs(baseMs: number, jitterMs: number) {
 }
 
 function detectPromptHint(text: string) {
-  const lines = text.split(/\r?\n/).map((x) => x.trimEnd()).filter((x) => x.trim())
+  const lines = text
+    .split(/\r?\n/)
+    .map((x) => x.trimEnd())
+    .filter((x) => x.trim())
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i]
-    if (/(choice|menu|index|size|len|length|content|name|desc|description|prompt|select|option)\s*[:>]+\s*$/i.test(line)) return line
+    if (
+      /(choice|menu|index|size|len|length|content|name|desc|description|prompt|select|option)\s*[:>]+\s*$/i.test(line)
+    )
+      return line
     if (/[$#>]\s*$/.test(line)) return line
   }
   return ""
@@ -66,7 +70,7 @@ function detectPromptHint(text: string) {
 function validateContainerPosixPath(input: string, field: string, options?: { allowRoot?: boolean }) {
   if (!input.startsWith("/")) throw new Error(`${field} must be an absolute POSIX path inside the container`)
   const normalized = path.posix.normalize(input)
-  if (!(options?.allowRoot) && normalized === "/") throw new Error(`${field} must not be '/'`)
+  if (!options?.allowRoot && normalized === "/") throw new Error(`${field} must not be '/'`)
   return normalized
 }
 
@@ -75,7 +79,10 @@ function isInsideContainerTree(child: string, root: string) {
 }
 
 function splitArgs(value: string | undefined) {
-  return String(value || "").split(/\s+/).filter(Boolean).slice(0, 40)
+  return String(value || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 40)
 }
 
 async function looksLikeElf(target: string) {
@@ -94,7 +101,8 @@ async function loadRuntimeProfile(contextDir: string, profileId?: string) {
 }
 
 export default tool({
-  description: "CTF pwn expect runner: execute a prompt-aware local/remote/docker interaction script with UTF-8-safe capture, automatic retries, and cooldown pacing for menu and pacing-sensitive PWN workflows.",
+  description:
+    "CTF pwn expect runner: execute a prompt-aware local/remote/docker interaction script with UTF-8-safe capture, automatic retries, and cooldown pacing for menu and pacing-sensitive PWN workflows.",
   args: {
     mode: tool.schema.string().optional().describe("local | remote | docker. Default local."),
     binary: tool.schema.string().optional().describe("Workspace-relative local binary path for mode=local/docker."),
@@ -102,29 +110,77 @@ export default tool({
     argvPrefixJson: tool.schema.string().optional().describe("Safer local argv prefix as JSON string array."),
     host: tool.schema.string().optional().describe("Remote host for mode=remote."),
     port: tool.schema.number().optional().describe("Remote port for mode=remote."),
-    envJson: tool.schema.string().optional().describe("Optional JSON object of environment variables for local/docker mode."),
-    runtimeProfileId: tool.schema.string().optional().describe("Runtime profile id emitted by ctf-pwn-libc-runtime-doctor. Supplies docker defaults/env when omitted."),
-    stepsJson: tool.schema.string().describe("JSON array of interaction steps. Each step may include expect, send, sendHex, line, timeoutMs, and sleepMs."),
+    envJson: tool.schema
+      .string()
+      .optional()
+      .describe("Optional JSON object of environment variables for local/docker mode."),
+    runtimeProfileId: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Runtime profile id emitted by ctf-pwn-libc-runtime-doctor. Supplies docker defaults/env when omitted.",
+      ),
+    stepsJson: tool.schema
+      .string()
+      .describe(
+        "JSON array of interaction steps. Each step may include expect, send, sendHex, line, timeoutMs, and sleepMs.",
+      ),
     timeoutMs: tool.schema.number().optional().describe("Global timeout in milliseconds. Default 20000."),
-    retries: tool.schema.number().optional().describe("Number of automatic retries after a transient failure. Default 0."),
+    retries: tool.schema
+      .number()
+      .optional()
+      .describe("Number of automatic retries after a transient failure. Default 0."),
     cooldownMs: tool.schema.number().optional().describe("Delay in milliseconds between attempts. Default 0."),
-    retryOn: tool.schema.string().optional().describe("Comma-separated retry tags: eof,error,timeout,parse_error,ok,unknown,any. Default retries only transient-looking outcomes."),
-    jitterMs: tool.schema.number().optional().describe("Random extra delay in milliseconds added before each retry. Default 0."),
+    retryOn: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Comma-separated retry tags: eof,error,timeout,parse_error,ok,unknown,any. Default retries only transient-looking outcomes.",
+      ),
+    jitterMs: tool.schema
+      .number()
+      .optional()
+      .describe("Random extra delay in milliseconds added before each retry. Default 0."),
     flagPattern: tool.schema.string().optional().describe("Optional JavaScript regex source for known flag format."),
-    composeService: tool.schema.string().optional().describe("docker compose service name for exec mode or compose run mode."),
+    composeService: tool.schema
+      .string()
+      .optional()
+      .describe("docker compose service name for exec mode or compose run mode."),
     containerName: tool.schema.string().optional().describe("Explicit container name for docker exec mode."),
-    image: tool.schema.string().optional().describe("Docker image for docker run mode when no existing container/service should be used."),
-    useComposeRun: tool.schema.boolean().optional().describe("Use 'docker compose run --rm <service>' instead of exec. Default false."),
-    containerWorkdir: tool.schema.string().optional().describe("In-container working directory. Default mirrors the binary directory under /work."),
-    containerMountRoot: tool.schema.string().optional().describe("Container path where the host workspace is mounted for docker run mode. Default /work."),
-    runArgs: tool.schema.string().optional().describe("Optional extra arguments for docker run or docker compose run, e.g. '--cap-add=SYS_PTRACE --security-opt seccomp=unconfined'."),
+    image: tool.schema
+      .string()
+      .optional()
+      .describe("Docker image for docker run mode when no existing container/service should be used."),
+    useComposeRun: tool.schema
+      .boolean()
+      .optional()
+      .describe("Use 'docker compose run --rm <service>' instead of exec. Default false."),
+    containerWorkdir: tool.schema
+      .string()
+      .optional()
+      .describe("In-container working directory. Default mirrors the binary directory under /work."),
+    containerMountRoot: tool.schema
+      .string()
+      .optional()
+      .describe("Container path where the host workspace is mounted for docker run mode. Default /work."),
+    runArgs: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Optional extra arguments for docker run or docker compose run, e.g. '--cap-add=SYS_PTRACE --security-opt seccomp=unconfined'.",
+      ),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args, context) {
     const runtimeProfile = await loadRuntimeProfile(context.directory, args.runtimeProfileId)
     const profileDefaults = runtimeProfile?.docker_runner_defaults || {}
     const requestedMode = String(args.mode || "local").toLowerCase()
-    const mode = requestedMode === "remote" ? "remote" : requestedMode === "docker" || requestedMode === "compose" ? "docker" : "local"
+    const mode =
+      requestedMode === "remote"
+        ? "remote"
+        : requestedMode === "docker" || requestedMode === "compose"
+          ? "docker"
+          : "local"
     const timeoutMs = Math.max(1000, Math.min(args.timeoutMs ?? 20000, 120000))
 
     let binary = ""
@@ -154,13 +210,16 @@ export default tool({
 
     const argvParts = args.argvPrefixJson
       ? (JSON.parse(args.argvPrefixJson) as string[])
-      : String(args.argv || "").split(/\s+/).filter(Boolean)
+      : String(args.argv || "")
+          .split(/\s+/)
+          .filter(Boolean)
 
-    if (mode === "local" && process.platform === "win32" && await looksLikeElf(binary)) {
+    if (mode === "local" && process.platform === "win32" && (await looksLikeElf(binary))) {
       const summary = {
         mode,
         status: "host_execution_blocked",
-        error: "Windows host detected with Linux ELF target; use docker mode so process/expect stay on one Linux substrate.",
+        error:
+          "Windows host detected with Linux ELF target; use docker mode so process/expect stay on one Linux substrate.",
         recommended_mode: "docker",
         recommended_runner: "ctf-pwn-expect-runner mode=docker",
       }
@@ -175,12 +234,15 @@ export default tool({
       ].join("\n")
     }
 
-    const tempRoot = mode === "docker"
-      ? resolveInsideWorkspace(context.directory, `work/pwn-expect-runner/${Date.now()}-${Math.random().toString(16).slice(2, 10)}`)
-      : await (async () => {
-          const tmpDir = await import("node:fs/promises").then((fs) => fs.mkdtemp(path.join(os.tmpdir(), "pwn-expect-runner-")))
-          return tmpDir
-        })()
+    const tempRoot =
+      mode === "docker"
+        ? resolveInsideWorkspace(context.directory, `work/pwn-expect-runner/${randomUUID().slice(0, 12)}`)
+        : await (async () => {
+            const tmpDir = await import("node:fs/promises").then((fs) =>
+              fs.mkdtemp(path.join(os.tmpdir(), "pwn-expect-runner-")),
+            )
+            return tmpDir
+          })()
     await mkdir(tempRoot, { recursive: true })
     const driver = path.join(tempRoot, "driver.py")
 
@@ -195,16 +257,25 @@ export default tool({
       const containerName = String(args.containerName || "")
       const image = String(args.image || "")
       const useComposeRun = Boolean(args.useComposeRun)
-      const containerMountRoot = validateContainerPosixPath(args.containerMountRoot || profileDefaults.containerMountRoot || "/work", "containerMountRoot")
+      const containerMountRoot = validateContainerPosixPath(
+        args.containerMountRoot || profileDefaults.containerMountRoot || "/work",
+        "containerMountRoot",
+      )
       const relBinary = path.relative(context.directory, binary).replace(/\\/g, "/")
       effectiveBinaryForDriver = path.posix.join(containerMountRoot, relBinary)
       const relDriver = path.relative(context.directory, driver).replace(/\\/g, "/")
       const inContainerDriver = path.posix.join(containerMountRoot, relDriver)
       const relBinaryDir = path.relative(context.directory, path.dirname(binary)).replace(/\\/g, "/")
-      const defaultContainerWorkdir = !relBinaryDir || relBinaryDir === "." ? containerMountRoot : path.posix.join(containerMountRoot, relBinaryDir)
-      const containerWorkdir = validateContainerPosixPath(args.containerWorkdir || profileDefaults.containerWorkdir || defaultContainerWorkdir, "containerWorkdir")
+      const defaultContainerWorkdir =
+        !relBinaryDir || relBinaryDir === "." ? containerMountRoot : path.posix.join(containerMountRoot, relBinaryDir)
+      const containerWorkdir = validateContainerPosixPath(
+        args.containerWorkdir || profileDefaults.containerWorkdir || defaultContainerWorkdir,
+        "containerWorkdir",
+      )
       if (!isInsideContainerTree(containerWorkdir, containerMountRoot)) {
-        throw new Error(`containerWorkdir must stay under containerMountRoot: ${containerWorkdir} is outside ${containerMountRoot}`)
+        throw new Error(
+          `containerWorkdir must stay under containerMountRoot: ${containerWorkdir} is outside ${containerMountRoot}`,
+        )
       }
       const runArgs = splitArgs(args.runArgs || profileDefaults.runArgs || "")
       execCommand = "docker"
@@ -214,7 +285,18 @@ export default tool({
       } else if (composeService && !useComposeRun) {
         execArgs = ["compose", "exec", "-T", "-w", containerWorkdir, composeService, "python3", inContainerDriver]
       } else if (composeService && useComposeRun) {
-        execArgs = ["compose", "run", "--rm", "-T", "-w", containerWorkdir, ...runArgs, composeService, "python3", inContainerDriver]
+        execArgs = [
+          "compose",
+          "run",
+          "--rm",
+          "-T",
+          "-w",
+          containerWorkdir,
+          ...runArgs,
+          composeService,
+          "python3",
+          inContainerDriver,
+        ]
       } else if (image) {
         execArgs = [
           "run",
@@ -338,24 +420,24 @@ print(json.dumps(result, ensure_ascii=False))
         let stderr = ""
         let exitCode: number | string = 0
         let parsed: any = {}
-        try {
-          const res = await execFile(execCommand, execArgs, {
-            cwd: execCwd,
-            timeout: timeoutMs,
-            maxBuffer: 2 * 1024 * 1024,
-            env: { ...process.env, PYTHONIOENCODING: "utf-8" },
-          })
-          stdout = res.stdout
-          stderr = res.stderr
-        } catch (err) {
-          const e = err as { stdout?: string; stderr?: string; message?: string; code?: string | number; signal?: string }
-          stdout = e.stdout ?? ""
-          stderr = e.stderr ?? e.message ?? ""
-          exitCode = e.code ?? e.signal ?? "error"
+        const res = await safeExecWithStreams(execCommand, execArgs, {
+          cwd: execCwd,
+          timeoutMs,
+          maxBuffer: 2 * 1024 * 1024,
+          env: { ...process.env, PYTHONIOENCODING: "utf-8" },
+        })
+        stdout = res.stdout
+        stderr = res.stderr
+        if (!res.ok) {
+          exitCode = res.exitCode ?? "error"
         }
 
         finalOutput = `${stdout}${stderr ? `\n${stderr}` : ""}`
-        try { parsed = JSON.parse(stdout.trim()) } catch { parsed = { status: "parse_error", tail: finalOutput, transcript: [] } }
+        try {
+          parsed = JSON.parse(stdout.trim())
+        } catch {
+          parsed = { status: "parse_error", tail: finalOutput, transcript: [] }
+        }
 
         const attemptSummary = {
           attempt: attempt + 1,
@@ -366,8 +448,12 @@ print(json.dumps(result, ensure_ascii=False))
           eof: parsed.status === "eof",
           error: parsed.error || String(exitCode || ""),
         }
-        const retryTag = classifyRetryTag(String(attemptSummary.status || "unknown"), String(attemptSummary.error || ""))
-        const shouldRetry = !attemptSummary.flag_detected && attempt < retries && (retryOn.has("any") || retryOn.has(retryTag))
+        const retryTag = classifyRetryTag(
+          String(attemptSummary.status || "unknown"),
+          String(attemptSummary.error || ""),
+        )
+        const shouldRetry =
+          !attemptSummary.flag_detected && attempt < retries && (retryOn.has("any") || retryOn.has(retryTag))
         ;(attemptSummary as any).retry_tag = retryTag
         ;(attemptSummary as any).will_retry = shouldRetry
         attemptSummaries.push(attemptSummary)
@@ -392,7 +478,10 @@ print(json.dumps(result, ensure_ascii=False))
         eof: finalParsed.status === "eof",
         error: finalParsed.error || "",
         prompt_hint: detectPromptHint(String(finalParsed.tail || finalOutput)),
-        last_transcript_event: Array.isArray(finalParsed.transcript) && finalParsed.transcript.length ? finalParsed.transcript[finalParsed.transcript.length - 1] : null,
+        last_transcript_event:
+          Array.isArray(finalParsed.transcript) && finalParsed.transcript.length
+            ? finalParsed.transcript[finalParsed.transcript.length - 1]
+            : null,
         attempts: attemptSummaries,
       }
       if (args.jsonOnly) return JSON.stringify({ pwn_expect_runner: summary, detail: finalParsed }, null, 2)
@@ -412,7 +501,7 @@ print(json.dumps(result, ensure_ascii=False))
         `- error: ${summary.error}`,
         `- prompt_hint: ${summary.prompt_hint || "none"}`,
         `- last_transcript_event: ${summary.last_transcript_event ? JSON.stringify(summary.last_transcript_event) : "none"}`,
-        `- attempt_statuses: ${attemptSummaries.map((item) => `#${item.attempt}:${item.status}/${item.retry_tag}${item.will_retry ? '->retry' : ''}`).join(" | ") || "none"}`,
+        `- attempt_statuses: ${attemptSummaries.map((item) => `#${item.attempt}:${item.status}/${item.retry_tag}${item.will_retry ? "->retry" : ""}`).join(" | ") || "none"}`,
         "tail_compact:",
         compact(String(finalParsed.tail || finalOutput), 6000),
       ].join("\n")

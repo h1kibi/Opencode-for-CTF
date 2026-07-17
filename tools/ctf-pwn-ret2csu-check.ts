@@ -1,9 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExec } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -15,18 +12,12 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   return target
 }
 
-async function safeExec(cmd: string, args: string[], cwd: string, ms = 7000) {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout: ms, maxBuffer: 1024 * 1024 })
-    return `${stdout}${stderr ? `\n${stderr}` : ""}`
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`
-  }
-}
-
 function grepLines(text: string, re: RegExp, limit = 30) {
-  return text.split(/\r?\n/).filter((line) => re.test(line)).slice(0, limit).map((line) => line.trim())
+  return text
+    .split(/\r?\n/)
+    .filter((line) => re.test(line))
+    .slice(0, limit)
+    .map((line) => line.trim())
 }
 
 function hasUsefulPopSequence(text: string) {
@@ -52,7 +43,8 @@ function gadgetShape(popSeq: boolean, callSeq: boolean, symbolHit: boolean) {
 
 function decision(symbolHit: boolean, popSeq: boolean, callSeq: boolean, evidence: string) {
   const lower = evidence.toLowerCase()
-  if (/static|musl|stripped/.test(lower) && !symbolHit && !popSeq) return "ret2csu_unlikely_collect_alternate_call_or_syscall_route"
+  if (/static|musl|stripped/.test(lower) && !symbolHit && !popSeq)
+    return "ret2csu_unlikely_collect_alternate_call_or_syscall_route"
   if (popSeq && callSeq) return "ret2csu_candidate_worth_testing_after_control_proof"
   if (symbolHit && (popSeq || callSeq)) return "ret2csu_candidate_worth_testing_after_control_proof"
   if (popSeq || callSeq) return "ret2csu_partial_shape_needs_matching_second_gadget_before_promotion"
@@ -61,7 +53,8 @@ function decision(symbolHit: boolean, popSeq: boolean, callSeq: boolean, evidenc
 }
 
 export default tool({
-  description: "CTF pwn ret2csu checker: inspect __libc_csu_init symbols/gadget shape and decide whether ret2csu is a worthwhile ROP candidate.",
+  description:
+    "CTF pwn ret2csu checker: inspect __libc_csu_init symbols/gadget shape and decide whether ret2csu is a worthwhile ROP candidate.",
   args: {
     binary: tool.schema.string().optional().describe("Workspace-relative ELF binary path."),
     evidence: tool.schema.string().optional().describe("Optional pasted readelf/objdump/ROPgadget/notes evidence."),
@@ -79,15 +72,22 @@ export default tool({
     if (args.binary) {
       binary = resolveInsideWorkspace(context.directory, args.binary)
       cwd = path.dirname(binary)
-      ropOut = await safeExec("ROPgadget", ["--binary", binary, "--only", "pop|mov|call|ret"], cwd, timeoutMs)
-      readelfOut = await safeExec("readelf", ["-Ws", binary], cwd, timeoutMs)
-      objdumpOut = await safeExec("objdump", ["-d", binary], cwd, timeoutMs)
+      const ropR = await safeExec("ROPgadget", ["--binary", binary, "--only", "pop|mov|call|ret"], cwd, timeoutMs)
+      ropOut = ropR.output
+      const readelfR = await safeExec("readelf", ["-Ws", binary], cwd, timeoutMs)
+      readelfOut = readelfR.output
+      const objdumpR = await safeExec("objdump", ["-d", binary], cwd, timeoutMs)
+      objdumpOut = objdumpR.output
     }
 
     const combined = [ropOut, readelfOut, objdumpOut, pastedEvidence].join("\n")
     const symbolLines = grepLines(combined, /__libc_csu_init|libc_csu|_init\b/i, 20)
     const popSequenceLines = grepLines(combined, /pop rbx|pop rbp|pop r12|pop r13|pop r14|pop r15/i, 40)
-    const callSequenceLines = grepLines(combined, /call.*\[(r12|r13|r14|r15|rbx)|mov\s+r(d|s)i|mov\s+edx|mov\s+rsi|mov\s+edi/i, 40)
+    const callSequenceLines = grepLines(
+      combined,
+      /call.*\[(r12|r13|r14|r15|rbx)|mov\s+r(d|s)i|mov\s+edx|mov\s+rsi|mov\s+edi/i,
+      40,
+    )
     const retLines = grepLines(combined, /:\s*ret\b|\bretq?\b/i, 12)
     const symbolHit = symbolLines.some((x) => /__libc_csu_init|libc_csu/i.test(x))
     const popSeq = hasUsefulPopSequence(combined)
@@ -102,7 +102,9 @@ export default tool({
       `route_decision: ${routeDecision}`,
       `gadget_shape: ${shape}`,
       "promotion_gate:",
-      popSeq && callSeq ? "- pass: both pop-chain and call-chain shape are present; ret2csu can enter top route only after control proof." : "- hold: require both pop-chain and call-chain shape, or a clear reason why the missing half is otherwise available.",
+      popSeq && callSeq
+        ? "- pass: both pop-chain and call-chain shape are present; ret2csu can enter top route only after control proof."
+        : "- hold: require both pop-chain and call-chain shape, or a clear reason why the missing half is otherwise available.",
       "symbol_evidence:",
       ...(symbolLines.length ? symbolLines.map((x) => `- ${x}`) : ["- none"]),
       "pop_sequence_evidence:",

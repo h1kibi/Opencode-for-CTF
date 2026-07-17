@@ -9,7 +9,10 @@ function countMatches(text: string, re: RegExp) {
 }
 
 function lineTail(text: string, count = 6) {
-  const lines = normalize(text).split("\n").map((x) => x.trim()).filter(Boolean)
+  const lines = normalize(text)
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean)
   return lines.slice(Math.max(0, lines.length - count))
 }
 
@@ -32,11 +35,13 @@ function classifyFraming(local: string, remote: string, expectedReadSize: number
   const payloadShortfall = expectedReadSize > 0 && payloadBytes > 0 ? Math.max(0, expectedReadSize - payloadBytes) : 0
 
   const signals: string[] = []
-  if (expectedReadSize > 0 && payloadBytes > 0 && payloadBytes < expectedReadSize) signals.push("short_payload_against_fixed_read")
+  if (expectedReadSize > 0 && payloadBytes > 0 && payloadBytes < expectedReadSize)
+    signals.push("short_payload_against_fixed_read")
   if (remoteMenuCount > localMenuCount + 1) signals.push("remote_menu_reappears_more_often")
   if (remoteTimeout && !localTimeout) signals.push("remote_waits_for_more_input")
   if (remoteEof && !localEof) signals.push("remote_connection_closes_earlier")
-  if (remotePromptTail && localPromptTail && remotePromptTail !== localPromptTail) signals.push("prompt_tail_divergence")
+  if (remotePromptTail && localPromptTail && remotePromptTail !== localPromptTail)
+    signals.push("prompt_tail_divergence")
 
   let fixedLengthReadSuspected = false
   let menuDesyncRisk = "low"
@@ -47,7 +52,8 @@ function classifyFraming(local: string, remote: string, expectedReadSize: number
     fixedLengthReadSuspected = true
     shortPayloadRisk = payloadShortfall >= 32 ? "high" : "medium"
   }
-  if (signals.includes("remote_waits_for_more_input") || signals.includes("remote_menu_reappears_more_often")) menuDesyncRisk = "high"
+  if (signals.includes("remote_waits_for_more_input") || signals.includes("remote_menu_reappears_more_often"))
+    menuDesyncRisk = "high"
   else if (signals.includes("prompt_tail_divergence")) menuDesyncRisk = "medium"
   if (signals.length >= 3) framingMismatch = "high"
   else if (signals.length >= 1) framingMismatch = "medium"
@@ -71,20 +77,36 @@ function classifyFraming(local: string, remote: string, expectedReadSize: number
 }
 
 export default tool({
-  description: "CTF pwn IO diff check: compare local pipe and remote socket behavior for fixed-length read, padding, prompt framing, and menu desync clues.",
+  description:
+    "CTF pwn IO diff check: compare local pipe and remote socket behavior for fixed-length read, padding, prompt framing, and menu desync clues.",
   args: {
-    localTranscript: tool.schema.string().describe("Local transcript, runner output, or notes from pipe/process behavior."),
+    localTranscript: tool.schema
+      .string()
+      .describe("Local transcript, runner output, or notes from pipe/process behavior."),
     remoteTranscript: tool.schema.string().describe("Remote transcript, runner output, or notes from socket behavior."),
-    expectedReadSize: tool.schema.number().optional().describe("Expected fixed read size in bytes if known, e.g. 0x900."),
-    payloadText: tool.schema.string().optional().describe("Exact payload text if known; used only for rough length comparison."),
-    payloadHex: tool.schema.string().optional().describe("Exact payload hex if known; used only for rough byte-length comparison."),
-    focus: tool.schema.string().optional().describe("Optional short focus hint such as read, sendafter, menu, padding, or parser."),
+    expectedReadSize: tool.schema
+      .number()
+      .optional()
+      .describe("Expected fixed read size in bytes if known, e.g. 0x900."),
+    payloadText: tool.schema
+      .string()
+      .optional()
+      .describe("Exact payload text if known; used only for rough length comparison."),
+    payloadHex: tool.schema
+      .string()
+      .optional()
+      .describe("Exact payload hex if known; used only for rough byte-length comparison."),
+    focus: tool.schema
+      .string()
+      .optional()
+      .describe("Optional short focus hint such as read, sendafter, menu, padding, or parser."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args) {
     const local = normalize(args.localTranscript)
     const remote = normalize(args.remoteTranscript)
-    if (local.trim().length < 3 || remote.trim().length < 3) return "BLOCK: provide both localTranscript and remoteTranscript"
+    if (local.trim().length < 3 || remote.trim().length < 3)
+      return "BLOCK: provide both localTranscript and remoteTranscript"
 
     const expectedReadSize = Math.max(0, Math.min(Number(args.expectedReadSize ?? 0), 1024 * 1024))
     const payloadBytes = args.payloadHex
@@ -95,7 +117,9 @@ export default tool({
 
     const recommendations: string[] = []
     if (framing.fixedLengthReadSuspected) {
-      recommendations.push(`Pad or otherwise fill the full expected read length before returning to menu logic${framing.payloadShortfall > 0 ? ` (current shortfall ~${framing.payloadShortfall} bytes)` : ""}.`)
+      recommendations.push(
+        `Pad or otherwise fill the full expected read length before returning to menu logic${framing.payloadShortfall > 0 ? ` (current shortfall ~${framing.payloadShortfall} bytes)` : ""}.`,
+      )
     }
     if (framing.menuDesyncRisk !== "low") {
       recommendations.push("Prefer explicit recvuntil/sendafter boundaries and isolate one menu action per round-trip.")
@@ -104,13 +128,19 @@ export default tool({
       recommendations.push("Treat remote timeout as 'waiting for more bytes' before treating it as exploit failure.")
     }
     if (framing.remoteEof && !framing.localEof) {
-      recommendations.push("Check whether the remote parser rejects malformed framing earlier than the local pipe path.")
+      recommendations.push(
+        "Check whether the remote parser rejects malformed framing earlier than the local pipe path.",
+      )
     }
     if (focus.includes("padding") || focus.includes("read") || focus.includes("sendafter")) {
-      recommendations.push("Run one one-variable probe: same payload semantics, only change total sent length to the full fixed-read size.")
+      recommendations.push(
+        "Run one one-variable probe: same payload semantics, only change total sent length to the full fixed-read size.",
+      )
     }
     if (!recommendations.length) {
-      recommendations.push("Capture one cleaner local and one cleaner remote transcript around the same menu step, then compare byte-count and prompt boundaries.")
+      recommendations.push(
+        "Capture one cleaner local and one cleaner remote transcript around the same menu step, then compare byte-count and prompt boundaries.",
+      )
     }
 
     const summary = {

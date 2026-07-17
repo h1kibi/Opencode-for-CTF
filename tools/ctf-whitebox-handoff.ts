@@ -85,7 +85,16 @@ async function saveState(file: string, state: Handoff) {
 }
 
 function keyFor(item: AnyRecord) {
-  return String(item.id ?? item.file ?? item.file_path ?? item.route ?? item.route_or_file ?? item.name ?? item.symbol ?? JSON.stringify(item).slice(0, 80))
+  return String(
+    item.id ??
+      item.file ??
+      item.file_path ??
+      item.route ??
+      item.route_or_file ??
+      item.name ??
+      item.symbol ??
+      JSON.stringify(item).slice(0, 80),
+  )
 }
 
 function upsert(list: AnyRecord[], item: AnyRecord) {
@@ -121,18 +130,52 @@ async function verifyFileEvidence(contextDir: string, finding: AnyRecord, gate: 
     const lines = text.split(/\r?\n/)
     const lineOk = Number.isFinite(line) && line > 0 ? line <= lines.length : true
     const snippetMatches = snippet ? text.includes(snippet) : true
-    return { ok: lineOk && snippetMatches, reason: lineOk ? (snippetMatches ? "file/line/snippet verified" : "snippet mismatch") : "line outside file", file, line, snippetMatches }
+    return {
+      ok: lineOk && snippetMatches,
+      reason: lineOk ? (snippetMatches ? "file/line/snippet verified" : "snippet mismatch") : "line outside file",
+      file,
+      line,
+      snippetMatches,
+    }
   } catch (err) {
-    return { ok: false, reason: `file read failed: ${err instanceof Error ? err.message : String(err)}`, file, line, snippetMatches: false }
+    return {
+      ok: false,
+      reason: `file read failed: ${err instanceof Error ? err.message : String(err)}`,
+      file,
+      line,
+      snippetMatches: false,
+    }
   }
 }
 
 async function evidenceGate(contextDir: string, finding: AnyRecord, gate: AnyRecord) {
   const fileEvidence = await verifyFileEvidence(contextDir, finding, gate)
-  const controllability = firstString(gate.controllability, finding.controllability, finding.source, finding.controlled_input, finding.controlledDataShape)
-  const sink = firstString(gate.sink_or_condition, gate.sink, finding.sink, finding.condition, finding.sink_or_condition)
-  const oracle = firstString(gate.oracle_or_harness, gate.oracle, finding.oracle, finding.verification, finding.observed_signal)
-  const falseChecks = Array.isArray(gate.false_positive_checks) ? gate.false_positive_checks : Array.isArray(finding.false_positive_checks) ? finding.false_positive_checks : []
+  const controllability = firstString(
+    gate.controllability,
+    finding.controllability,
+    finding.source,
+    finding.controlled_input,
+    finding.controlledDataShape,
+  )
+  const sink = firstString(
+    gate.sink_or_condition,
+    gate.sink,
+    finding.sink,
+    finding.condition,
+    finding.sink_or_condition,
+  )
+  const oracle = firstString(
+    gate.oracle_or_harness,
+    gate.oracle,
+    finding.oracle,
+    finding.verification,
+    finding.observed_signal,
+  )
+  const falseChecks = Array.isArray(gate.false_positive_checks)
+    ? gate.false_positive_checks
+    : Array.isArray(finding.false_positive_checks)
+      ? finding.false_positive_checks
+      : []
   let verdict = "uncertain"
   if (!fileEvidence.ok) verdict = "false_positive"
   else if (controllability && sink && oracle) verdict = "confirmed"
@@ -146,14 +189,33 @@ async function evidenceGate(contextDir: string, finding: AnyRecord, gate: AnyRec
     oracle_or_harness: Boolean(oracle),
     false_positive_checks: falseChecks,
     verdict,
-    reason: verdict === "confirmed" ? "all evidence gates passed" : verdict === "likely" ? "missing oracle/harness" : verdict === "false_positive" ? fileEvidence.reason : "missing controllability or sink/condition",
+    reason:
+      verdict === "confirmed"
+        ? "all evidence gates passed"
+        : verdict === "likely"
+          ? "missing oracle/harness"
+          : verdict === "false_positive"
+            ? fileEvidence.reason
+            : "missing controllability or sink/condition",
   }
 }
 
 function report(state: Handoff) {
   const rows = (items: AnyRecord[], fields: string[]) => {
     if (!items.length) return "none"
-    return [fields.join(" | "), fields.map(() => "---").join(" | "), ...items.map((it) => fields.map((f) => String(it[f] ?? it[f.replace(/ /g, "_")] ?? "").replace(/\r?\n/g, " ").slice(0, 160)).join(" | "))].join("\n")
+    return [
+      fields.join(" | "),
+      fields.map(() => "---").join(" | "),
+      ...items.map((it) =>
+        fields
+          .map((f) =>
+            String(it[f] ?? it[f.replace(/ /g, "_")] ?? "")
+              .replace(/\r?\n/g, " ")
+              .slice(0, 160),
+          )
+          .join(" | "),
+      ),
+    ].join("\n")
   }
   return [
     "# CTF White-box Handoff",
@@ -190,10 +252,18 @@ function report(state: Handoff) {
 }
 
 export default tool({
-  description: "CTF white-box handoff manager: maintain a DeepAudit-style source audit state with entrypoints, sources, sinks, evidence gates, verified facts, and next probes inside the workspace.",
+  description:
+    "CTF white-box handoff manager: maintain a DeepAudit-style source audit state with entrypoints, sources, sinks, evidence gates, verified facts, and next probes inside the workspace.",
   args: {
-    operation: tool.schema.string().describe("init | add_entrypoint | add_auth | add_source | add_sink | add_sanitizer | add_finding | add_chain | add_fact | add_probe | gate | report"),
-    statePath: tool.schema.string().optional().describe("Workspace-relative state path. Default .ctf-whitebox-handoff.json"),
+    operation: tool.schema
+      .string()
+      .describe(
+        "init | add_entrypoint | add_auth | add_source | add_sink | add_sanitizer | add_finding | add_chain | add_fact | add_probe | gate | report",
+      ),
+    statePath: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative state path. Default .ctf-whitebox-handoff.json"),
     scopeJson: tool.schema.string().optional().describe("JSON object for init/update scope"),
     stackJson: tool.schema.string().optional().describe("JSON object for init/update stack"),
     itemJson: tool.schema.string().optional().describe("JSON object for add_* operations"),
@@ -210,7 +280,9 @@ export default tool({
       state = fresh(jsonArg(args.scopeJson, {}), jsonArg(args.stackJson, {}))
       addHistory(state, operation, { scope: state.scope, stack: state.stack })
       await saveState(file, state)
-      return args.jsonOnly ? JSON.stringify(state, null, 2) : `whitebox handoff initialized: ${path.relative(context.directory, file)}`
+      return args.jsonOnly
+        ? JSON.stringify(state, null, 2)
+        : `whitebox handoff initialized: ${path.relative(context.directory, file)}`
     }
 
     const item = jsonArg<AnyRecord>(args.itemJson, {})
@@ -240,7 +312,12 @@ export default tool({
       const enriched = { ...finding, evidence_gate: result, verdict: result.verdict }
       upsert(state.candidate_findings, enriched)
       if (result.verdict === "confirmed") {
-        upsert(state.verified_facts, { id: result.finding_id, fact: firstString(finding.title, finding.vulnerability_type, "confirmed finding"), evidence: result.reason, chain_implication: firstString(finding.chain_implication, gate.chain_implication) })
+        upsert(state.verified_facts, {
+          id: result.finding_id,
+          fact: firstString(finding.title, finding.vulnerability_type, "confirmed finding"),
+          evidence: result.reason,
+          chain_implication: firstString(finding.chain_implication, gate.chain_implication),
+        })
       }
       addHistory(state, operation, result)
       await saveState(file, state)

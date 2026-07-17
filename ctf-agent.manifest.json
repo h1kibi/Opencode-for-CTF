@@ -1,27 +1,28 @@
 {
-  "version": "2026.07.ctf-v3",
-  "description": "CTF agent operating profile with two primary modes: ctf-fast (lightweight intuition-first) and ctf-expert (evidence-driven iterative solving). Replaces the original ctf-master.",
+  "version": "0.1.0",
+  "description": "CTF agent operating profile. Default user entry is /ctf (auto-route). Primary agents: ctf-fast and ctf-expert. ctf-master remains a compatibility alias for ctf-expert.",
   "default_entrypoints": [
+    "/ctf",
+    "/ctf-help",
     "/ctf-fast",
     "/ctf-expert",
-    "/ctf-pwn-fast",
-    "/ctf-rigorous",
-    "/ctf-rev-team",
-    "/ctf-hard-open"
+    "/ctf-resume"
   ],
-  "primary_agents": [
-    "ctf-fast",
-    "ctf-expert",
-    "ctf-pwn-fast",
-    "ctf-rigorous"
+  "compatibility_entrypoints": [
+    "/ctf-solve",
+    "/ctf-master"
   ],
-  "meta_subagents": [
-    "ctf-scout",
-    "ctf-librarian",
-    "ctf-oracle",
-    "ctf-verifier"
-  ],
+  "primary_agents": ["ctf-fast", "ctf-expert"],
+  "compatibility_agents": ["ctf-master"],
+  "category_subagents": ["ctf-web", "ctf-pwn", "ctf-rev", "ctf-crypto", "ctf-forensics", "ctf-misc"],
+  "meta_subagents": ["ctf-scout", "ctf-librarian", "ctf-oracle", "ctf-verifier"],
+  "routing": {
+    "tool": "ctf-route-plan",
+    "skill": "ctf-router",
+    "core_module": "packages/ctf-core/src/router.ts"
+  },
   "required_tools": [
+    "ctf-route-plan",
     "ctf-decision-state",
     "ctf-one-shot-triage",
     "ctf-source-first-pack",
@@ -70,9 +71,7 @@
     "work/ctf-evidence/<challenge-slug>/rev-team-memory.json",
     "work/ctf-evidence/<challenge-slug>/rev-team-summary.md"
   ],
-  "required_indexes": [
-    "knowledge/lessons/lessons.index.json"
-  ],
+  "required_indexes": ["knowledge/lessons/lessons.index.json"],
   "qa_required": true,
   "readiness_gate": {
     "config_contracts": true,

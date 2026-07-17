@@ -1,10 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
 import { mkdir, readFile, writeFile, stat } from "node:fs/promises"
-import { promisify } from "node:util"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExecWithStreams } from "./lib/exec-utils.ts"
 
 type AnyRecord = Record<string, unknown>
 
@@ -12,7 +9,8 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
   const target = path.resolve(base, input)
   const rel = path.relative(base, target)
-  if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`path must stay inside the current workspace: ${input}`)
+  if (rel.startsWith("..") || path.isAbsolute(rel))
+    throw new Error(`path must stay inside the current workspace: ${input}`)
   return target
 }
 
@@ -27,28 +25,52 @@ function firstString(...values: unknown[]) {
 }
 
 function normalizeFamily(finding: AnyRecord) {
-  return firstString(finding.vulnerability_type, finding.family, finding.type, finding.title).toLowerCase().replace(/[^a-z0-9]+/g, "_") || "unknown"
+  return (
+    firstString(finding.vulnerability_type, finding.family, finding.type, finding.title)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_") || "unknown"
+  )
 }
 
 function payloadFamilies(family: string) {
-  if (/sql|hql|mybatis/.test(family)) return ["quote/error", "boolean tautology", "union shape", "stacked/comment", "parser differential"]
-  if (/command|rce|code/.test(family)) return ["separator ;", "pipe |", "and/or && ||", "substitution $()", "backticks", "argument injection"]
-  if (/path|file|lfi|traversal/.test(family)) return ["../ traversal", "absolute path", "encoded traversal", "double decode", "separator normalization", "base-dir escape"]
-  if (/ssrf|url/.test(family)) return ["localhost", "127.0.0.1", "IPv6 loopback", "metadata IP", "redirect", "scheme confusion"]
-  if (/xss|template|ssti|spel|el/.test(family)) return ["raw tag", "attribute/event", "template arithmetic", "expression evaluation", "encoding differential"]
-  if (/deser|pickle|yaml|xml|xxe/.test(family)) return ["magic/header", "external entity", "type gadget", "parser feature", "class allowlist bypass"]
-  if (/auth|idor|access|role/.test(family)) return ["owner/non-owner", "missing role", "mass assignment", "forced id", "workflow skip"]
+  if (/sql|hql|mybatis/.test(family))
+    return ["quote/error", "boolean tautology", "union shape", "stacked/comment", "parser differential"]
+  if (/command|rce|code/.test(family))
+    return ["separator ;", "pipe |", "and/or && ||", "substitution $()", "backticks", "argument injection"]
+  if (/path|file|lfi|traversal/.test(family))
+    return [
+      "../ traversal",
+      "absolute path",
+      "encoded traversal",
+      "double decode",
+      "separator normalization",
+      "base-dir escape",
+    ]
+  if (/ssrf|url/.test(family))
+    return ["localhost", "127.0.0.1", "IPv6 loopback", "metadata IP", "redirect", "scheme confusion"]
+  if (/xss|template|ssti|spel|el/.test(family))
+    return ["raw tag", "attribute/event", "template arithmetic", "expression evaluation", "encoding differential"]
+  if (/deser|pickle|yaml|xml|xxe/.test(family))
+    return ["magic/header", "external entity", "type gadget", "parser feature", "class allowlist bypass"]
+  if (/auth|idor|access|role/.test(family))
+    return ["owner/non-owner", "missing role", "mass assignment", "forced id", "workflow skip"]
   return ["benign control", "malformed input", "boundary input", "known-bad pattern", "differential oracle"]
 }
 
 function successOracle(family: string) {
-  if (/sql|hql|mybatis/.test(family)) return "mock DB captures unparameterized query or attacker-controlled SQL structure"
-  if (/command|rce|code/.test(family)) return "mock command/code sink captures attacker-controlled command or expression without executing it"
-  if (/path|file|lfi|traversal/.test(family)) return "normalized path escapes intended base directory or reaches sensitive target"
+  if (/sql|hql|mybatis/.test(family))
+    return "mock DB captures unparameterized query or attacker-controlled SQL structure"
+  if (/command|rce|code/.test(family))
+    return "mock command/code sink captures attacker-controlled command or expression without executing it"
+  if (/path|file|lfi|traversal/.test(family))
+    return "normalized path escapes intended base directory or reaches sensitive target"
   if (/ssrf|url/.test(family)) return "mock HTTP client captures internal/forbidden URL destination"
-  if (/xss|template|ssti|spel|el/.test(family)) return "renderer output contains unescaped payload or expression evaluation marker"
-  if (/deser|pickle|yaml|xml|xxe/.test(family)) return "parser/deserializer mock observes dangerous type/entity/gadget path"
-  if (/auth|idor|access|role/.test(family)) return "authorization decision allows non-owner/low-role access to protected object or state change"
+  if (/xss|template|ssti|spel|el/.test(family))
+    return "renderer output contains unescaped payload or expression evaluation marker"
+  if (/deser|pickle|yaml|xml|xxe/.test(family))
+    return "parser/deserializer mock observes dangerous type/entity/gadget path"
+  if (/auth|idor|access|role/.test(family))
+    return "authorization decision allows non-owner/low-role access to protected object or state change"
   return "observable differential matches the vulnerability hypothesis"
 }
 
@@ -127,18 +149,18 @@ function jsSkeleton(plan: AnyRecord) {
     "}",
     "function targetFunction(userInput) {",
     "  // TODO: paste minimal vulnerable logic here. Replace real side effects with recordSink(...).",
-    "  recordSink(\"sink\", userInput)",
+    '  recordSink("sink", userInput)',
     "}",
     `const payloads = ${payloads}`,
-    "console.log(\"=== CTF Local Harness Start ===\")",
+    'console.log("=== CTF Local Harness Start ===")',
     "for (const family of payloads) {",
     "  const sample = 'PAYLOAD::' + family",
     "  console.log('[TEST] ' + family + ' -> ' + sample)",
     "  targetFunction(sample)",
     "}",
-    "console.log(\"=== Oracle ===\")",
+    'console.log("=== Oracle ===")',
     `console.log(${JSON.stringify(String(plan.success_oracle ?? ""))})`,
-    "console.log(\"[CONFIRMED] review captured sink arguments above if attacker-controlled payload reaches sink\")",
+    'console.log("[CONFIRMED] review captured sink arguments above if attacker-controlled payload reaches sink")',
     "",
   ].join("\n")
 }
@@ -188,7 +210,8 @@ function runnerFor(language: string) {
 }
 
 function evaluateOutput(output: string, plan: AnyRecord) {
-  const confirmed = /\[(CONFIRMED|VULN|DETECTED)\]|unparameterized|escaped|bypass|executed|internal url|role bypass/i.test(output)
+  const confirmed =
+    /\[(CONFIRMED|VULN|DETECTED)\]|unparameterized|escaped|bypass|executed|internal url|role bypass/i.test(output)
   const likely = /\[TEST\]|captured|oracle|payload/i.test(output)
   return {
     verdict: confirmed ? "confirmed" : likely ? "likely" : "uncertain",
@@ -198,41 +221,81 @@ function evaluateOutput(output: string, plan: AnyRecord) {
 }
 
 export default tool({
-  description: "CTF local harness verifier: plan, write, safely run, and evaluate local mock-based verification harnesses for source-derived findings. Defaults to non-execution; execution requires allowRun=true.",
+  description:
+    "CTF local harness verifier: plan, write, safely run, and evaluate local mock-based verification harnesses for source-derived findings. Defaults to non-execution; execution requires allowRun=true.",
   args: {
     operation: tool.schema.string().describe("plan | write | run | evaluate"),
-    findingJson: tool.schema.string().optional().describe("JSON finding with vulnerability_type, file/file_path, symbol/function, source, sink, language"),
-    harnessJson: tool.schema.string().optional().describe("Existing harness plan JSON. If omitted, generated from findingJson."),
-    code: tool.schema.string().optional().describe("Harness code to write/run. If omitted, a safe skeleton is generated for plan/write."),
-    language: tool.schema.string().optional().describe("python | javascript | php | ruby. Execution is supported for these languages only. Default from finding or python."),
+    findingJson: tool.schema
+      .string()
+      .optional()
+      .describe("JSON finding with vulnerability_type, file/file_path, symbol/function, source, sink, language"),
+    harnessJson: tool.schema
+      .string()
+      .optional()
+      .describe("Existing harness plan JSON. If omitted, generated from findingJson."),
+    code: tool.schema
+      .string()
+      .optional()
+      .describe("Harness code to write/run. If omitted, a safe skeleton is generated for plan/write."),
+    language: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "python | javascript | php | ruby. Execution is supported for these languages only. Default from finding or python.",
+      ),
     harnessFile: tool.schema.string().optional().describe("Workspace-relative harness file path for run/evaluate."),
-    outDir: tool.schema.string().optional().describe("Workspace-relative output directory for generated harnesses. Default work/ctf-harness"),
+    outDir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative output directory for generated harnesses. Default work/ctf-harness"),
     allowRun: tool.schema.boolean().optional().describe("Required true for executing a harness. Default false."),
-    allowDangerous: tool.schema.boolean().optional().describe("Allow code containing network/process/destructive patterns. Default false; strongly discouraged."),
+    allowDangerous: tool.schema
+      .boolean()
+      .optional()
+      .describe("Allow code containing network/process/destructive patterns. Default false; strongly discouraged."),
     timeoutMs: tool.schema.number().optional().describe("Execution timeout in ms. Default 8000, max 30000."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args, context) {
     const finding = jsonArg<AnyRecord>(args.findingJson, {})
-    const basePlan = Object.keys(jsonArg<AnyRecord>(args.harnessJson, {})).length ? jsonArg<AnyRecord>(args.harnessJson, {}) : planFor(finding, args.language)
-    const language = firstString(args.language, (basePlan.target as AnyRecord | undefined)?.language, finding.language, "python")
+    const basePlan = Object.keys(jsonArg<AnyRecord>(args.harnessJson, {})).length
+      ? jsonArg<AnyRecord>(args.harnessJson, {})
+      : planFor(finding, args.language)
+    const language = firstString(
+      args.language,
+      (basePlan.target as AnyRecord | undefined)?.language,
+      finding.language,
+      "python",
+    )
     const operation = String(args.operation || "plan").toLowerCase()
 
     if (operation === "plan") {
       const plan = { ...basePlan, skeleton: skeletonFor(basePlan, language) }
-      return args.jsonOnly ? JSON.stringify(plan, null, 2) : ["# CTF Local Harness Plan", JSON.stringify(plan, null, 2)].join("\n")
+      return args.jsonOnly
+        ? JSON.stringify(plan, null, 2)
+        : ["# CTF Local Harness Plan", JSON.stringify(plan, null, 2)].join("\n")
     }
 
     if (operation === "write") {
       const outDir = resolveInsideWorkspace(context.directory, args.outDir || "work/ctf-harness")
       await mkdir(outDir, { recursive: true })
-      const id = firstString(basePlan.finding_id, "harness").replace(/[^a-zA-Z0-9_.-]+/g, "_").slice(0, 60) || "harness"
+      const id =
+        firstString(basePlan.finding_id, "harness")
+          .replace(/[^a-zA-Z0-9_.-]+/g, "_")
+          .slice(0, 60) || "harness"
       const relFile = path.join(args.outDir || "work/ctf-harness", `${id}_${Date.now()}${extFor(language)}`)
       const fullFile = resolveInsideWorkspace(context.directory, relFile)
       const content = args.code ?? skeletonFor(basePlan, language)
       await writeFile(fullFile, content, "utf8")
-      const result = { harness_file: relFile, language, safety: safetyScan(content, Boolean(args.allowDangerous)), plan: basePlan }
-      return args.jsonOnly ? JSON.stringify(result, null, 2) : `harness written: ${relFile}\nlanguage: ${language}\nsafety_ok: ${result.safety.ok}\nsafety_hits: ${result.safety.hits.join(" | ") || "none"}`
+      const result = {
+        harness_file: relFile,
+        language,
+        safety: safetyScan(content, Boolean(args.allowDangerous)),
+        plan: basePlan,
+      }
+      return args.jsonOnly
+        ? JSON.stringify(result, null, 2)
+        : `harness written: ${relFile}\nlanguage: ${language}\nsafety_ok: ${result.safety.ok}\nsafety_hits: ${result.safety.hits.join(" | ") || "none"}`
     }
 
     if (operation === "evaluate") {
@@ -246,9 +309,11 @@ export default tool({
     }
 
     if (operation === "run") {
-      if (args.allowRun !== true) return "Refusing to execute harness: set allowRun=true after reviewing the harness code and confirming it is workspace-local and safe."
+      if (args.allowRun !== true)
+        return "Refusing to execute harness: set allowRun=true after reviewing the harness code and confirming it is workspace-local and safe."
       const runner = runnerFor(language)
-      if (!runner) return `Execution not supported for language '${language}'. Use operation=plan/write and run manually in a sandbox.`
+      if (!runner)
+        return `Execution not supported for language '${language}'. Use operation=plan/write and run manually in a sandbox.`
       let fullFile = ""
       let content = args.code || ""
       if (args.harnessFile) {
@@ -273,20 +338,27 @@ export default tool({
       let stderr = ""
       let exitCode: number | string = 0
       let timedOut = false
-      try {
-        const res = await execFile(runner.cmd, [...runner.args, fullFile], { cwd: context.directory, timeout, maxBuffer: 1024 * 1024 })
-        stdout = res.stdout
-        stderr = res.stderr
-      } catch (err) {
-        const e = err as { stdout?: string; stderr?: string; code?: number | string; signal?: string; killed?: boolean; message?: string }
-        stdout = e.stdout ?? ""
-        stderr = e.stderr ?? e.message ?? ""
-        exitCode = e.code ?? e.signal ?? "error"
-        timedOut = Boolean(e.killed) || /timeout|timed out/i.test(String(e.message ?? ""))
+      const res = await safeExecWithStreams(runner.cmd, [...runner.args, fullFile], {
+        cwd: context.directory,
+        timeoutMs: timeout,
+        maxBuffer: 1024 * 1024,
+      })
+      stdout = res.stdout
+      stderr = res.stderr
+      if (!res.ok) {
+        exitCode = res.exitCode ?? "error"
+        timedOut = /timeout|timed out/i.test(res.stderr)
       }
       const output = `${stdout}${stderr ? `\n[stderr]\n${stderr}` : ""}`
       const evalResult = evaluateOutput(output, basePlan)
-      const result = { harness_file: path.relative(context.directory, fullFile), language, exit_code: exitCode, timeout: timedOut, safety, ...evalResult }
+      const result = {
+        harness_file: path.relative(context.directory, fullFile),
+        language,
+        exit_code: exitCode,
+        timeout: timedOut,
+        safety,
+        ...evalResult,
+      }
       if (args.jsonOnly) return JSON.stringify(result, null, 2)
       return [
         "# CTF Local Harness Run",

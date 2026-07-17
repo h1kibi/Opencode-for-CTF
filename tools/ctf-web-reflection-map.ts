@@ -12,7 +12,8 @@ function parseHeadersJson(headersJson?: string, cookie?: string) {
   const headers: Record<string, string> = {}
   if (headersJson?.trim()) {
     const parsed = JSON.parse(headersJson) as Record<string, unknown>
-    for (const [key, value] of Object.entries(parsed)) if (["string", "number", "boolean"].includes(typeof value)) headers[key] = String(value)
+    for (const [key, value] of Object.entries(parsed))
+      if (["string", "number", "boolean"].includes(typeof value)) headers[key] = String(value)
   }
   if (cookie?.trim()) headers.Cookie = cookie.trim()
   return headers
@@ -81,7 +82,8 @@ function classifyContext(text: string, marker: string) {
     let ctx = "text/html_body_or_plain"
     if (/^[^<]*>[^<]*$/.test(before.slice(-30)) && /<\//.test(after)) ctx = "html_text_node"
     if (/=["'][^"']*$/.test(before) || /^[^"']*["']/.test(after)) ctx = "html_attribute"
-    if (/<script[\s\S]*$/i.test(before) && !/<\/script>/i.test(before.slice(before.lastIndexOf("<script")))) ctx = "script_context"
+    if (/<script[\s\S]*$/i.test(before) && !/<\/script>/i.test(before.slice(before.lastIndexOf("<script"))))
+      ctx = "script_context"
     if (/^\s*[\[{]/.test(text.trim()) || /application\/json|"[A-Za-z0-9_]+"\s*:/.test(window)) ctx = "json_context"
     if (/^https?:\/\//.test(after) || /location|redirect|href/i.test(window)) ctx = `${ctx}+url_or_redirect_hint`
     findings.push(`${ctx}: ...${window.replace(/\s+/g, " ").slice(0, 180)}...`)
@@ -91,10 +93,16 @@ function classifyContext(text: string, marker: string) {
 }
 
 export default tool({
-  description: "CTF Web reflection map: Dalfox-inspired low-noise reflected input/context detector. Tests selected query/body/header parameters with harmless markers and reports reflection context, encoding behavior, and follow-up families.",
+  description:
+    "CTF Web reflection map: Dalfox-inspired low-noise reflected input/context detector. Tests selected query/body/header parameters with harmless markers and reports reflection context, encoding behavior, and follow-up families.",
   args: {
     url: tool.schema.string().describe("Authorized endpoint URL."),
-    parameters: tool.schema.string().optional().describe("Comma/newline-separated parameter names. Default: existing query parameters plus q/search/name/url/next."),
+    parameters: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Comma/newline-separated parameter names. Default: existing query parameters plus q/search/name/url/next.",
+      ),
     method: tool.schema.string().optional().describe("GET or POST-like method. Default GET."),
     headersJson: tool.schema.string().optional().describe("Optional JSON headers."),
     cookie: tool.schema.string().optional().describe("Optional Cookie header."),
@@ -107,8 +115,23 @@ export default tool({
     const headers = parseHeadersJson(args.headersJson, args.cookie)
     const method = normalizeMethod(args.method)
     const location = (args.location || "query").toLowerCase()
-    const defaults = [...base.searchParams.keys(), "q", "search", "name", "url", "next", "redirect", "callback", "return", "message", "content"]
-    const params = unique([...(args.parameters?.split(/[\n,]/).map((x) => x.trim()) ?? []), ...defaults], Math.min(args.maxParameters ?? 8, 20))
+    const defaults = [
+      ...base.searchParams.keys(),
+      "q",
+      "search",
+      "name",
+      "url",
+      "next",
+      "redirect",
+      "callback",
+      "return",
+      "message",
+      "content",
+    ]
+    const params = unique(
+      [...(args.parameters?.split(/[\n,]/).map((x) => x.trim()) ?? []), ...defaults],
+      Math.min(args.maxParameters ?? 8, 20),
+    )
     const results: string[] = []
     const families: string[] = []
     for (const param of params) {
@@ -134,8 +157,11 @@ export default tool({
       const headerReflection = locationHeader.includes(marker)
       const contexts = reflected ? classifyContext(text, marker) : []
       if (reflected || encoded || headerReflection) {
-        results.push(`${param}: status=${r.status} reflected=${reflected} encoded=${encoded} header_location=${headerReflection} contexts=[${contexts.join(" || ") || "none"}]`)
-        if (contexts.some((x) => /script_context|html_attribute|postMessage|url_or_redirect/.test(x))) families.push("XSS/DOM/redirect follow-up with CSP/runtime check")
+        results.push(
+          `${param}: status=${r.status} reflected=${reflected} encoded=${encoded} header_location=${headerReflection} contexts=[${contexts.join(" || ") || "none"}]`,
+        )
+        if (contexts.some((x) => /script_context|html_attribute|postMessage|url_or_redirect/.test(x)))
+          families.push("XSS/DOM/redirect follow-up with CSP/runtime check")
         if (contexts.some((x) => /json_context/.test(x))) families.push("JSON injection / API parser differential")
         if (headerReflection) families.push("open redirect / header-sink differential")
       }
@@ -150,7 +176,12 @@ export default tool({
       "candidate_families:",
       ...(unique(families).length ? unique(families).map((x) => `- ${x}`) : ["- none"]),
       "recommended_next:",
-      ...(results.length ? ["- feed reflected parameter/context into ctf-decision-state observe", "- run only one context-specific proof before payload variants"] : ["- no reflection; deprioritize generic XSS and test parser/state differentials instead"]),
+      ...(results.length
+        ? [
+            "- feed reflected parameter/context into ctf-decision-state observe",
+            "- run only one context-specific proof before payload variants",
+          ]
+        : ["- no reflection; deprioritize generic XSS and test parser/state differentials instead"]),
     ].join("\n")
   },
 })

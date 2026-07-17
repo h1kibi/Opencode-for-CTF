@@ -12,7 +12,8 @@ function parseHeadersJson(headersJson?: string, cookie?: string) {
   const headers: Record<string, string> = {}
   if (headersJson?.trim()) {
     const parsed = JSON.parse(headersJson) as Record<string, unknown>
-    for (const [key, value] of Object.entries(parsed)) if (["string", "number", "boolean"].includes(typeof value)) headers[key] = String(value)
+    for (const [key, value] of Object.entries(parsed))
+      if (["string", "number", "boolean"].includes(typeof value)) headers[key] = String(value)
   }
   if (cookie?.trim()) headers.Cookie = cookie.trim()
   return headers
@@ -53,7 +54,9 @@ async function readTextCapped(response: Response, maxBytes: number) {
 }
 
 function actionWords(s: string) {
-  return /login|logout|register|reset|create|new|edit|update|delete|remove|approve|reject|publish|submit|checkout|pay|refund|upload|download|export|import|share|report|preview|render|admin|invite|join/i.test(s)
+  return /login|logout|register|reset|create|new|edit|update|delete|remove|approve|reject|publish|submit|checkout|pay|refund|upload|download|export|import|share|report|preview|render|admin|invite|join/i.test(
+    s,
+  )
 }
 
 function attr(attrs: string, name: string) {
@@ -67,32 +70,64 @@ function extractForms(html: string, base: URL) {
     const method = (attr(attrs, "method") ?? "GET").toUpperCase()
     const actionRaw = attr(attrs, "action") ?? base.pathname
     const action = new URL(actionRaw, base).pathname
-    const inputs = unique(Array.from(body.matchAll(/<(?:input|textarea|select|button)\b[\s\S]*?(?:name|id)=["']([^"']+)/gi), (x) => x[1]), 60)
+    const inputs = unique(
+      Array.from(body.matchAll(/<(?:input|textarea|select|button)\b[\s\S]*?(?:name|id)=["']([^"']+)/gi), (x) => x[1]),
+      60,
+    )
     return `${method} ${action} inputs=${inputs.join(",") || "none"}`
   }).slice(0, 80)
 }
 
 function extractEdges(text: string) {
-  const routes = unique(Array.from(text.matchAll(/["'`]((?:\/[A-Za-z0-9_.~!$&'()*+,;=:@%-]+){1,10}(?:\?[A-Za-z0-9_.~!$&'()*+,;=:@%/?-]*)?)["'`]/g), (m) => m[1]), 240)
+  const routes = unique(
+    Array.from(
+      text.matchAll(/["'`]((?:\/[A-Za-z0-9_.~!$&'()*+,;=:@%-]+){1,10}(?:\?[A-Za-z0-9_.~!$&'()*+,;=:@%/?-]*)?)["'`]/g),
+      (m) => m[1],
+    ),
+    240,
+  )
   const edges = unique(routes.filter(actionWords), 160)
-  const objectIds = unique(Array.from(text.matchAll(/\b(?:id|uid|userId|ownerId|tenantId|teamId|projectId|postId|fileId|orderId|invoiceId|token)["'\s:=]+([A-Za-z0-9_-]{1,100})/g), (m) => m[0].slice(0, 120)), 120)
-  const states = unique(Array.from(text.matchAll(/\b(?:draft|pending|approved|rejected|published|paid|unpaid|admin|user|guest|owner|member|locked|active|disabled|verified|unverified)\b/gi), (m) => m[0].toLowerCase()), 100)
+  const objectIds = unique(
+    Array.from(
+      text.matchAll(
+        /\b(?:id|uid|userId|ownerId|tenantId|teamId|projectId|postId|fileId|orderId|invoiceId|token)["'\s:=]+([A-Za-z0-9_-]{1,100})/g,
+      ),
+      (m) => m[0].slice(0, 120),
+    ),
+    120,
+  )
+  const states = unique(
+    Array.from(
+      text.matchAll(
+        /\b(?:draft|pending|approved|rejected|published|paid|unpaid|admin|user|guest|owner|member|locked|active|disabled|verified|unverified)\b/gi,
+      ),
+      (m) => m[0].toLowerCase(),
+    ),
+    100,
+  )
   return { routes, edges, objectIds, states }
 }
 
 export default tool({
-  description: "CTF Web state-machine map: model black-box workflow/authz surfaces from pages, forms, JS route literals, actions, object IDs, roles, and transitions. Helps medium/hard logic, IDOR, replay, skip-step, race, and CSRF-boundary challenges.",
+  description:
+    "CTF Web state-machine map: model black-box workflow/authz surfaces from pages, forms, JS route literals, actions, object IDs, roles, and transitions. Helps medium/hard logic, IDOR, replay, skip-step, race, and CSRF-boundary challenges.",
   args: {
     url: tool.schema.string().describe("Authorized CTF URL."),
     headersJson: tool.schema.string().optional().describe("Optional JSON headers for primary session."),
     cookie: tool.schema.string().optional().describe("Optional primary Cookie header."),
-    extraUrls: tool.schema.string().optional().describe("Optional newline/comma-separated same-origin URLs or paths already discovered."),
+    extraUrls: tool.schema
+      .string()
+      .optional()
+      .describe("Optional newline/comma-separated same-origin URLs or paths already discovered."),
     maxFetches: tool.schema.number().optional().describe("Max URLs to fetch. Default 12, hard cap 30."),
   },
   async execute(args) {
     const base = new URL(normalizeUrl(args.url))
     const headers = parseHeadersJson(args.headersJson, args.cookie)
-    const seeds = unique([base.pathname || "/", ...(args.extraUrls?.split(/[\n,]/).map((x) => x.trim()) ?? [])], Math.min(args.maxFetches ?? 12, 30))
+    const seeds = unique(
+      [base.pathname || "/", ...(args.extraUrls?.split(/[\n,]/).map((x) => x.trim()) ?? [])],
+      Math.min(args.maxFetches ?? 12, 30),
+    )
     const status: string[] = []
     const forms: string[] = []
     const texts: string[] = []
@@ -113,9 +148,24 @@ export default tool({
     const combined = `${texts.join("\n")}\n${forms.join("\n")}`
     const e = extractEdges(combined)
     const transitions = unique([...forms, ...e.edges].filter(actionWords), 180)
-    const guarded = unique(transitions.filter((x) => /admin|approve|delete|pay|refund|export|download|invite|role|tenant|owner|publish/i.test(x)), 100)
-    const replaySkip = unique(transitions.filter((x) => /confirm|verify|approve|checkout|pay|callback|webhook|preview|publish|reset|token/i.test(x)), 100)
-    const race = unique(transitions.filter((x) => /pay|checkout|coupon|redeem|transfer|withdraw|refund|vote|claim|limit|quota|stock/i.test(x)), 80)
+    const guarded = unique(
+      transitions.filter((x) =>
+        /admin|approve|delete|pay|refund|export|download|invite|role|tenant|owner|publish/i.test(x),
+      ),
+      100,
+    )
+    const replaySkip = unique(
+      transitions.filter((x) =>
+        /confirm|verify|approve|checkout|pay|callback|webhook|preview|publish|reset|token/i.test(x),
+      ),
+      100,
+    )
+    const race = unique(
+      transitions.filter((x) =>
+        /pay|checkout|coupon|redeem|transfer|withdraw|refund|vote|claim|limit|quota|stock/i.test(x),
+      ),
+      80,
+    )
     const next = unique([
       guarded.length ? "run ctf-web-authz-matrix with user_a/user_b/object IDs" : "",
       replaySkip.length ? "test one replay/skip-step differential with ctf-web-diff-probe before variants" : "",

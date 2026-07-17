@@ -12,7 +12,7 @@ $ARGUMENTS
 Rules:
 - Do not write a retrospective.
 - Do not invent missing facts. Use `unknown` for gaps.
-- Prefer copying/filling `C:\Users\Administrator\.config\opencode\templates\pwn_fast_handoff.md` into the challenge workspace.
+- Prefer copying/filling `{env:OPENCODE_CONFIG_DIR}/opencode-for-ctf/templates/pwn_fast_handoff.md` into the challenge workspace.
 - If a slug/evidence directory exists, write to `work/ctf-evidence/<challenge-slug>/pwn_fast_handoff.md`; otherwise write `pwn_fast_handoff.md` in the current workspace.
 - Include the path to `exploit.py` even if incomplete.
 

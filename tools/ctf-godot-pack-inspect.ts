@@ -60,7 +60,8 @@ function firstLines(text: string, maxLines = 12) {
 }
 
 export default tool({
-  description: "CTF Godot pack inspect: summarize unpacked Godot project trees, .gdc/.gd/script/resource inventory, high-signal strings, and first focused reverse targets without requiring a full decompiler.",
+  description:
+    "CTF Godot pack inspect: summarize unpacked Godot project trees, .gdc/.gd/script/resource inventory, high-signal strings, and first focused reverse targets without requiring a full decompiler.",
   args: {
     target: tool.schema.string().describe("Workspace-relative Godot unpack root, .pck, or script directory."),
     maxFiles: tool.schema.number().optional().describe("Maximum files to inspect. Default 400."),
@@ -140,7 +141,10 @@ export default tool({
       "- top_targets:",
       ...payload.topTargets.map((hit) => `  - ${hit.kind} ${hit.file} signals=${hit.signals.join(",") || "none"}`),
       "- high_signal_strings:",
-      ...payload.highSignalStrings.flatMap((row) => [`  - ${row.file}`, ...row.strings.slice(0, 8).map((s) => `    ${s}`)]),
+      ...payload.highSignalStrings.flatMap((row) => [
+        `  - ${row.file}`,
+        ...row.strings.slice(0, 8).map((s) => `    ${s}`),
+      ]),
       "- next_steps:",
       ...payload.nextSteps.map((step) => `  - ${step}`),
     ].join("\n")

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+﻿import { readFileSync } from "node:fs"
 
 type Check = {
   file: string
@@ -23,7 +23,7 @@ const checks: Check[] = [
   {
     file: "tools/ctf-pwn-docker-runner.ts",
     needles: [
-      "schema_version: \"pwn_docker_runner.v4\"",
+      'schema_version: "pwn_docker_runner.v4"',
       "saveOutput",
       "outputPath",
       "output_truncated",
@@ -37,7 +37,7 @@ const checks: Check[] = [
   {
     file: "tools/ctf-pwn-redflag-panel.ts",
     needles: [
-      "schema_version: \"pwn_redflag_panel.v1\"",
+      'schema_version: "pwn_redflag_panel.v1"',
       "stack_layout_hints:",
       "constraint_hints:",
       "route_pressure:",
@@ -70,7 +70,7 @@ const checks: Check[] = [
     needles: [
       "jsonOnly",
       "schema_version: pwn_playbook_router.v1",
-      "schema_version: \"pwn_playbook_router.v1\"",
+      'schema_version: "pwn_playbook_router.v1"',
       "signals,",
       "ret2csu-call-primitive",
       "seccomp-orw-syscall",
@@ -89,7 +89,7 @@ const checks: Check[] = [
   {
     file: "tools/ctf-pwn-io-diff-check.ts",
     needles: [
-      "schema_version: \"pwn_io_diff_check.v1\"",
+      'schema_version: "pwn_io_diff_check.v1"',
       "fixed_length_read_suspected",
       "menu_desync_risk",
       "payload_shortfall",
@@ -101,10 +101,10 @@ const checks: Check[] = [
     needles: [
       "const envRemote",
       "const remoteSuccess",
-      "schema_version: \"pwn_runner_summary.v1\"",
+      'schema_version: "pwn_runner_summary.v1"',
       "remote_success: remoteSuccess",
       "host_execution_blocked",
-      "recommended_runner: \"ctf-pwn-docker-runner\"",
+      'recommended_runner: "ctf-pwn-docker-runner"',
     ],
   },
   {
@@ -125,9 +125,9 @@ const checks: Check[] = [
     file: "tools/ctf-safe-extract.ts",
     needles: [
       "if (await find7z())",
-      "if (await exists(\"jar\"))",
-      "return \"7z\"",
-      "return \"jar\"",
+      'if (await exists("jar"))',
+      'return "7z"',
+      'return "jar"',
       "scanZipLocalHeaders",
       "inferZipDataEnd",
       "zip-local-header-recovery",
@@ -135,28 +135,16 @@ const checks: Check[] = [
   },
   {
     file: "tools/archive-safe-extract.ts",
-    needles: [
-      "if (await exists(\"7z\"))",
-      "if (await exists(\"jar\"))",
-      "return \"7z\"",
-      "return \"jar\"",
-    ],
+    needles: ['if (await exists("7z"))', 'if (await exists("jar"))', 'return "7z"', 'return "jar"'],
   },
   {
-    file: "templates/Dockerfile.pwnlab.general-ubuntu22.04",
-    needles: [
-      "angr",
-      "claripy",
-      "z3-solver",
-      "OK angr",
-      "OK claripy",
-      "OK z3",
-    ],
+    file: "docker/Dockerfile.pwnlab.general-ubuntu22.04",
+    needles: ["angr", "claripy", "z3-solver", "OK angr", "OK claripy", "OK z3"],
   },
   {
     file: "tools/ctf-pwn-disasm-constraint-map.ts",
     needles: [
-      "schema_version: \"pwn_disasm_constraint_map.v1\"",
+      'schema_version: "pwn_disasm_constraint_map.v1"',
       "stack_layout_hints:",
       "constraint_hints:",
       "route_pressure:",
@@ -166,7 +154,7 @@ const checks: Check[] = [
   {
     file: "tools/ctf-pwn-stack-frame-solver.ts",
     needles: [
-      "schema_version: \"pwn_stack_frame_solver.v1\"",
+      'schema_version: "pwn_stack_frame_solver.v1"',
       "rbp_expressions:",
       "candidate_leak_surfaces:",
       "route_pressure:",
@@ -175,7 +163,7 @@ const checks: Check[] = [
   {
     file: "tools/ctf-pwn-got-leak-router.ts",
     needles: [
-      "schema_version: \"pwn_got_leak_router.v1\"",
+      'schema_version: "pwn_got_leak_router.v1"',
       "FRAME_INDEXED_PRINTF_LEAK",
       "rbp-relative-pointer-fed-into-print",
       "routes:",
@@ -185,7 +173,7 @@ const checks: Check[] = [
   {
     file: "tools/ctf-pwn-stage-harness.ts",
     needles: [
-      "schema_version: \"pwn_stage_harness.v1\"",
+      'schema_version: "pwn_stage_harness.v1"',
       "saved_rbp_ret_to_callsite",
       "payload_file=",
       "recommended_flow:",
@@ -194,12 +182,7 @@ const checks: Check[] = [
   },
   {
     file: "tools/ctf-pwn-stage-delta-runner.ts",
-    needles: [
-      "schema_version: \"pwn_stage_delta_runner.v1\"",
-      "snapshot_file=",
-      "registers_added:",
-      "recommended_use:",
-    ],
+    needles: ['schema_version: "pwn_stage_delta_runner.v1"', "snapshot_file=", "registers_added:", "recommended_use:"],
   },
   {
     file: "tools/ctf-pwn-fast-bootstrap.ts",
@@ -213,13 +196,8 @@ const checks: Check[] = [
     ],
   },
   {
-    file: "templates/Dockerfile.pwnlab.general-ubuntu18.04",
-    needles: [
-      "bootstrap.pypa.io/pip/3.6/get-pip.py",
-      "pwntools==4.9.0",
-      "OK pwntools",
-      "/usr/local/bin/checksec",
-    ],
+    file: "docker/Dockerfile.pwnlab.general-ubuntu18.04",
+    needles: ["bootstrap.pypa.io/pip/3.6/get-pip.py", "pwntools==4.9.0", "OK pwntools", "/usr/local/bin/checksec"],
   },
   {
     file: "tools/ctf-pwn-crash-probe.ts",
@@ -248,28 +226,15 @@ const checks: Check[] = [
   },
   {
     file: "tools/ctf-pwn-menu-contract-probe.ts",
-    needles: [
-      "pwn_menu_contract_probe:",
-      "read_exact:",
-      "helper_contract:",
-    ],
+    needles: ["pwn_menu_contract_probe:", "read_exact:", "helper_contract:"],
   },
   {
     file: "tools/ctf-pwn-heap-overlap-mapper.ts",
-    needles: [
-      "pwn_heap_overlap_mapper:",
-      "pairs:",
-      "recommendations:",
-    ],
+    needles: ["pwn_heap_overlap_mapper:", "pairs:", "recommendations:"],
   },
   {
     file: "tools/ctf-pwn-wp-diff.ts",
-    needles: [
-      "pwn_wp_diff:",
-      "shared_route_signals:",
-      "wp_only_signals:",
-      "current_only_signals:",
-    ],
+    needles: ["pwn_wp_diff:", "shared_route_signals:", "wp_only_signals:", "current_only_signals:"],
   },
   {
     file: "tools/ctf-pwn-gdb-snapshot.ts",
@@ -314,19 +279,13 @@ const checks: Check[] = [
       "primary_error_line",
       "suggested_fix",
       "noise_lines_removed",
-      "schema_version: \"pwn_wsl_runner.v2\"",
+      'schema_version: "pwn_wsl_runner.v2"',
       "Use healthOnly=true first",
     ],
   },
   {
     file: "tools/ctf-go-binary-assist.ts",
-    needles: [
-      "detected_go",
-      "go_signals",
-      "user_code_candidates",
-      "runtime_noise_candidates",
-      "recommended_next",
-    ],
+    needles: ["detected_go", "go_signals", "user_code_candidates", "runtime_noise_candidates", "recommended_next"],
   },
   {
     file: "commands/image-info.md",
@@ -374,7 +333,7 @@ const checks: Check[] = [
   {
     file: "tools/ctf-rev-unicorn-helper.ts",
     needles: [
-      "schema_version: \"rev_unicorn_helper.v2\"",
+      'schema_version: "rev_unicorn_helper.v2"',
       "detected_unicorn_style",
       "inferred_arch",
       "live_dump_needed",
@@ -389,7 +348,7 @@ const checks: Check[] = [
   {
     file: "tools/ctf-rev-live-memory-dump.ts",
     needles: [
-      "schema_version: \"rev_live_memory_dump.v1\"",
+      'schema_version: "rev_live_memory_dump.v1"',
       "stdout marker",
       "dump only after a stable marker",
       "ctf-pwn-docker-runner",
@@ -401,7 +360,7 @@ const checks: Check[] = [
   {
     file: "tools/ctf-rev-unicorn-replay-builder.ts",
     needles: [
-      "schema_version: \"rev_unicorn_replay_builder.v1\"",
+      'schema_version: "rev_unicorn_replay_builder.v1"',
       "payload_file",
       "replay_script",
       "UC_ARCH_RISCV",
@@ -413,12 +372,7 @@ const checks: Check[] = [
   },
   {
     file: "tools/ctf-pwn-leak-ledger.ts",
-    needles: [
-      "pwn_leak_ledger:",
-      "forbidden_final_math",
-      "unknown/stack/heap",
-      "recommended_next:",
-    ],
+    needles: ["pwn_leak_ledger:", "forbidden_final_math", "unknown/stack/heap", "recommended_next:"],
   },
   {
     file: "tools/ctf-pwn-closure-router.ts",
@@ -432,21 +386,11 @@ const checks: Check[] = [
   },
   {
     file: "tools/ctf-pwn-heap-reduction-check.ts",
-    needles: [
-      "pwn_heap_reduction_check:",
-      "missing_prerequisites:",
-      "anti_routes:",
-      "primitive_upgrade_path:",
-    ],
+    needles: ["pwn_heap_reduction_check:", "missing_prerequisites:", "anti_routes:", "primitive_upgrade_path:"],
   },
   {
     file: "tools/ctf-pwn-heap-state-diff.ts",
-    needles: [
-      "pwn_heap_state_diff:",
-      "operation_deltas:",
-      "clues:",
-      "next_questions:",
-    ],
+    needles: ["pwn_heap_state_diff:", "operation_deltas:", "clues:", "next_questions:"],
   },
   {
     file: "agents/ctf-pwn.md",
@@ -573,35 +517,19 @@ const checks: Check[] = [
   },
   {
     file: "commands/ctf-pwn-runtime-doctor.md",
-    needles: [
-      "ctf-pwn-libc-runtime-doctor",
-      "explicit_loader_command",
-      "stop_condition",
-    ],
+    needles: ["ctf-pwn-libc-runtime-doctor", "explicit_loader_command", "stop_condition"],
   },
   {
     file: "commands/ctf-pwn-menu-contract.md",
-    needles: [
-      "ctf-pwn-menu-contract-probe",
-      "helper_contract",
-      "recommended_send_mode",
-    ],
+    needles: ["ctf-pwn-menu-contract-probe", "helper_contract", "recommended_send_mode"],
   },
   {
     file: "commands/ctf-pwn-overlap-map.md",
-    needles: [
-      "ctf-pwn-heap-overlap-mapper",
-      "pairs:",
-      "recommended_next_probe",
-    ],
+    needles: ["ctf-pwn-heap-overlap-mapper", "pairs:", "recommended_next_probe"],
   },
   {
     file: "commands/ctf-pwn-wp-diff.md",
-    needles: [
-      "ctf-pwn-wp-diff",
-      "shared_route_signals:",
-      "recommended_next_diff:",
-    ],
+    needles: ["ctf-pwn-wp-diff", "shared_route_signals:", "recommended_next_diff:"],
   },
   {
     file: "commands/ctf-pwn-replay.md",
@@ -649,7 +577,13 @@ const checks: Check[] = [
   },
   {
     file: "skills/ctf-web/references/web-closure-matrix.md",
-    needles: ["Highest-value closure path", "Downgrade trigger", "source leak", "file read / LFI", "upload / file write"],
+    needles: [
+      "Highest-value closure path",
+      "Downgrade trigger",
+      "source leak",
+      "file read / LFI",
+      "upload / file write",
+    ],
   },
   {
     file: "skills/ctf-pwn/references/pwn-output-hijack-closure.md",
@@ -657,7 +591,11 @@ const checks: Check[] = [
   },
   {
     file: "skills/ctf-pwn/references/pwn-near-success-classifier.md",
-    needles: ["shell likely spawned, command set limited", "file-read primitive likely works without shell", "stdout/stderr closure differs"],
+    needles: [
+      "shell likely spawned, command set limited",
+      "file-read primitive likely works without shell",
+      "stdout/stderr closure differs",
+    ],
   },
   {
     file: "skills/ctf-pwn/references/pwn-runtime-substrate-lock.md",
@@ -665,7 +603,24 @@ const checks: Check[] = [
   },
   {
     file: "skills/ctf-pwn/references/REFERENCE_INDEX.md",
-    needles: ["# PWN Reference Index", "## Route Families", "## Trigger Rules", "## Maintenance Rule", "pwn-fast-autonomy.md", "pwn-mode-boundary.md", "pwn-runtime-trigger-matrix.md", "knowledge/pwn/runtime/bundled-libc-first.md", "knowledge/pwn/runtime/exact-read-contracts.md", "knowledge/pwn/curated/kernel-route-gate.md", "bundled-libc-first.md", "wrong-libc-anti-pattern.md", "exact-read-contracts.md", "glibc27-fake-stdout-shortplaybook.md", "free_hook-setcontext-orw.md", "seccomp-closure-router.md"],
+    needles: [
+      "# PWN Reference Index",
+      "## Route Families",
+      "## Trigger Rules",
+      "## Maintenance Rule",
+      "pwn-fast-autonomy.md",
+      "pwn-mode-boundary.md",
+      "pwn-runtime-trigger-matrix.md",
+      "knowledge/pwn/runtime/bundled-libc-first.md",
+      "knowledge/pwn/runtime/exact-read-contracts.md",
+      "knowledge/pwn/curated/kernel-route-gate.md",
+      "bundled-libc-first.md",
+      "wrong-libc-anti-pattern.md",
+      "exact-read-contracts.md",
+      "glibc27-fake-stdout-shortplaybook.md",
+      "free_hook-setcontext-orw.md",
+      "seccomp-closure-router.md",
+    ],
   },
   {
     file: "skills/ctf-pwn/references/pwn-fast-autonomy.md",
@@ -679,13 +634,7 @@ const checks: Check[] = [
   },
   {
     file: "skills/ctf-pwn/references/pwn-mode-boundary.md",
-    needles: [
-      "# PWN Mode Boundary",
-      "ctf-fast",
-      "ctf-master",
-      "ctf-pwn",
-      "Fast-to-Rigorous Handoff Minimum",
-    ],
+    needles: ["# PWN Mode Boundary", "ctf-fast", "ctf-master", "ctf-pwn", "Fast-to-Rigorous Handoff Minimum"],
   },
   {
     file: "skills/ctf-pwn/references/pwn-runtime-trigger-matrix.md",
@@ -725,55 +674,27 @@ const checks: Check[] = [
   },
   {
     file: "knowledge/pwn/runtime/bundled-libc-first.md",
-    needles: [
-      "Bundled Libc First",
-      "ctf-pwn-libc-runtime-doctor",
-      "heap overlap",
-    ],
+    needles: ["Bundled Libc First", "ctf-pwn-libc-runtime-doctor", "heap overlap"],
   },
   {
     file: "knowledge/pwn/runtime/glibc-version-route-map.md",
-    needles: [
-      "glibc Version Route Map",
-      "glibc 2.23–2.27",
-      "__free_hook",
-      "setcontext+53",
-    ],
+    needles: ["glibc Version Route Map", "glibc 2.23鈥?.27", "__free_hook", "setcontext+53"],
   },
   {
     file: "knowledge/pwn/runtime/exact-read-contracts.md",
-    needles: [
-      "Exact Read Contracts",
-      "read(size+1)",
-      "ctf-pwn-menu-contract-probe",
-      "sendline",
-    ],
+    needles: ["Exact Read Contracts", "read(size+1)", "ctf-pwn-menu-contract-probe", "sendline"],
   },
   {
     file: "knowledge/pwn/curated/glibc27-fake-stdout-shortplaybook.md",
-    needles: [
-      "glibc 2.27 Fake stdout Short Playbook",
-      "setcontext+53",
-      "fake stdout",
-    ],
+    needles: ["glibc 2.27 Fake stdout Short Playbook", "setcontext+53", "fake stdout"],
   },
   {
     file: "knowledge/pwn/closure/free_hook_setcontext_orw.md",
-    needles: [
-      "free_hook -> setcontext+53 -> ORW",
-      "__free_hook",
-      "setcontext+53",
-      "ORW",
-    ],
+    needles: ["free_hook -> setcontext+53 -> ORW", "__free_hook", "setcontext+53", "ORW"],
   },
   {
     file: "knowledge/pwn/closure/seccomp-closure-router.md",
-    needles: [
-      "Seccomp Closure Router",
-      "execve",
-      "existing fd",
-      "ctf-pwn-syscall-orw-check",
-    ],
+    needles: ["Seccomp Closure Router", "execve", "existing fd", "ctf-pwn-syscall-orw-check"],
   },
   {
     file: "knowledge/pwn/anti-patterns/pwn-anti-patterns.md",
@@ -786,85 +707,43 @@ const checks: Check[] = [
   },
   {
     file: "knowledge/pwn/curated/CARD_TEMPLATE.md",
-    needles: [
-      "PWN Decision Card Template",
-      "glibc_version",
-      "closure_family",
-      "Next Probe",
-    ],
+    needles: ["PWN Decision Card Template", "glibc_version", "closure_family", "Next Probe"],
   },
   {
     file: "knowledge/pwn/retrieval-fields.md",
-    needles: [
-      "PWN Retrieval Fields",
-      "glibc_version",
-      "Ranking Policy",
-      "The best hit should answer",
-    ],
+    needles: ["PWN Retrieval Fields", "glibc_version", "Ranking Policy", "The best hit should answer"],
   },
   {
     file: "knowledge/pwn/runtime/musl-heap-differences.md",
-    needles: [
-      "musl Heap Differences",
-      "challenge runtime",
-      "glibc-specific",
-    ],
+    needles: ["musl Heap Differences", "challenge runtime", "glibc-specific"],
   },
   {
     file: "knowledge/pwn/curated/windows-x64-shortplaybook.md",
-    needles: [
-      "Windows x64 Short Playbook",
-      "PE/x64",
-      "ELF assumptions",
-    ],
+    needles: ["Windows x64 Short Playbook", "PE/x64", "ELF assumptions"],
   },
   {
     file: "knowledge/pwn/curated/aarch64-pwn-shortplaybook.md",
-    needles: [
-      "AArch64 PWN Short Playbook",
-      "ABI",
-      "amd64",
-    ],
+    needles: ["AArch64 PWN Short Playbook", "ABI", "amd64"],
   },
   {
     file: "knowledge/pwn/curated/mipsel-pwn-shortplaybook.md",
-    needles: [
-      "MIPSel PWN Short Playbook",
-      "MIPSel",
-      "x86/amd64",
-    ],
+    needles: ["MIPSel PWN Short Playbook", "MIPSel", "x86/amd64"],
   },
   {
     file: "knowledge/pwn/curated/kernel-route-gate.md",
-    needles: [
-      "Kernel Route Gate",
-      "ioctl",
-      "payloads further",
-    ],
+    needles: ["Kernel Route Gate", "ioctl", "payloads further"],
   },
   {
     file: "knowledge/pwn/curated/qemu-device-route-gate.md",
-    needles: [
-      "QEMU Device Route Gate",
-      "MMIO",
-      "device state model",
-    ],
+    needles: ["QEMU Device Route Gate", "MMIO", "device state model"],
   },
   {
     file: "knowledge/pwn/curated/browser-jit-vm-route-gate.md",
-    needles: [
-      "Browser JIT VM Route Gate",
-      "addrof",
-      "memory model",
-    ],
+    needles: ["Browser JIT VM Route Gate", "addrof", "memory model"],
   },
   {
     file: "knowledge/pwn/curated/race-ufd-route-gate.md",
-    needles: [
-      "Race / userfaultfd Route Gate",
-      "oracle",
-      "race window",
-    ],
+    needles: ["Race / userfaultfd Route Gate", "oracle", "race window"],
   },
   {
     file: "skills/ctf-pwn/references/runtime-closure-index.md",
@@ -896,35 +775,19 @@ const checks: Check[] = [
   },
   {
     file: "skills/ctf-pwn/references/wrong-libc-anti-pattern.md",
-    needles: [
-      "Wrong libc anti-pattern for heap verification",
-      "wrong libc",
-      "ctf-pwn-libc-runtime-doctor",
-    ],
+    needles: ["Wrong libc anti-pattern for heap verification", "wrong libc", "ctf-pwn-libc-runtime-doctor"],
   },
   {
     file: "skills/ctf-pwn/references/exact-read-contracts.md",
-    needles: [
-      "Exact read(size+1) menu desync contract",
-      "read(size+1)",
-      "ctf-pwn-menu-contract-probe",
-    ],
+    needles: ["Exact read(size+1) menu desync contract", "read(size+1)", "ctf-pwn-menu-contract-probe"],
   },
   {
     file: "skills/ctf-pwn/references/glibc27-fake-stdout-shortplaybook.md",
-    needles: [
-      "glibc 2.27 fake stdout to __free_hook setcontext ORW",
-      "setcontext+53",
-      "fake stdout",
-    ],
+    needles: ["glibc 2.27 fake stdout to __free_hook setcontext ORW", "setcontext+53", "fake stdout"],
   },
   {
     file: "skills/ctf-pwn/references/free_hook-setcontext-orw.md",
-    needles: [
-      "free_hook-setcontext-orw",
-      "setcontext+53",
-      "ORW",
-    ],
+    needles: ["free_hook-setcontext-orw", "setcontext+53", "ORW"],
   },
   {
     file: "skills/ctf-pwn/references/seccomp-closure-router.md",
@@ -936,29 +799,15 @@ const checks: Check[] = [
   },
   {
     file: "knowledge/pwn/anti-patterns/wrong-libc-anti-pattern.md",
-    needles: [
-      "Wrong Libc / Wrong Base Validation",
-      "ctf-pwn-libc-runtime-doctor",
-      "heap overlap",
-    ],
+    needles: ["Wrong Libc / Wrong Base Validation", "ctf-pwn-libc-runtime-doctor", "heap overlap"],
   },
   {
     file: "tools/ctf-skill-repo-search.ts",
-    needles: [
-      "DEFAULT_LOCAL_PWN",
-      "knowledge/pwn/",
-      "bundled-libc-first",
-      "runtime-closure-index",
-    ],
+    needles: ["DEFAULT_LOCAL_PWN", "knowledge/pwn/", "bundled-libc-first", "runtime-closure-index"],
   },
   {
     file: "tools/ctf-pattern-card-search.ts",
-    needles: [
-      "DEFAULT_PWN_CURATED_INDEX",
-      "pwn-curated.cards.v1.json",
-      "local-pwn-curated",
-      "rank_boost",
-    ],
+    needles: ["DEFAULT_PWN_CURATED_INDEX", "pwn-curated.cards.v1.json", "local-pwn-curated", "rank_boost"],
   },
   {
     file: "knowledge/pattern-cards/pwn-curated.cards.v1.json",
@@ -968,7 +817,7 @@ const checks: Check[] = [
       "free_hook to setcontext+53 to ORW",
       "seccomp closure router",
       "rank_boost",
-      "\"curated\": true",
+      '"curated": true',
     ],
   },
   {
@@ -989,7 +838,12 @@ const checks: Check[] = [
   },
   {
     file: "docs/CTF_COMMAND_LAYERS.md",
-    needles: ["# CTF Command Layers", "## Entry Commands", "## State / Control Commands", "## Closure / Final Commands"],
+    needles: [
+      "# CTF Command Layers",
+      "## Entry Commands",
+      "## State / Control Commands",
+      "## Closure / Final Commands",
+    ],
   },
   {
     file: "docs/CTF_COMMAND_LAYERS.md",
@@ -997,7 +851,11 @@ const checks: Check[] = [
   },
   {
     file: "commands/ctf-choose.md",
-    needles: ["Soft-deprecated helper note:", "Prefer `/ctf`", "Keep `/ctf-choose` only as a thin mode-selection helper"],
+    needles: [
+      "Soft-deprecated helper note:",
+      "Prefer `/ctf`",
+      "Keep `/ctf-choose` only as a thin mode-selection helper",
+    ],
   },
   {
     file: "commands/ctf-route.md",
@@ -1077,19 +935,11 @@ const checks: Check[] = [
   },
   {
     file: "benchmarks/pwn/bundled-libc-hard-gate/expected_behavior.md",
-    needles: [
-      "bundled-libc-hard-gate",
-      "ctf-pwn-libc-runtime-doctor",
-      "hard gate",
-    ],
+    needles: ["bundled-libc-hard-gate", "ctf-pwn-libc-runtime-doctor", "hard gate"],
   },
   {
     file: "benchmarks/pwn/menu-read-contract-lock/expected_behavior.md",
-    needles: [
-      "menu-read-contract-lock",
-      "ctf-pwn-menu-contract-probe",
-      "helper contract",
-    ],
+    needles: ["menu-read-contract-lock", "ctf-pwn-menu-contract-probe", "helper contract"],
   },
   {
     file: "templates/pwn_env_setup.ps1",
@@ -1108,7 +958,7 @@ const checks: Check[] = [
     ],
   },
   {
-    file: "templates/docker-compose.revlab.yml",
+    file: "docker/docker-compose.revlab.yml",
     needles: [
       "pwn-ubuntu18",
       "pwn-ubuntu20",
@@ -1120,17 +970,8 @@ const checks: Check[] = [
     ],
   },
   {
-    file: "templates/Dockerfile.pwnlab.ubuntu22.04",
-    needles: [
-      "pwntools",
-      "ROPGadget",
-      "ropper",
-      "one_gadget",
-      "seccomp-tools",
-      "gdbserver",
-      "strace",
-      "ltrace",
-    ],
+    file: "docker/Dockerfile.pwnlab.ubuntu22.04",
+    needles: ["pwntools", "ROPGadget", "ropper", "one_gadget", "seccomp-tools", "gdbserver", "strace", "ltrace"],
   },
   {
     file: "skills/ctf-pwn/references/pwn-route-matrix.md",
@@ -1164,7 +1005,12 @@ const checks: Check[] = [
   },
   {
     file: "skills/ctf-pwn/references/leak-to-primitive-ladder.md",
-    needles: ["Leak to Primitive Ladder", "Leak Classification", "Unknown-class leaks cannot drive final ROP", "Ladder"],
+    needles: [
+      "Leak to Primitive Ladder",
+      "Leak Classification",
+      "Unknown-class leaks cannot drive final ROP",
+      "Ladder",
+    ],
   },
   {
     file: "skills/ctf-pwn/references/partial-control-to-arbitrary-write-read.md",
@@ -1172,7 +1018,12 @@ const checks: Check[] = [
   },
   {
     file: "skills/ctf-pwn/references/remote-local-divergence.md",
-    needles: ["Remote Local Divergence", "Drift Checklist Order", "ctf-pwn-remote-drift-check", "remote brute-force gadgets"],
+    needles: [
+      "Remote Local Divergence",
+      "Drift Checklist Order",
+      "ctf-pwn-remote-drift-check",
+      "remote brute-force gadgets",
+    ],
   },
   {
     file: "skills/ctf-pwn/references/seccomp-sandbox-closure.md",
@@ -1180,7 +1031,12 @@ const checks: Check[] = [
   },
   {
     file: "skills/ctf-pwn/references/glibc-version-uncertainty-routing.md",
-    needles: ["glibc Version Uncertainty Routing", "Version Sources by Reliability", "ctf-pwn-libc-resolver", "glibc >= 2.34"],
+    needles: [
+      "glibc Version Uncertainty Routing",
+      "Version Sources by Reliability",
+      "ctf-pwn-libc-resolver",
+      "glibc >= 2.34",
+    ],
   },
   {
     file: "skills/ctf-pwn/references/exploit-calibration.md",
@@ -1249,11 +1105,23 @@ const checks: Check[] = [
   },
   {
     file: "benchmarks/pwn/heap-tcache-poisoning/expected_behavior.md",
-    needles: ["heap-tcache-poisoning", "ctf-pwn-heap-menu-map", "heap-family-first-questions.md", "heap-version-route-matrix.md", "glibc >= 2.34"],
+    needles: [
+      "heap-tcache-poisoning",
+      "ctf-pwn-heap-menu-map",
+      "heap-family-first-questions.md",
+      "heap-version-route-matrix.md",
+      "glibc >= 2.34",
+    ],
   },
   {
     file: "benchmarks/pwn/remote-drift/expected_behavior.md",
-    needles: ["remote-drift", "ctf-pwn-remote-drift-check", "remote-local-divergence.md", "Change one variable", "payload roulette"],
+    needles: [
+      "remote-drift",
+      "ctf-pwn-remote-drift-check",
+      "remote-local-divergence.md",
+      "Change one variable",
+      "payload roulette",
+    ],
   },
   {
     file: "benchmarks/pwn/control-confirmed-calibration/expected_behavior.md",
@@ -1330,10 +1198,15 @@ const routerJsonFixture = JSON.stringify({
     top_routes: [{ rank: 1, id: "ret2libc-or-rop", score: 100, evidence: ["fixture"] }],
   },
 })
-const parsedFixture = JSON.parse(routerJsonFixture) as { pwn_playbook_router?: { schema_version?: string; signals?: Record<string, unknown>; top_routes?: unknown[] } }
-if (parsedFixture.pwn_playbook_router?.schema_version !== "pwn_playbook_router.v1") failures.push("router JSON fixture schema_version mismatch")
-if (parsedFixture.pwn_playbook_router?.signals?.ip_controlled !== true) failures.push("router JSON fixture signals missing ip_controlled")
-if (!Array.isArray(parsedFixture.pwn_playbook_router?.top_routes)) failures.push("router JSON fixture top_routes not array")
+const parsedFixture = JSON.parse(routerJsonFixture) as {
+  pwn_playbook_router?: { schema_version?: string; signals?: Record<string, unknown>; top_routes?: unknown[] }
+}
+if (parsedFixture.pwn_playbook_router?.schema_version !== "pwn_playbook_router.v1")
+  failures.push("router JSON fixture schema_version mismatch")
+if (parsedFixture.pwn_playbook_router?.signals?.ip_controlled !== true)
+  failures.push("router JSON fixture signals missing ip_controlled")
+if (!Array.isArray(parsedFixture.pwn_playbook_router?.top_routes))
+  failures.push("router JSON fixture top_routes not array")
 
 if (failures.length) {
   console.error("pwn smoke check failed:")

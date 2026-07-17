@@ -6,7 +6,8 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
   const target = path.resolve(base, input)
   const rel = path.relative(base, target)
-  if (rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`target must stay inside the current workspace: ${input}`)
+  if (rel.startsWith("..") || path.isAbsolute(rel))
+    throw new Error(`target must stay inside the current workspace: ${input}`)
   return target
 }
 
@@ -37,7 +38,8 @@ function mapMode(mode: string) {
 }
 
 export default tool({
-  description: "CTF rev Unicorn replay builder: generate a replay script skeleton from inferred arch/mode, dumped payload bytes, and optional start/stop state for self-decrypt / Unicorn-backed checkers.",
+  description:
+    "CTF rev Unicorn replay builder: generate a replay script skeleton from inferred arch/mode, dumped payload bytes, and optional start/stop state for self-decrypt / Unicorn-backed checkers.",
   args: {
     payloadFile: tool.schema.string().describe("Workspace-relative dumped payload or code blob file."),
     arch: tool.schema.string().describe("Recovered or inferred arch, e.g. riscv, mips, arm64, x86."),
@@ -47,8 +49,14 @@ export default tool({
     emuStart: tool.schema.string().optional().describe("Recovered emulation start PC. Default mapBase."),
     emuEnd: tool.schema.string().optional().describe("Recovered emulation stop PC or sentinel. Default 0."),
     stopPc: tool.schema.string().optional().describe("Optional PC to stop at and inspect state."),
-    regsJson: tool.schema.string().optional().describe("Optional JSON object of register=value pairs to restore before emulation."),
-    outDir: tool.schema.string().optional().describe("Workspace-relative output directory for generated replay script. Default work/rev-unicorn-replay."),
+    regsJson: tool.schema
+      .string()
+      .optional()
+      .describe("Optional JSON object of register=value pairs to restore before emulation."),
+    outDir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative output directory for generated replay script. Default work/rev-unicorn-replay."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args, context) {
@@ -63,12 +71,15 @@ export default tool({
     const emuStart = args.emuStart?.trim() || mapBase
     const emuEnd = args.emuEnd?.trim() || "0"
     const stopPc = args.stopPc?.trim() || ""
-    const regs = args.regsJson ? JSON.parse(args.regsJson) as Record<string, string | number> : {}
+    const regs = args.regsJson ? (JSON.parse(args.regsJson) as Record<string, string | number>) : {}
     const replayPath = path.join(outDir, "unicorn_replay.py")
     const relPayload = normalizeRel(path.relative(outDir, payloadFile))
 
     const regLines = Object.entries(regs).length
-      ? Object.entries(regs).map(([k, v]) => `mu.reg_write(${k}, ${typeof v === "number" ? `0x${v.toString(16)}` : JSON.stringify(String(v))})`)
+      ? Object.entries(regs).map(
+          ([k, v]) =>
+            `mu.reg_write(${k}, ${typeof v === "number" ? `0x${v.toString(16)}` : JSON.stringify(String(v))})`,
+        )
       : ["# mu.reg_write(UC_<ARCH>_REG_<REG>, <VALUE>)"]
 
     const stopHook = stopPc
@@ -82,30 +93,31 @@ export default tool({
         ]
       : ["# Optional: hook code and stop at a recovered compare/check PC"]
 
-    const script = [
-      "from pathlib import Path",
-      "from unicorn import *",
-      "from unicorn.riscv_const import *  # adjust for non-RISC-V targets if needed",
-      "",
-      `ARCH = ${mapArch(arch)}`,
-      `MODE = ${mapMode(mode)}`,
-      `MAP_BASE = int(${JSON.stringify(mapBase)}, 0)`,
-      `MAP_SIZE = int(${JSON.stringify(mapSize)}, 0)`,
-      `EMU_START = int(${JSON.stringify(emuStart)}, 0)`,
-      `EMU_END = int(${JSON.stringify(emuEnd)}, 0)`,
-      `PAYLOAD_PATH = Path(__file__).resolve().parent / ${JSON.stringify(relPayload)}`,
-      "payload = PAYLOAD_PATH.read_bytes()",
-      "mu = Uc(ARCH, MODE)",
-      "mu.mem_map(MAP_BASE, MAP_SIZE)",
-      "mu.mem_write(MAP_BASE, payload)",
-      ...regLines,
-      ...stopHook,
-      "try:",
-      "    mu.emu_start(EMU_START, EMU_END)",
-      "except UcError as e:",
-      "    print(f'emu_stop: {e}')",
-      "print('Replay finished; inspect key registers and memory here.')",
-    ].join("\n") + "\n"
+    const script =
+      [
+        "from pathlib import Path",
+        "from unicorn import *",
+        "from unicorn.riscv_const import *  # adjust for non-RISC-V targets if needed",
+        "",
+        `ARCH = ${mapArch(arch)}`,
+        `MODE = ${mapMode(mode)}`,
+        `MAP_BASE = int(${JSON.stringify(mapBase)}, 0)`,
+        `MAP_SIZE = int(${JSON.stringify(mapSize)}, 0)`,
+        `EMU_START = int(${JSON.stringify(emuStart)}, 0)`,
+        `EMU_END = int(${JSON.stringify(emuEnd)}, 0)`,
+        `PAYLOAD_PATH = Path(__file__).resolve().parent / ${JSON.stringify(relPayload)}`,
+        "payload = PAYLOAD_PATH.read_bytes()",
+        "mu = Uc(ARCH, MODE)",
+        "mu.mem_map(MAP_BASE, MAP_SIZE)",
+        "mu.mem_write(MAP_BASE, payload)",
+        ...regLines,
+        ...stopHook,
+        "try:",
+        "    mu.emu_start(EMU_START, EMU_END)",
+        "except UcError as e:",
+        "    print(f'emu_stop: {e}')",
+        "print('Replay finished; inspect key registers and memory here.')",
+      ].join("\n") + "\n"
 
     await writeFile(replayPath, script, "utf8")
 

@@ -1,10 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
 import { lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExecWithStreams } from "./lib/exec-utils.ts"
 const FLAG_RE = /[A-Za-z0-9_@.-]{2,32}\{[^\r\n}]{1,200}\}/g
 
 type LinuxElfAwareness = {
@@ -35,7 +32,11 @@ function detectShell(text: string) {
 }
 
 function detectCrash(text: string, exitCode: number | string) {
-  return /segmentation fault|sigsegv|core dumped|illegal instruction|sigill|sigabrt|abort|bus error|sigbus|traceback \(most recent call last\)/i.test(text) || ["134", "135", "136", "139"].includes(String(exitCode))
+  return (
+    /segmentation fault|sigsegv|core dumped|illegal instruction|sigill|sigabrt|abort|bus error|sigbus|traceback \(most recent call last\)/i.test(
+      text,
+    ) || ["134", "135", "136", "139"].includes(String(exitCode))
+  )
 }
 
 function detectLinuxElfAwareness(scriptContent: string): LinuxElfAwareness {
@@ -63,7 +64,8 @@ async function detectNearbyLinuxArtifacts(dir: string) {
       if (!entry.isFile()) continue
       if (/^(libc\.so(\.\d+)?)$/i.test(entry.name)) artifacts.push(entry.name)
       else if (/^ld-linux|^ld-.*\.so/i.test(entry.name)) artifacts.push(entry.name)
-      else if (/^(chall|pwn|vuln|main|heap|fmt|rop|baby.*|.*\.(elf|bin|out))$/i.test(entry.name)) artifacts.push(entry.name)
+      else if (/^(chall|pwn|vuln|main|heap|fmt|rop|baby.*|.*\.(elf|bin|out))$/i.test(entry.name))
+        artifacts.push(entry.name)
     }
   } catch {
     return []
@@ -72,20 +74,50 @@ async function detectNearbyLinuxArtifacts(dir: string) {
 }
 
 export default tool({
-  description: "CTF pwn exploit runner: execute one workspace-local exploit.py/solve.py with timeout and return AutoPwn-style shell/flag/crash/timeout signals.",
+  description:
+    "CTF pwn exploit runner: execute one workspace-local exploit.py/solve.py with timeout and return AutoPwn-style shell/flag/crash/timeout signals.",
   args: {
-    script: tool.schema.string().describe("Workspace-relative exploit script, usually exploit.py, solve.py, or work/last_attempt.py."),
-    argv: tool.schema.string().optional().describe("Optional extra arguments as a single string. Keep simple; split on whitespace."),
-    timeoutMs: tool.schema.number().optional().describe("Execution timeout in milliseconds. Default 15000, hard cap 120000."),
+    script: tool.schema
+      .string()
+      .describe("Workspace-relative exploit script, usually exploit.py, solve.py, or work/last_attempt.py."),
+    argv: tool.schema
+      .string()
+      .optional()
+      .describe("Optional extra arguments as a single string. Keep simple; split on whitespace."),
+    timeoutMs: tool.schema
+      .number()
+      .optional()
+      .describe("Execution timeout in milliseconds. Default 15000, hard cap 120000."),
     flagPattern: tool.schema.string().optional().describe("Optional JavaScript regex source for known flag format."),
-    saveLastAttempt: tool.schema.boolean().optional().describe("Copy script content to work/last_attempt.py before execution. Default false."),
-    envJson: tool.schema.string().optional().describe("Optional JSON object of environment variables, e.g. {\"REMOTE\":\"1\",\"HOST\":\"host\",\"PORT\":\"31337\"}."),
-    remoteHost: tool.schema.string().optional().describe("Optional remote host exposed to the script as HOST and REMOTE=1."),
-    remotePort: tool.schema.string().optional().describe("Optional remote port exposed to the script as PORT and REMOTE=1."),
-    payloadText: tool.schema.string().optional().describe("Optional payload text to save as a workspace artifact for replay/retro."),
-    payloadHex: tool.schema.string().optional().describe("Optional hex payload to save as a workspace artifact for replay/retro."),
+    saveLastAttempt: tool.schema
+      .boolean()
+      .optional()
+      .describe("Copy script content to work/last_attempt.py before execution. Default false."),
+    envJson: tool.schema
+      .string()
+      .optional()
+      .describe('Optional JSON object of environment variables, e.g. {"REMOTE":"1","HOST":"host","PORT":"31337"}.'),
+    remoteHost: tool.schema
+      .string()
+      .optional()
+      .describe("Optional remote host exposed to the script as HOST and REMOTE=1."),
+    remotePort: tool.schema
+      .string()
+      .optional()
+      .describe("Optional remote port exposed to the script as PORT and REMOTE=1."),
+    payloadText: tool.schema
+      .string()
+      .optional()
+      .describe("Optional payload text to save as a workspace artifact for replay/retro."),
+    payloadHex: tool.schema
+      .string()
+      .optional()
+      .describe("Optional hex payload to save as a workspace artifact for replay/retro."),
     payloadLabel: tool.schema.string().optional().describe("Optional label used in saved payload artifact names."),
-    jsonOnly: tool.schema.boolean().optional().describe("Return only a compact JSON summary without output_compact. Default false."),
+    jsonOnly: tool.schema
+      .boolean()
+      .optional()
+      .describe("Return only a compact JSON summary without output_compact. Default false."),
   },
   async execute(args, context) {
     const script = resolveInsideWorkspace(context.directory, args.script)
@@ -131,12 +163,17 @@ export default tool({
       const payloadRel = `work/pwn_runner_payloads/${Date.now()}-${(args.payloadLabel || "stage").replace(/[^A-Za-z0-9_.-]+/g, "-")}${args.payloadHex ? ".bin" : ".txt"}`
       payloadCapturePath = resolveInsideWorkspace(context.directory, payloadRel)
       await mkdir(path.dirname(payloadCapturePath), { recursive: true })
-      if (args.payloadHex) await writeFile(payloadCapturePath, Buffer.from(String(args.payloadHex).replace(/[^0-9a-fA-F]/g, ""), "hex"))
+      if (args.payloadHex)
+        await writeFile(payloadCapturePath, Buffer.from(String(args.payloadHex).replace(/[^0-9a-fA-F]/g, ""), "hex"))
       else await writeFile(payloadCapturePath, String(args.payloadText || ""), "utf8")
     }
 
     const hostPlatform = process.platform
-    const linuxElfLike = awareness.linuxElfSignals.length > 0 || awareness.nearbyArtifacts.some((name) => /libc\.so|ld-linux|\.elf$|\.so$|^(chall|pwn|vuln|main|heap|fmt|rop|baby)/i.test(name))
+    const linuxElfLike =
+      awareness.linuxElfSignals.length > 0 ||
+      awareness.nearbyArtifacts.some((name) =>
+        /libc\.so|ld-linux|\.elf$|\.so$|^(chall|pwn|vuln|main|heap|fmt|rop|baby)/i.test(name),
+      )
     if (hostPlatform === "win32" && linuxElfLike) {
       const summary = {
         script,
@@ -148,7 +185,8 @@ export default tool({
         recommended_runner: "ctf-pwn-docker-runner",
         recommended_alt: "ctf-pwn-wsl-runner",
         root_cause_category: "tool_policy_guardrail",
-        reason: "Windows host detected with Linux ELF/pwntools signals; direct host execution is likely to fail with loader/runtime mismatch (for example WinError 193).",
+        reason:
+          "Windows host detected with Linux ELF/pwntools signals; direct host execution is likely to fail with loader/runtime mismatch (for example WinError 193).",
       }
       if (args.jsonOnly) return JSON.stringify({ pwn_runner_summary: summary }, null, 2)
       return [
@@ -172,16 +210,17 @@ export default tool({
     let stderr = ""
     let exitCode: number | string = 0
     let timedOut = false
-    try {
-      const res = await execFile(command, cmdArgs, { cwd, timeout: timeoutMs, maxBuffer: 2 * 1024 * 1024, env: { ...process.env, ...extraEnv } })
-      stdout = res.stdout
-      stderr = res.stderr
-    } catch (err) {
-      const e = err as { stdout?: string; stderr?: string; code?: number | string; signal?: string; killed?: boolean; message?: string }
-      stdout = e.stdout ?? ""
-      stderr = e.stderr ?? e.message ?? ""
-      exitCode = e.code ?? e.signal ?? "error"
-      timedOut = Boolean(e.killed) || /timed out|timeout/i.test(String(e.message ?? ""))
+    const res = await safeExecWithStreams(command, cmdArgs, {
+      cwd,
+      timeoutMs,
+      maxBuffer: 2 * 1024 * 1024,
+      env: { ...process.env, ...extraEnv },
+    })
+    stdout = res.stdout
+    stderr = res.stderr
+    if (!res.ok) {
+      exitCode = res.exitCode ?? "error"
+      timedOut = /timeout|timed out/i.test(res.stderr)
     }
 
     const output = `${stdout}${stderr ? `\n[stderr]\n${stderr}` : ""}`
@@ -205,7 +244,13 @@ export default tool({
       script_ran_ok: scriptRanOk,
       local_success: localSuccess,
       remote_success: remoteSuccess,
-      root_cause_category: timedOut ? "challenge_timeout_or_wait" : crash ? "challenge_crash" : scriptRanOk ? "success_or_clean_exit" : "tool_or_runtime_failure",
+      root_cause_category: timedOut
+        ? "challenge_timeout_or_wait"
+        : crash
+          ? "challenge_crash"
+          : scriptRanOk
+            ? "success_or_clean_exit"
+            : "tool_or_runtime_failure",
       flag_detected: flagDetected,
       shell_detected: shellDetected,
       crash,

@@ -1,10 +1,9 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
 import { access, lstat, mkdir, readdir, rm, stat, open, writeFile } from "node:fs/promises"
-import { promisify } from "node:util"
 import path from "node:path"
 import { constants as fsConstants } from "node:fs"
 import { inflateRawSync } from "node:zlib"
+import { safeExec } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -16,9 +15,8 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   return target
 }
 
-
-const execFile = promisify(execFileCb)
-const DEFAULT_FLAG_RE = /(?:[A-Za-z0-9_@.-]{2,32}\{[^\r\n}]{1,200}\}|[A-Za-z0-9_@.-]{2,32}\[[^\r\n\]]{1,200}\]|flag[-_:][A-Za-z0-9_@.,:;+\-=/]{8,200})/gi
+const DEFAULT_FLAG_RE =
+  /(?:[A-Za-z0-9_@.-]{2,32}\{[^\r\n}]{1,200}\}|[A-Za-z0-9_@.-]{2,32}\[[^\r\n\]]{1,200}\]|flag[-_:][A-Za-z0-9_@.,:;+\-=/]{8,200})/gi
 const MAX_OUTPUT = 256 * 1024
 const SKIP_DIRS = new Set([".git", "node_modules", "__pycache__", "venv", ".venv"])
 
@@ -51,12 +49,11 @@ type ZipLocalEntry = {
 }
 
 async function exists(cmd: string) {
-  try {
-    await execFile(process.platform === "win32" ? "where" : "which", [cmd], { timeout: 5000, maxBuffer: 64 * 1024 })
-    return true
-  } catch {
-    return false
-  }
+  const r = await safeExec(process.platform === "win32" ? "where" : "which", [cmd], {
+    timeoutMs: 5000,
+    maxBuffer: 64 * 1024,
+  })
+  return r.ok
 }
 
 async function find7z() {
@@ -64,7 +61,7 @@ async function find7z() {
   const candidates = [
     "C:\\Program Files\\7-Zip\\7z.exe",
     "C:\\Program Files (x86)\\7-Zip\\7z.exe",
-    "C:\\Users\\Administrator\\AppData\\Local\\Microsoft\\WinGet\\Links\\7z.exe",
+    path.join(process.env.LOCALAPPDATA || "", "Microsoft", "WinGet", "Links", "7z.exe"),
   ]
   for (const candidate of candidates) {
     try {
@@ -86,7 +83,12 @@ function archiveKind(target: string): ArchiveKind {
 }
 
 function cleanName(name: string) {
-  return name.replace(/\.(tar\.gz|tar\.bz2|tar\.xz|zip|jar|war|apk|docx|xlsx|pptx|tgz|tbz2|txz|7z|rar)$/i, "").replace(/[^A-Za-z0-9_.-]+/g, "_").slice(0, 80) || "archive"
+  return (
+    name
+      .replace(/\.(tar\.gz|tar\.bz2|tar\.xz|zip|jar|war|apk|docx|xlsx|pptx|tgz|tbz2|txz|7z|rar)$/i, "")
+      .replace(/[^A-Za-z0-9_.-]+/g, "_")
+      .slice(0, 80) || "archive"
+  )
 }
 
 function isDangerousMember(name: string) {
@@ -119,7 +121,10 @@ async function listZipNative(target: string) {
     await fd.read(tail, 0, tailSize, st.size - tailSize)
     let eocd = -1
     for (let i = tail.length - 22; i >= 0; i--) {
-      if (tail.readUInt32LE(i) === 0x06054b50) { eocd = i; break }
+      if (tail.readUInt32LE(i) === 0x06054b50) {
+        eocd = i
+        break
+      }
     }
     if (eocd < 0) throw new Error("zip EOCD not found")
     const entries = tail.readUInt16LE(eocd + 10)
@@ -146,7 +151,8 @@ async function listZipNative(target: string) {
 }
 
 function inferZipDataEnd(buf: Buffer, entry: ZipLocalEntry) {
-  if (entry.compressedSize > 0 && entry.dataStart + entry.compressedSize <= buf.length) return entry.dataStart + entry.compressedSize
+  if (entry.compressedSize > 0 && entry.dataStart + entry.compressedSize <= buf.length)
+    return entry.dataStart + entry.compressedSize
   const signatures = [0x04034b50, 0x02014b50, 0x06054b50, 0x08074b50]
   for (let off = entry.dataStart; off + 4 <= buf.length; off += 1) {
     const sig = buf.readUInt32LE(off)
@@ -234,11 +240,23 @@ async function powershellZip(target: string, outDir: string) {
     "  [System.IO.Compression.ZipFileExtensions]::ExtractToFile($e, $dest, $true)",
     "} } finally { $zip.Dispose() }",
   ].join("; ")
-  await execFile("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script, target, outDir], { timeout: 120000, maxBuffer: MAX_OUTPUT })
+  await safeExec("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script, target, outDir], {
+    timeoutMs: 120000,
+    maxBuffer: MAX_OUTPUT,
+  })
   return "powershell-zip"
 }
 
 async function listArchive(target: string, kind: ArchiveKind) {
+  function parseOutput(r: { ok: boolean; output: string }) {
+    if (!r.ok) return [] as string[]
+    const text = r.output === "<no output>" ? "" : r.output
+    return text
+      .split(/\r?\n/)
+      .map((x) => x.trim())
+      .filter(Boolean)
+  }
+
   if (kind === "zip") {
     try {
       return await listZipNative(target)
@@ -252,42 +270,32 @@ async function listArchive(target: string, kind: ArchiveKind) {
       // continue to external backends
     }
     if (await exists("unzip")) {
-      try {
-        const { stdout } = await execFile("unzip", ["-Z", "-1", target], { timeout: 30000, maxBuffer: MAX_OUTPUT })
-        return stdout.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
-      } catch {
-        // continue
-      }
+      const r = await safeExec("unzip", ["-Z", "-1", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+      const names = parseOutput(r)
+      if (names.length) return names
     }
     if (await find7z()) {
       const sevenZip = await find7z()
-      try {
-        const { stdout } = await execFile(sevenZip, ["l", "-ba", target], { timeout: 30000, maxBuffer: MAX_OUTPUT })
-        return parse7zList(stdout)
-      } catch {
-        // continue
-      }
+      const r = await safeExec(sevenZip, ["l", "-ba", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+      if (r.ok) return parse7zList(r.output)
     }
     if (await exists("jar")) {
-      try {
-        const { stdout } = await execFile("jar", ["tf", target], { timeout: 30000, maxBuffer: MAX_OUTPUT })
-        return stdout.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
-      } catch {
-        // continue
-      }
+      const r = await safeExec("jar", ["tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+      const names = parseOutput(r)
+      if (names.length) return names
     }
   }
   if (kind === "tar") {
     if (await exists("tar")) {
-      const { stdout } = await execFile("tar", ["-tf", target], { timeout: 30000, maxBuffer: MAX_OUTPUT })
-      return stdout.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
+      const r = await safeExec("tar", ["-tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+      return parseOutput(r)
     }
   }
   if (kind === "7z" || kind === "unknown") {
     const sevenZip = await find7z()
     if (sevenZip) {
-      const { stdout } = await execFile(sevenZip, ["l", "-ba", target], { timeout: 30000, maxBuffer: MAX_OUTPUT })
-      return parse7zList(stdout)
+      const r = await safeExec(sevenZip, ["l", "-ba", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+      if (r.ok) return parse7zList(r.output)
     }
   }
   throw new Error(`no supported listing backend for archive kind ${kind}`)
@@ -307,37 +315,32 @@ async function extractArchive(target: string, kind: ArchiveKind, outDir: string)
       // continue to external backends
     }
     if (await exists("unzip")) {
-      try {
-        await execFile("unzip", ["-q", target, "-d", outDir], { timeout: 120000, maxBuffer: MAX_OUTPUT })
-        return "unzip"
-      } catch {
-        // continue
-      }
+      const r = await safeExec("unzip", ["-q", target, "-d", outDir], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+      if (r.ok) return "unzip"
     }
     if (await find7z()) {
       const sevenZip = await find7z()
-      try {
-        await execFile(sevenZip, ["x", target, `-o${outDir}`, "-y"], { timeout: 120000, maxBuffer: MAX_OUTPUT })
-        return "7z"
-      } catch {
-        // continue
-      }
+      const r = await safeExec(sevenZip, ["x", target, `-o${outDir}`, "-y"], {
+        timeoutMs: 120000,
+        maxBuffer: MAX_OUTPUT,
+      })
+      if (r.ok) return "7z"
     }
     if (await exists("jar")) {
-      await execFile("jar", ["xf", target], { cwd: outDir, timeout: 120000, maxBuffer: MAX_OUTPUT })
-      return "jar"
+      const r = await safeExec("jar", ["xf", target], { cwd: outDir, timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+      if (r.ok) return "jar"
     }
   }
   if (kind === "tar") {
     if (await exists("tar")) {
-      await execFile("tar", ["-xf", target, "-C", outDir], { timeout: 120000, maxBuffer: MAX_OUTPUT })
-      return "tar"
+      const r = await safeExec("tar", ["-xf", target, "-C", outDir], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+      if (r.ok) return "tar"
     }
   }
   const sevenZip = await find7z()
   if (sevenZip) {
-    await execFile(sevenZip, ["x", target, `-o${outDir}`, "-y"], { timeout: 120000, maxBuffer: MAX_OUTPUT })
-    return "7z"
+    const r = await safeExec(sevenZip, ["x", target, `-o${outDir}`, "-y"], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+    if (r.ok) return "7z"
   }
   throw new Error(`no supported extraction backend for archive kind ${kind}`)
 }
@@ -362,20 +365,30 @@ function suspiciousHints(rel: string, sample: Buffer) {
   const lower = rel.toLowerCase()
   const text = sample.toString("latin1").toLowerCase()
   const hints: string[] = []
-  if (/flag|secret|token|key|admin|debug|backup|\.env|config/.test(lower) || /flag|secret|token|admin|debug/.test(text)) hints.push("secret/config/flag naming")
-  if (/package\.json|requirements\.txt|pom\.xml|dockerfile|compose|routes?|controllers?|templates?|\.php|\.jsp|\.html|\.js|\.ts/.test(lower)) hints.push("web/source candidate")
-  if (/\.pcapng?$|\.png$|\.jpe?g$|\.wav$|\.pdf$|\.docx$|\.xlsx$|\.pptx$|\.mem$|\.raw$|\.img$/.test(lower)) hints.push("forensics/media candidate")
-  if (/rsa|cipher|crypto|encrypt|decrypt|public|private/.test(lower) || /\bn\s*[:=]|\be\s*[:=]|\bc\s*[:=]/.test(text)) hints.push("crypto/RSA candidate")
-  if (sample.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) || sample.subarray(0, 2).toString() === "MZ") hints.push("binary candidate")
+  if (/flag|secret|token|key|admin|debug|backup|\.env|config/.test(lower) || /flag|secret|token|admin|debug/.test(text))
+    hints.push("secret/config/flag naming")
+  if (
+    /package\.json|requirements\.txt|pom\.xml|dockerfile|compose|routes?|controllers?|templates?|\.php|\.jsp|\.html|\.js|\.ts/.test(
+      lower,
+    )
+  )
+    hints.push("web/source candidate")
+  if (/\.pcapng?$|\.png$|\.jpe?g$|\.wav$|\.pdf$|\.docx$|\.xlsx$|\.pptx$|\.mem$|\.raw$|\.img$/.test(lower))
+    hints.push("forensics/media candidate")
+  if (/rsa|cipher|crypto|encrypt|decrypt|public|private/.test(lower) || /\bn\s*[:=]|\be\s*[:=]|\bc\s*[:=]/.test(text))
+    hints.push("crypto/RSA candidate")
+  if (sample.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) || sample.subarray(0, 2).toString() === "MZ")
+    hints.push("binary candidate")
   return hints
 }
 
 function binaryLikeSample(sample: Buffer) {
   if (sample.length === 0) return false
-  if (sample.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) || sample.subarray(0, 2).toString() === "MZ") return true
+  if (sample.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) || sample.subarray(0, 2).toString() === "MZ")
+    return true
   let printable = 0
   for (const byte of sample) {
-    if (byte === 0 || (byte < 9) || (byte > 13 && byte < 32)) return true
+    if (byte === 0 || byte < 9 || (byte > 13 && byte < 32)) return true
     if ((byte >= 32 && byte <= 126) || byte === 9 || byte === 10 || byte === 13) printable++
   }
   return printable / sample.length < 0.75
@@ -409,14 +422,21 @@ async function inspectExtracted(outDir: string, maxFiles: number, maxBytes: numb
 }
 
 export default tool({
-  description: "CTF safe archive extraction: list members, reject path traversal/absolute paths, extract into extracted/<archive-name>/, then report tree, flag hits, suspicious files, and next actions.",
+  description:
+    "CTF safe archive extraction: list members, reject path traversal/absolute paths, extract into extracted/<archive-name>/, then report tree, flag hits, suspicious files, and next actions.",
   args: {
     target: tool.schema.string().describe("Archive path to list and safely extract"),
     out: tool.schema.string().default("extracted").describe("Relative output root. Default: extracted"),
     maxFiles: tool.schema.number().optional().describe("Maximum archive members/files to inspect. Default 500."),
     maxBytes: tool.schema.number().optional().describe("Maximum extracted bytes to inspect. Default 209715200."),
-    overwrite: tool.schema.boolean().optional().describe("Remove existing output directory before extraction. Default false."),
-    flagPattern: tool.schema.string().optional().describe("Optional JavaScript regex source for known flag format. Example: DASCTF\\{[^}]+\\}"),
+    overwrite: tool.schema
+      .boolean()
+      .optional()
+      .describe("Remove existing output directory before extraction. Default false."),
+    flagPattern: tool.schema
+      .string()
+      .optional()
+      .describe("Optional JavaScript regex source for known flag format. Example: DASCTF\\{[^}]+\\}"),
   },
   async execute(args, context) {
     const targetArg = typeof args.target === "string" && args.target.trim() ? args.target : ""
@@ -432,7 +452,8 @@ export default tool({
     const baseOut = resolveInsideWorkspace(context.directory, outArg)
     const outDir = path.join(baseOut, cleanName(path.basename(target)))
     const relOut = path.relative(context.directory, outDir)
-    if (relOut.startsWith("..") || path.isAbsolute(relOut)) throw new Error("output directory must stay inside the current workspace")
+    if (relOut.startsWith("..") || path.isAbsolute(relOut))
+      throw new Error("output directory must stay inside the current workspace")
 
     const members = await listArchive(target, kind)
     const dangerous = members.filter(isDangerousMember)
@@ -461,16 +482,31 @@ export default tool({
     await mkdir(outDir, { recursive: true })
     const backend = await extractArchive(target, kind, outDir)
     const inspected = await inspectExtracted(outDir, maxFiles, maxBytes, flagRegex)
-    const trustedFlagHits = inspected.results.filter((r) => !r.binaryLike).flatMap((r) => r.flags.map((flag) => `${r.rel}: ${flag}`))
-    const binaryFlagHints = inspected.results.filter((r) => r.binaryLike && r.flags.length).flatMap((r) => r.flags.map((flag) => `${r.rel}: ${flag}`))
+    const trustedFlagHits = inspected.results
+      .filter((r) => !r.binaryLike)
+      .flatMap((r) => r.flags.map((flag) => `${r.rel}: ${flag}`))
+    const binaryFlagHints = inspected.results
+      .filter((r) => r.binaryLike && r.flags.length)
+      .flatMap((r) => r.flags.map((flag) => `${r.rel}: ${flag}`))
     const suspicious = inspected.results.filter((r) => r.flags.length || r.suspicious.length).slice(0, 80)
-    const tree = inspected.results.slice(0, 120).map((r) => `${r.rel}\t${r.size} bytes${r.suspicious.length ? `\t${r.suspicious.join(",")}` : ""}`)
+    const tree = inspected.results
+      .slice(0, 120)
+      .map((r) => `${r.rel}\t${r.size} bytes${r.suspicious.length ? `\t${r.suspicious.join(",")}` : ""}`)
     const next: string[] = []
-    if (trustedFlagHits.length) next.push("verify trusted text-like flag hits and write the correct final flag to agent_flag.txt")
-    if (binaryFlagHints.length) next.push("binary files contain flag-like bytes; treat them as hints only and verify after source/binary analysis")
-    if (suspicious.some((r) => r.suspicious.includes("crypto/RSA candidate"))) next.push("run ctf-rsa-probe on crypto/RSA candidates")
-    if (suspicious.some((r) => r.suspicious.includes("web/source candidate"))) next.push("rerun ctf-one-shot-triage on the extracted source directory, then inspect only the top routes/config/templates")
-    if (suspicious.some((r) => r.suspicious.includes("forensics/media candidate"))) next.push("run ctf-stego-probe or ctf-pcap-probe on highlighted media/capture files before manual carving")
+    if (trustedFlagHits.length)
+      next.push("verify trusted text-like flag hits and write the correct final flag to agent_flag.txt")
+    if (binaryFlagHints.length)
+      next.push(
+        "binary files contain flag-like bytes; treat them as hints only and verify after source/binary analysis",
+      )
+    if (suspicious.some((r) => r.suspicious.includes("crypto/RSA candidate")))
+      next.push("run ctf-rsa-probe on crypto/RSA candidates")
+    if (suspicious.some((r) => r.suspicious.includes("web/source candidate")))
+      next.push(
+        "rerun ctf-one-shot-triage on the extracted source directory, then inspect only the top routes/config/templates",
+      )
+    if (suspicious.some((r) => r.suspicious.includes("forensics/media candidate")))
+      next.push("run ctf-stego-probe or ctf-pcap-probe on highlighted media/capture files before manual carving")
     if (!next.length) next.push("rerun ctf-one-shot-triage on the output directory and follow next_tool/next_target")
 
     return [
@@ -494,7 +530,9 @@ export default tool({
       "binary_flag_hints:",
       ...(binaryFlagHints.length ? binaryFlagHints.slice(0, 50).map((x) => `- ${x}`) : ["- none"]),
       "suspicious_files:",
-      ...(suspicious.length ? suspicious.map((r) => `- ${r.rel}: ${r.suspicious.join(",") || "flag hit"}`) : ["- none"]),
+      ...(suspicious.length
+        ? suspicious.map((r) => `- ${r.rel}: ${r.suspicious.join(",") || "flag hit"}`)
+        : ["- none"]),
       "tree:",
       ...tree.map((x) => `- ${x}`),
       "recommended_next:",

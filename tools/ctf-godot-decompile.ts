@@ -1,11 +1,8 @@
 import { tool } from "@opencode-ai/plugin"
 import { existsSync } from "node:fs"
-import { execFile as execFileCb } from "node:child_process"
 import { mkdir, writeFile } from "node:fs/promises"
-import { promisify } from "node:util"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExecWithStreams } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -16,11 +13,14 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
 }
 
 function findGdre() {
+  const configured = process.env.GDRE_TOOLS_PATH
+  const home = process.env.USERPROFILE || process.env.HOME || ""
   const candidates = [
-    "C:\\Users\\Administrator\\tools\\godot\\gdsdecomp\\v2.5.0\\gdre_tools.exe",
-    "C:\\Users\\Administrator\\tools\\godot\\gdsdecomp\\gdre_tools.exe",
+    configured,
+    path.join(home, "tools", "godot", "gdsdecomp", "v2.5.0", "gdre_tools.exe"),
+    path.join(home, "tools", "godot", "gdsdecomp", "gdre_tools.exe"),
     "C:\\Tools\\godot\\gdsdecomp\\gdre_tools.exe",
-  ]
+  ].filter((value): value is string => Boolean(value))
   return candidates.find((p) => existsSync(p)) || ""
 }
 
@@ -37,14 +37,24 @@ async function inferBytecodeHint(target: string) {
 }
 
 export default tool({
-  description: "CTF Godot decompile wrapper: call local gdre_tools for list-files, extract, recover, or decompile workflows without manual CLI assembly.",
+  description:
+    "CTF Godot decompile wrapper: call local gdre_tools for list-files, extract, recover, or decompile workflows without manual CLI assembly.",
   args: {
     target: tool.schema.string().describe("Workspace-relative Godot .pck/.exe/.apk/.gdc/.dir target."),
     mode: tool.schema.string().describe("list-files | extract | recover | decompile | list-bytecode-versions"),
-    outputDir: tool.schema.string().optional().describe("Workspace-relative output dir. Default work/godot/<target-slug>/<mode>."),
+    outputDir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative output dir. Default work/godot/<target-slug>/<mode>."),
     key: tool.schema.string().optional().describe("Optional encryption key for encrypted PCKs/projects."),
-    forceBytecodeVersion: tool.schema.string().optional().describe("Optional force bytecode version/commit for decompile/recover."),
-    customBytecodeJson: tool.schema.string().optional().describe("Optional workspace-relative custom bytecode JSON file."),
+    forceBytecodeVersion: tool.schema
+      .string()
+      .optional()
+      .describe("Optional force bytecode version/commit for decompile/recover."),
+    customBytecodeJson: tool.schema
+      .string()
+      .optional()
+      .describe("Optional workspace-relative custom bytecode JSON file."),
     scriptsOnly: tool.schema.boolean().optional().describe("For extract/recover: scripts-only mode."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
@@ -57,7 +67,10 @@ export default tool({
     if (!validModes.includes(mode)) throw new Error(`unsupported mode: ${mode}`)
 
     const target = mode === "list-bytecode-versions" ? "" : resolveInsideWorkspace(context.directory, args.target)
-    const outDir = resolveInsideWorkspace(context.directory, args.outputDir || path.join("work", "godot", safeSlug(path.basename(args.target || "godot")), mode))
+    const outDir = resolveInsideWorkspace(
+      context.directory,
+      args.outputDir || path.join("work", "godot", safeSlug(path.basename(args.target || "godot")), mode),
+    )
     await mkdir(outDir, { recursive: true })
 
     const cli: string[] = ["--headless"]
@@ -79,28 +92,28 @@ export default tool({
     if (mode === "decompile") {
       const bytecode = args.forceBytecodeVersion || inferredBytecodeVersion || ""
       if (!bytecode) {
-        throw new Error("decompile mode requires a bytecode hint. Provide forceBytecodeVersion (e.g. 4.3.0 or f3f05dc), or run mode=list-bytecode-versions first.")
+        throw new Error(
+          "decompile mode requires a bytecode hint. Provide forceBytecodeVersion (e.g. 4.3.0 or f3f05dc), or run mode=list-bytecode-versions first.",
+        )
       }
       cli.push(`--bytecode=${bytecode}`)
     }
-    if (args.customBytecodeJson) cli.push(`--load-custom-bytecode=${resolveInsideWorkspace(context.directory, args.customBytecodeJson)}`)
+    if (args.customBytecodeJson)
+      cli.push(`--load-custom-bytecode=${resolveInsideWorkspace(context.directory, args.customBytecodeJson)}`)
     if (args.scriptsOnly && (mode === "extract" || mode === "recover")) cli.push("--scripts-only")
 
     let output = ""
-    try {
-      const { stdout, stderr } = await execFile(gdre, cli, {
-        cwd: context.directory,
-        timeout: 180000,
-        maxBuffer: 8 * 1024 * 1024,
-        shell: false,
-      })
+    const { stdout, stderr, ok } = await safeExecWithStreams(gdre, cli, {
+      cwd: context.directory,
+      timeoutMs: 180000,
+      maxBuffer: 8 * 1024 * 1024,
+    })
+    if (!ok) {
       output = `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
-    } catch (err) {
-      const e = err as { stdout?: string; stderr?: string; message?: string }
-      output = `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`.trim()
       await writeFile(path.join(outDir, "gdre-run.log"), output, "utf8")
       throw new Error(output || "gdre_tools execution failed")
     }
+    output = `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
     await writeFile(path.join(outDir, "gdre-run.log"), output, "utf8")
 
     const payload = {
@@ -112,15 +125,16 @@ export default tool({
       cli,
       logPath: path.join(outDir, "gdre-run.log"),
       outputPreview: output.slice(0, 12000),
-      nextProbe: mode === "recover"
-        ? "Inspect recovered scripts/resources, then use ctf-godot-pack-inspect or grep on restored .gd/.tscn files."
-        : mode === "decompile"
-          ? "Inspect decompiled .gd output and compare with scene/resource hints from ctf-godot-pack-inspect."
-          : mode === "extract"
-            ? "Run ctf-godot-pack-inspect on the extracted directory to shrink scope before broader reading."
-            : mode === "list-files"
-              ? "Use listed files to choose extract/recover scope or identify hot .gdc/.tscn targets."
-              : "Use the listed bytecode versions to choose force-bytecode-version or custom bytecode JSON when decompile fails.",
+      nextProbe:
+        mode === "recover"
+          ? "Inspect recovered scripts/resources, then use ctf-godot-pack-inspect or grep on restored .gd/.tscn files."
+          : mode === "decompile"
+            ? "Inspect decompiled .gd output and compare with scene/resource hints from ctf-godot-pack-inspect."
+            : mode === "extract"
+              ? "Run ctf-godot-pack-inspect on the extracted directory to shrink scope before broader reading."
+              : mode === "list-files"
+                ? "Use listed files to choose extract/recover scope or identify hot .gdc/.tscn targets."
+                : "Use the listed bytecode versions to choose force-bytecode-version or custom bytecode JSON when decompile fails.",
     }
 
     if (args.jsonOnly) return JSON.stringify(payload, null, 2)

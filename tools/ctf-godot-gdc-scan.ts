@@ -26,7 +26,8 @@ function classify(strings: string[]) {
 }
 
 export default tool({
-  description: "CTF Godot GDC scan: extract high-signal printable strings from .gdc and group likely flag/function/crypto/resource clues before full decompilation.",
+  description:
+    "CTF Godot GDC scan: extract high-signal printable strings from .gdc and group likely flag/function/crypto/resource clues before full decompilation.",
   args: {
     target: tool.schema.string().describe("Workspace-relative .gdc/.gd/.gde file."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
@@ -43,9 +44,10 @@ export default tool({
       size: st.size,
       stringCount: strings.length,
       grouped,
-      nextProbe: grouped.flagLike.length || grouped.cryptoLike.length
-        ? "Use the grouped strings to choose the hottest script for gdre_tools decompile or targeted grep after recovery."
-        : "If strings are sparse, recover/extract the wider project and correlate .gdc with .tscn/.tres references.",
+      nextProbe:
+        grouped.flagLike.length || grouped.cryptoLike.length
+          ? "Use the grouped strings to choose the hottest script for gdre_tools decompile or targeted grep after recovery."
+          : "If strings are sparse, recover/extract the wider project and correlate .gdc with .tscn/.tres references.",
     }
     if (args.jsonOnly) return JSON.stringify(payload, null, 2)
     return [

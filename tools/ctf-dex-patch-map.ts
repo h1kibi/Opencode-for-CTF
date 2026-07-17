@@ -3,8 +3,24 @@ import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { inflateRawSync } from "node:zlib"
 
-type ZipEntry = { name: string; method: number; compressedSize: number; uncompressedSize: number; localHeaderOffset: number }
-type MethodMap = { className: string; methodName: string; proto: string; methodIdx: number; codeOff: number; headerEnd: number; insnsEnd: number; codeEnd: number; insnsSize: number }
+type ZipEntry = {
+  name: string
+  method: number
+  compressedSize: number
+  uncompressedSize: number
+  localHeaderOffset: number
+}
+type MethodMap = {
+  className: string
+  methodName: string
+  proto: string
+  methodIdx: number
+  codeOff: number
+  headerEnd: number
+  insnsEnd: number
+  codeEnd: number
+  insnsSize: number
+}
 type Patch = { offset: number; size?: number; old?: string; new?: string; source: string }
 type DexLoad = { dex: Buffer; dexName: string; container: string; availableDexEntries: string[] }
 type ByteDiff = {
@@ -26,8 +42,12 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   return target
 }
 
-function u16(buf: Buffer, off: number) { return off + 2 <= buf.length ? buf.readUInt16LE(off) : 0 }
-function u32(buf: Buffer, off: number) { return off + 4 <= buf.length ? buf.readUInt32LE(off) : 0 }
+function u16(buf: Buffer, off: number) {
+  return off + 2 <= buf.length ? buf.readUInt16LE(off) : 0
+}
+function u32(buf: Buffer, off: number) {
+  return off + 4 <= buf.length ? buf.readUInt32LE(off) : 0
+}
 
 function readUleb(buf: Buffer, state: { off: number }) {
   let result = 0
@@ -53,7 +73,10 @@ function readString(buf: Buffer, off: number) {
 function listZip(buf: Buffer): ZipEntry[] {
   let eocd = -1
   for (let i = buf.length - 22; i >= Math.max(0, buf.length - 0x10000 - 22); i--) {
-    if (u32(buf, i) === 0x06054b50) { eocd = i; break }
+    if (u32(buf, i) === 0x06054b50) {
+      eocd = i
+      break
+    }
   }
   if (eocd < 0) throw new Error("invalid zip/apk: EOCD not found")
   const total = u16(buf, eocd + 10)
@@ -90,9 +113,12 @@ function extractEntry(buf: Buffer, entry: ZipEntry): Buffer | null {
 
 async function loadDex(input: string, dexEntry?: string): Promise<DexLoad> {
   const buf = await readFile(input)
-  if (buf.subarray(0, 8).toString("latin1").startsWith("dex\n")) return { dex: buf, dexName: path.basename(input), container: input, availableDexEntries: [path.basename(input)] }
+  if (buf.subarray(0, 8).toString("latin1").startsWith("dex\n"))
+    return { dex: buf, dexName: path.basename(input), container: input, availableDexEntries: [path.basename(input)] }
   if (/\.(apk|jar|zip)$/i.test(input)) {
-    const entries = listZip(buf).filter((entry) => /^classes\d*\.dex$/.test(entry.name)).sort((a, b) => a.name.localeCompare(b.name))
+    const entries = listZip(buf)
+      .filter((entry) => /^classes\d*\.dex$/.test(entry.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
     if (!entries.length) throw new Error("no classes*.dex entry found in archive")
     const selected = dexEntry ? entries.find((entry) => entry.name === dexEntry) : entries[0]
     if (!selected) throw new Error(`requested dexEntry not found: ${dexEntry}`)
@@ -134,7 +160,11 @@ function buildMethodMap(dex: Buffer): MethodMap[] {
     const classIdx = u16(dex, off)
     const protoIdx = u16(dex, off + 2)
     const nameIdx = u32(dex, off + 4)
-    return { className: types[classIdx] || `type_${classIdx}`, methodName: strings[nameIdx] || `method_${i}`, proto: protoString(dex, protoIdsOff, protoIdx, types) }
+    return {
+      className: types[classIdx] || `type_${classIdx}`,
+      methodName: strings[nameIdx] || `method_${i}`,
+      proto: protoString(dex, protoIdsOff, protoIdx, types),
+    }
   })
 
   const out: MethodMap[] = []
@@ -165,10 +195,20 @@ function buildMethodMap(dex: Buffer): MethodMap[] {
         const insnsSize = u32(dex, codeOff + 12)
         const headerEnd = codeOff + 16
         const insnsEnd = headerEnd + insnsSize * 2
-        const alignedInsnsEnd = insnsEnd + ((triesSize > 0 && (insnsEnd % 4) !== 0) ? 2 : 0)
+        const alignedInsnsEnd = insnsEnd + (triesSize > 0 && insnsEnd % 4 !== 0 ? 2 : 0)
         const codeEnd = alignedInsnsEnd
         const method = methods[methodIdx] || { className, methodName: `method_${methodIdx}`, proto: "(...)" }
-        out.push({ className, methodName: method.methodName, proto: method.proto, methodIdx, codeOff, headerEnd, insnsEnd, codeEnd, insnsSize })
+        out.push({
+          className,
+          methodName: method.methodName,
+          proto: method.proto,
+          methodIdx,
+          codeOff,
+          headerEnd,
+          insnsEnd,
+          codeEnd,
+          insnsSize,
+        })
       }
     }
   }
@@ -257,7 +297,11 @@ function parsePatches(text: string): Patch[] {
   const patches: Patch[] = []
   try {
     const parsed = JSON.parse(text) as unknown
-    const rows = Array.isArray(parsed) ? parsed : typeof parsed === "object" && parsed ? Object.values(parsed as Record<string, unknown>) : []
+    const rows = Array.isArray(parsed)
+      ? parsed
+      : typeof parsed === "object" && parsed
+        ? Object.values(parsed as Record<string, unknown>)
+        : []
     for (const row of rows) {
       if (!row || typeof row !== "object") continue
       const item = row as Record<string, unknown>
@@ -266,7 +310,13 @@ function parsePatches(text: string): Patch[] {
       const offset = parseIntLike(rawOffset as string | number | null | undefined)
       if (!Number.isFinite(offset)) continue
       const rawSize = item.size ?? item.length ?? item.len
-      patches.push({ offset, size: rawSize === undefined ? undefined : parseIntLike(rawSize as string | number | null | undefined), old: item.old === undefined ? undefined : String(item.old), new: item.new === undefined ? undefined : String(item.new), source: "json" })
+      patches.push({
+        offset,
+        size: rawSize === undefined ? undefined : parseIntLike(rawSize as string | number | null | undefined),
+        old: item.old === undefined ? undefined : String(item.old),
+        new: item.new === undefined ? undefined : String(item.new),
+        source: "json",
+      })
     }
   } catch {}
 
@@ -278,9 +328,25 @@ function parsePatches(text: string): Patch[] {
     const newMatch = line.match(/(?:new|after)\s*[:=]\s*([0-9a-fA-Fx\s:_-]+)/i)
     const offset = parseIntLike(offsetMatch[1])
     const size = sizeMatch ? parseIntLike(sizeMatch[1]) : Number.NaN
-    if (Number.isFinite(offset)) patches.push({ offset, size: Number.isFinite(size) ? size : undefined, old: oldMatch?.[1], new: newMatch?.[1], source: "text" })
+    if (Number.isFinite(offset))
+      patches.push({
+        offset,
+        size: Number.isFinite(size) ? size : undefined,
+        old: oldMatch?.[1],
+        new: newMatch?.[1],
+        source: "text",
+      })
   }
-  return patches.filter((patch, index, arr) => arr.findIndex((other) => other.offset === patch.offset && other.size === patch.size && other.old === patch.old && other.new === patch.new) === index)
+  return patches.filter(
+    (patch, index, arr) =>
+      arr.findIndex(
+        (other) =>
+          other.offset === patch.offset &&
+          other.size === patch.size &&
+          other.old === patch.old &&
+          other.new === patch.new,
+      ) === index,
+  )
 }
 
 function findOwner(methods: MethodMap[], patch: Patch) {
@@ -288,7 +354,12 @@ function findOwner(methods: MethodMap[], patch: Patch) {
   const end = patch.offset + size
   const exact = methods.find((method) => patch.offset >= method.codeOff && end <= method.codeEnd)
   if (exact) {
-    const region = end <= exact.headerEnd ? "code_header" : patch.offset >= exact.headerEnd && end <= exact.insnsEnd ? "insns" : "post_insns_or_try_region"
+    const region =
+      end <= exact.headerEnd
+        ? "code_header"
+        : patch.offset >= exact.headerEnd && end <= exact.insnsEnd
+          ? "insns"
+          : "post_insns_or_try_region"
     return { status: "hit_code_item", method: exact, delta: patch.offset - exact.codeOff, region }
   }
   const nearest = methods.reduce<MethodMap | null>((best, method) => {
@@ -296,17 +367,35 @@ function findOwner(methods: MethodMap[], patch: Patch) {
     if (!best || method.codeOff > best.codeOff) return method
     return best
   }, null)
-  return { status: nearest ? "nearest_before_no_containment" : "no_method_before_offset", method: nearest, delta: nearest ? patch.offset - nearest.codeOff : null, region: "unknown" }
+  return {
+    status: nearest ? "nearest_before_no_containment" : "no_method_before_offset",
+    method: nearest,
+    delta: nearest ? patch.offset - nearest.codeOff : null,
+    region: "unknown",
+  }
 }
 
 export default tool({
-  description: "CTF DEX patch mapper: map extract.dat-style dex offsets to class->method code_item owners and patch containment status.",
+  description:
+    "CTF DEX patch mapper: map extract.dat-style dex offsets to class->method code_item owners and patch containment status.",
   args: {
     target: tool.schema.string().describe("Workspace-relative .dex or APK/JAR/ZIP containing classes.dex."),
-    dexEntry: tool.schema.string().optional().describe("Optional dex entry inside APK/ZIP, e.g. classes2.dex. Default classes.dex / first entry."),
-    patchFile: tool.schema.string().optional().describe("Workspace-relative patch file with text/JSON or supported binary records."),
-    patchFormat: tool.schema.string().optional().describe("auto | text | json | u32le_pairs | extract_dat_u32le_pairs. Default auto."),
-    patches: tool.schema.string().optional().describe("Inline text/JSON patch records. Use when no patchFile is available."),
+    dexEntry: tool.schema
+      .string()
+      .optional()
+      .describe("Optional dex entry inside APK/ZIP, e.g. classes2.dex. Default classes.dex / first entry."),
+    patchFile: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative patch file with text/JSON or supported binary records."),
+    patchFormat: tool.schema
+      .string()
+      .optional()
+      .describe("auto | text | json | u32le_pairs | extract_dat_u32le_pairs. Default auto."),
+    patches: tool.schema
+      .string()
+      .optional()
+      .describe("Inline text/JSON patch records. Use when no patchFile is available."),
     maxRows: tool.schema.number().optional().describe("Maximum rows to print. Default 80."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
@@ -330,7 +419,11 @@ export default tool({
     } else if (args.patches) {
       patches = parsePatches(args.patches)
     }
-    const mapped = patches.map((patch) => ({ patch, owner: findOwner(methods, patch), diff: buildByteDiff(dex, patch) }))
+    const mapped = patches.map((patch) => ({
+      patch,
+      owner: findOwner(methods, patch),
+      diff: buildByteDiff(dex, patch),
+    }))
     const payload = {
       container,
       dexName,
@@ -339,7 +432,11 @@ export default tool({
       methodCodeItems: methods.length,
       patchesSeen: patches.length,
       mapped,
-      highSignalMethods: methods.filter((method) => /(main|check|verify|flag|native|patch|decode|decrypt|load)/i.test(`${method.className}.${method.methodName}`)).slice(0, 80),
+      highSignalMethods: methods
+        .filter((method) =>
+          /(main|check|verify|flag|native|patch|decode|decrypt|load)/i.test(`${method.className}.${method.methodName}`),
+        )
+        .slice(0, 80),
       limitations: [
         "Maps dex file offsets to code_item owners; it does not prove semantic effect by itself.",
         "Binary patch parsing currently supports simple u32le offset/size pair streams; richer extract.dat layouts still need preprocessing.",
@@ -365,14 +462,25 @@ export default tool({
         return `  - off=0x${row.patch.offset.toString(16)} size=${row.patch.size ?? "?"} status=${row.owner.status} region=${row.owner.region} owner=${method ? `${method.className}->${method.methodName}${method.proto}@0x${method.codeOff.toString(16)}+0x${String(row.owner.delta?.toString(16) ?? "?")}` : "none"}${diffSuffix}`
       }),
       "- patch_code_unit_views:",
-      ...mapped.slice(0, Math.min(maxRows, 30)).flatMap((row) => row.diff ? [
-        `  - off=0x${row.patch.offset.toString(16)} changed_byte_offsets=${row.diff.changedByteOffsets.join(",") || "none"}`,
-        `    dex16=${row.diff.codeUnits16.dex.join(" ") || "-"}`,
-        `    old16=${row.diff.codeUnits16.old.join(" ") || "-"}`,
-        `    new16=${row.diff.codeUnits16.next.join(" ") || "-"}`,
-      ] : []),
+      ...mapped
+        .slice(0, Math.min(maxRows, 30))
+        .flatMap((row) =>
+          row.diff
+            ? [
+                `  - off=0x${row.patch.offset.toString(16)} changed_byte_offsets=${row.diff.changedByteOffsets.join(",") || "none"}`,
+                `    dex16=${row.diff.codeUnits16.dex.join(" ") || "-"}`,
+                `    old16=${row.diff.codeUnits16.old.join(" ") || "-"}`,
+                `    new16=${row.diff.codeUnits16.next.join(" ") || "-"}`,
+              ]
+            : [],
+        ),
       "- high_signal_methods:",
-      ...payload.highSignalMethods.slice(0, 30).map((method) => `  - ${method.className}->${method.methodName}${method.proto} code=0x${method.codeOff.toString(16)}..0x${method.codeEnd.toString(16)} insns=${method.insnsSize}`),
+      ...payload.highSignalMethods
+        .slice(0, 30)
+        .map(
+          (method) =>
+            `  - ${method.className}->${method.methodName}${method.proto} code=0x${method.codeOff.toString(16)}..0x${method.codeEnd.toString(16)} insns=${method.insnsSize}`,
+        ),
     ]
     return lines.join("\n")
   },

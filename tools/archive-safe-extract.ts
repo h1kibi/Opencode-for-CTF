@@ -1,8 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
 import { access, lstat, mkdir, readdir, rm, stat, open } from "node:fs/promises"
-import { promisify } from "node:util"
 import path from "node:path"
+import { safeExec } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -14,19 +13,17 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   return target
 }
 
-const execFile = promisify(execFileCb)
 const MAX_OUTPUT = 256 * 1024
 const SKIP_DIRS = new Set([".git", "node_modules", "__pycache__", "venv", ".venv"])
 
 type ArchiveKind = "zip" | "tar" | "7z" | "unknown"
 
 async function exists(cmd: string) {
-  try {
-    await execFile(process.platform === "win32" ? "where" : "which", [cmd], { timeout: 5000, maxBuffer: 64 * 1024 })
-    return true
-  } catch {
-    return false
-  }
+  const r = await safeExec(process.platform === "win32" ? "where" : "which", [cmd], {
+    timeoutMs: 5000,
+    maxBuffer: 64 * 1024,
+  })
+  return r.ok
 }
 
 function archiveKind(target: string): ArchiveKind {
@@ -38,7 +35,12 @@ function archiveKind(target: string): ArchiveKind {
 }
 
 function cleanName(name: string) {
-  return name.replace(/\.(tar\.gz|tar\.bz2|tar\.xz|zip|jar|war|apk|docx|xlsx|pptx|tgz|tbz2|txz|7z|rar)$/i, "").replace(/[^A-Za-z0-9_.-]+/g, "_").slice(0, 80) || "archive"
+  return (
+    name
+      .replace(/\.(tar\.gz|tar\.bz2|tar\.xz|zip|jar|war|apk|docx|xlsx|pptx|tgz|tbz2|txz|7z|rar)$/i, "")
+      .replace(/[^A-Za-z0-9_.-]+/g, "_")
+      .slice(0, 80) || "archive"
+  )
 }
 
 function isDangerousMember(name: string) {
@@ -66,7 +68,10 @@ async function listZipNative(target: string) {
     await fd.read(tail, 0, tailSize, st.size - tailSize)
     let eocd = -1
     for (let i = tail.length - 22; i >= 0; i--) {
-      if (tail.readUInt32LE(i) === 0x06054b50) { eocd = i; break }
+      if (tail.readUInt32LE(i) === 0x06054b50) {
+        eocd = i
+        break
+      }
     }
     if (eocd < 0) throw new Error("zip EOCD not found")
     const entries = tail.readUInt16LE(eocd + 10)
@@ -106,72 +111,80 @@ async function powershellZip(target: string, outDir: string) {
     "  [System.IO.Compression.ZipFileExtensions]::ExtractToFile($e, $dest, $true)",
     "} } finally { $zip.Dispose() }",
   ].join("; ")
-  await execFile("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script, target, outDir], { timeout: 120000, maxBuffer: MAX_OUTPUT })
+  await safeExec("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script, target, outDir], {
+    timeoutMs: 120000,
+    maxBuffer: MAX_OUTPUT,
+  })
   return "powershell-zip"
 }
 
 async function listArchive(target: string, kind: ArchiveKind) {
+  function parseOutput(r: { ok: boolean; output: string }) {
+    if (!r.ok) return [] as string[]
+    const text = r.output === "<no output>" ? "" : r.output
+    return text
+      .split(/\r?\n/)
+      .map((x) => x.trim())
+      .filter(Boolean)
+  }
+
   if (kind === "zip") {
-    try { return await listZipNative(target) } catch {}
+    try {
+      return await listZipNative(target)
+    } catch {}
     if (await exists("unzip")) {
-      try {
-        const { stdout } = await execFile("unzip", ["-Z", "-1", target], { timeout: 30000, maxBuffer: MAX_OUTPUT })
-        return stdout.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
-      } catch {}
+      const r = await safeExec("unzip", ["-Z", "-1", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+      const names = parseOutput(r)
+      if (names.length) return names
     }
     if (await exists("7z")) {
-      try {
-        const { stdout } = await execFile("7z", ["l", "-ba", target], { timeout: 30000, maxBuffer: MAX_OUTPUT })
-        return parse7zList(stdout)
-      } catch {}
+      const r = await safeExec("7z", ["l", "-ba", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+      if (r.ok) return parse7zList(r.output)
     }
     if (await exists("jar")) {
-      try {
-        const { stdout } = await execFile("jar", ["tf", target], { timeout: 30000, maxBuffer: MAX_OUTPUT })
-        return stdout.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
-      } catch {}
+      const r = await safeExec("jar", ["tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+      const names = parseOutput(r)
+      if (names.length) return names
     }
   }
   if (kind === "tar") {
     if (await exists("tar")) {
-      const { stdout } = await execFile("tar", ["-tf", target], { timeout: 30000, maxBuffer: MAX_OUTPUT })
-      return stdout.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
+      const r = await safeExec("tar", ["-tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+      return parseOutput(r)
     }
   }
-  if ((kind === "7z" || kind === "unknown") && await exists("7z")) {
-    const { stdout } = await execFile("7z", ["l", "-ba", target], { timeout: 30000, maxBuffer: MAX_OUTPUT })
-    return parse7zList(stdout)
+  if ((kind === "7z" || kind === "unknown") && (await exists("7z"))) {
+    const r = await safeExec("7z", ["l", "-ba", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+    if (r.ok) return parse7zList(r.output)
   }
   throw new Error(`no supported listing backend for archive kind ${kind}`)
 }
 
 async function extractArchive(target: string, kind: ArchiveKind, outDir: string) {
   if (kind === "zip") {
-    try { return await powershellZip(target, outDir) } catch {}
+    try {
+      return await powershellZip(target, outDir)
+    } catch {}
     if (await exists("unzip")) {
-      try {
-        await execFile("unzip", ["-q", target, "-d", outDir], { timeout: 120000, maxBuffer: MAX_OUTPUT })
-        return "unzip"
-      } catch {}
+      const r = await safeExec("unzip", ["-q", target, "-d", outDir], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+      if (r.ok) return "unzip"
     }
     if (await exists("7z")) {
-      try {
-        await execFile("7z", ["x", target, `-o${outDir}`, "-y"], { timeout: 120000, maxBuffer: MAX_OUTPUT })
-        return "7z"
-      } catch {}
+      const r = await safeExec("7z", ["x", target, `-o${outDir}`, "-y"], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+      if (r.ok) return "7z"
     }
     if (await exists("jar")) {
-      await execFile("jar", ["xf", target], { cwd: outDir, timeout: 120000, maxBuffer: MAX_OUTPUT })
-      return "jar"
+      const r = await safeExec("jar", ["xf", target], { cwd: outDir, timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+      if (r.ok) return "jar"
     }
   }
-  if (kind === "tar" && await exists("tar")) {
-    await execFile("tar", ["-xf", target, "-C", outDir], { timeout: 120000, maxBuffer: MAX_OUTPUT })
-    return "tar"
+  if (kind === "tar" && (await exists("tar"))) {
+    const r = await safeExec("tar", ["-xf", target, "-C", outDir], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+    if (r.ok) return "tar"
   }
   if (await exists("7z")) {
-    await execFile("7z", ["x", target, `-o${outDir}`, "-y"], { timeout: 120000, maxBuffer: MAX_OUTPUT })
-    return "7z"
+    const r = await safeExec("7z", ["x", target, `-o${outDir}`, "-y"], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+    if (r.ok) return "7z"
   }
   throw new Error(`no supported extraction backend for archive kind ${kind}`)
 }
@@ -196,9 +209,15 @@ function fileHints(rel: string, sample: Buffer) {
   const lower = rel.toLowerCase()
   const text = sample.toString("latin1").toLowerCase()
   const hints: string[] = []
-  if (/package\.json|requirements\.txt|pom\.xml|dockerfile|compose|routes?|controllers?|templates?|\.php|\.jsp|\.html|\.js|\.ts|\.java/.test(lower)) hints.push("source/code")
+  if (
+    /package\.json|requirements\.txt|pom\.xml|dockerfile|compose|routes?|controllers?|templates?|\.php|\.jsp|\.html|\.js|\.ts|\.java/.test(
+      lower,
+    )
+  )
+    hints.push("source/code")
   if (/readme|license|changelog|docs?/.test(lower)) hints.push("docs")
-  if (/\.env|config|secret|token|key|credential/.test(lower) || /secret|token|password|apikey/.test(text)) hints.push("config/secret-like")
+  if (/\.env|config|secret|token|key|credential/.test(lower) || /secret|token|password|apikey/.test(text))
+    hints.push("config/secret-like")
   if (/\.(zip|jar|war|7z|rar|tar|gz)$/.test(lower)) hints.push("nested-archive")
   return hints
 }
@@ -227,13 +246,17 @@ async function inspectExtracted(outDir: string, maxFiles: number, maxBytes: numb
 }
 
 export default tool({
-  description: "Safe archive extraction for daily development: list members, block path traversal, extract into extracted/<archive-name>/ inside workspace, and summarize extracted files.",
+  description:
+    "Safe archive extraction for daily development: list members, block path traversal, extract into extracted/<archive-name>/ inside workspace, and summarize extracted files.",
   args: {
     target: tool.schema.string().describe("Archive path to list and safely extract"),
     out: tool.schema.string().default("extracted").describe("Relative output root. Default: extracted"),
     maxFiles: tool.schema.number().optional().describe("Maximum archive members/files to inspect. Default 500."),
     maxBytes: tool.schema.number().optional().describe("Maximum extracted bytes to inspect. Default 104857600."),
-    overwrite: tool.schema.boolean().optional().describe("Remove existing output directory before extraction. Default false."),
+    overwrite: tool.schema
+      .boolean()
+      .optional()
+      .describe("Remove existing output directory before extraction. Default false."),
   },
   async execute(args, context) {
     const targetArg = typeof args.target === "string" && args.target.trim() ? args.target : ""
@@ -248,7 +271,8 @@ export default tool({
     const baseOut = resolveInsideWorkspace(context.directory, outArg)
     const outDir = path.join(baseOut, cleanName(path.basename(target)))
     const relOut = path.relative(context.directory, outDir)
-    if (relOut.startsWith("..") || path.isAbsolute(relOut)) throw new Error("output directory must stay inside the current workspace")
+    if (relOut.startsWith("..") || path.isAbsolute(relOut))
+      throw new Error("output directory must stay inside the current workspace")
 
     const members = await listArchive(target, kind)
     const dangerous = members.filter(isDangerousMember)
@@ -277,11 +301,16 @@ export default tool({
     const backend = await extractArchive(target, kind, outDir)
     const inspected = await inspectExtracted(outDir, maxFiles, maxBytes)
     const highlighted = inspected.results.filter((r) => r.hints.length).slice(0, 80)
-    const tree = inspected.results.slice(0, 120).map((r) => `${r.rel}\t${r.size} bytes${r.hints.length ? `\t${r.hints.join(",")}` : ""}`)
+    const tree = inspected.results
+      .slice(0, 120)
+      .map((r) => `${r.rel}\t${r.size} bytes${r.hints.length ? `\t${r.hints.join(",")}` : ""}`)
     const next: string[] = []
-    if (highlighted.some((r) => r.hints.includes("source/code"))) next.push("inspect extracted source/code files in the output directory")
-    if (highlighted.some((r) => r.hints.includes("config/secret-like"))) next.push("review highlighted config files carefully and avoid exposing secrets")
-    if (highlighted.some((r) => r.hints.includes("nested-archive"))) next.push("run archive-safe-extract again on nested archives if needed")
+    if (highlighted.some((r) => r.hints.includes("source/code")))
+      next.push("inspect extracted source/code files in the output directory")
+    if (highlighted.some((r) => r.hints.includes("config/secret-like")))
+      next.push("review highlighted config files carefully and avoid exposing secrets")
+    if (highlighted.some((r) => r.hints.includes("nested-archive")))
+      next.push("run archive-safe-extract again on nested archives if needed")
     if (!next.length) next.push("inspect extracted files under the output directory")
 
     return [

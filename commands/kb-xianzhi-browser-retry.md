@@ -14,7 +14,7 @@ agent: daily
 ## 输入示例
 
 ```text
-/kb-xianzhi-browser-retry C:\Users\Administrator\SecKB\sources\xianzhi\runs\xianzhi-browser-retry-1717670000.txt
+/kb-xianzhi-browser-retry {env:SECKB_ROOT}/sources\xianzhi\runs\xianzhi-browser-retry-1717670000.txt
 ```
 
 ## 流程

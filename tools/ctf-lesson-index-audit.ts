@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs"
-import { join, basename, resolve } from "node:path"
+import { join, basename, dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { tool } from "@opencode-ai/plugin"
 
@@ -56,10 +56,15 @@ export default tool({
     const lessonDir = args.lessonDir || DEFAULT_LESSON_DIR
     const indexPath = args.indexPath || DEFAULT_INDEX
     const files = walk(lessonDir)
-    const idx = existsSync(indexPath) ? (JSON.parse(readFileSync(indexPath, "utf8")) as LessonIndex) : { meta: {}, lessons: [] }
-    const byFile = new Map(idx.lessons.map((x) => [x.file.toLowerCase(), x]))
+    const idx = existsSync(indexPath)
+      ? (JSON.parse(readFileSync(indexPath, "utf8")) as LessonIndex)
+      : { meta: {}, lessons: [] }
+    const indexDir = dirname(resolve(indexPath))
+    const byFile = new Map(idx.lessons.map((x) => [resolve(indexDir, x.file).toLowerCase(), x]))
     const missing = files.filter((f) => !byFile.has(f.toLowerCase()))
-    const weak = idx.lessons.filter((x) => !x.triggers?.length || !x.signals?.length || !x.better_question || !x.stop_rule || !x.query_terms?.length)
+    const weak = idx.lessons.filter(
+      (x) => !x.triggers?.length || !x.signals?.length || !x.better_question || !x.stop_rule || !x.query_terms?.length,
+    )
     return [
       `verdict: lesson_index_audit`,
       `lesson_dir: ${lessonDir}`,
@@ -72,7 +77,12 @@ export default tool({
       "missing_lessons:",
       ...(missing.length ? missing.map((x) => `- ${x}`) : ["- none"]),
       "weak_entries:",
-      ...(weak.length ? weak.map((x) => `- ${x.id} file=${x.file} missing=${[!x.triggers?.length ? "triggers" : "", !x.signals?.length ? "signals" : "", !x.better_question ? "better_question" : "", !x.stop_rule ? "stop_rule" : "", !x.query_terms?.length ? "query_terms" : ""].filter(Boolean).join("|")}`) : ["- none"]),
+      ...(weak.length
+        ? weak.map(
+            (x) =>
+              `- ${x.id} file=${x.file} missing=${[!x.triggers?.length ? "triggers" : "", !x.signals?.length ? "signals" : "", !x.better_question ? "better_question" : "", !x.stop_rule ? "stop_rule" : "", !x.query_terms?.length ? "query_terms" : ""].filter(Boolean).join("|")}`,
+          )
+        : ["- none"]),
       "next_actions:",
       "- Add missing lessons to lessons.index.json.",
       "- Fill weak entries with triggers, signals, better_question, stop_rule, and query_terms.",

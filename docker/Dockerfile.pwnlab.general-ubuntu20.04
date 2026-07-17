@@ -1,0 +1,38 @@
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC LC_ALL=C.UTF-8 LANG=C.UTF-8 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN dpkg --add-architecture i386 \
+    && sed -i -E 's/(focal[^ ]*[[:space:]]+)main restricted/\1main restricted universe multiverse/g; s/(focal[^ ]*[[:space:]]+)main$/\1main universe multiverse/g' /etc/apt/sources.list || true \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+      apt-transport-https bash-completion binutils binutils-multiarch bsdmainutils build-essential ca-certificates \
+      clang checksec cmake coreutils curl dnsutils elfutils file g++-multilib gcc-multilib gdb gdb-multiarch gdbserver \
+      git git-lfs hexedit iproute2 iputils-ping jq less libc6:i386 libc6-dbg libc6-dbg:i386 libc6-dev:i386 \
+      libcapstone-dev libffi-dev libglib2.0-dev libncurses5:i386 libncursesw5:i386 libseccomp-dev libssl-dev \
+      libstdc++6:i386 ltrace make nasm net-tools netcat-openbsd openssh-client patchelf pkg-config procps \
+      python3 python3-dev python3-pip python3-setuptools python3-venv qemu-user qemu-user-static ripgrep ruby ruby-dev \
+      socat strace sudo tmux unzip vim wget xxd zip zlib1g:i386 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN (python3 -m pip install --upgrade pip setuptools wheel || echo "WARN: optional pip bootstrap failed") \
+    && for pkg in pwntools ROPGadget capstone unicorn keystone-engine pyelftools angr claripy z3-solver LibcSearcher requests ipython; do \
+      python3 -m pip install "$pkg" || echo "WARN: optional pip package failed: $pkg"; \
+    done \
+    && python3 -m pip install ropper || echo "WARN: optional pip package failed: ropper" \
+    && (gem install one_gadget -v 1.2.0 --no-document || echo "WARN: optional gem install failed: one_gadget") \
+    && (gem install seccomp-tools -v 1.6.1 --no-document || echo "WARN: optional gem install failed: seccomp-tools") \
+    && printf '#!/usr/bin/env bash\nexec python3 -m pwnlib.commandline.checksec "$@"\n' > /usr/local/bin/checksec \
+    && chmod +x /usr/local/bin/checksec
+
+RUN git clone --depth=1 https://github.com/hugsy/gef.git /opt/gef || true \
+    && git clone --depth=1 https://github.com/pwndbg/pwndbg /opt/pwndbg || true \
+    && if [ -x /opt/pwndbg/setup.sh ]; then /opt/pwndbg/setup.sh || echo "WARN: pwndbg setup failed; falling back"; fi \
+    && if [ -f /opt/pwndbg/gdbinit.py ]; then printf '\nsource /opt/pwndbg/gdbinit.py\n' > /root/.gdbinit; elif [ -f /opt/gef/gef.py ]; then printf '\nsource /opt/gef/gef.py\n' > /root/.gdbinit; else touch /root/.gdbinit; fi \
+    && printf 'set disassembly-flavor intel\nset pagination off\nset follow-fork-mode child\n' >> /root/.gdbinit \
+    && printf '#!/usr/bin/env bash\nset +e\necho "[pwnlab-general20] tool check"\nfor c in file readelf objdump nm strings checksec gdb gdbserver python3 ROPgadget ropper one_gadget patchelf qemu-x86_64 qemu-i386 strace ltrace tmux vim git curl wget socat seccomp-tools; do command -v "$c" >/dev/null 2>&1 && echo "OK $c" || echo "MISS $c"; done\npython3 - <<"PY"\ntry:\n import pwn; print("OK pwntools")\nexcept Exception as e: print("MISS pwntools", e)\ntry:\n import angr; print("OK angr", angr.__version__)\nexcept Exception as e: print("MISS angr", e)\ntry:\n import claripy; print("OK claripy", getattr(claripy, "__version__", "present"))\nexcept Exception as e: print("MISS claripy", e)\ntry:\n import z3; print("OK z3", z3.get_version_string())\nexcept Exception as e: print("MISS z3", e)\nPY\n' > /usr/local/bin/pwnlab-check \
+    && chmod +x /usr/local/bin/pwnlab-check
+
+WORKDIR /work
+CMD ["bash"]

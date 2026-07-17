@@ -11,7 +11,8 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
 }
 
 export default tool({
-  description: "CTF ensure dir: create a workspace-local directory recursively when the generic filesystem helper is too strict.",
+  description:
+    "CTF ensure dir: create a workspace-local directory recursively when the generic filesystem helper is too strict.",
   args: {
     path: tool.schema.string().describe("Workspace-relative directory path to ensure."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
@@ -21,11 +22,6 @@ export default tool({
     await mkdir(target, { recursive: true })
     const payload = { ok: true, path: target, createdRecursively: true }
     if (args.jsonOnly) return JSON.stringify(payload, null, 2)
-    return [
-      "CTF_ENSURE_DIR:",
-      "- ok: true",
-      `- path: ${target}`,
-      "- created_recursively: true",
-    ].join("\n")
+    return ["CTF_ENSURE_DIR:", "- ok: true", `- path: ${target}`, "- created_recursively: true"].join("\n")
   },
 })

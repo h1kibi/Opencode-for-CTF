@@ -10,27 +10,58 @@ type Check = {
 }
 
 const checks: Check[] = [
-  { name: "python", command: "python", args: ["--version"], required: true, note: "required for doc-read helper and local OCR glue" },
-  { name: "py", command: "py", args: ["-3", "--version"], required: false, note: "Windows Python launcher fallback for inline snippets" },
-  { name: "tesseract", command: "tesseract", args: ["--version"], required: false, note: "OCR engine used by pytesseract in doc-read image OCR" },
-  { name: "magick", command: "magick", args: ["-version"], required: false, note: "ImageMagick for image preprocessing, resize, threshold, crop" },
-  { name: "zbarimg", command: "zbarimg", args: ["--version"], required: false, note: "barcode/QR detection for CTF image artifacts" },
-  { name: "apkanalyzer", command: "apkanalyzer", args: ["--help"], required: true, note: "fast packaged APK resource/manifest inspection" },
+  {
+    name: "python",
+    command: "python",
+    args: ["--version"],
+    required: true,
+    note: "required for doc-read helper and local OCR glue",
+  },
+  {
+    name: "py",
+    command: "py",
+    args: ["-3", "--version"],
+    required: false,
+    note: "Windows Python launcher fallback for inline snippets",
+  },
+  {
+    name: "tesseract",
+    command: "tesseract",
+    args: ["--version"],
+    required: false,
+    note: "OCR engine used by pytesseract in doc-read image OCR",
+  },
+  {
+    name: "magick",
+    command: "magick",
+    args: ["-version"],
+    required: false,
+    note: "ImageMagick for image preprocessing, resize, threshold, crop",
+  },
+  {
+    name: "zbarimg",
+    command: "zbarimg",
+    args: ["--version"],
+    required: false,
+    note: "barcode/QR detection for CTF image artifacts",
+  },
+  {
+    name: "apkanalyzer",
+    command: "apkanalyzer",
+    args: ["--help"],
+    required: true,
+    note: "fast packaged APK resource/manifest inspection",
+  },
 ]
 
 function run(check: Check) {
   const directHints: Record<string, string[]> = {
-    tesseract: [
-      "C:\\Program Files\\Tesseract-OCR\\tesseract.exe",
-    ],
+    tesseract: ["C:\\Program Files\\Tesseract-OCR\\tesseract.exe"],
     magick: [
       "C:\\Program Files\\ImageMagick-7.1.2-Q16\\magick.exe",
       "C:\\Program Files\\ImageMagick-7.1.2-Q16-HDRI\\magick.exe",
     ],
-    zbarimg: [
-      "C:\\Program Files\\ZBar\\bin\\zbarimg.exe",
-      "C:\\Tools\\zbar\\zbarimg.exe",
-    ],
+    zbarimg: ["C:\\Program Files\\ZBar\\bin\\zbarimg.exe", "C:\\Tools\\zbar\\zbarimg.exe"],
   }
 
   const res = spawnSync(check.command, check.args, {
@@ -64,7 +95,9 @@ console.log(`missing_required: ${missingRequired.map((r) => r.name).join(", ") |
 console.log(`missing_optional: ${missingOptional.map((r) => r.name).join(", ") || "none"}`)
 console.log("\n## details")
 for (const r of results) {
-  console.log(`- ${r.ok ? "ok" : r.required ? "MISSING" : "optional-missing"}: ${r.name} :: ${r.note}${r.preview ? ` :: ${r.preview}` : ""}`)
+  console.log(
+    `- ${r.ok ? "ok" : r.required ? "MISSING" : "optional-missing"}: ${r.name} :: ${r.note}${r.preview ? ` :: ${r.preview}` : ""}`,
+  )
 }
 
 console.log("\n## capability_summary")
@@ -77,14 +110,26 @@ console.log(`- windows_python_inline_helper: yes (ctf-python-inline)`)
 
 console.log("\n## recommended_path")
 if (missingRequired.length) {
-  console.log("Fix missing_required items first. Without Python or apkanalyzer, the image/OCR and APK resource helper paths are incomplete.")
+  console.log(
+    "Fix missing_required items first. Without Python or apkanalyzer, the image/OCR and APK resource helper paths are incomplete.",
+  )
 } else if (!hasTesseract) {
-  console.log("doc-read image OCR path is wired correctly, but OCR engine is missing. Until tesseract is installed, use image metadata only or supply manually extracted text.")
+  console.log(
+    "doc-read image OCR path is wired correctly, but OCR engine is missing. Until tesseract is installed, use image metadata only or supply manually extracted text.",
+  )
 } else {
-  console.log("Image OCR fast-path is available. Use doc-read ocr=true for images and ctf-apk-resource-read for packaged APK resources.")
+  console.log(
+    "Image OCR fast-path is available. Use doc-read ocr=true for images and ctf-apk-resource-read for packaged APK resources.",
+  )
 }
 
 console.log("\n## fallbacks")
-console.log("- If OCR engine is missing, use image-file-info for metadata and ask for a textual transcription or install tesseract.")
-console.log("- If ImageMagick is missing, skip preprocessing and rely on source images or Python/Pillow-only lightweight transforms.")
-console.log("- If zbarimg is missing, use ctf-stego-probe or external QR tooling later; do not block routine REV progress on it.")
+console.log(
+  "- If OCR engine is missing, use image-file-info for metadata and ask for a textual transcription or install tesseract.",
+)
+console.log(
+  "- If ImageMagick is missing, skip preprocessing and rely on source images or Python/Pillow-only lightweight transforms.",
+)
+console.log(
+  "- If zbarimg is missing, use ctf-stego-probe or external QR tooling later; do not block routine REV progress on it.",
+)

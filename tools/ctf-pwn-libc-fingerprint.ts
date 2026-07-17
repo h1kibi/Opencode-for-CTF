@@ -1,11 +1,8 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
 import { createHash } from "node:crypto"
 import { readFile, lstat } from "node:fs/promises"
 import path from "node:path"
-import { promisify } from "node:util"
-
-const execFile = promisify(execFileCb)
+import { safeExec } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -15,16 +12,6 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
     throw new Error(`path must stay inside the current workspace: ${input}`)
   }
   return target
-}
-
-async function safeExec(cmd: string, args: string[], cwd: string, ms = 6000) {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout: ms, maxBuffer: 1024 * 1024 })
-    return `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`.trim()
-  }
 }
 
 function escapeRegExp(s: string) {
@@ -60,7 +47,8 @@ function firstMatch(text: string, re: RegExp) {
 }
 
 export default tool({
-  description: "CTF pwn libc fingerprint helper: extract sha256, BuildID, release strings, loader/interpreter clues, and compact symbol tuples to identify or compare a libc quickly.",
+  description:
+    "CTF pwn libc fingerprint helper: extract sha256, BuildID, release strings, loader/interpreter clues, and compact symbol tuples to identify or compare a libc quickly.",
   args: {
     libc: tool.schema.string().describe("Workspace-relative libc path."),
     timeoutMs: tool.schema.number().optional().describe("Timeout per helper command in ms. Default 6000."),
@@ -75,12 +63,18 @@ export default tool({
     const raw = await readFile(libc)
     const sha256 = createHash("sha256").update(raw).digest("hex")
 
-    const readelfHeader = await safeExec("readelf", ["-h", libc], cwd, timeoutMs)
-    const readelfNotes = await safeExec("readelf", ["-n", libc], cwd, timeoutMs)
-    const readelfDyn = await safeExec("readelf", ["-d", libc], cwd, timeoutMs)
-    const readelfSyms = await safeExec("readelf", ["-Ws", libc], cwd, timeoutMs)
-    const nmOut = await safeExec("nm", ["-D", libc], cwd, timeoutMs)
-    const fileOut = await safeExec("file", [libc], cwd, timeoutMs)
+    const readelfHeaderR = await safeExec("readelf", ["-h", libc], cwd, timeoutMs)
+    const readelfHeader = readelfHeaderR.output
+    const readelfNotesR = await safeExec("readelf", ["-n", libc], cwd, timeoutMs)
+    const readelfNotes = readelfNotesR.output
+    const readelfDynR = await safeExec("readelf", ["-d", libc], cwd, timeoutMs)
+    const readelfDyn = readelfDynR.output
+    const readelfSymsR = await safeExec("readelf", ["-Ws", libc], cwd, timeoutMs)
+    const readelfSyms = readelfSymsR.output
+    const nmR = await safeExec("nm", ["-D", libc], cwd, timeoutMs)
+    const nmOut = nmR.output
+    const fileR = await safeExec("file", [libc], cwd, timeoutMs)
+    const fileOut = fileR.output
 
     const symbolLines = `${readelfSyms}\n${nmOut}`.split(/\r?\n/)
     const keySymbols = {
@@ -98,13 +92,19 @@ export default tool({
       __malloc_hook: symbolOffset(symbolLines, "__malloc_hook"),
     }
 
-    const releaseStrings = extractAscii(raw, /(glibc|gnu c library|release version|ubuntu|debian|fedora|build-id|libc\.so\.6)/i, 12)
+    const releaseStrings = extractAscii(
+      raw,
+      /(glibc|gnu c library|release version|ubuntu|debian|fedora|build-id|libc\.so\.6)/i,
+      12,
+    )
     const arch = firstMatch(readelfHeader, /Machine:\s*(.+)/i)
     const elfClass = firstMatch(readelfHeader, /Class:\s*(.+)/i)
     const endian = firstMatch(readelfHeader, /Data:\s*(.+)/i)
     const buildId = firstMatch(readelfNotes, /Build ID:\s*([0-9a-f]+)/i)
     const soname = firstMatch(readelfDyn, /SONAME.*\[(.+?)\]/i)
-    const needed = Array.from(readelfDyn.matchAll(/Shared library: \[(.+?)\]/g)).map((m) => m[1]).slice(0, 8)
+    const needed = Array.from(readelfDyn.matchAll(/Shared library: \[(.+?)\]/g))
+      .map((m) => m[1])
+      .slice(0, 8)
 
     const tuple = [
       keySymbols.__libc_start_main,

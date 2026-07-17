@@ -49,4 +49,6 @@ for (const [group, result] of groups) {
   console.log(`missing: ${result.missing.length ? result.missing.join(", ") : "none"}`)
 }
 
-console.log("\nUse missing tools only when the selected challenge path requires them. Prefer route-specific installs over broad toolset expansion during active solving.")
+console.log(
+  "\nUse missing tools only when the selected challenge path requires them. Prefer route-specific installs over broad toolset expansion during active solving.",
+)

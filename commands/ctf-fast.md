@@ -1,13 +1,14 @@
 ---
-description: CTF entry: Start lightweight fast CTF solving in ctf-fast mode
+description: "CTF entry: force lightweight fast lane (prefer /ctf for auto-route)"
 agent: ctf-fast
 subtask: false
 ---
 
 Start CTF solving in `ctf-fast` mode — lightweight, intuition-first, minimal tooling.
 
-`ctf-fast` is a standalone primary agent for simple to medium CTF challenges. For complex challenges, use `ctf-expert` instead.
+For automatic routing, prefer `/ctf`. Use this command only when you already want the fast lane.
 
+`ctf-fast` is a standalone primary agent for simple to medium CTF challenges. For complex challenges, use `/ctf-expert`.
 Challenge info:
 $ARGUMENTS
 
@@ -15,7 +16,8 @@ Rules:
 - Treat this as an authorized CTF/lab/local challenge only.
 - Prioritize getting the flag quickly, ideally within about 10 minutes of strategy budget.
 - Trust model intuition and shortest-path exploit reasoning.
-- Keep tooling light: do not use subagents, state machines, or heavy analysis workflows.
+- Keep tooling light: do not use subagents, Team Mode, Evidence.md heavy flow, or expert-only tools.
+- Runtime enforces a **fast tool allowlist** (triage, light web/pwn/crypto/forensics probes, python-inline). If a tool is blocked, escalate rather than fighting the surface.
 - Treat the 10-minute budget as a soft strategy horizon; if the line is clearly closing, continue, but if the probability-to-time ratio looks bad, stop.
 - For URL-only Web, usually start with `ctf-web-fingerprint` then `ctf-web-blackbox-map mode=light`.
 - If JS/runtime/admin-bot/DOM evidence appears, use exactly one concise next-step tool.

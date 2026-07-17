@@ -11,10 +11,10 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
   return target
 }
 
-const interestingConfig = /(^|\/)(application[^/]*\.(properties|yml|yaml)|bootstrap[^/]*\.(properties|yml|yaml)|web\.xml|shiro\.ini|MANIFEST\.MF|pom\.properties|log4j[^/]*\.xml|logback[^/]*\.xml)$/i
+const interestingConfig =
+  /(^|\/)(application[^/]*\.(properties|yml|yaml)|bootstrap[^/]*\.(properties|yml|yaml)|web\.xml|shiro\.ini|MANIFEST\.MF|pom\.properties|log4j[^/]*\.xml|logback[^/]*\.xml)$/i
 
 const secretish = /(password|passwd|pwd|secret|token|key|credential|apikey|api-key|access-key|rememberMe|cipherKey)/i
-
 
 function redact(line: string) {
   if (!secretish.test(line)) return line
@@ -27,7 +27,11 @@ function redact(line: string) {
 }
 
 function pickLines(content: string, re: RegExp, limit = 40) {
-  return content.split(/\r?\n/).filter((line) => re.test(line)).slice(0, limit).map(redact)
+  return content
+    .split(/\r?\n/)
+    .filter((line) => re.test(line))
+    .slice(0, limit)
+    .map(redact)
 }
 
 function flattenConfig(content: string, rel: string) {
@@ -65,12 +69,21 @@ function classify(content: string, rel: string) {
     const lines = pickLines(content, re, 20)
     if (lines.length) hits.push(`${label}: ${rel}\n${lines.map((x) => `  - ${x.trim()}`).join("\n")}`)
   }
-  add("server-context", /(server\.(port|servlet\.context-path)|contextPath|context-path|<url-pattern>|<servlet-mapping>)/i)
+  add(
+    "server-context",
+    /(server\.(port|servlet\.context-path)|contextPath|context-path|<url-pattern>|<servlet-mapping>)/i,
+  )
   add("datasource", /(spring\.datasource|jdbc:|datasource|driver-class-name|username|password)/i)
   add("actuator", /(management\.endpoints|management\.endpoint|management\.server|actuator|show-details)/i)
   add("h2", /(spring\.h2\.console|h2-console|jdbc:h2)/i)
-  add("security-auth", /(spring\.security|security\.|login|admin|role|session|cookie|rememberMe|shiro|filterChain|authc|anon|perms|roles)/i)
-  add("upload-file", /(multipart|upload|file\.upload|storage|static-locations|resources\.static|web\.resources|location|path)/i)
+  add(
+    "security-auth",
+    /(spring\.security|security\.|login|admin|role|session|cookie|rememberMe|shiro|filterChain|authc|anon|perms|roles)/i,
+  )
+  add(
+    "upload-file",
+    /(multipart|upload|file\.upload|storage|static-locations|resources\.static|web\.resources|location|path)/i,
+  )
   add("template", /(thymeleaf|freemarker|velocity|template|view|prefix|suffix)/i)
   add("profiles", /(spring\.profiles|profiles\.active|spring\.config|include)/i)
   add("logging", /(logging\.|log4j|logback|logger|level)/i)
@@ -79,7 +92,8 @@ function classify(content: string, rel: string) {
 }
 
 export default tool({
-  description: "CTF Java config map: scan extracted Java Web config files for profiles, context path, datasource, actuator, H2, Shiro/security, upload paths, static resources, template config, logging, and secret-like clues with redaction and attack queue seed.",
+  description:
+    "CTF Java config map: scan extracted Java Web config files for profiles, context path, datasource, actuator, H2, Shiro/security, upload paths, static resources, template config, logging, and secret-like clues with redaction and attack queue seed.",
   args: {
     target: tool.schema.string().describe("Extracted Java source/archive directory or a config file"),
   },
@@ -112,13 +126,24 @@ export default tool({
         if (flat.length) sections.push(`flattened-config: ${rel}\n${flat.map((x) => `  - ${x.trim()}`).join("\n")}`)
         const hits = classify(content, rel)
         if (hits.length) sections.push(...hits)
-        if (/management\.endpoints|actuator/i.test(content)) queue.add("Actuator/config: verify management base path, exposed endpoints, and auth boundary")
-        if (/spring\.h2\.console|jdbc:h2|h2-console/i.test(content)) queue.add("H2 console: verify route and config-derived JDBC credentials")
-        if (/shiro|rememberMe|cipherKey|filterChain/i.test(content)) queue.add("Shiro/security: map filter chain and rememberMe/key/config gates before token payloads")
-        if (/spring\.datasource|jdbc:|username|password/i.test(content)) queue.add("Datasource: use DB config to identify DB type, local console, default creds, and flag/admin table path")
-        if (/multipart|upload|static-locations|resources\.static|file\.upload|storage/i.test(content)) queue.add("Upload/static paths: map storage, served path, extension checks, and canary write behavior")
-        if (/thymeleaf|freemarker|velocity|template|view/i.test(content)) queue.add("Template config: identify engine, prefix/suffix, view resolver, and expression context")
-        if (secretish.test(content)) queue.add("Secret-like config: use redacted key names/locations to guide auth/token/session checks without exposing secrets")
+        if (/management\.endpoints|actuator/i.test(content))
+          queue.add("Actuator/config: verify management base path, exposed endpoints, and auth boundary")
+        if (/spring\.h2\.console|jdbc:h2|h2-console/i.test(content))
+          queue.add("H2 console: verify route and config-derived JDBC credentials")
+        if (/shiro|rememberMe|cipherKey|filterChain/i.test(content))
+          queue.add("Shiro/security: map filter chain and rememberMe/key/config gates before token payloads")
+        if (/spring\.datasource|jdbc:|username|password/i.test(content))
+          queue.add(
+            "Datasource: use DB config to identify DB type, local console, default creds, and flag/admin table path",
+          )
+        if (/multipart|upload|static-locations|resources\.static|file\.upload|storage/i.test(content))
+          queue.add("Upload/static paths: map storage, served path, extension checks, and canary write behavior")
+        if (/thymeleaf|freemarker|velocity|template|view/i.test(content))
+          queue.add("Template config: identify engine, prefix/suffix, view resolver, and expression context")
+        if (secretish.test(content))
+          queue.add(
+            "Secret-like config: use redacted key names/locations to guide auth/token/session checks without exposing secrets",
+          )
       } catch {
         // skip unreadable
       }
@@ -133,7 +158,9 @@ export default tool({
       ...(sections.length ? sections.slice(0, 200) : ["- none"]),
       "",
       "## Attack Queue Seed",
-      ...(queue.size ? Array.from(queue).map((x, i) => `${i + 1}. ${x}`) : ["1. No high-value config clues; prioritize ctf-java-map route/sink output"]),
+      ...(queue.size
+        ? Array.from(queue).map((x, i) => `${i + 1}. ${x}`)
+        : ["1. No high-value config clues; prioritize ctf-java-map route/sink output"]),
       "",
       "## First Safe Checks",
       "- Confirm context path and port before route probes.",

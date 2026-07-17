@@ -1,10 +1,8 @@
+import { safeExec } from "./lib/exec-utils.ts"
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
+import { randomUUID } from "node:crypto"
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -17,13 +15,16 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
 }
 
 function splitSimple(value: string | undefined) {
-  return String(value || "").split(/\s+/).filter(Boolean)
+  return String(value || "")
+    .split(/\s+/)
+    .filter(Boolean)
 }
 
 function parseArgvPrefix(argv: string | undefined, argvPrefixJson: string | undefined) {
   if (argvPrefixJson) {
     const parsed = JSON.parse(argvPrefixJson) as unknown
-    if (!Array.isArray(parsed) || parsed.some((x) => typeof x !== "string")) throw new Error("argvPrefixJson must be a JSON string array")
+    if (!Array.isArray(parsed) || parsed.some((x) => typeof x !== "string"))
+      throw new Error("argvPrefixJson must be a JSON string array")
     return parsed as string[]
   }
   return splitSimple(argv)
@@ -32,7 +33,7 @@ function parseArgvPrefix(argv: string | undefined, argvPrefixJson: string | unde
 function validateContainerPosixPath(input: string, field: string, options?: { allowRoot?: boolean }) {
   if (!input.startsWith("/")) throw new Error(`${field} must be an absolute POSIX path inside the container`)
   const normalized = path.posix.normalize(input)
-  if (!(options?.allowRoot) && normalized === "/") throw new Error(`${field} must not be '/'`)
+  if (!options?.allowRoot && normalized === "/") throw new Error(`${field} must not be '/'`)
   return normalized
 }
 
@@ -41,7 +42,10 @@ function isInsideContainerTree(child: string, root: string) {
 }
 
 function splitArgs(value: string | undefined) {
-  return String(value || "").split(/\s+/).filter(Boolean).slice(0, 40)
+  return String(value || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 40)
 }
 
 function compact(s: string, max = 14000) {
@@ -52,33 +56,36 @@ function compact(s: string, max = 14000) {
   return `${head}\n...[truncated ${clean.length - max} chars]...\n${tail}`
 }
 
-async function safeExec(cmd: string, args: string[], cwd: string, timeoutMs: number, env?: NodeJS.ProcessEnv) {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout: timeoutMs, maxBuffer: 2 * 1024 * 1024, env })
-    return { ok: true, output: `${stdout}${stderr ? `\n${stderr}` : ""}` }
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string; code?: string | number }
-    const merged = `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`
-    return { ok: false, output: merged || String(e.code ?? "gdb execution failed") }
-  }
-}
-
 function parseRegisters(text: string) {
-  return text.split(/\r?\n/).filter((line) => /^([a-z]{2,4}|eip|rip|rsp|rbp|esp|ebp)\s+0x[0-9a-f]+/i.test(line.trim())).slice(0, 32)
+  return text
+    .split(/\r?\n/)
+    .filter((line) => /^([a-z]{2,4}|eip|rip|rsp|rbp|esp|ebp)\s+0x[0-9a-f]+/i.test(line.trim()))
+    .slice(0, 32)
 }
 
 function parseBacktrace(text: string) {
-  return text.split(/\r?\n/).filter((line) => /^#\d+\s+/.test(line.trim())).slice(0, 12)
+  return text
+    .split(/\r?\n/)
+    .filter((line) => /^#\d+\s+/.test(line.trim()))
+    .slice(0, 12)
 }
 
 function parseStack(text: string) {
-  return text.split(/\r?\n/).filter((line) => /^0x[0-9a-f]+:/i.test(line.trim())).slice(0, 24)
+  return text
+    .split(/\r?\n/)
+    .filter((line) => /^0x[0-9a-f]+:/i.test(line.trim()))
+    .slice(0, 24)
 }
 
 function parseMappings(text: string) {
   const start = text.indexOf("process mappings:")
   if (start < 0) return []
-  return text.slice(start).split(/\r?\n/).slice(1).filter((line) => /^0x[0-9a-f]+\s+0x[0-9a-f]+/i.test(line.trim())).slice(0, 24)
+  return text
+    .slice(start)
+    .split(/\r?\n/)
+    .slice(1)
+    .filter((line) => /^0x[0-9a-f]+\s+0x[0-9a-f]+/i.test(line.trim()))
+    .slice(0, 24)
 }
 
 function extractPieBase(mappings: string[]) {
@@ -123,7 +130,12 @@ function parseMemoryBlocks(text: string) {
       continue
     }
     if (capture) {
-      if (/^0x[0-9a-f]+:/i.test(line) || /^\$\d+\s*=/.test(line) || /^Cannot access memory/i.test(line) || /^No registers\./i.test(line)) {
+      if (
+        /^0x[0-9a-f]+:/i.test(line) ||
+        /^\$\d+\s*=/.test(line) ||
+        /^Cannot access memory/i.test(line) ||
+        /^No registers\./i.test(line)
+      ) {
         current.push(line)
         continue
       }
@@ -178,9 +190,11 @@ function inferHints(text: string, ipValue: string, pieBase: string) {
   if (/cannot access memory/i.test(lower)) hints.push("invalid_pointer_or_unmapped_access")
   if (/__stack_chk_fail|stack smashing/i.test(lower)) hints.push("canary_or_stack_smash_detected")
   if (/execve|seccomp|sandbox/i.test(lower)) hints.push("seccomp_or_execve_related_context")
-  if (/0x41414141|0x61616161|0x4141414141414141|0x6161616161616161/i.test(ipValue)) hints.push("instruction_pointer_looks_pattern_or_filler_controlled")
+  if (/0x41414141|0x61616161|0x4141414141414141|0x6161616161616161/i.test(ipValue))
+    hints.push("instruction_pointer_looks_pattern_or_filler_controlled")
   if (pieBase) hints.push("pie_base_guess_available")
-  if (/main\+|__libc_start_main|puts@plt|system@plt|print_flag|win/i.test(lower)) hints.push("symbolic_route_context_present")
+  if (/main\+|__libc_start_main|puts@plt|system@plt|print_flag|win/i.test(lower))
+    hints.push("symbolic_route_context_present")
   return hints.length ? hints : ["collect more control/leak context from this snapshot"]
 }
 
@@ -205,7 +219,10 @@ function parseKeyValueList(value: string | undefined, limit = 12) {
 function hexToGdbByteArray(hexText: string) {
   const cleaned = hexText.replace(/[^0-9a-fA-F]/g, "")
   const bytes = cleaned.match(/../g) || []
-  return { count: Math.max(1, bytes.length), init: `{${(bytes.length ? bytes : ["00"]).map((b) => `0x${b}`).join(", ")}}` }
+  return {
+    count: Math.max(1, bytes.length),
+    init: `{${(bytes.length ? bytes : ["00"]).map((b) => `0x${b}`).join(", ")}}`,
+  }
 }
 
 function patchMemoryExpression(expr: string, hexText: string) {
@@ -229,43 +246,139 @@ async function loadRuntimeProfile(contextDir: string, profileId?: string) {
 }
 
 export default tool({
-  description: "CTF pwn gdb snapshot: run a structured non-interactive gdb capture and summarize registers, backtrace, stack, mappings, selected memory views, and optional PIE-relative breakpoint offsets for hard PWN state reduction.",
+  description:
+    "CTF pwn gdb snapshot: run a structured non-interactive gdb capture and summarize registers, backtrace, stack, mappings, selected memory views, and optional PIE-relative breakpoint offsets for hard PWN state reduction.",
   args: {
     binary: tool.schema.string().describe("Workspace-relative ELF binary path."),
     mode: tool.schema.string().optional().describe("Input mode: stdin | argv. Default stdin."),
-    argv: tool.schema.string().optional().describe("Optional argv prefix for argv mode; payload is appended as final argument if provided."),
+    argv: tool.schema
+      .string()
+      .optional()
+      .describe("Optional argv prefix for argv mode; payload is appended as final argument if provided."),
     argvPrefixJson: tool.schema.string().optional().describe("Safer argv prefix as JSON string array."),
     stdinPayload: tool.schema.string().optional().describe("Optional exact stdin payload."),
     argvPayload: tool.schema.string().optional().describe("Optional exact argv payload."),
-    payloadFile: tool.schema.string().optional().describe("Workspace-relative text/binary payload file used as stdin or argv payload."),
-    breakpoints: tool.schema.string().optional().describe("Comma/newline-separated breakpoint specs, e.g. main, *0x40123a."),
-    breakpointHitCounts: tool.schema.string().optional().describe("Comma/newline-separated desired hit numbers for the listed breakpoints. 1 means first hit; values >1 are implemented with gdb ignore count."),
-    breakpointOffsets: tool.schema.string().optional().describe("Comma/newline-separated PIE-relative text offsets such as 0x1234 or +0x1234. These are added to a detected PIE base after mappings are captured."),
-    thenContinueToCrash: tool.schema.boolean().optional().describe("After first capture, continue and auto-capture signal/crash/exit context. Default false."),
-    autoBtOnSignal: tool.schema.boolean().optional().describe("Install gdb catch/handle flow to print bt/registers on signal-like stop. Default true when thenContinueToCrash."),
-    gdbScriptExtra: tool.schema.string().optional().describe("Extra gdb commands to append after the base snapshot script."),
-    memoryExprs: tool.schema.string().optional().describe("Comma/newline-separated memory expressions to inspect, e.g. $rsp, $rbp-0x40, 0x404000."),
-    memoryLabels: tool.schema.string().optional().describe("Optional comma/newline-separated labels matching memoryExprs order, e.g. victim,desc_ptr,fd."),
-    patchRegisters: tool.schema.string().optional().describe("Comma/newline-separated register=value assignments applied after the first stop, e.g. rip=0x401234,r13=0xdeadbeef."),
-    patchMemory: tool.schema.string().optional().describe("Comma/newline-separated expr=hex assignments applied after the first stop, e.g. 0x404000=41414141,$rsp=efbeadde."),
-    continueAfterPatch: tool.schema.boolean().optional().describe("Continue once after register/memory patches are applied. Default false."),
-    snapshotBeforeContinueLabel: tool.schema.string().optional().describe("Optional label printed before the first snapshot block. Default pre_patch_snapshot."),
-    snapshotAfterContinueLabel: tool.schema.string().optional().describe("Optional label printed after continue/patch flow. Default post_patch_snapshot."),
-    expectRip: tool.schema.string().optional().describe("Optional exact RIP/EIP value expected in a snapshot, e.g. 0x401234."),
-    expectContains: tool.schema.string().optional().describe("Optional substring expected in GDB output for a micro-validation oracle."),
+    payloadFile: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative text/binary payload file used as stdin or argv payload."),
+    breakpoints: tool.schema
+      .string()
+      .optional()
+      .describe("Comma/newline-separated breakpoint specs, e.g. main, *0x40123a."),
+    breakpointHitCounts: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Comma/newline-separated desired hit numbers for the listed breakpoints. 1 means first hit; values >1 are implemented with gdb ignore count.",
+      ),
+    breakpointOffsets: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Comma/newline-separated PIE-relative text offsets such as 0x1234 or +0x1234. These are added to a detected PIE base after mappings are captured.",
+      ),
+    thenContinueToCrash: tool.schema
+      .boolean()
+      .optional()
+      .describe("After first capture, continue and auto-capture signal/crash/exit context. Default false."),
+    autoBtOnSignal: tool.schema
+      .boolean()
+      .optional()
+      .describe(
+        "Install gdb catch/handle flow to print bt/registers on signal-like stop. Default true when thenContinueToCrash.",
+      ),
+    gdbScriptExtra: tool.schema
+      .string()
+      .optional()
+      .describe("Extra gdb commands to append after the base snapshot script."),
+    memoryExprs: tool.schema
+      .string()
+      .optional()
+      .describe("Comma/newline-separated memory expressions to inspect, e.g. $rsp, $rbp-0x40, 0x404000."),
+    memoryLabels: tool.schema
+      .string()
+      .optional()
+      .describe("Optional comma/newline-separated labels matching memoryExprs order, e.g. victim,desc_ptr,fd."),
+    patchRegisters: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Comma/newline-separated register=value assignments applied after the first stop, e.g. rip=0x401234,r13=0xdeadbeef.",
+      ),
+    patchMemory: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Comma/newline-separated expr=hex assignments applied after the first stop, e.g. 0x404000=41414141,$rsp=efbeadde.",
+      ),
+    continueAfterPatch: tool.schema
+      .boolean()
+      .optional()
+      .describe("Continue once after register/memory patches are applied. Default false."),
+    snapshotBeforeContinueLabel: tool.schema
+      .string()
+      .optional()
+      .describe("Optional label printed before the first snapshot block. Default pre_patch_snapshot."),
+    snapshotAfterContinueLabel: tool.schema
+      .string()
+      .optional()
+      .describe("Optional label printed after continue/patch flow. Default post_patch_snapshot."),
+    expectRip: tool.schema
+      .string()
+      .optional()
+      .describe("Optional exact RIP/EIP value expected in a snapshot, e.g. 0x401234."),
+    expectContains: tool.schema
+      .string()
+      .optional()
+      .describe("Optional substring expected in GDB output for a micro-validation oracle."),
     stackWords: tool.schema.number().optional().describe("Number of quadwords/dwords to dump from stack. Default 24."),
-    noInit: tool.schema.boolean().optional().describe("Pass gdb -nx to skip gdbinit/pwndbg for faster, cleaner startup. Default true."),
-    quickProfile: tool.schema.string().optional().describe("light | default. light favors fewer extras and lower startup noise."),
-    preserveTmp: tool.schema.boolean().optional().describe("Preserve generated input/gdb script files under work/gdb-snapshot for debugging. Default false."),
+    noInit: tool.schema
+      .boolean()
+      .optional()
+      .describe("Pass gdb -nx to skip gdbinit/pwndbg for faster, cleaner startup. Default true."),
+    quickProfile: tool.schema
+      .string()
+      .optional()
+      .describe("light | default. light favors fewer extras and lower startup noise."),
+    preserveTmp: tool.schema
+      .boolean()
+      .optional()
+      .describe("Preserve generated input/gdb script files under work/gdb-snapshot for debugging. Default false."),
     timeoutMs: tool.schema.number().optional().describe("Execution timeout in milliseconds. Default 10000."),
-    runtimeProfileId: tool.schema.string().optional().describe("Runtime profile id emitted by ctf-pwn-libc-runtime-doctor. Supplies docker defaults when omitted."),
-    composeService: tool.schema.string().optional().describe("docker compose service name for exec mode or compose run mode."),
+    runtimeProfileId: tool.schema
+      .string()
+      .optional()
+      .describe("Runtime profile id emitted by ctf-pwn-libc-runtime-doctor. Supplies docker defaults when omitted."),
+    composeService: tool.schema
+      .string()
+      .optional()
+      .describe("docker compose service name for exec mode or compose run mode."),
     containerName: tool.schema.string().optional().describe("Explicit container name for docker exec mode."),
-    image: tool.schema.string().optional().describe("Docker image for docker run mode when no existing container/service should be used."),
-    useComposeRun: tool.schema.boolean().optional().describe("Use 'docker compose run --rm <service>' instead of exec. Default false."),
-    containerWorkdir: tool.schema.string().optional().describe("In-container working directory. Default mirrors the mounted workspace path under /work."),
-    containerMountRoot: tool.schema.string().optional().describe("Container path where the host workspace is mounted for docker run or compose run mode. Default /work."),
-    runArgs: tool.schema.string().optional().describe("Optional extra arguments for docker run or docker compose run, e.g. '--cap-add=SYS_PTRACE --security-opt seccomp=unconfined'."),
+    image: tool.schema
+      .string()
+      .optional()
+      .describe("Docker image for docker run mode when no existing container/service should be used."),
+    useComposeRun: tool.schema
+      .boolean()
+      .optional()
+      .describe("Use 'docker compose run --rm <service>' instead of exec. Default false."),
+    containerWorkdir: tool.schema
+      .string()
+      .optional()
+      .describe("In-container working directory. Default mirrors the mounted workspace path under /work."),
+    containerMountRoot: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Container path where the host workspace is mounted for docker run or compose run mode. Default /work.",
+      ),
+    runArgs: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Optional extra arguments for docker run or docker compose run, e.g. '--cap-add=SYS_PTRACE --security-opt seccomp=unconfined'.",
+      ),
   },
   async execute(args, context) {
     const runtimeProfile = await loadRuntimeProfile(context.directory, args.runtimeProfileId)
@@ -274,15 +387,20 @@ export default tool({
     const cwd = path.dirname(binary)
     const timeoutMs = Math.max(1000, Math.min(args.timeoutMs ?? 10000, 30000))
     const mode = (args.mode || "stdin").toLowerCase() === "argv" ? "argv" : "stdin"
-    const filePayload = args.payloadFile ? await readFile(resolveInsideWorkspace(context.directory, args.payloadFile), "latin1") : undefined
+    const filePayload = args.payloadFile
+      ? await readFile(resolveInsideWorkspace(context.directory, args.payloadFile), "latin1")
+      : undefined
     const stdinPayload = args.stdinPayload ?? filePayload ?? ""
     const argvPayload = args.argvPayload ?? filePayload ?? ""
-    const argvParts = [...parseArgvPrefix(args.argv, args.argvPrefixJson), ...(mode === "argv" && argvPayload ? [argvPayload] : [])]
+    const argvParts = [
+      ...parseArgvPrefix(args.argv, args.argvPrefixJson),
+      ...(mode === "argv" && argvPayload ? [argvPayload] : []),
+    ]
     const stackWords = Math.max(4, Math.min(args.stackWords ?? 24, 96))
     const noInit = args.noInit !== false
     const quickProfile = String(args.quickProfile || "default").toLowerCase()
     const thenContinueToCrash = Boolean(args.thenContinueToCrash)
-    const tmpDir = path.join(context.directory, "work", "gdb-snapshot", `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`)
+    const tmpDir = path.join(context.directory, "work", "gdb-snapshot", randomUUID().slice(0, 12))
     await mkdir(tmpDir, { recursive: true })
     const inputFile = path.join(tmpDir, "input.txt")
     const gdbScriptFile = path.join(tmpDir, "snapshot.gdb")
@@ -314,17 +432,19 @@ export default tool({
     const snapshotBeforeContinueLabel = String(args.snapshotBeforeContinueLabel || "pre_patch_snapshot")
     const snapshotAfterContinueLabel = String(args.snapshotAfterContinueLabel || "post_patch_snapshot")
 
-    let runCmd = mode === "argv"
-      ? `run ${argvParts.map((x) => JSON.stringify(x)).join(" ")}`
-      : stdinPayload || args.payloadFile
-        ? `run < ${inputFile}`
-        : "run"
+    let runCmd =
+      mode === "argv"
+        ? `run ${argvParts.map((x) => JSON.stringify(x)).join(" ")}`
+        : stdinPayload || args.payloadFile
+          ? `run < ${inputFile}`
+          : "run"
     const needsPieOffsetRun = breakpointOffsets.length > 0
-    let startCmd = mode === "argv"
-      ? `starti ${argvParts.map((x) => JSON.stringify(x)).join(" ")}`
-      : stdinPayload || args.payloadFile
-        ? `starti < ${inputFile}`
-        : "starti"
+    let startCmd =
+      mode === "argv"
+        ? `starti ${argvParts.map((x) => JSON.stringify(x)).join(" ")}`
+        : stdinPayload || args.payloadFile
+          ? `starti < ${inputFile}`
+          : "starti"
 
     const gdbLines = [
       "set pagination off",
@@ -333,9 +453,9 @@ export default tool({
       "set print elements 0",
       "set disassemble-next-line off",
       ...breakpoints.map((bp) => `break ${bp}`),
-      ...breakpointHitCounts.flatMap((count, idx) => count > 1 ? [`ignore ${idx + 1} ${count - 1}`] : []),
+      ...breakpointHitCounts.flatMap((count, idx) => (count > 1 ? [`ignore ${idx + 1} ${count - 1}`] : [])),
       ...(needsPieOffsetRun ? [startCmd] : [runCmd]),
-      "printf \"process mappings:\\n\"",
+      'printf "process mappings:\\n"',
       "info proc mappings",
       "set $opencode_pie_base = 0",
       `python
@@ -364,47 +484,50 @@ end`,
       }),
       ...(needsPieOffsetRun ? ["continue"] : []),
       `printf \"${snapshotBeforeContinueLabel}:\\n\"`,
-      "printf \"register snapshot:\\n\"",
+      'printf "register snapshot:\\n"',
       "info registers",
-      "printf \"backtrace snapshot:\\n\"",
+      'printf "backtrace snapshot:\\n"',
       "bt",
       `printf \"stack snapshot:\\n\"`,
       `x/${quickProfile === "light" ? Math.min(stackWords, 12) : stackWords}gx $rsp`,
       ...memoryExprs.flatMap((expr, idx) => {
         const label = memoryLabels[idx] ? ` (${memoryLabels[idx]})` : ""
-        return [
-          `printf \"memory_view[${idx}]${label}: ${expr}\\n\"`,
-          `x/8gx ${expr}`,
-        ]
+        return [`printf \"memory_view[${idx}]${label}: ${expr}\\n\"`, `x/8gx ${expr}`]
       }),
       ...patchRegisters.map((item, idx) => `printf \"patch_register[${idx}]: ${item.key}=${item.value}\\n\"`),
       ...patchRegisters.flatMap((item) => pythonRegisterPatch(item)),
       ...patchMemory.flatMap((item) => patchMemoryExpression(item.key, item.value)),
-      ...((patchRegisters.length || patchMemory.length) && !continueAfterPatch ? [
-        "printf \"post_patch_registers:\\n\"",
-        "info registers",
-      ] : []),
-      ...(continueAfterPatch ? [
-        "continue",
-        `printf \"${snapshotAfterContinueLabel}:\\n\"`,
-        "printf \"post_patch_registers:\\n\"",
-        "info registers",
-        "printf \"post_patch_backtrace:\\n\"",
-        "bt",
-        "printf \"post_patch_stack:\\n\"",
-        "x/24gx $rsp",
-      ] : []),
-      ...(thenContinueToCrash ? [
-        "printf \"continue_to_crash: begin\\n\"",
-        "continue",
-        "printf \"post_continue_registers:\\n\"",
-        "info registers",
-        "printf \"post_continue_backtrace:\\n\"",
-        "bt",
-        "printf \"post_continue_stack:\\n\"",
-        "x/24gx $rsp",
-      ] : []),
-      ...(String(args.gdbScriptExtra || "").split(/\r?\n/).map((x) => x.trim()).filter(Boolean)),
+      ...((patchRegisters.length || patchMemory.length) && !continueAfterPatch
+        ? ['printf "post_patch_registers:\\n"', "info registers"]
+        : []),
+      ...(continueAfterPatch
+        ? [
+            "continue",
+            `printf \"${snapshotAfterContinueLabel}:\\n\"`,
+            'printf "post_patch_registers:\\n"',
+            "info registers",
+            'printf "post_patch_backtrace:\\n"',
+            "bt",
+            'printf "post_patch_stack:\\n"',
+            "x/24gx $rsp",
+          ]
+        : []),
+      ...(thenContinueToCrash
+        ? [
+            'printf "continue_to_crash: begin\\n"',
+            "continue",
+            'printf "post_continue_registers:\\n"',
+            "info registers",
+            'printf "post_continue_backtrace:\\n"',
+            "bt",
+            'printf "post_continue_stack:\\n"',
+            "x/24gx $rsp",
+          ]
+        : []),
+      ...String(args.gdbScriptExtra || "")
+        .split(/\r?\n/)
+        .map((x) => x.trim())
+        .filter(Boolean),
     ]
     await writeFile(gdbScriptFile, `${gdbLines.join("\n")}\n`, "utf8")
 
@@ -417,7 +540,10 @@ end`,
       let invoked = `gdb ${[...(noInit ? ["-nx"] : []), "-q", "-batch", "-x", gdbScriptFile, binary].join(" ")}`
       let result
       if (hasExecTarget || hasRunTarget) {
-        const containerMountRoot = validateContainerPosixPath(args.containerMountRoot || profileDefaults.containerMountRoot || "/work", "containerMountRoot")
+        const containerMountRoot = validateContainerPosixPath(
+          args.containerMountRoot || profileDefaults.containerMountRoot || "/work",
+          "containerMountRoot",
+        )
         const relBinary = path.relative(context.directory, binary).replace(/\\/g, "/")
         const relScript = path.relative(context.directory, gdbScriptFile).replace(/\\/g, "/")
         const relInput = path.relative(context.directory, inputFile).replace(/\\/g, "/")
@@ -425,34 +551,44 @@ end`,
         const inContainerBinary = path.posix.join(containerMountRoot, relBinary)
         const inContainerScript = path.posix.join(containerMountRoot, relScript)
         const inContainerInputFile = path.posix.join(containerMountRoot, relInput)
-        const defaultContainerWorkdir = !relCwd || relCwd === "." ? containerMountRoot : path.posix.join(containerMountRoot, relCwd)
-        const containerWorkdir = args.containerWorkdir || profileDefaults.containerWorkdir ? validateContainerPosixPath(args.containerWorkdir || profileDefaults.containerWorkdir, "containerWorkdir") : defaultContainerWorkdir
+        const defaultContainerWorkdir =
+          !relCwd || relCwd === "." ? containerMountRoot : path.posix.join(containerMountRoot, relCwd)
+        const containerWorkdir =
+          args.containerWorkdir || profileDefaults.containerWorkdir
+            ? validateContainerPosixPath(args.containerWorkdir || profileDefaults.containerWorkdir, "containerWorkdir")
+            : defaultContainerWorkdir
         if (hasRunTarget && !isInsideContainerTree(containerWorkdir, containerMountRoot)) {
-          throw new Error(`containerWorkdir must stay under containerMountRoot for run mode: ${containerWorkdir} is outside ${containerMountRoot}`)
+          throw new Error(
+            `containerWorkdir must stay under containerMountRoot for run mode: ${containerWorkdir} is outside ${containerMountRoot}`,
+          )
         }
-        runCmd = mode === "argv"
-          ? `run ${argvParts.map((x) => JSON.stringify(x)).join(" ")}`
-          : stdinPayload || args.payloadFile
-            ? `run < ${inContainerInputFile}`
-            : "run"
-        startCmd = mode === "argv"
-          ? `starti ${argvParts.map((x) => JSON.stringify(x)).join(" ")}`
-          : stdinPayload || args.payloadFile
-            ? `starti < ${inContainerInputFile}`
-            : "starti"
-        await writeFile(gdbScriptFile, `${[
-          "set pagination off",
-          ...(noInit ? ["set auto-load safe-path /"] : []),
-          "set confirm off",
-          "set print elements 0",
-          "set disassemble-next-line off",
-          ...breakpoints.map((bp) => `break ${bp}`),
-          ...breakpointHitCounts.flatMap((count, idx) => count > 1 ? [`ignore ${idx + 1} ${count - 1}`] : []),
-          ...(needsPieOffsetRun ? [startCmd] : [runCmd]),
-          "printf \"process mappings:\\n\"",
-          "info proc mappings",
-          "set $opencode_pie_base = 0",
-          `python
+        runCmd =
+          mode === "argv"
+            ? `run ${argvParts.map((x) => JSON.stringify(x)).join(" ")}`
+            : stdinPayload || args.payloadFile
+              ? `run < ${inContainerInputFile}`
+              : "run"
+        startCmd =
+          mode === "argv"
+            ? `starti ${argvParts.map((x) => JSON.stringify(x)).join(" ")}`
+            : stdinPayload || args.payloadFile
+              ? `starti < ${inContainerInputFile}`
+              : "starti"
+        await writeFile(
+          gdbScriptFile,
+          `${[
+            "set pagination off",
+            ...(noInit ? ["set auto-load safe-path /"] : []),
+            "set confirm off",
+            "set print elements 0",
+            "set disassemble-next-line off",
+            ...breakpoints.map((bp) => `break ${bp}`),
+            ...breakpointHitCounts.flatMap((count, idx) => (count > 1 ? [`ignore ${idx + 1} ${count - 1}`] : [])),
+            ...(needsPieOffsetRun ? [startCmd] : [runCmd]),
+            'printf "process mappings:\\n"',
+            "info proc mappings",
+            "set $opencode_pie_base = 0",
+            `python
 import gdb, re
 lines = gdb.execute('info proc mappings', to_string=True).splitlines()
 base = 0
@@ -467,59 +603,64 @@ for line in lines:
 gdb.execute(f'set $opencode_pie_base = {base}')
 print(f'opencode_pie_base: 0x{base:x}')
 end`,
-          ...breakpointOffsets.flatMap((off, idx) => {
-            const parsed = off.replace(/^\+/, "")
-            return [
-              `printf \"breakpoint_offset[${idx}]: ${parsed}\\n\"`,
-              `if $opencode_pie_base != 0`,
-              `break *($opencode_pie_base + ${parsed})`,
-              "end",
-            ]
-          }),
-          ...(needsPieOffsetRun ? ["continue"] : []),
-          `printf \"${snapshotBeforeContinueLabel}:\\n\"`,
-          "printf \"register snapshot:\\n\"",
-          "info registers",
-          "printf \"backtrace snapshot:\\n\"",
-          "bt",
-          `printf \"stack snapshot:\\n\"`,
-          `x/${quickProfile === "light" ? Math.min(stackWords, 12) : stackWords}gx $rsp`,
-          ...memoryExprs.flatMap((expr, idx) => {
-            const label = memoryLabels[idx] ? ` (${memoryLabels[idx]})` : ""
-            return [
-              `printf \"memory_view[${idx}]${label}: ${expr}\\n\"`,
-              `x/8gx ${expr}`,
-            ]
-          }),
-          ...patchRegisters.map((item, idx) => `printf \"patch_register[${idx}]: ${item.key}=${item.value}\\n\"`),
-          ...patchRegisters.flatMap((item) => pythonRegisterPatch(item)),
-          ...patchMemory.flatMap((item) => patchMemoryExpression(item.key, item.value)),
-          ...((patchRegisters.length || patchMemory.length) && !continueAfterPatch ? [
-            "printf \"post_patch_registers:\\n\"",
+            ...breakpointOffsets.flatMap((off, idx) => {
+              const parsed = off.replace(/^\+/, "")
+              return [
+                `printf \"breakpoint_offset[${idx}]: ${parsed}\\n\"`,
+                `if $opencode_pie_base != 0`,
+                `break *($opencode_pie_base + ${parsed})`,
+                "end",
+              ]
+            }),
+            ...(needsPieOffsetRun ? ["continue"] : []),
+            `printf \"${snapshotBeforeContinueLabel}:\\n\"`,
+            'printf "register snapshot:\\n"',
             "info registers",
-          ] : []),
-          ...(continueAfterPatch ? [
-            "continue",
-            `printf \"${snapshotAfterContinueLabel}:\\n\"`,
-            "printf \"post_patch_registers:\\n\"",
-            "info registers",
-            "printf \"post_patch_backtrace:\\n\"",
+            'printf "backtrace snapshot:\\n"',
             "bt",
-            "printf \"post_patch_stack:\\n\"",
-            "x/24gx $rsp",
-          ] : []),
-          ...(thenContinueToCrash ? [
-            "printf \"continue_to_crash: begin\\n\"",
-            "continue",
-            "printf \"post_continue_registers:\\n\"",
-            "info registers",
-            "printf \"post_continue_backtrace:\\n\"",
-            "bt",
-            "printf \"post_continue_stack:\\n\"",
-            "x/24gx $rsp",
-          ] : []),
-          ...(String(args.gdbScriptExtra || "").split(/\r?\n/).map((x) => x.trim()).filter(Boolean)),
-        ].join("\n")}\n`, "utf8")
+            `printf \"stack snapshot:\\n\"`,
+            `x/${quickProfile === "light" ? Math.min(stackWords, 12) : stackWords}gx $rsp`,
+            ...memoryExprs.flatMap((expr, idx) => {
+              const label = memoryLabels[idx] ? ` (${memoryLabels[idx]})` : ""
+              return [`printf \"memory_view[${idx}]${label}: ${expr}\\n\"`, `x/8gx ${expr}`]
+            }),
+            ...patchRegisters.map((item, idx) => `printf \"patch_register[${idx}]: ${item.key}=${item.value}\\n\"`),
+            ...patchRegisters.flatMap((item) => pythonRegisterPatch(item)),
+            ...patchMemory.flatMap((item) => patchMemoryExpression(item.key, item.value)),
+            ...((patchRegisters.length || patchMemory.length) && !continueAfterPatch
+              ? ['printf "post_patch_registers:\\n"', "info registers"]
+              : []),
+            ...(continueAfterPatch
+              ? [
+                  "continue",
+                  `printf \"${snapshotAfterContinueLabel}:\\n\"`,
+                  'printf "post_patch_registers:\\n"',
+                  "info registers",
+                  'printf "post_patch_backtrace:\\n"',
+                  "bt",
+                  'printf "post_patch_stack:\\n"',
+                  "x/24gx $rsp",
+                ]
+              : []),
+            ...(thenContinueToCrash
+              ? [
+                  'printf "continue_to_crash: begin\\n"',
+                  "continue",
+                  'printf "post_continue_registers:\\n"',
+                  "info registers",
+                  'printf "post_continue_backtrace:\\n"',
+                  "bt",
+                  'printf "post_continue_stack:\\n"',
+                  "x/24gx $rsp",
+                ]
+              : []),
+            ...String(args.gdbScriptExtra || "")
+              .split(/\r?\n/)
+              .map((x) => x.trim())
+              .filter(Boolean),
+          ].join("\n")}\n`,
+          "utf8",
+        )
         const gdbArgs = [...(noInit ? ["-nx"] : []), "-q", "-batch", "-x", inContainerScript, inContainerBinary]
         const runArgs = splitArgs(effectiveRunArgs)
         if (args.containerName) {
@@ -555,7 +696,12 @@ end`,
           result = await safeExec("docker", dockerArgs, context.directory, timeoutMs)
         }
       } else {
-        result = await safeExec("gdb", [...(noInit ? ["-nx"] : []), "-q", "-batch", "-x", gdbScriptFile, binary], cwd, timeoutMs)
+        result = await safeExec(
+          "gdb",
+          [...(noInit ? ["-nx"] : []), "-q", "-batch", "-x", gdbScriptFile, binary],
+          cwd,
+          timeoutMs,
+        )
       }
       const text = result.output
       if (!text.trim()) {
@@ -594,10 +740,15 @@ end`,
       const libcBase = extractNamedMapBase(mappings, "libc")
       const memoryViews = parseMemoryBlocks(text)
       const signal = classifySignal(text)
-      const terminationState = classifyTerminationState(text, { thenContinueToCrash, breakpointCount: breakpoints.length })
+      const terminationState = classifyTerminationState(text, {
+        thenContinueToCrash,
+        breakpointCount: breakpoints.length,
+      })
       const ip = extractIpRegister(registers)
       const hints = inferHints(text, ip.value, pieBase)
-      const expectRipMatched = args.expectRip ? String(ip.value).toLowerCase() === String(args.expectRip).toLowerCase() : null
+      const expectRipMatched = args.expectRip
+        ? String(ip.value).toLowerCase() === String(args.expectRip).toLowerCase()
+        : null
       const expectContainsMatched = args.expectContains ? text.includes(String(args.expectContains)) : null
 
       return [
@@ -646,13 +797,17 @@ end`,
         "mapping_sample:",
         ...(mappings.length ? mappings.map((x) => `- ${x}`) : ["- none"]),
         "memory_views:",
-        ...(memoryViews.length ? memoryViews.flatMap((block) => block.split(/\r?\n/).map((line, idx) => idx === 0 ? `- ${line}` : `  - ${line}`)) : ["- none"]),
+        ...(memoryViews.length
+          ? memoryViews.flatMap((block) =>
+              block.split(/\r?\n/).map((line, idx) => (idx === 0 ? `- ${line}` : `  - ${line}`)),
+            )
+          : ["- none"]),
         "recommended_next:",
         signal === "SIGSEGV"
           ? "- Use this snapshot to confirm whether the current branch is a control problem, an alignment problem, or an invalid-address/base problem before mutating payload family."
           : terminationState === "exited_normally_before_breakpoint" || terminationState === "exited_after_continue"
             ? "- Treat normal program exit as a valid terminal observation here; compare whether the breakpoint/continue plan or payload length should change before assuming exploit failure."
-          : "- Compare this snapshot against the previous phase only if one variable changed; do not branch on debugger noise alone.",
+            : "- Compare this snapshot against the previous phase only if one variable changed; do not branch on debugger noise alone.",
         "output_compact:",
         compact(text),
       ].join("\n")

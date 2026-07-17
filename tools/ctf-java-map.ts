@@ -1,4 +1,5 @@
 import { tool } from "@opencode-ai/plugin"
+import { resolveAllowedPath } from "./lib/path-policy.ts"
 
 const routeMethods: Record<string, string> = {
   GetMapping: "GET",
@@ -14,7 +15,7 @@ function resolveRequestMapping(input: string) {
   const m = input.match(httpMethodRegex)
   if (m) {
     const raw = m[1].toUpperCase()
-    if (["GET","POST","PUT","DELETE","PATCH","HEAD","OPTIONS","TRACE"].includes(raw)) return raw
+    if (["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE"].includes(raw)) return raw
   }
   return "ANY"
 }
@@ -66,7 +67,9 @@ function classLevelPath(content: string) {
 
 function extractXmlVersion(content: string, artifact: string) {
   const escaped = artifact.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  const block = content.match(new RegExp(`<dependency>[\\s\\S]*?<artifactId>${escaped}<\\/artifactId>[\\s\\S]*?<\\/dependency>`, "i"))?.[0]
+  const block = content.match(
+    new RegExp(`<dependency>[\\s\\S]*?<artifactId>${escaped}<\\/artifactId>[\\s\\S]*?<\\/dependency>`, "i"),
+  )?.[0]
   return block?.match(/<version>([^<]+)<\/version>/i)?.[1] ?? "unknown"
 }
 
@@ -76,21 +79,28 @@ function extractGradleVersion(content: string, artifact: string) {
 }
 
 export default tool({
-  description: "CTF Java web map: scan source directories for framework, routes (with class-level + method-level merge, RequestMethod extraction, array path expansion, Servlet/JSP mapping), controllers, filters, interceptors, security config, dependencies, dangerous sinks, template engines, deserialization libs, XXE parsers, file sinks, SSRF sinks, and SQL sinks.",
+  description:
+    "CTF Java web map: scan source directories for framework, routes (with class-level + method-level merge, RequestMethod extraction, array path expansion, Servlet/JSP mapping), controllers, filters, interceptors, security config, dependencies, dangerous sinks, template engines, deserialization libs, XXE parsers, file sinks, SSRF sinks, and SQL sinks.",
   args: {
     dir: tool.schema.string().describe("Directory containing Java source"),
   },
-  async execute(args) {
+  async execute(args, context) {
     const fs = await import("fs/promises")
     const path = await import("path")
     const findings: string[] = []
-    const root = path.resolve(args.dir)
+    const root = await resolveAllowedPath(args.dir, context)
 
     async function walk(dir: string) {
       const entries = await fs.readdir(dir, { withFileTypes: true })
       for (const e of entries) {
         const p = path.join(dir, e.name)
-        if (e.isDirectory() && !e.name.startsWith(".") && e.name !== "node_modules" && e.name !== "target" && e.name !== "build") {
+        if (
+          e.isDirectory() &&
+          !e.name.startsWith(".") &&
+          e.name !== "node_modules" &&
+          e.name !== "target" &&
+          e.name !== "build"
+        ) {
           await walk(p)
         } else if (e.isFile() && /\.(java|jsp|xml|yml|yaml|properties|gradle|mf)$/i.test(e.name)) {
           try {
@@ -108,7 +118,9 @@ export default tool({
               findings.push(`route: JSP ${rel} -> ${rel} (.jsp file)`)
             }
 
-            for (const match of content.matchAll(/@(GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|RequestMapping)\s*(?:\(([^)]*)\))?/g)) {
+            for (const match of content.matchAll(
+              /@(GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|RequestMapping)\s*(?:\(([^)]*)\))?/g,
+            )) {
               const annotation = match[1]
               let method: string
               if (annotation === "RequestMapping") {
@@ -150,16 +162,28 @@ export default tool({
               }
             }
 
-            if (/extends OncePerRequestFilter|implements Filter|@WebFilter/i.test(content)) findings.push(`filter: ${rel}`)
+            if (/extends OncePerRequestFilter|implements Filter|@WebFilter/i.test(content))
+              findings.push(`filter: ${rel}`)
             if (/HandlerInterceptor|addInterceptors/i.test(content)) findings.push(`interceptor: ${rel}`)
-            if (/@EnableWebSecurity|SecurityConfig|configure\(HttpSecurity/i.test(content)) findings.push(`security-config: ${rel}`)
-            if (/ObjectInputStream|readObject|readUnshared|readExternal/i.test(content)) findings.push(`deser-sink: ${rel}`)
+            if (/@EnableWebSecurity|SecurityConfig|configure\(HttpSecurity/i.test(content))
+              findings.push(`security-config: ${rel}`)
+            if (/ObjectInputStream|readObject|readUnshared|readExternal/i.test(content))
+              findings.push(`deser-sink: ${rel}`)
             if (/Runtime\.exec|ProcessBuilder|Process\.start/i.test(content)) findings.push(`command-sink: ${rel}`)
-            if (/DocumentBuilder|SAXParser|XMLReader|TransformerFactory|SAXTransformerFactory/i.test(content)) findings.push(`xxe-candidate: ${rel}`)
-            if (/(File\(|FileInputStream|FileOutputStream|FileReader|FileWriter|Path\.get|Paths\.get|Resource\()/i.test(content)) findings.push(`file-sink: ${rel}`)
-            if (/(RestTemplate|HttpClient|URL\(|openConnection|OkHttpClient)/i.test(content)) findings.push(`ssrf-candidate: ${rel}`)
-            if ((/\$\{|#{/).test(content) && /(select|update|insert|delete|from\s+)/i.test(content)) findings.push(`sql-sink: ${rel}`)
-            if (/Statement\.|PreparedStatement\.|createQuery\(|createNativeQuery\(|JdbcTemplate/i.test(content)) findings.push(`sql-sink: ${rel}`)
+            if (/DocumentBuilder|SAXParser|XMLReader|TransformerFactory|SAXTransformerFactory/i.test(content))
+              findings.push(`xxe-candidate: ${rel}`)
+            if (
+              /(File\(|FileInputStream|FileOutputStream|FileReader|FileWriter|Path\.get|Paths\.get|Resource\()/i.test(
+                content,
+              )
+            )
+              findings.push(`file-sink: ${rel}`)
+            if (/(RestTemplate|HttpClient|URL\(|openConnection|OkHttpClient)/i.test(content))
+              findings.push(`ssrf-candidate: ${rel}`)
+            if (/\$\{|#{/.test(content) && /(select|update|insert|delete|from\s+)/i.test(content))
+              findings.push(`sql-sink: ${rel}`)
+            if (/Statement\.|PreparedStatement\.|createQuery\(|createNativeQuery\(|JdbcTemplate/i.test(content))
+              findings.push(`sql-sink: ${rel}`)
             if (/SpringBootApplication/i.test(content)) findings.push(`framework: Spring Boot main class: ${rel}`)
             if (/web\.xml$/i.test(rel)) {
               findings.push(`config: servlet web.xml: ${rel}`)
@@ -180,7 +204,9 @@ export default tool({
               findings.push(`build: ${rel}`)
               for (const dep of dependencyNames) {
                 if (content.toLowerCase().includes(dep.toLowerCase())) {
-                  const version = /pom\.xml$/i.test(rel) ? extractXmlVersion(content, dep) : extractGradleVersion(content, dep)
+                  const version = /pom\.xml$/i.test(rel)
+                    ? extractXmlVersion(content, dep)
+                    : extractGradleVersion(content, dep)
                   findings.push(`dependency-of-interest: ${dep} version=${version} (${rel})`)
                 }
               }

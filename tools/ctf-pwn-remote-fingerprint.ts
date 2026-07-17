@@ -1,11 +1,9 @@
 import { tool } from "@opencode-ai/plugin"
+import { randomUUID } from "node:crypto"
 import { mkdir, writeFile, rm } from "node:fs/promises"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import os from "node:os"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExecWithStreams } from "./lib/exec-utils.ts"
 
 const DEFAULT_FLAG_RE = /[A-Za-z0-9_@.-]{2,32}\{[^\r\n}]{1,200}\}/g
 const PTR_RE = /0x[0-9a-fA-F]{6,16}/g
@@ -17,7 +15,11 @@ function compact(s: string, max = 12000) {
 }
 
 function splitLines(text: string, max = 12) {
-  return String(text || "").split(/\r?\n/).map((x) => x.trimEnd()).filter(Boolean).slice(0, max)
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((x) => x.trimEnd())
+    .filter(Boolean)
+    .slice(0, max)
 }
 
 function classifyClosure(text: string) {
@@ -35,7 +37,14 @@ function leakShape(text: string) {
     pointer_count: ptrs.length,
     sample_pointers: ptrs.slice(0, 8),
     looks_like_leak: ptrs.length > 0,
-    common_pointer_width: lengths.length ? Math.max(...Array.from(new Set(lengths)).map((n) => [n, lengths.filter((x) => x === n).length] as const).sort((a, b) => b[1] - a[1]).map((x) => x[0])) : 0,
+    common_pointer_width: lengths.length
+      ? Math.max(
+          ...Array.from(new Set(lengths))
+            .map((n) => [n, lengths.filter((x) => x === n).length] as const)
+            .sort((a, b) => b[1] - a[1])
+            .map((x) => x[0]),
+        )
+      : 0,
   }
 }
 
@@ -50,7 +59,8 @@ function diffSummary(a: string, b: string) {
 }
 
 export default tool({
-  description: "CTF PWN remote fingerprint: low-noise baseline vs mutant remote probe for banner, initial output, EOF behavior, and leak-shape comparison.",
+  description:
+    "CTF PWN remote fingerprint: low-noise baseline vs mutant remote probe for banner, initial output, EOF behavior, and leak-shape comparison.",
   args: {
     host: tool.schema.string().describe("Remote host."),
     port: tool.schema.number().describe("Remote port."),
@@ -74,7 +84,11 @@ export default tool({
     const postReadMs = Math.max(100, Math.min(args.postReadMs ?? 1200, 8000))
     const baselineLine = args.baselineLine !== false
     const mutantLine = args.mutantLine !== false
-    const driverDir = await mkdir(path.join(os.tmpdir(), `pwn-remote-fingerprint-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`), { recursive: true }).then(() => path.join(os.tmpdir(), `pwn-remote-fingerprint-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`)).catch(() => path.join(os.tmpdir(), `pwn-remote-fingerprint-fallback-${Math.random().toString(16).slice(2, 8)}`))
+    const driverDir = await mkdir(path.join(os.tmpdir(), `pwn-remote-fingerprint-${randomUUID().slice(0, 12)}`), {
+      recursive: true,
+    })
+      .then(() => path.join(os.tmpdir(), `pwn-remote-fingerprint-${randomUUID().slice(0, 12)}`))
+      .catch(() => path.join(os.tmpdir(), `pwn-remote-fingerprint-fallback-${randomUUID().slice(0, 12)}`))
     await mkdir(driverDir, { recursive: true })
     const driver = path.join(driverDir, "remote_fp.py")
     const script = `#!/usr/bin/env python3
@@ -158,18 +172,25 @@ run_case('baseline', ${JSON.stringify(args.baselinePayloadText || "")}, ${JSON.s
 run_case('mutant', ${JSON.stringify(args.mutantPayloadText || "")}, ${JSON.stringify(args.mutantPayloadHex || "")}, ${mutantLine ? "True" : "False"}, ${JSON.stringify(args.mutantExpect || "")})
 `
     await writeFile(driver, script, "utf8")
-    let stdout = ""
-    let stderr = ""
+    const { stdout, stderr } = await safeExecWithStreams("python", [driver], {
+      timeoutMs: timeoutMs + 4000,
+      maxBuffer: 2 * 1024 * 1024,
+    })
     try {
-      const res = await execFile("python", [driver], { timeout: timeoutMs + 4000, maxBuffer: 2 * 1024 * 1024 })
-      stdout = res.stdout
-      stderr = res.stderr
-    } finally {
-      try { await rm(driverDir, { recursive: true, force: true }) } catch {}
-    }
-    const rows = String(stdout || "").split(/\r?\n/).map((x) => x.trim()).filter(Boolean).map((x) => {
-      try { return JSON.parse(x) } catch { return null }
-    }).filter(Boolean) as any[]
+      await rm(driverDir, { recursive: true, force: true })
+    } catch {}
+    const rows = String(stdout || "")
+      .split(/\r?\n/)
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .map((x) => {
+        try {
+          return JSON.parse(x)
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean) as any[]
     const baseline = rows.find((x) => x.name === "baseline") || { banner: "", body: "", error: stderr || "", flags: [] }
     const mutant = rows.find((x) => x.name === "mutant") || { banner: "", body: "", error: stderr || "", flags: [] }
     const baseBlob = `${baseline.banner || ""}${baseline.expect_data || ""}${baseline.body || ""}${baseline.error || ""}`
@@ -206,7 +227,10 @@ run_case('mutant', ${JSON.stringify(args.mutantPayloadText || "")}, ${JSON.strin
         },
       },
       stderr_compact: compact(stderr),
-      matching_guess: splitLines(baseline.banner || "").join("\n") === splitLines(mutant.banner || "").join("\n") ? "likely_same_banner_shape" : "banner_differs",
+      matching_guess:
+        splitLines(baseline.banner || "").join("\n") === splitLines(mutant.banner || "").join("\n")
+          ? "likely_same_banner_shape"
+          : "banner_differs",
     }
     if (args.jsonOnly) return JSON.stringify(payload, null, 2)
     return [

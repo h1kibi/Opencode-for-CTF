@@ -10,9 +10,12 @@ import {
 } from "../src/team-manager.ts"
 
 export default tool({
-  description: "CTF Team Mode: create a lead/member team, assign real subagent sessions, send messages, and track task state.",
+  description:
+    "CTF Team Mode: create a lead/member team, assign real subagent sessions, send messages, and track task state.",
   args: {
-    operation: tool.schema.string().describe("create_team | add_member | create_task | send_message | status | complete_task | block_task"),
+    operation: tool.schema
+      .string()
+      .describe("create_team | add_member | create_task | send_message | status | complete_task | block_task"),
     teamId: tool.schema.string().optional().describe("Existing team ID for non-create operations."),
     name: tool.schema.string().optional().describe("Team name for create_team or member name for add_member."),
     challengeSlug: tool.schema.string().optional().describe("Optional challenge slug when creating a team."),
@@ -39,13 +42,15 @@ export default tool({
         name: args.name,
         challengeSlug: args.challengeSlug,
       })
-      return args.jsonOnly ? JSON.stringify(state, null, 2) : [
-        "ctf_team_mode:",
-        "operation: create_team",
-        `teamId: ${state.teamId}`,
-        `leadSessionID: ${state.leadSessionID}`,
-        `members: ${state.members.length}`,
-      ].join("\n")
+      return args.jsonOnly
+        ? JSON.stringify(state, null, 2)
+        : [
+            "ctf_team_mode:",
+            "operation: create_team",
+            `teamId: ${state.teamId}`,
+            `leadSessionID: ${state.leadSessionID}`,
+            `members: ${state.members.length}`,
+          ].join("\n")
     }
 
     if (!args.teamId) return "BLOCK: teamId is required for this operation"
@@ -60,18 +65,21 @@ export default tool({
         memberName: args.name,
         agent: args.agentName,
       })
-      return args.jsonOnly ? JSON.stringify(member, null, 2) : [
-        "ctf_team_mode:",
-        "operation: add_member",
-        `teamId: ${args.teamId}`,
-        `memberId: ${member.id}`,
-        `name: ${member.name}`,
-        `agent: ${member.agent}`,
-      ].join("\n")
+      return args.jsonOnly
+        ? JSON.stringify(member, null, 2)
+        : [
+            "ctf_team_mode:",
+            "operation: add_member",
+            `teamId: ${args.teamId}`,
+            `memberId: ${member.members.length > 0 ? member.members[member.members.length - 1].id : "unknown"}`,
+            `name: ${args.name}`,
+            `agent: ${args.agentName}`,
+          ].join("\n")
     }
 
     if (args.operation === "create_task") {
-      if (!args.memberId || !args.title || !args.prompt) return "BLOCK: memberId, title, and prompt are required for create_task"
+      if (!args.memberId || !args.title || !args.prompt)
+        return "BLOCK: memberId, title, and prompt are required for create_task"
       const result = await createMemberTask({
         client,
         worktree: context.worktree,
@@ -82,17 +90,19 @@ export default tool({
         title: args.title,
         prompt: args.prompt,
       })
-      return args.jsonOnly ? JSON.stringify(result, null, 2) : [
-        "ctf_team_mode:",
-        "operation: create_task",
-        `teamId: ${args.teamId}`,
-        `memberId: ${result.member.id}`,
-        `memberName: ${result.member.name}`,
-        `agent: ${result.member.agent}`,
-        `memberSessionID: ${result.member.sessionID}`,
-        `taskId: ${result.task.id}`,
-        `taskStatus: ${result.task.status}`,
-      ].join("\n")
+      return args.jsonOnly
+        ? JSON.stringify(result, null, 2)
+        : [
+            "ctf_team_mode:",
+            "operation: create_task",
+            `teamId: ${args.teamId}`,
+            `memberId: ${result.members.length > 0 ? result.members[result.members.length - 1].id : "unknown"}`,
+            `memberName: ${result.members.length > 0 ? result.members[result.members.length - 1].name : "unknown"}`,
+            `agent: ${result.members.length > 0 ? result.members[result.members.length - 1].agent : "unknown"}`,
+            `memberSessionID: ${result.members.length > 0 ? (result.members[result.members.length - 1].sessionID ?? "") : ""}`,
+            `taskId: ${result.tasks.length > 0 ? result.tasks[result.tasks.length - 1].id : "unknown"}`,
+            `taskStatus: ${result.tasks.length > 0 ? result.tasks[result.tasks.length - 1].status : "unknown"}`,
+          ].join("\n")
     }
 
     if (args.operation === "send_message") {
@@ -106,13 +116,15 @@ export default tool({
         to: args.to,
         text: args.text,
       })
-      return args.jsonOnly ? JSON.stringify(message, null, 2) : [
-        "ctf_team_mode:",
-        "operation: send_message",
-        `messageId: ${message.id}`,
-        `from: ${message.from}`,
-        `to: ${message.to}`,
-      ].join("\n")
+      return args.jsonOnly
+        ? JSON.stringify(message, null, 2)
+        : [
+            "ctf_team_mode:",
+            "operation: send_message",
+            `messageId: ${message.messages.length > 0 ? message.messages[message.messages.length - 1].id : "unknown"}`,
+            `from: ${args.from}`,
+            `to: ${args.to}`,
+          ].join("\n")
     }
 
     if (args.operation === "complete_task" || args.operation === "block_task") {
@@ -126,13 +138,15 @@ export default tool({
         status: args.operation === "complete_task" ? "completed" : "blocked",
         resultSummary: args.resultSummary,
       })
-      return args.jsonOnly ? JSON.stringify(task, null, 2) : [
-        "ctf_team_mode:",
-        `operation: ${args.operation}`,
-        `taskId: ${task.id}`,
-        `status: ${task.status}`,
-        `resultSummary: ${task.resultSummary ?? ""}`,
-      ].join("\n")
+      return args.jsonOnly
+        ? JSON.stringify(task, null, 2)
+        : [
+            "ctf_team_mode:",
+            `operation: ${args.operation}`,
+            `taskId: ${task.tasks.length > 0 ? task.tasks[task.tasks.length - 1].id : "unknown"}`,
+            `status: ${task.tasks.length > 0 ? task.tasks[task.tasks.length - 1].status : "unknown"}`,
+            `resultSummary: ${task.tasks.length > 0 ? (task.tasks[task.tasks.length - 1].resultSummary ?? "") : ""}`,
+          ].join("\n")
     }
 
     const state = await listTeamState({
@@ -141,14 +155,21 @@ export default tool({
       teamId: args.teamId,
       leadSessionID: context.sessionID,
     })
-    return args.jsonOnly ? JSON.stringify(state, null, 2) : [
-      "ctf_team_mode:",
-      "operation: status",
-      `teamId: ${state.teamId}`,
-      `members: ${state.members.length}`,
-      `tasks: ${state.tasks.length}`,
-      ...state.members.map((member) => `- member=${member.id} name=${member.name} agent=${member.agent} status=${member.status} session=${member.sessionID ?? ""}`),
-      ...state.tasks.map((task) => `- task=${task.id} member=${task.memberId} status=${task.status} title=${task.title}`),
-    ].join("\n")
+    return args.jsonOnly
+      ? JSON.stringify(state, null, 2)
+      : [
+          "ctf_team_mode:",
+          "operation: status",
+          `teamId: ${state.teamId}`,
+          `members: ${state.members.length}`,
+          `tasks: ${state.tasks.length}`,
+          ...state.members.map(
+            (member) =>
+              `- member=${member.id} name=${member.name} agent=${member.agent} status=${member.status} session=${member.sessionID ?? ""}`,
+          ),
+          ...state.tasks.map(
+            (task) => `- task=${task.id} member=${task.memberId} status=${task.status} title=${task.title}`,
+          ),
+        ].join("\n")
   },
 })

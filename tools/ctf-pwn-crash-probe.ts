@@ -1,11 +1,8 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExecWithStreams } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -20,17 +17,22 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
 function cyclic(length: number) {
   const sets = ["ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", "0123456789"]
   let out = ""
-  outer: for (const a of sets[0]) for (const b of sets[1]) for (const c of sets[2]) {
-    out += a + b + c
-    if (out.length >= length) break outer
-  }
+  outer: for (const a of sets[0])
+    for (const b of sets[1])
+      for (const c of sets[2]) {
+        out += a + b + c
+        if (out.length >= length) break outer
+      }
   return out.slice(0, length)
 }
 
 function hexToAsciiLittle(hex: string, widthBytes: number) {
   const clean = hex.replace(/^0x/i, "").padStart(widthBytes * 2, "0")
   const bytes = clean.match(/../g) || []
-  return bytes.reverse().map((b) => String.fromCharCode(parseInt(b, 16))).join("")
+  return bytes
+    .reverse()
+    .map((b) => String.fromCharCode(parseInt(b, 16)))
+    .join("")
 }
 
 function findOffset(pattern: string, value: string, bitsGuess: 32 | 64) {
@@ -46,30 +48,25 @@ function findOffset(pattern: string, value: string, bitsGuess: 32 | 64) {
 function parseArgvPrefix(argv: string | undefined, argvPrefixJson: string | undefined) {
   if (argvPrefixJson) {
     const parsed = JSON.parse(argvPrefixJson) as unknown
-    if (!Array.isArray(parsed) || parsed.some((x) => typeof x !== "string")) throw new Error("argvPrefixJson must be a JSON string array")
+    if (!Array.isArray(parsed) || parsed.some((x) => typeof x !== "string"))
+      throw new Error("argvPrefixJson must be a JSON string array")
     return parsed as string[]
   }
   return argv ? argv.split(/\s+/).filter(Boolean) : []
 }
 
-async function runGdb(binary: string, inputFile: string, cwd: string, timeoutMs: number, mode: string, argvParts: string[]) {
+async function runGdb(
+  binary: string,
+  inputFile: string,
+  cwd: string,
+  timeoutMs: number,
+  mode: string,
+  argvParts: string[],
+) {
   const runCommand = mode === "argv" ? `run ${argvParts.map((x) => JSON.stringify(x)).join(" ")}` : `run < ${inputFile}`
-  const args = [
-    "-q",
-    "-batch",
-    "-ex", runCommand,
-    "-ex", "info registers",
-    "-ex", "bt",
-    "-ex", "x/24gx $rsp",
-    binary,
-  ]
-  try {
-    const { stdout, stderr } = await execFile("gdb", args, { cwd, timeout: timeoutMs, maxBuffer: 1024 * 1024 })
-    return `${stdout}${stderr ? `\n[stderr]\n${stderr}` : ""}`
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    return `${e.stdout ?? ""}${e.stderr ? `\n[stderr]\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`
-  }
+  const args = ["-q", "-batch", "-ex", runCommand, "-ex", "info registers", "-ex", "bt", "-ex", "x/24gx $rsp", binary]
+  const { stdout, stderr } = await safeExecWithStreams("gdb", args, { cwd, timeoutMs, maxBuffer: 1024 * 1024 })
+  return `${stdout}${stderr ? `\n[stderr]\n${stderr}` : ""}`
 }
 
 export default tool({
@@ -78,11 +75,23 @@ export default tool({
     binary: tool.schema.string().describe("Workspace-relative binary path."),
     length: tool.schema.number().optional().describe("Cyclic pattern length. Default 400."),
     mode: tool.schema.string().optional().describe("Input mode: stdin | argv. Default stdin."),
-    argv: tool.schema.string().optional().describe("Optional argv prefix for argv mode; cyclic pattern is appended as the final argument."),
-    argvPrefixJson: tool.schema.string().optional().describe("Safer argv prefix as JSON string array, e.g. [\"--name\",\"value with spaces\"]. Overrides argv."),
+    argv: tool.schema
+      .string()
+      .optional()
+      .describe("Optional argv prefix for argv mode; cyclic pattern is appended as the final argument."),
+    argvPrefixJson: tool.schema
+      .string()
+      .optional()
+      .describe('Safer argv prefix as JSON string array, e.g. ["--name","value with spaces"]. Overrides argv.'),
     stdinPayload: tool.schema.string().optional().describe("Optional exact stdin payload instead of cyclic pattern."),
-    argvPayload: tool.schema.string().optional().describe("Optional exact argv payload instead of cyclic pattern for argv mode."),
-    payloadFile: tool.schema.string().optional().describe("Workspace-relative text/binary payload file. Used as stdinPayload or argvPayload depending on mode."),
+    argvPayload: tool.schema
+      .string()
+      .optional()
+      .describe("Optional exact argv payload instead of cyclic pattern for argv mode."),
+    payloadFile: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative text/binary payload file. Used as stdinPayload or argvPayload depending on mode."),
     timeoutMs: tool.schema.number().optional().describe("Execution timeout in milliseconds. Default 8000."),
   },
   async execute(args, context) {
@@ -92,8 +101,13 @@ export default tool({
     const timeoutMs = Math.max(1000, Math.min(args.timeoutMs ?? 8000, 30000))
     const mode = (args.mode || "stdin").toLowerCase() === "argv" ? "argv" : "stdin"
     const generatedPattern = cyclic(length)
-    const filePayload = args.payloadFile ? await readFile(resolveInsideWorkspace(context.directory, args.payloadFile), "latin1") : undefined
-    const pattern = mode === "argv" ? (args.argvPayload ?? filePayload ?? generatedPattern) : (args.stdinPayload ?? filePayload ?? generatedPattern)
+    const filePayload = args.payloadFile
+      ? await readFile(resolveInsideWorkspace(context.directory, args.payloadFile), "latin1")
+      : undefined
+    const pattern =
+      mode === "argv"
+        ? (args.argvPayload ?? filePayload ?? generatedPattern)
+        : (args.stdinPayload ?? filePayload ?? generatedPattern)
     const stdinPayload = args.stdinPayload ?? filePayload ?? generatedPattern
     const argvFinalPayload = args.argvPayload ?? filePayload ?? generatedPattern
     const argvParts = [...parseArgvPrefix(args.argv, args.argvPrefixJson), argvFinalPayload]
@@ -109,9 +123,18 @@ export default tool({
       const found = value ? findOffset(pattern, value, bitsGuess) : { offset: -1, width: 0 }
       const crash = /sigsegv|segmentation fault|program received signal/i.test(gdbOut)
       const control = found.offset >= 0
-      const topRegs = gdbOut.split(/\r?\n/).filter((x) => /\b(rip|eip|rsp|esp|rbp|ebp|rax|eax)\b/i.test(x)).slice(0, 10)
-      const backtrace = gdbOut.split(/\r?\n/).filter((x) => /^#\d+/.test(x)).slice(0, 8)
-      const stack = gdbOut.split(/\r?\n/).filter((x) => /^0x[0-9a-f]+:/i.test(x)).slice(0, 12)
+      const topRegs = gdbOut
+        .split(/\r?\n/)
+        .filter((x) => /\b(rip|eip|rsp|esp|rbp|ebp|rax|eax)\b/i.test(x))
+        .slice(0, 10)
+      const backtrace = gdbOut
+        .split(/\r?\n/)
+        .filter((x) => /^#\d+/.test(x))
+        .slice(0, 8)
+      const stack = gdbOut
+        .split(/\r?\n/)
+        .filter((x) => /^0x[0-9a-f]+:/i.test(x))
+        .slice(0, 12)
       return [
         "pwn_crash_probe:",
         `binary: ${binary}`,
@@ -127,7 +150,9 @@ export default tool({
         `offset_hint: ${found.offset >= 0 ? found.offset : "unknown"}`,
         `offset_width_bytes: ${found.width || "unknown"}`,
         "recommended_next:",
-        control ? "- RIP/EIP looks pattern-derived; move to ret2win/ROP/leak planning with this offset." : "- Control not yet proven; inspect protocol, input length, newline handling, and crash site before building ROP.",
+        control
+          ? "- RIP/EIP looks pattern-derived; move to ret2win/ROP/leak planning with this offset."
+          : "- Control not yet proven; inspect protocol, input length, newline handling, and crash site before building ROP.",
         "registers:",
         ...(topRegs.length ? topRegs.map((x) => `- ${x}`) : ["- none"]),
         "backtrace:",

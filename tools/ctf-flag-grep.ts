@@ -1,6 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
 import { lstat, readdir, readFile } from "node:fs/promises"
 import path from "node:path"
+import { resolveAllowedPath } from "./lib/path-policy.ts"
 
 const DEFAULT_RE = /[A-Za-z0-9_@.-]{2,32}\{[^\r\n}]{1,200}\}/g
 const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", ".next", "__pycache__"])
@@ -22,13 +23,17 @@ async function collectFiles(root: string, maxFiles: number, out: string[] = []) 
 }
 
 export default tool({
-  description: "CTF flag grep: recursively scan files for configurable flag-like patterns with size and file count caps.",
+  description:
+    "CTF flag grep: recursively scan files for configurable flag-like patterns with size and file count caps.",
   args: {
     target: tool.schema.string().describe("File or directory path to scan"),
-    pattern: tool.schema.string().optional().describe("Optional JavaScript regex source. Defaults to a broad flag{...}-style regex."),
+    pattern: tool.schema
+      .string()
+      .optional()
+      .describe("Optional JavaScript regex source. Defaults to a broad flag{...}-style regex."),
   },
   async execute(args, context) {
-    const target = path.resolve(context.directory, args.target)
+    const target = await resolveAllowedPath(args.target, context)
     const regex = args.pattern ? new RegExp(args.pattern, "g") : DEFAULT_RE
     const files = await collectFiles(target, 1000)
     const hits: string[] = []

@@ -5,9 +5,12 @@ function has(text: string, re: RegExp) {
 }
 
 export default tool({
-  description: "CTF pwn remote drift check: classify why local exploit success diverges from remote behavior and rank the first rechecks.",
+  description:
+    "CTF pwn remote drift check: classify why local exploit success diverges from remote behavior and rank the first rechecks.",
   args: {
-    evidence: tool.schema.string().describe("Concise local-vs-remote notes, ctf-pwn-runner summary, or observed failure text."),
+    evidence: tool.schema
+      .string()
+      .describe("Concise local-vs-remote notes, ctf-pwn-runner summary, or observed failure text."),
   },
   async execute(args) {
     const text = (args.evidence || "").toLowerCase()

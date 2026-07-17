@@ -27,9 +27,9 @@ agent: daily
 
 ### Step 2: 索引环境检查
 确认：
-- `C:\Users\Administrator\SecKB\notes`
-- `C:\Users\Administrator\SecKB\index\chroma`
-- `C:\Users\Administrator\SecKB\config\seckb.yaml`
+- `{env:SECKB_ROOT}/notes`
+- `{env:SECKB_ROOT}/index\chroma`
+- `{env:SECKB_ROOT}/config\seckb.yaml`
 
 ### Step 3: SecKB 检索 smoke test
 运行一个低风险 query，确认 `search.py` 能返回结果或至少正常执行。
@@ -41,7 +41,7 @@ agent: daily
 运行：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_quality_report.py
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_quality_report.py
 ```
 
 检查：

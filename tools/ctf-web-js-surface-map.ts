@@ -12,7 +12,8 @@ function parseHeadersJson(headersJson?: string, cookie?: string) {
   const headers: Record<string, string> = {}
   if (headersJson?.trim()) {
     const parsed = JSON.parse(headersJson) as Record<string, unknown>
-    for (const [key, value] of Object.entries(parsed)) if (["string", "number", "boolean"].includes(typeof value)) headers[key] = String(value)
+    for (const [key, value] of Object.entries(parsed))
+      if (["string", "number", "boolean"].includes(typeof value)) headers[key] = String(value)
   }
   if (cookie?.trim()) headers.Cookie = cookie.trim()
   return headers
@@ -62,47 +63,126 @@ async function readTextCapped(response: Response, maxBytes: number) {
 }
 
 function extractScriptUrls(html: string, base: URL) {
-  return unique(Array.from(html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi), (m) => sameOrigin(base, m[1])).filter((x): x is string => Boolean(x)), 80)
+  return unique(
+    Array.from(html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi), (m) => sameOrigin(base, m[1])).filter(
+      (x): x is string => Boolean(x),
+    ),
+    80,
+  )
 }
 
 function extract(text: string) {
-  const endpoints = unique([
-    ...Array.from(text.matchAll(/\bfetch\(\s*["'`]([^"'`]+)["'`]/g), (m) => m[1]),
-    ...Array.from(text.matchAll(/\baxios\.(?:get|post|put|patch|delete|request)\(\s*["'`]([^"'`]+)["'`]/g), (m) => m[1]),
-    ...Array.from(text.matchAll(/\.open\(\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS)["'`]\s*,\s*["'`]([^"'`]+)/g), (m) => `${m[1]} ${m[2]}`),
-    ...Array.from(text.matchAll(/(?:api|baseURL|baseUrl|endpoint|url)\s*[:=]\s*["'`]([^"'`]{1,180})["'`]/gi), (m) => m[1]),
-  ], 180)
-  const routes = unique(Array.from(text.matchAll(/["'`]((?:\/[A-Za-z0-9_.~!$&'()*+,;=:@%-]+){1,12}(?:\?[A-Za-z0-9_.~!$&'()*+,;=:@%/?-]*)?)["'`]/g), (m) => m[1]), 220)
-  const graphql = unique([
-    ...Array.from(text.matchAll(/\b(query|mutation|subscription)\s+([A-Za-z0-9_]+)/g), (m) => `${m[1]} ${m[2]}`),
-    ...Array.from(text.matchAll(/operationName["']?\s*[:=]\s*["']([A-Za-z0-9_]+)/g), (m) => `operation ${m[1]}`),
-    /graphql/i.test(text) ? "graphql literal present" : "",
-  ], 80)
-  const params = unique([
-    ...Array.from(text.matchAll(/[?&]([A-Za-z0-9_.-]{2,60})=/g), (m) => m[1]),
-    ...Array.from(text.matchAll(/(?:params|data|body|json)\s*[:=]\s*\{([^}]{1,600})\}/g), (m) => m[1]).flatMap((s) => Array.from(s.matchAll(/([A-Za-z_$][A-Za-z0-9_$-]{1,60})\s*:/g), (x) => x[1])),
-  ], 160)
-  const roles = unique(Array.from(text.matchAll(/\b(admin|owner|moderator|staff|manager|tenant|role|permission|isAdmin|isOwner|premium|vip)\b/gi), (m) => m[0]), 80)
-  const storage = unique([
-    ...Array.from(text.matchAll(/\b(localStorage|sessionStorage)\s*\.\s*(?:getItem|setItem|removeItem)\s*\(\s*["'`]([^"'`]+)["'`]/g), (m) => `${m[1]}:${m[2]}`),
-    ...Array.from(text.matchAll(/document\.cookie\s*=\s*["'`]([^"'`;=]+)/g), (m) => `cookie-write:${m[1]}`),
-  ], 100)
-  const sinks = unique([
-    ...["innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval(", "Function(", "setTimeout(", "dangerouslySetInnerHTML", "v-html", "postMessage", "new WebSocket", "EventSource"].filter((x) => text.includes(x)),
-  ], 80)
-  const sourceMaps = unique(Array.from(text.matchAll(/sourceMappingURL=([^\s*]+)/g), (m) => m[1]), 50)
-  const keywords = unique(Array.from(text.matchAll(/\b(upload|download|export|import|preview|render|template|report|callback|webhook|redirect|next|return|debug|flag|admin|graphql|swagger|openapi)\b/gi), (m) => m[0].toLowerCase()), 80)
+  const endpoints = unique(
+    [
+      ...Array.from(text.matchAll(/\bfetch\(\s*["'`]([^"'`]+)["'`]/g), (m) => m[1]),
+      ...Array.from(
+        text.matchAll(/\baxios\.(?:get|post|put|patch|delete|request)\(\s*["'`]([^"'`]+)["'`]/g),
+        (m) => m[1],
+      ),
+      ...Array.from(
+        text.matchAll(/\.open\(\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS)["'`]\s*,\s*["'`]([^"'`]+)/g),
+        (m) => `${m[1]} ${m[2]}`,
+      ),
+      ...Array.from(
+        text.matchAll(/(?:api|baseURL|baseUrl|endpoint|url)\s*[:=]\s*["'`]([^"'`]{1,180})["'`]/gi),
+        (m) => m[1],
+      ),
+    ],
+    180,
+  )
+  const routes = unique(
+    Array.from(
+      text.matchAll(/["'`]((?:\/[A-Za-z0-9_.~!$&'()*+,;=:@%-]+){1,12}(?:\?[A-Za-z0-9_.~!$&'()*+,;=:@%/?-]*)?)["'`]/g),
+      (m) => m[1],
+    ),
+    220,
+  )
+  const graphql = unique(
+    [
+      ...Array.from(text.matchAll(/\b(query|mutation|subscription)\s+([A-Za-z0-9_]+)/g), (m) => `${m[1]} ${m[2]}`),
+      ...Array.from(text.matchAll(/operationName["']?\s*[:=]\s*["']([A-Za-z0-9_]+)/g), (m) => `operation ${m[1]}`),
+      /graphql/i.test(text) ? "graphql literal present" : "",
+    ],
+    80,
+  )
+  const params = unique(
+    [
+      ...Array.from(text.matchAll(/[?&]([A-Za-z0-9_.-]{2,60})=/g), (m) => m[1]),
+      ...Array.from(text.matchAll(/(?:params|data|body|json)\s*[:=]\s*\{([^}]{1,600})\}/g), (m) => m[1]).flatMap((s) =>
+        Array.from(s.matchAll(/([A-Za-z_$][A-Za-z0-9_$-]{1,60})\s*:/g), (x) => x[1]),
+      ),
+    ],
+    160,
+  )
+  const roles = unique(
+    Array.from(
+      text.matchAll(/\b(admin|owner|moderator|staff|manager|tenant|role|permission|isAdmin|isOwner|premium|vip)\b/gi),
+      (m) => m[0],
+    ),
+    80,
+  )
+  const storage = unique(
+    [
+      ...Array.from(
+        text.matchAll(
+          /\b(localStorage|sessionStorage)\s*\.\s*(?:getItem|setItem|removeItem)\s*\(\s*["'`]([^"'`]+)["'`]/g,
+        ),
+        (m) => `${m[1]}:${m[2]}`,
+      ),
+      ...Array.from(text.matchAll(/document\.cookie\s*=\s*["'`]([^"'`;=]+)/g), (m) => `cookie-write:${m[1]}`),
+    ],
+    100,
+  )
+  const sinks = unique(
+    [
+      ...[
+        "innerHTML",
+        "outerHTML",
+        "insertAdjacentHTML",
+        "document.write",
+        "eval(",
+        "Function(",
+        "setTimeout(",
+        "dangerouslySetInnerHTML",
+        "v-html",
+        "postMessage",
+        "new WebSocket",
+        "EventSource",
+      ].filter((x) => text.includes(x)),
+    ],
+    80,
+  )
+  const sourceMaps = unique(
+    Array.from(text.matchAll(/sourceMappingURL=([^\s*]+)/g), (m) => m[1]),
+    50,
+  )
+  const keywords = unique(
+    Array.from(
+      text.matchAll(
+        /\b(upload|download|export|import|preview|render|template|report|callback|webhook|redirect|next|return|debug|flag|admin|graphql|swagger|openapi)\b/gi,
+      ),
+      (m) => m[0].toLowerCase(),
+    ),
+    80,
+  )
   return { endpoints, routes, graphql, params, roles, storage, sinks, sourceMaps, keywords }
 }
 
 export default tool({
-  description: "CTF Web JS surface map: katana/hakrawler-inspired static extraction from same-origin JavaScript bundles for endpoints, routes, params, GraphQL operations, storage, DOM sinks, roles, source maps, and high-value workflow keywords.",
+  description:
+    "CTF Web JS surface map: katana/hakrawler-inspired static extraction from same-origin JavaScript bundles for endpoints, routes, params, GraphQL operations, storage, DOM sinks, roles, source maps, and high-value workflow keywords.",
   args: {
     url: tool.schema.string().describe("Authorized CTF page URL or JS URL."),
     headersJson: tool.schema.string().optional().describe("Optional JSON headers."),
     cookie: tool.schema.string().optional().describe("Optional Cookie header."),
-    maxScripts: tool.schema.number().optional().describe("Max same-origin scripts to fetch from HTML. Default 18, hard cap 40."),
-    maxBytesPerScript: tool.schema.number().optional().describe("Max bytes per script. Default 900000, hard cap 2000000."),
+    maxScripts: tool.schema
+      .number()
+      .optional()
+      .describe("Max same-origin scripts to fetch from HTML. Default 18, hard cap 40."),
+    maxBytesPerScript: tool.schema
+      .number()
+      .optional()
+      .describe("Max bytes per script. Default 900000, hard cap 2000000."),
   },
   async execute(args) {
     const base = new URL(normalizeUrl(args.url))
@@ -137,14 +217,27 @@ export default tool({
       }
     }
     const surface = extract(texts.join("\n"))
-    const highValue = unique([
-      ...surface.routes.filter((x) => /admin|debug|flag|upload|download|export|import|preview|render|report|callback|webhook|graphql|swagger|openapi/i.test(x)),
-      ...surface.endpoints.filter((x) => /admin|debug|flag|upload|download|export|import|preview|render|report|callback|webhook|graphql|swagger|openapi/i.test(x)),
-    ], 120)
+    const highValue = unique(
+      [
+        ...surface.routes.filter((x) =>
+          /admin|debug|flag|upload|download|export|import|preview|render|report|callback|webhook|graphql|swagger|openapi/i.test(
+            x,
+          ),
+        ),
+        ...surface.endpoints.filter((x) =>
+          /admin|debug|flag|upload|download|export|import|preview|render|report|callback|webhook|graphql|swagger|openapi/i.test(
+            x,
+          ),
+        ),
+      ],
+      120,
+    )
     const next = unique([
       surface.sourceMaps.length ? "fetch source maps and pivot to source-leak audit bridge" : "",
       surface.graphql.length ? "test GraphQL schema/error/introspection with one low-noise probe" : "",
-      surface.storage.length || surface.roles.length ? "run state-machine/authz mapping for client-side role/token assumptions" : "",
+      surface.storage.length || surface.roles.length
+        ? "run state-machine/authz mapping for client-side role/token assumptions"
+        : "",
       surface.sinks.length ? "run reflection-map before XSS/browser payload variants" : "",
       highValue.length ? "rank high_value_routes in ctf-decision-state before fuzzing" : "",
     ])
@@ -165,7 +258,9 @@ export default tool({
       `workflow_keywords: ${surface.keywords.length ? surface.keywords.join(" | ") : "none"}`,
       `high_value_routes: ${highValue.length ? highValue.join(" | ") : "none"}`,
       "recommended_next:",
-      ...(next.length ? next.map((x) => `- ${x}`) : ["- feed endpoints/routes into ctf-web-diff-probe or ctf-web-state-machine-map"]),
+      ...(next.length
+        ? next.map((x) => `- ${x}`)
+        : ["- feed endpoints/routes into ctf-web-diff-probe or ctf-web-state-machine-map"]),
       "errors:",
       ...(errors.length ? errors.map((x) => `- ${x}`) : ["- none"]),
     ].join("\n")

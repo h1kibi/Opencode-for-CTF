@@ -1,9 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
 import path from "node:path"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
-
-const execFile = promisify(execFileCb)
+import { safeExecWithStreams } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -18,7 +15,8 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
 function detect(buf: Buffer) {
   if (buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "png"
   if (buf.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) return "jpeg"
-  if (buf.subarray(0, 6).toString("ascii") === "GIF87a" || buf.subarray(0, 6).toString("ascii") === "GIF89a") return "gif"
+  if (buf.subarray(0, 6).toString("ascii") === "GIF87a" || buf.subarray(0, 6).toString("ascii") === "GIF89a")
+    return "gif"
   if (buf.subarray(0, 2).toString("ascii") === "BM") return "bmp"
   if (buf.subarray(0, 4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WEBP") return "webp"
   if (buf.subarray(0, 4).toString("ascii") === "%PDF") return "pdf"
@@ -33,10 +31,14 @@ function dimensions(kind: string, buf: Buffer) {
     if (kind === "jpeg") {
       let off = 2
       while (off + 9 < buf.length) {
-        if (buf[off] !== 0xff) { off++; continue }
+        if (buf[off] !== 0xff) {
+          off++
+          continue
+        }
         const marker = buf[off + 1]
         const len = buf.readUInt16BE(off + 2)
-        if (marker >= 0xc0 && marker <= 0xc3) return { width: buf.readUInt16BE(off + 7), height: buf.readUInt16BE(off + 5) }
+        if (marker >= 0xc0 && marker <= 0xc3)
+          return { width: buf.readUInt16BE(off + 7), height: buf.readUInt16BE(off + 5) }
         off += 2 + len
       }
     }
@@ -45,16 +47,14 @@ function dimensions(kind: string, buf: Buffer) {
 }
 
 async function optionalExec(cmd: string, args: string[], cwd: string) {
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, timeout: 10000, maxBuffer: 512 * 1024 })
-    return `${stdout}${stderr ? `\n${stderr}` : ""}`.trim() || "<no output>"
-  } catch (err) {
-    return `<${cmd} unavailable or failed: ${err instanceof Error ? err.message : String(err)}>`
-  }
+  const { stdout, stderr, ok } = await safeExecWithStreams(cmd, args, { cwd, timeoutMs: 10000, maxBuffer: 512 * 1024 })
+  if (!ok) return `<${cmd} unavailable or failed: ${stderr || "no details"}>`
+  return `${stdout}${stderr ? `\n${stderr}` : ""}`.trim() || "<no output>"
 }
 
 export default tool({
-  description: "Daily image/document file info: inspect local image-like files without model vision input; reports type, dimensions, metadata hints, trailing data, and optional exiftool output.",
+  description:
+    "Daily image/document file info: inspect local image-like files without model vision input; reports type, dimensions, metadata hints, trailing data, and optional exiftool output.",
   args: {
     target: tool.schema.string().describe("Workspace-relative image/document path to inspect"),
     exif: tool.schema.boolean().optional().describe("Run exiftool if available. Default true."),
@@ -77,11 +77,14 @@ export default tool({
     const hints: string[] = []
     const pngEnd = Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82])
     const pngIdx = sample.indexOf(pngEnd)
-    if (kind === "png" && pngIdx >= 0 && pngIdx + pngEnd.length < sample.length) hints.push(`png trailing data after offset ${pngIdx + pngEnd.length}`)
+    if (kind === "png" && pngIdx >= 0 && pngIdx + pngEnd.length < sample.length)
+      hints.push(`png trailing data after offset ${pngIdx + pngEnd.length}`)
     const jpgIdx = sample.lastIndexOf(Buffer.from([0xff, 0xd9]))
-    if (kind === "jpeg" && jpgIdx >= 0 && jpgIdx + 2 < sample.length) hints.push(`jpeg trailing data after offset ${jpgIdx + 2}`)
+    if (kind === "jpeg" && jpgIdx >= 0 && jpgIdx + 2 < sample.length)
+      hints.push(`jpeg trailing data after offset ${jpgIdx + 2}`)
     if (sample.includes(Buffer.from("PK\x03\x04", "binary"))) hints.push("embedded zip signature")
-    if (sample.toString("latin1").match(/https?:\/\/|mailto:|BEGIN [A-Z ]+KEY|password|secret|token/i)) hints.push("interesting text/URL/secret-like string in sample")
+    if (sample.toString("latin1").match(/https?:\/\/|mailto:|BEGIN [A-Z ]+KEY|password|secret|token/i))
+      hints.push("interesting text/URL/secret-like string in sample")
 
     const exifOut = args.exif === false ? "skipped" : await optionalExec("exiftool", [target], path.dirname(target))
     return [

@@ -1,10 +1,12 @@
 import { tool } from "@opencode-ai/plugin"
 import path from "node:path"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
+import { safeExec } from "./lib/exec-utils.ts"
 
-const execFile = promisify(execFileCb)
-const root = "C:\\Projects\\jdkenv"
+// JDK root is configurable via CTF_JDK_ROOT so the tool is not tied to any
+// specific machine. Falls back to a conventional Windows location.
+const root =
+  process.env.CTF_JDK_ROOT ||
+  (process.platform === "win32" ? "C:\\jdkenv" : path.join(process.env.HOME || "", "jdkenv"))
 
 const jdks: Record<string, string> = {
   "7": path.join(root, "jdk-7u21"),
@@ -28,16 +30,9 @@ function exe(jdk: string, name: string) {
   return path.join(jdk, "bin", `${name}.exe`)
 }
 
-async function run(cmd: string, args: string[], cwd: string, envJdk: string, timeout = 20000) {
+async function runInJdk(cmd: string, args: string[], cwd: string, envJdk: string, timeoutMs = 20000) {
   const env = { ...process.env, JAVA_HOME: envJdk, Path: `${path.join(envJdk, "bin")};${process.env.Path ?? ""}` }
-  try {
-    const { stdout, stderr } = await execFile(cmd, args, { cwd, env, timeout, maxBuffer: 4 * 1024 * 1024 })
-    return `${stdout}${stderr ? `\n${stderr}` : ""}`.trim() || "<no output>"
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message?: string }
-    const out = `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}`.trim()
-    return out || `<failed: ${e.message ?? String(err)}>`
-  }
+  return (await safeExec(cmd, args, { cwd, timeoutMs, env })).output
 }
 
 function resolveWorkspace(contextDir: string, input?: string) {
@@ -49,12 +44,22 @@ function resolveWorkspace(contextDir: string, input?: string) {
 }
 
 export default tool({
-  description: "CTF Java JDK environment: list configured C:\\Projects\\jdkenv JDKs, run selected java/javac/jar/javap with JAVA_HOME/PATH set, and emit PowerShell env snippets for agents.",
+  description:
+    "CTF Java JDK environment: list configured JDKs (root configurable via CTF_JDK_ROOT), run selected java/javac/jar/javap with JAVA_HOME/PATH set, and emit PowerShell env snippets for agents.",
   args: {
     action: tool.schema.string().describe("list | version | javap | jar-list | run-jar | compile | snippet"),
-    version: tool.schema.string().optional().describe("JDK version alias: 7u21, 8u65, 8u121, 8, 11, 17, 24. Default 8."),
-    target: tool.schema.string().optional().describe("Workspace-relative jar/class/java file or directory depending on action."),
-    args: tool.schema.string().optional().describe("Extra command arguments as a single string. Keep simple; split on spaces."),
+    version: tool.schema
+      .string()
+      .optional()
+      .describe("JDK version alias: 7u21, 8u65, 8u121, 8, 11, 17, 24. Default 8."),
+    target: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative jar/class/java file or directory depending on action."),
+    args: tool.schema
+      .string()
+      .optional()
+      .describe("Extra command arguments as a single string. Keep simple; split on spaces."),
   },
   async execute(args, context) {
     const fs = await import("fs/promises")
@@ -69,8 +74,13 @@ export default tool({
       for (const [alias, p] of Object.entries(jdks)) {
         try {
           await fs.access(exe(p, "java"))
-          const out = await run(exe(p, "java"), ["-version"], cwd, p, 6000)
-          rows.push(`[${alias}] ${p}\n${out.split(/\r?\n/).map((x) => `  ${x}`).join("\n")}`)
+          const out = await runInJdk(exe(p, "java"), ["-version"], cwd, p, 6000)
+          rows.push(
+            `[${alias}] ${p}\n${out
+              .split(/\r?\n/)
+              .map((x) => `  ${x}`)
+              .join("\n")}`,
+          )
         } catch {
           rows.push(`[${alias}] ${p}\n  missing java.exe`)
         }
@@ -87,26 +97,26 @@ export default tool({
       ].join("\n")
     }
 
-    if (action === "version") return run(exe(jdk, "java"), ["-version"], cwd, jdk, 6000)
+    if (action === "version") return runInJdk(exe(jdk, "java"), ["-version"], cwd, jdk, 6000)
 
     if (action === "javap") {
       const target = resolveWorkspace(context.directory, args.target)
-      return run(exe(jdk, "javap"), ["-c", "-p", "-v", target, ...extra], path.dirname(target), jdk)
+      return runInJdk(exe(jdk, "javap"), ["-c", "-p", "-v", target, ...extra], path.dirname(target), jdk)
     }
 
     if (action === "jar-list") {
       const target = resolveWorkspace(context.directory, args.target)
-      return run(exe(jdk, "jar"), ["tf", target], path.dirname(target), jdk)
+      return runInJdk(exe(jdk, "jar"), ["tf", target], path.dirname(target), jdk)
     }
 
     if (action === "run-jar") {
       const target = resolveWorkspace(context.directory, args.target)
-      return run(exe(jdk, "java"), ["-jar", target, ...extra], path.dirname(target), jdk, 30000)
+      return runInJdk(exe(jdk, "java"), ["-jar", target, ...extra], path.dirname(target), jdk, 30000)
     }
 
     if (action === "compile") {
       const target = resolveWorkspace(context.directory, args.target)
-      return run(exe(jdk, "javac"), [target, ...extra], path.dirname(target), jdk, 30000)
+      return runInJdk(exe(jdk, "javac"), [target, ...extra], path.dirname(target), jdk, 30000)
     }
 
     throw new Error(`unknown action '${args.action}'`)

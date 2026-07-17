@@ -24,6 +24,10 @@ export function skillMcpStateFile(worktree: string) {
   return path.resolve(runtimeStateRoot(worktree), "skill-mcp-leases.json")
 }
 
+export function agentMcpStateFile(worktree: string) {
+  return path.resolve(runtimeStateRoot(worktree), "agent-mcp-state.json")
+}
+
 export function safeDirSlug(directory: string) {
   return directory.replace(/[:\\/]+/g, "_").replace(/[^A-Za-z0-9._-]/g, "_")
 }

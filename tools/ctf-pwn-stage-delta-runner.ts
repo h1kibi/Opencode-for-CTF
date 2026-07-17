@@ -1,10 +1,8 @@
 import { tool } from "@opencode-ai/plugin"
+import { randomUUID } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
-import { execFile as execFileCb } from "node:child_process"
-import { promisify } from "node:util"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExecWithStreams, dockerQuote } from "./lib/exec-utils.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -24,10 +22,6 @@ type Stage = {
   memoryExprs?: string
   memoryLabels?: string
   timeoutMs?: number
-}
-
-function shellQuote(s: string) {
-  return `'${s.replace(/'/g, `'\\''`)}'`
 }
 
 async function loadRuntimeProfile(contextDir: string, profileId?: string) {
@@ -53,14 +47,20 @@ function diffLineSets(a: string[], b: string[]) {
 async function runNodeTool(contextDir: string, toolFile: string, payload: Record<string, unknown>, timeoutMs: number) {
   const target = resolveInsideWorkspace(contextDir, toolFile)
   const script = `import toolMod from ${JSON.stringify(target.replace(/\\/g, "/"))};\nconst context = { directory: ${JSON.stringify(contextDir)} };\nconst args = ${JSON.stringify(payload)};\nconst out = await toolMod.execute(args, context);\nif (typeof out === 'string') process.stdout.write(out); else process.stdout.write(JSON.stringify(out));\n`
-  const runner = resolveInsideWorkspace(contextDir, `work/stage-delta-runner-${Date.now()}-${Math.random().toString(16).slice(2, 8)}.mjs`)
+  const runner = resolveInsideWorkspace(contextDir, `work/stage-delta-runner-${randomUUID().slice(0, 12)}.mjs`)
   await mkdir(path.dirname(runner), { recursive: true })
   await writeFile(runner, script, "utf8")
   try {
-    const { stdout, stderr } = await execFile("node", [runner], { cwd: contextDir, timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024 })
+    const { stdout, stderr } = await safeExecWithStreams("node", [runner], {
+      cwd: contextDir,
+      timeoutMs,
+      maxBuffer: 8 * 1024 * 1024,
+    })
     return `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
   } finally {
-    try { await writeFile(runner, "", "utf8") } catch {}
+    try {
+      await writeFile(runner, "", "utf8")
+    } catch {}
   }
 }
 
@@ -70,14 +70,20 @@ const context = { directory: ${JSON.stringify(contextDir)} };
 const out = await toolMod.execute(${JSON.stringify(payload)}, context);
 process.stdout.write(String(out));
 `
-  const runner = resolveInsideWorkspace(contextDir, `work/stage-delta-single-${Date.now()}-${Math.random().toString(16).slice(2, 8)}.mjs`)
+  const runner = resolveInsideWorkspace(contextDir, `work/stage-delta-single-${randomUUID().slice(0, 12)}.mjs`)
   await mkdir(path.dirname(runner), { recursive: true })
   await writeFile(runner, script, "utf8")
   try {
-    const { stdout, stderr } = await execFile("node", [runner], { cwd: contextDir, timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024 })
+    const { stdout, stderr } = await safeExecWithStreams("node", [runner], {
+      cwd: contextDir,
+      timeoutMs,
+      maxBuffer: 8 * 1024 * 1024,
+    })
     return `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
   } finally {
-    try { await writeFile(runner, "", "utf8") } catch {}
+    try {
+      await writeFile(runner, "", "utf8")
+    } catch {}
   }
 }
 
@@ -105,11 +111,19 @@ function parseSnapshot(text: string) {
 }
 
 export default tool({
-  description: "CTF pwn stage delta runner: execute staged payload packets, snapshot each stage, and summarize register/mapping/memory deltas for pwntools + gdb workflows.",
+  description:
+    "CTF pwn stage delta runner: execute staged payload packets, snapshot each stage, and summarize register/mapping/memory deltas for pwntools + gdb workflows.",
   args: {
     binary: tool.schema.string().describe("Workspace-relative ELF binary path."),
-    runtimeProfileId: tool.schema.string().optional().describe("Runtime profile id emitted by ctf-pwn-libc-runtime-doctor. Passed to each snapshot."),
-    stagesJson: tool.schema.string().describe("JSON array of stages. Each stage may include name,payloadFile,payloadText,payloadHex,breakpoints,breakpointHitCounts,memoryExprs,memoryLabels,timeoutMs."),
+    runtimeProfileId: tool.schema
+      .string()
+      .optional()
+      .describe("Runtime profile id emitted by ctf-pwn-libc-runtime-doctor. Passed to each snapshot."),
+    stagesJson: tool.schema
+      .string()
+      .describe(
+        "JSON array of stages. Each stage may include name,payloadFile,payloadText,payloadHex,breakpoints,breakpointHitCounts,memoryExprs,memoryLabels,timeoutMs.",
+      ),
     containerName: tool.schema.string().optional().describe("Explicit container name used by ctf-pwn-gdb-snapshot."),
     composeService: tool.schema.string().optional().describe("Compose service used by ctf-pwn-gdb-snapshot."),
     image: tool.schema.string().optional().describe("Docker image used by ctf-pwn-gdb-snapshot."),
@@ -117,9 +131,17 @@ export default tool({
     containerWorkdir: tool.schema.string().optional().describe("In-container working directory."),
     containerMountRoot: tool.schema.string().optional().describe("Container mount root. Default /work."),
     runArgs: tool.schema.string().optional().describe("Extra run args passed through to containerized gdb snapshots."),
-    outDir: tool.schema.string().optional().describe("Workspace-relative output directory. Default work/stage-delta-harness."),
+    outDir: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative output directory. Default work/stage-delta-harness."),
     timeoutMs: tool.schema.number().optional().describe("Per-stage timeout in ms. Default 15000."),
-    singleSession: tool.schema.boolean().optional().describe("Use one FIFO + one gdb process for sequential stage input instead of independent snapshots. Default false."),
+    singleSession: tool.schema
+      .boolean()
+      .optional()
+      .describe(
+        "Use one FIFO + one gdb process for sequential stage input instead of independent snapshots. Default false.",
+      ),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args, context) {
@@ -139,27 +161,41 @@ export default tool({
         const name = String(stage.name || `stage${i + 1}`)
         let payloadFile = stage.payloadFile ? resolveInsideWorkspace(context.directory, stage.payloadFile) : ""
         if (!payloadFile && (stage.payloadText || stage.payloadHex)) {
-          payloadFile = resolveInsideWorkspace(context.directory, path.join(path.relative(context.directory, outDir), `${i + 1}-${name}${stage.payloadHex ? ".bin" : ".txt"}`))
-          if (stage.payloadHex) await writeFile(payloadFile, Buffer.from(String(stage.payloadHex).replace(/[^0-9a-fA-F]/g, ""), "hex"))
+          payloadFile = resolveInsideWorkspace(
+            context.directory,
+            path.join(
+              path.relative(context.directory, outDir),
+              `${i + 1}-${name}${stage.payloadHex ? ".bin" : ".txt"}`,
+            ),
+          )
+          if (stage.payloadHex)
+            await writeFile(payloadFile, Buffer.from(String(stage.payloadHex).replace(/[^0-9a-fA-F]/g, ""), "hex"))
           else await writeFile(payloadFile, String(stage.payloadText || ""), "utf8")
         }
         if (payloadFile) payloadFiles.push(path.relative(context.directory, payloadFile).replace(/\\/g, "/"))
       }
       const relBinary = path.relative(context.directory, binary).replace(/\\/g, "/")
       const containerMountRoot = args.containerMountRoot || profileDefaults.containerMountRoot || "/work"
-      const allBreakpoints = stages.flatMap((s) => String(s.breakpoints || "").split(/[\r\n,]+/).map((x) => x.trim()).filter(Boolean))
+      const allBreakpoints = stages.flatMap((s) =>
+        String(s.breakpoints || "")
+          .split(/[\r\n,]+/)
+          .map((x) => x.trim())
+          .filter(Boolean),
+      )
       const gdbCmds = [
         "set pagination off",
         "set confirm off",
         ...allBreakpoints.map((bp) => `break ${bp}`),
         "run < /tmp/opencode_stage_fifo",
-        "printf \\\"register snapshot:\\\\n\\\"",
+        'printf \\"register snapshot:\\\\n\\"',
         "info registers",
-        "printf \\\"stack snapshot:\\\\n\\\"",
+        'printf \\"stack snapshot:\\\\n\\"',
         "x/24gx $rsp",
         "bt",
       ].join("\\n")
-      const feed = payloadFiles.map((p) => `cat ${shellQuote(path.posix.join(containerMountRoot, p))} >> /tmp/opencode_stage_fifo`).join("; sleep 0.15; ")
+      const feed = payloadFiles
+        .map((p) => `cat ${dockerQuote(path.posix.join(containerMountRoot, p))} >> /tmp/opencode_stage_fifo`)
+        .join("; sleep 0.15; ")
       const script = [
         "rm -f /tmp/opencode_stage_fifo",
         "mkfifo /tmp/opencode_stage_fifo",
@@ -167,23 +203,40 @@ export default tool({
         `cat > /tmp/opencode_stage.gdb <<'GDB'\n${gdbCmds}\nGDB`,
         `gdb -nx -q -batch -x /tmp/opencode_stage.gdb ${path.posix.join(containerMountRoot, relBinary)}`,
       ].join("\n")
-      const dockerOut = await runSingleSessionGdb(context.directory, {
-        script,
-        runtimeProfileId: args.runtimeProfileId || "",
-        composeService: args.composeService || profileDefaults.composeService || "",
-        containerName: args.containerName || "",
-        image: args.image || "",
-        useComposeRun: args.useComposeRun || false,
-        containerWorkdir: args.containerWorkdir || profileDefaults.containerWorkdir || "/work",
-        containerMountRoot,
-        runArgs: args.runArgs || profileDefaults.runArgs || "",
-        timeoutMs,
-        saveOutput: true,
-        outputPath: path.join(path.relative(context.directory, outDir), "single-session-gdb.log").replace(/\\/g, "/"),
-      }, timeoutMs + 10000)
-      const payload = { schema_version: "pwn_stage_delta_runner.v2", mode: "single_session_fifo", binary: relBinary, payload_files: payloadFiles, output: dockerOut }
+      const dockerOut = await runSingleSessionGdb(
+        context.directory,
+        {
+          script,
+          runtimeProfileId: args.runtimeProfileId || "",
+          composeService: args.composeService || profileDefaults.composeService || "",
+          containerName: args.containerName || "",
+          image: args.image || "",
+          useComposeRun: args.useComposeRun || false,
+          containerWorkdir: args.containerWorkdir || profileDefaults.containerWorkdir || "/work",
+          containerMountRoot,
+          runArgs: args.runArgs || profileDefaults.runArgs || "",
+          timeoutMs,
+          saveOutput: true,
+          outputPath: path.join(path.relative(context.directory, outDir), "single-session-gdb.log").replace(/\\/g, "/"),
+        },
+        timeoutMs + 10000,
+      )
+      const payload = {
+        schema_version: "pwn_stage_delta_runner.v2",
+        mode: "single_session_fifo",
+        binary: relBinary,
+        payload_files: payloadFiles,
+        output: dockerOut,
+      }
       if (args.jsonOnly) return JSON.stringify(payload, null, 2)
-      return ["pwn_stage_delta_runner:", "mode: single_session_fifo", `binary: ${relBinary}`, `payload_files: ${payloadFiles.join(" | ") || "none"}`, "output_compact:", compact(dockerOut)].join("\n")
+      return [
+        "pwn_stage_delta_runner:",
+        "mode: single_session_fifo",
+        `binary: ${relBinary}`,
+        `payload_files: ${payloadFiles.join(" | ") || "none"}`,
+        "output_compact:",
+        compact(dockerOut),
+      ].join("\n")
     }
 
     const results: Array<Record<string, unknown>> = []
@@ -192,35 +245,52 @@ export default tool({
       const name = String(stage.name || `stage${i + 1}`)
       let payloadFile = stage.payloadFile ? resolveInsideWorkspace(context.directory, stage.payloadFile) : ""
       if (!payloadFile && (stage.payloadText || stage.payloadHex)) {
-        payloadFile = resolveInsideWorkspace(context.directory, path.join(path.relative(context.directory, outDir), `${i + 1}-${name}${stage.payloadHex ? ".bin" : ".txt"}`))
-        if (stage.payloadHex) await writeFile(payloadFile, Buffer.from(String(stage.payloadHex).replace(/[^0-9a-fA-F]/g, ""), "hex"))
+        payloadFile = resolveInsideWorkspace(
+          context.directory,
+          path.join(path.relative(context.directory, outDir), `${i + 1}-${name}${stage.payloadHex ? ".bin" : ".txt"}`),
+        )
+        if (stage.payloadHex)
+          await writeFile(payloadFile, Buffer.from(String(stage.payloadHex).replace(/[^0-9a-fA-F]/g, ""), "hex"))
         else await writeFile(payloadFile, String(stage.payloadText || ""), "utf8")
       }
 
-      const snapshotOutput = await runNodeTool(context.directory, "tools/ctf-pwn-gdb-snapshot.ts", {
-        binary: path.relative(context.directory, binary).replace(/\\/g, "/"),
-        payloadFile: payloadFile ? path.relative(context.directory, payloadFile).replace(/\\/g, "/") : "",
-        breakpoints: stage.breakpoints || "",
-        breakpointHitCounts: stage.breakpointHitCounts || "",
-        memoryExprs: stage.memoryExprs || "$rsp,$rbp,$rip",
-        memoryLabels: stage.memoryLabels || "rsp,rbp,rip",
-        timeoutMs: stage.timeoutMs || timeoutMs,
-        containerName: args.containerName || "",
-        composeService: args.composeService || profileDefaults.composeService || "",
-        image: args.image || "",
-        useComposeRun: args.useComposeRun || false,
-        containerWorkdir: args.containerWorkdir || profileDefaults.containerWorkdir || "",
-        containerMountRoot: args.containerMountRoot || profileDefaults.containerMountRoot || "/work",
-        runArgs: args.runArgs || profileDefaults.runArgs || "",
-        runtimeProfileId: args.runtimeProfileId || "",
-      }, timeoutMs + 5000)
+      const snapshotOutput = await runNodeTool(
+        context.directory,
+        "tools/ctf-pwn-gdb-snapshot.ts",
+        {
+          binary: path.relative(context.directory, binary).replace(/\\/g, "/"),
+          payloadFile: payloadFile ? path.relative(context.directory, payloadFile).replace(/\\/g, "/") : "",
+          breakpoints: stage.breakpoints || "",
+          breakpointHitCounts: stage.breakpointHitCounts || "",
+          memoryExprs: stage.memoryExprs || "$rsp,$rbp,$rip",
+          memoryLabels: stage.memoryLabels || "rsp,rbp,rip",
+          timeoutMs: stage.timeoutMs || timeoutMs,
+          containerName: args.containerName || "",
+          composeService: args.composeService || profileDefaults.composeService || "",
+          image: args.image || "",
+          useComposeRun: args.useComposeRun || false,
+          containerWorkdir: args.containerWorkdir || profileDefaults.containerWorkdir || "",
+          containerMountRoot: args.containerMountRoot || profileDefaults.containerMountRoot || "/work",
+          runArgs: args.runArgs || profileDefaults.runArgs || "",
+          runtimeProfileId: args.runtimeProfileId || "",
+        },
+        timeoutMs + 5000,
+      )
 
       const parsed = parseSnapshot(snapshotOutput)
       const stageResult = {
         index: i + 1,
         name,
         payload_file: payloadFile ? path.relative(context.directory, payloadFile).replace(/\\/g, "/") : "",
-        snapshot_file: path.relative(context.directory, resolveInsideWorkspace(context.directory, path.join(path.relative(context.directory, outDir), `${i + 1}-${name}.snapshot.txt`))).replace(/\\/g, "/"),
+        snapshot_file: path
+          .relative(
+            context.directory,
+            resolveInsideWorkspace(
+              context.directory,
+              path.join(path.relative(context.directory, outDir), `${i + 1}-${name}.snapshot.txt`),
+            ),
+          )
+          .replace(/\\/g, "/"),
         snapshot_summary: parsed,
       }
       await writeFile(resolveInsideWorkspace(context.directory, stageResult.snapshot_file), snapshotOutput, "utf8")
@@ -255,16 +325,21 @@ export default tool({
       `binary: ${payload.binary}`,
       `out_dir: ${payload.out_dir}`,
       "stages:",
-      ...results.map((stage: any) => `- #${stage.index} ${stage.name} payload_file=${stage.payload_file || "none"} snapshot_file=${stage.snapshot_file}`),
+      ...results.map(
+        (stage: any) =>
+          `- #${stage.index} ${stage.name} payload_file=${stage.payload_file || "none"} snapshot_file=${stage.snapshot_file}`,
+      ),
       "deltas:",
-      ...(deltas.length ? deltas.flatMap((delta: any) => [
-        `- ${delta.from} -> ${delta.to}`,
-        `  registers_added: ${(delta.registers.added || []).join(" | ") || "none"}`,
-        `  registers_removed: ${(delta.registers.removed || []).join(" | ") || "none"}`,
-        `  mappings_added: ${(delta.mappings.added || []).join(" | ") || "none"}`,
-        `  memory_added: ${(delta.memoryViews.added || []).join(" | ") || "none"}`,
-        `  hints_added: ${(delta.hints.added || []).join(" | ") || "none"}`,
-      ]) : ["- none"]),
+      ...(deltas.length
+        ? deltas.flatMap((delta: any) => [
+            `- ${delta.from} -> ${delta.to}`,
+            `  registers_added: ${(delta.registers.added || []).join(" | ") || "none"}`,
+            `  registers_removed: ${(delta.registers.removed || []).join(" | ") || "none"}`,
+            `  mappings_added: ${(delta.mappings.added || []).join(" | ") || "none"}`,
+            `  memory_added: ${(delta.memoryViews.added || []).join(" | ") || "none"}`,
+            `  hints_added: ${(delta.hints.added || []).join(" | ") || "none"}`,
+          ])
+        : ["- none"]),
       "recommended_use:",
       "- Use this when a multi-stage payload changes state in non-obvious ways and you need structured deltas instead of rereading raw gdb output.",
       `- Raw snapshot logs are saved under ${payload.out_dir}.`,

@@ -1,4 +1,4 @@
-import { DEFAULT_RISK_BUDGET, type CtfCategory, type CtfPhase, type RiskBudget } from "../../ctf-core/src/index"
+import { DEFAULT_RISK_BUDGET, type CtfCategory, type CtfPhase, type RiskBudget } from "../../ctf-core/src/index.js"
 
 export type CtfState = {
   challenge: {

@@ -5,14 +5,14 @@ description: Query WAF bypass database for a blocked chain/segment. Data-driven 
 Run the WAF bypass lookup tool to generate an ordered bypass matrix from the structured database:
 
 ```bash
-python C:\Users\Administrator\SecKB\scripts\waf_bypass_lookup.py query \
+python {env:SECKB_ROOT}/scripts/waf_bypass_lookup.py query \
   --blocker "$ARGUMENTS" \
   --max-families 6
 ```
 
 If stack and sink are known, append them:
 ```bash
-python C:\Users\Administrator\SecKB\scripts\waf_bypass_lookup.py query \
+python {env:SECKB_ROOT}/scripts/waf_bypass_lookup.py query \
   --blocker "BLOCKER_DESCRIPTION" \
   --stack "STACK" \
   --sink "SINK" \
@@ -31,10 +31,10 @@ python C:\Users\Administrator\SecKB\scripts\waf_bypass_lookup.py query \
 
 To list all categories:
 ```bash
-python C:\Users\Administrator\SecKB\scripts\waf_bypass_lookup.py list-categories
+python {env:SECKB_ROOT}/scripts/waf_bypass_lookup.py list-categories
 ```
 
 To show all techniques in a category:
 ```bash
-python C:\Users\Administrator\SecKB\scripts\waf_bypass_lookup.py show --category CATEGORY_NAME
+python {env:SECKB_ROOT}/scripts/waf_bypass_lookup.py show --category CATEGORY_NAME
 ```

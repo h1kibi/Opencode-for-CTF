@@ -24,35 +24,29 @@ const GITHUB_READONLY_REMOTE: RuntimeMcpConfig = {
   url: "https://api.githubcopilot.com/mcp/",
   headers: {
     "X-MCP-Readonly": "true",
-    "Authorization": "Bearer {env:GITHUB_PAT}",
+    Authorization: "Bearer {env:GITHUB_PAT}",
   },
 }
 
 const SECKB_LOCAL: RuntimeMcpConfig = {
   type: "local",
-  command: [
-    "{env:SECKB_PYTHON}",
-    "{env:SECKB_MCP_SERVER}",
-  ],
+  command: ["{env:SECKB_PYTHON}", "{env:SECKB_MCP_SERVER}"],
   environment: {
-    "SECKB_ROOT": "{env:SECKB_ROOT}",
-    "SECKB_CONFIG": "{env:SECKB_CONFIG}",
-    "PYTHONUTF8": "1",
-    "PYTHONIOENCODING": "utf-8",
+    SECKB_ROOT: "{env:SECKB_ROOT}",
+    SECKB_CONFIG: "{env:SECKB_CONFIG}",
+    PYTHONUTF8: "1",
+    PYTHONIOENCODING: "utf-8",
   },
   timeout: 60000,
 }
 
 const CVEKB_LOCAL: RuntimeMcpConfig = {
   type: "local",
-  command: [
-    "{env:SECKB_PYTHON}",
-    "{env:CVEKB_MCP_SERVER}",
-  ],
+  command: ["{env:SECKB_PYTHON}", "{env:CVEKB_MCP_SERVER}"],
   environment: {
-    "CVEKB_ROOT": "{env:CVEKB_ROOT}",
-    "PYTHONUTF8": "1",
-    "PYTHONIOENCODING": "utf-8",
+    CVEKB_ROOT: "{env:CVEKB_ROOT}",
+    PYTHONUTF8: "1",
+    PYTHONIOENCODING: "utf-8",
   },
   timeout: 60000,
 }
@@ -61,7 +55,7 @@ const ANYSEARCH_REMOTE: RuntimeMcpConfig = {
   type: "remote",
   url: "https://api.anysearch.com/mcp",
   headers: {
-    "Authorization": "Bearer {env:ANYSEARCH_API_KEY}",
+    Authorization: "Bearer {env:ANYSEARCH_API_KEY}",
   },
   timeout: 60000,
 }

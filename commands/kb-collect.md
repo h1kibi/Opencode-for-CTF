@@ -11,8 +11,8 @@ agent: daily
 
 围绕用户主题，从权威来源主动检索、抓取、精炼、整理，并把可复用知识写入：
 
-- `C:\Users\Administrator\SecKB\notes`
-- `C:\Users\Administrator\SecKB\index\chroma`
+- `{env:SECKB_ROOT}/notes`
+- `{env:SECKB_ROOT}/index\chroma`
 
 ## 固定流程
 
@@ -63,7 +63,7 @@ agent: daily
 对候选来源，先用 authority scorer 做排序：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\authority_rank.py <url1> <url2> <url3>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/authority_rank.py <url1> <url2> <url3>
 ```
 
 ### Step 4: 只保留高质量来源
@@ -102,7 +102,7 @@ C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\Sec
 使用：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_update.py --module <module> --title "<title>" --stdin --source anysearch --source-url "<url>" --stack <stack...> --primitive <primitive...> --query "<query>" --query-terms <terms...> --confidence high
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_update.py --module <module> --title "<title>" --stdin --source anysearch --source-url "<url>" --stack <stack...> --primitive <primitive...> --query "<query>" --query-terms <terms...> --confidence high
 ```
 
 对于已经确认稳定、可复用的知识，可以加 `--verified`。
@@ -112,7 +112,7 @@ C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\Sec
 之后至少执行一次检索 smoke test：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\search.py "<evidence query>" --limit 5 --category <category>
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/search.py "<evidence query>" --limit 5 --category <category>
 ```
 
 ### Step 8: 向用户报告
@@ -127,7 +127,7 @@ C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\Sec
 如有需要，再运行：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\kb_quality_report.py
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/kb_quality_report.py
 ```
 
 检查模块覆盖和 metadata 健康度。

@@ -1,0 +1,26 @@
+# Keep repository text files consistent across platforms.
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary challenge and media artifacts
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.7z binary
+*.gz binary
+*.tar binary
+*.pcap binary
+*.pcapng binary
+*.exe binary
+*.dll binary
+*.so binary
+*.elf binary
+*.bin binary
+*.apk binary

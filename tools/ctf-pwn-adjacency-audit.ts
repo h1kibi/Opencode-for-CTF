@@ -29,20 +29,32 @@ function score(row: AuditRow) {
 }
 
 export default tool({
-  description: "CTF pwn adjacency audit: analyze writable long-lived memory evidence and rank adjacent-object or output-hijack closure opportunities before ROP/file-write drift.",
+  description:
+    "CTF pwn adjacency audit: analyze writable long-lived memory evidence and rank adjacent-object or output-hijack closure opportunities before ROP/file-write drift.",
   args: {
-    evidence: tool.schema.string().describe("Source, decompilation, disassembly notes, symbol notes, globals, nearby strings, or behavior clues involving writable global/.bss/heap/parser buffers and later consumers."),
+    evidence: tool.schema
+      .string()
+      .describe(
+        "Source, decompilation, disassembly notes, symbol notes, globals, nearby strings, or behavior clues involving writable global/.bss/heap/parser buffers and later consumers.",
+      ),
   },
   async execute(args) {
     const raw = String(args.evidence || "")
     const lower = raw.toLowerCase()
-    if (raw.trim().length < 20) return "BLOCK: provide decompilation, source, or notes showing writable memory plus nearby consumers"
+    if (raw.trim().length < 20)
+      return "BLOCK: provide decompilation, source, or notes showing writable memory plus nearby consumers"
 
-    const writable = has(lower, /\.bss|global|writable|heap state|parser buffer|long-lived|scanf|fgets|read\(|recv\(|strcpy|memcpy/)
+    const writable = has(
+      lower,
+      /\.bss|global|writable|heap state|parser buffer|long-lived|scanf|fgets|read\(|recv\(|strcpy|memcpy/,
+    )
     const outputConsumer = has(lower, /puts|printf|write\(|send\(|fprintf|snprintf|dprintf/)
     const pathConsumer = has(lower, /open\(|fopen\(|path|filename|flag path|user\.log|\/flag/)
     const branchConsumer = has(lower, /if\s*\(|cmp|compare|strcmp|strncmp|state|flag byte|length|counter|bool|branch/)
-    const partialSecret = has(lower, /partial flag|prefix of flag|almost prints|prints secret|near-secret|stops at|encountered \{/)
+    const partialSecret = has(
+      lower,
+      /partial flag|prefix of flag|almost prints|prints secret|near-secret|stops at|encountered \{/,
+    )
 
     const out: AuditRow[] = []
 
@@ -88,7 +100,11 @@ export default tool({
     }
 
     const nearLines = lines(raw)
-      .filter((l) => /adjacent|neighbor|previous|next|global|bss|printf|puts|write|open|fopen|flag|path|length|state|format/i.test(l))
+      .filter((l) =>
+        /adjacent|neighbor|previous|next|global|bss|printf|puts|write|open|fopen|flag|path|length|state|format/i.test(
+          l,
+        ),
+      )
       .slice(0, 12)
 
     if (!out.length) {
@@ -107,11 +123,12 @@ export default tool({
     out.sort((a, b) => score(b) - score(a))
 
     const strongest = out[0]
-    const decision = /yes/i.test(strongest.outputHijack) || /yes/i.test(strongest.shorter)
-      ? "prefer_adjacency_first"
-      : out.length > 1
-        ? "keep_as_orthogonal_closure_hypothesis"
-        : "insufficient_adjacency_evidence"
+    const decision =
+      /yes/i.test(strongest.outputHijack) || /yes/i.test(strongest.shorter)
+        ? "prefer_adjacency_first"
+        : out.length > 1
+          ? "keep_as_orthogonal_closure_hypothesis"
+          : "insufficient_adjacency_evidence"
 
     return [
       "pwn_adjacency_audit:",
@@ -122,16 +139,18 @@ export default tool({
       `partial_secret_signal: ${partialSecret}`,
       `recommended_decision: ${decision}`,
       "top_candidates:",
-      ...out.slice(0, 4).flatMap((r, i) => [
-        `- #${i + 1} target=${r.target}`,
-        `  previous_adjacent: ${r.previous}`,
-        `  next_adjacent: ${r.next}`,
-        `  consumer: ${r.consumer}`,
-        `  existing_output_hijack: ${r.outputHijack}`,
-        `  shorter_than_shell_rop_filewrite: ${r.shorter}`,
-        `  confidence: ${r.confidence}`,
-        `  note: ${r.note}`,
-      ]),
+      ...out
+        .slice(0, 4)
+        .flatMap((r, i) => [
+          `- #${i + 1} target=${r.target}`,
+          `  previous_adjacent: ${r.previous}`,
+          `  next_adjacent: ${r.next}`,
+          `  consumer: ${r.consumer}`,
+          `  existing_output_hijack: ${r.outputHijack}`,
+          `  shorter_than_shell_rop_filewrite: ${r.shorter}`,
+          `  confidence: ${r.confidence}`,
+          `  note: ${r.note}`,
+        ]),
       "nearby_evidence_lines:",
       ...nearLines.map((l) => `- ${l.trim()}`),
       "next_probe_contract:",

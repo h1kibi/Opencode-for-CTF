@@ -25,7 +25,7 @@ agent: daily
 3. 运行：
 
 ```powershell
-C:\Users\Administrator\SecKB\.venv\Scripts\python.exe C:\Users\Administrator\SecKB\scripts\xianzhi_promote.py --id <id> --module <module> --write
+{env:SECKB_PYTHON} {env:SECKB_ROOT}/scripts/xianzhi_promote.py --id <id> --module <module> --write
 ```
 
 4. promotion 后检查 note：

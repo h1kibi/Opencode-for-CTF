@@ -1,10 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
-import { execFile as execFileCb } from "node:child_process"
 import { mkdir, writeFile } from "node:fs/promises"
-import { promisify } from "node:util"
 import path from "node:path"
-
-const execFile = promisify(execFileCb)
+import { safeExecWithStreams } from "./lib/exec-utils.ts"
 
 function extractJsonBlock(text: string) {
   const firstArray = text.indexOf("[")
@@ -24,7 +21,10 @@ function extractJsonBlock(text: string) {
       else if (ch === '"') inString = false
       continue
     }
-    if (ch === '"') { inString = true; continue }
+    if (ch === '"') {
+      inString = true
+      continue
+    }
     if (ch === "{" || ch === "[") depth++
     if (ch === "}" || ch === "]") {
       depth--
@@ -84,7 +84,8 @@ $out | ConvertTo-Json -Depth 6
 }
 
 export default tool({
-  description: "CTF Windows GUI inspect: enumerate visible top-level windows for a process/title and preview child UIAutomation controls for low-risk GUI reversing.",
+  description:
+    "CTF Windows GUI inspect: enumerate visible top-level windows for a process/title and preview child UIAutomation controls for low-risk GUI reversing.",
   args: {
     processName: tool.schema.string().optional().describe("Regex-like process name filter, e.g. BabyGame or notepad."),
     windowTitle: tool.schema.string().optional().describe("Regex-like window title filter."),
@@ -94,12 +95,13 @@ export default tool({
   async execute(args) {
     const command = psScript()
     const maxChildren = Math.max(10, Math.min(args.maxChildren ?? 40, 200))
-    try {
-      const tmpDir = path.join(process.cwd(), "work", "windows-gui-inspect")
-      await mkdir(tmpDir, { recursive: true })
-      const scriptPath = path.join(tmpDir, "uia_inspect.ps1")
-      await writeFile(scriptPath, command, "utf8")
-      const { stdout, stderr } = await execFile("powershell", [
+    const tmpDir = path.join(process.cwd(), "work", "windows-gui-inspect")
+    await mkdir(tmpDir, { recursive: true })
+    const scriptPath = path.join(tmpDir, "uia_inspect.ps1")
+    await writeFile(scriptPath, command, "utf8")
+    const { stdout, stderr, ok } = await safeExecWithStreams(
+      "powershell",
+      [
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
@@ -111,38 +113,43 @@ export default tool({
         args.windowTitle || "",
         "-MaxChildren",
         String(maxChildren),
-      ], {
-        timeout: 30000,
+      ],
+      {
+        timeoutMs: 30000,
         maxBuffer: 4 * 1024 * 1024,
-        shell: false,
-      })
-      const text = `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
-      const jsonText = extractJsonBlock(text)
-      const payload = jsonText ? JSON.parse(jsonText) : []
-      if (args.jsonOnly) return JSON.stringify(payload, null, 2)
-      const rows = Array.isArray(payload) ? payload : [payload]
-      if (!rows.length) {
-        return [
-          "CTF_WINDOWS_GUI_INSPECT:",
-          "- windows: 0",
-          `- hint: no visible window matched the current filter${args.processName ? ` (processName=${args.processName})` : ""}${args.windowTitle ? ` (windowTitle=${args.windowTitle})` : ""}`,
-          "- next: confirm the program is running and has created a visible top-level window, then retry with processName or windowTitle.",
-          "- launch_template: Start-Process -FilePath '<path-to-app.exe>'",
-        ].join("\n")
-      }
-      return [
-        "CTF_WINDOWS_GUI_INSPECT:",
-        `- windows: ${rows.length}`,
-        ...rows.flatMap((row: any) => [
-          `- process: ${row.ProcessName} pid=${row.Id} title=${row.MainWindowTitle} hwnd=${row.MainWindowHandle}`,
-          ...(Array.isArray(row.ChildPreview) ? row.ChildPreview.slice(0, maxChildren).map((child: any) => `  - ${child.ControlType} name=${child.Name || ""} automationId=${child.AutomationId || ""} class=${child.ClassName || ""} enabled=${child.IsEnabled}`) : []),
-        ]),
-      ].join("\n")
-    } catch (err) {
-      const e = err as { stdout?: string; stderr?: string; message?: string }
-      const detail = `${e.stdout ?? ""}${e.stderr ? `\n${e.stderr}` : ""}${e.message ? `\n${e.message}` : ""}`.trim()
+      },
+    )
+    if (!ok) {
+      const detail = `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
       if (args.jsonOnly) return JSON.stringify({ ok: false, error: detail }, null, 2)
       return `CTF_WINDOWS_GUI_INSPECT:\n- error: ${detail}`
     }
+    const text = `${stdout}${stderr ? `\n${stderr}` : ""}`.trim()
+    const jsonText = extractJsonBlock(text)
+    const payload = jsonText ? JSON.parse(jsonText) : []
+    if (args.jsonOnly) return JSON.stringify(payload, null, 2)
+    const rows = Array.isArray(payload) ? payload : [payload]
+    if (!rows.length) {
+      return [
+        "CTF_WINDOWS_GUI_INSPECT:",
+        "- windows: 0",
+        `- hint: no visible window matched the current filter${args.processName ? ` (processName=${args.processName})` : ""}${args.windowTitle ? ` (windowTitle=${args.windowTitle})` : ""}`,
+        "- next: confirm the program is running and has created a visible top-level window, then retry with processName or windowTitle.",
+        "- launch_template: Start-Process -FilePath '<path-to-app.exe>'",
+      ].join("\n")
+    }
+    return [
+      "CTF_WINDOWS_GUI_INSPECT:",
+      `- windows: ${rows.length}`,
+      ...rows.flatMap((row: any) => [
+        `- process: ${row.ProcessName} pid=${row.Id} title=${row.MainWindowTitle} hwnd=${row.MainWindowHandle}`,
+        ...(Array.isArray(row.ChildPreview)
+          ? row.ChildPreview.slice(0, maxChildren).map(
+              (child: any) =>
+                `  - ${child.ControlType} name=${child.Name || ""} automationId=${child.AutomationId || ""} class=${child.ClassName || ""} enabled=${child.IsEnabled}`,
+            )
+          : []),
+      ]),
+    ].join("\n")
   },
 })

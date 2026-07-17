@@ -8,7 +8,8 @@ const PLUGIN_ROOT = resolve(__dirname, "..")
 const DEFAULT_LOG = join(PLUGIN_ROOT, "knowledge", "pattern-cards", "feedback.jsonl")
 
 export default tool({
-  description: "Record feedback for a CTF pattern card after use: confirmed, falsified, led to flag, wasted time, or misleading. This creates a learning loop for future ranking.",
+  description:
+    "Record feedback for a CTF pattern card after use: confirmed, falsified, led to flag, wasted time, or misleading. This creates a learning loop for future ranking.",
   args: {
     cardId: tool.schema.string().describe("Pattern card id."),
     challenge: tool.schema.string().describe("Challenge name or short identifier."),
@@ -33,7 +34,9 @@ export default tool({
       timeCost: args.timeCost || "",
       note: args.note || "",
     }
-    const previous = existsSync(logPath) ? readFileSync(logPath, "utf8").trim().split(/\r?\n/).filter(Boolean).length : 0
+    const previous = existsSync(logPath)
+      ? readFileSync(logPath, "utf8").trim().split(/\r?\n/).filter(Boolean).length
+      : 0
     writeFileSync(logPath, JSON.stringify(entry) + "\n", { flag: "a" })
     return [
       "verdict: pattern_feedback_recorded",

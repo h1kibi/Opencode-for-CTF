@@ -65,10 +65,13 @@ function guessVerificationMethod(targetPath: string, served: boolean) {
 }
 
 export default tool({
-  description: "CTF file-write matrix: given candidate server paths and a write-capable endpoint or primitive, produce a conservative decision matrix with runtime guess, reload/serve behavior, create/overwrite unknowns, risk estimates, verification method, and canary plan. It does not execute writes and helps avoid blind destructive overwrites.",
+  description:
+    "CTF file-write matrix: given candidate server paths and a write-capable endpoint or primitive, produce a conservative decision matrix with runtime guess, reload/serve behavior, create/overwrite unknowns, risk estimates, verification method, and canary plan. It does not execute writes and helps avoid blind destructive overwrites.",
   args: {
     paths: tool.schema.string().describe("Newline- or comma-separated list of candidate target paths on the server"),
-    endpoint: tool.schema.string().describe("The HTTP endpoint or primitive that can write files (used for suggested canary probes)"),
+    endpoint: tool.schema
+      .string()
+      .describe("The HTTP endpoint or primitive that can write files (used for suggested canary probes)"),
     served: tool.schema.boolean().default(true).describe("Assume these paths are served via HTTP if true"),
   },
   async execute(args) {
@@ -82,7 +85,16 @@ export default tool({
       .filter((s: string) => s.length > 0)
 
     const rows: string[][] = []
-    rows.push(["Path", "Runtime", "Reloaded/Served", "Create New", "Overwrite Existing", "Risk", "Verification Method", "Canary Plan"])
+    rows.push([
+      "Path",
+      "Runtime",
+      "Reloaded/Served",
+      "Create New",
+      "Overwrite Existing",
+      "Risk",
+      "Verification Method",
+      "Canary Plan",
+    ])
 
     for (const p of paths) {
       const runtime = guessRuntime(p)
@@ -99,16 +111,7 @@ export default tool({
         `If verification is unknown, do not proceed without a High-Risk Action Plan.`,
       ].join(" ")
 
-      rows.push([
-        p,
-        runtime,
-        reload,
-        "?",
-        "?",
-        risk,
-        verification,
-        canary,
-      ])
+      rows.push([p, runtime, reload, "?", "?", risk, verification, canary])
     }
 
     if (rows.length === 1) return "file-write-matrix: no paths provided"

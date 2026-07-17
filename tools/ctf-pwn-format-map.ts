@@ -17,9 +17,12 @@ function collectHints(text: string) {
 }
 
 export default tool({
-  description: "CTF pwn format map: summarize a read-first format-string workflow, likely leak classes, and write gating before %n attempts.",
+  description:
+    "CTF pwn format map: summarize a read-first format-string workflow, likely leak classes, and write gating before %n attempts.",
   args: {
-    evidence: tool.schema.string().describe("Observed format-string output, source notes, binary probe clues, or notes about %p/%s/%n behavior."),
+    evidence: tool.schema
+      .string()
+      .describe("Observed format-string output, source notes, binary probe clues, or notes about %p/%s/%n behavior."),
   },
   async execute(args) {
     const text = args.evidence || ""

@@ -148,7 +148,15 @@ function stateIndependenceNumeric(v: unknown) {
 }
 
 function closureCandidateScore(c: ClosureCandidate) {
-  return 5 * c.primitiveFit + 4 * c.stateIndependence - 3 * c.movingParts - 4 * c.replayCost - 2 * c.externalAssumptions + 2 * c.debuggability - 3 * c.closureDistance
+  return (
+    5 * c.primitiveFit +
+    4 * c.stateIndependence -
+    3 * c.movingParts -
+    4 * c.replayCost -
+    2 * c.externalAssumptions +
+    2 * c.debuggability -
+    3 * c.closureDistance
+  )
 }
 
 function normalizeClosureCandidate(raw: unknown, primitive: string, idx: number): ClosureCandidate {
@@ -160,7 +168,10 @@ function normalizeClosureCandidate(raw: unknown, primitive: string, idx: number)
     stateIndependence: stateIndependenceNumeric(r.stateIndependence ?? r.state_independence ?? 0),
     movingParts: clampScore(r.movingParts ?? r.moving_parts ?? 0, `${primitive}.${name}.movingParts`),
     replayCost: clampScore(r.replayCost ?? r.replay_cost ?? 0, `${primitive}.${name}.replayCost`),
-    externalAssumptions: clampScore(r.externalAssumptions ?? r.external_assumptions ?? 0, `${primitive}.${name}.externalAssumptions`),
+    externalAssumptions: clampScore(
+      r.externalAssumptions ?? r.external_assumptions ?? 0,
+      `${primitive}.${name}.externalAssumptions`,
+    ),
     debuggability: clampScore(r.debuggability ?? 0, `${primitive}.${name}.debuggability`),
     closureDistance: clampScore(r.closureDistance ?? r.closure_distance ?? 0, `${primitive}.${name}.closureDistance`),
   }
@@ -174,11 +185,21 @@ function bestClosureCandidate(h: Hypothesis) {
 }
 
 function isBusinessNarrativeProbe(text: string) {
-  return /(menu|choice|chapter|part1|part2|continue menu|reenter|add|show|edit|delete|buy|sell|inventory|dialog|story|business flow)/i.test(text)
+  return /(menu|choice|chapter|part1|part2|continue menu|reenter|add|show|edit|delete|buy|sell|inventory|dialog|story|business flow)/i.test(
+    text,
+  )
 }
 
 function score(h: Hypothesis) {
-  return 2 * h.value + h.confidence + h.infoGain + h.stability + h.closureDelta + h.branchKillValue - (h.cost + h.risk + h.stateDamage)
+  return (
+    2 * h.value +
+    h.confidence +
+    h.infoGain +
+    h.stability +
+    h.closureDelta +
+    h.branchKillValue -
+    (h.cost + h.risk + h.stateDamage)
+  )
 }
 
 function lessonPenaltyDelta(text: string | undefined) {
@@ -202,7 +223,8 @@ function lessonActionBias(h: Hypothesis) {
   if (h.segmentState === "BLOCKED") bias -= h.bypassPlan || h.bypassEvidence ? 0.8 : 1.8
   if (h.segmentState === "FALSIFIED") bias -= 2.5
   if (h.blindOrOob === true && !h.oracleEvidence) bias -= 1.2
-  if (Array.isArray(h.missingPrerequisites) && h.missingPrerequisites.length) bias -= Math.min(1.5, h.missingPrerequisites.length * 0.35)
+  if (Array.isArray(h.missingPrerequisites) && h.missingPrerequisites.length)
+    bias -= Math.min(1.5, h.missingPrerequisites.length * 0.35)
   if (h.stateIndependence === "high") bias += 1.0
   else if (h.stateIndependence === "medium") bias += 0.3
   else if (h.stateIndependence === "low") bias -= 1.0
@@ -267,7 +289,12 @@ function normalizeHypothesis(raw: unknown, idx: number): Hypothesis {
     status: String(r.status ?? "active"),
     family: r.family === undefined ? undefined : String(r.family),
     chainRef: r.chainRef === undefined ? undefined : String(r.chainRef),
-    origin: r.origin === undefined ? (r.chainRef === undefined ? "model" : "kb") : String(r.origin) as "kb" | "model" | "hybrid",
+    origin:
+      r.origin === undefined
+        ? r.chainRef === undefined
+          ? "model"
+          : "kb"
+        : (String(r.origin) as "kb" | "model" | "hybrid"),
     lessonPenalty: r.lessonPenalty === undefined ? undefined : String(r.lessonPenalty),
     ownerFlipTrigger: r.ownerFlipTrigger === undefined ? undefined : String(r.ownerFlipTrigger),
     closureOwnerHint: r.closureOwnerHint === undefined ? undefined : String(r.closureOwnerHint),
@@ -283,13 +310,22 @@ function normalizeHypothesis(raw: unknown, idx: number): Hypothesis {
     revisitTrigger: r.revisitTrigger === undefined ? undefined : String(r.revisitTrigger),
     antiPattern: r.antiPattern === undefined ? undefined : String(r.antiPattern),
     parentId: r.parentId === undefined ? undefined : String(r.parentId),
-    prerequisiteIds: Array.isArray(r.prerequisiteIds) ? r.prerequisiteIds.map(String) : Array.isArray(r.prerequisites) ? r.prerequisites.map(String) : undefined,
+    prerequisiteIds: Array.isArray(r.prerequisiteIds)
+      ? r.prerequisiteIds.map(String)
+      : Array.isArray(r.prerequisites)
+        ? r.prerequisites.map(String)
+        : undefined,
     segmentId: r.segmentId === undefined ? undefined : String(r.segmentId),
-    segmentState: r.segmentState === undefined ? undefined : String(r.segmentState).toUpperCase() as Hypothesis["segmentState"],
+    segmentState:
+      r.segmentState === undefined ? undefined : (String(r.segmentState).toUpperCase() as Hypothesis["segmentState"]),
     branchId: r.branchId === undefined ? undefined : String(r.branchId),
     sharedPrefix: r.sharedPrefix === undefined ? undefined : Boolean(r.sharedPrefix),
     terminalBranch: r.terminalBranch === undefined ? undefined : Boolean(r.terminalBranch),
-    missingPrerequisites: Array.isArray(r.missingPrerequisites) ? r.missingPrerequisites.map(String) : Array.isArray(r.missing_prerequisites) ? r.missing_prerequisites.map(String) : undefined,
+    missingPrerequisites: Array.isArray(r.missingPrerequisites)
+      ? r.missingPrerequisites.map(String)
+      : Array.isArray(r.missing_prerequisites)
+        ? r.missing_prerequisites.map(String)
+        : undefined,
     blockedBy: r.blockedBy === undefined ? undefined : String(r.blockedBy),
     bypassPlan: r.bypassPlan === undefined ? undefined : String(r.bypassPlan),
     bypassEvidence: r.bypassEvidence === undefined ? undefined : String(r.bypassEvidence),
@@ -298,9 +334,14 @@ function normalizeHypothesis(raw: unknown, idx: number): Hypothesis {
     challengeSpecific: r.challengeSpecific === undefined ? undefined : Boolean(r.challengeSpecific),
     authorIntent: r.authorIntent === undefined ? undefined : String(r.authorIntent),
     primitiveCard: r.primitiveCard === undefined ? undefined : String(r.primitiveCard),
-    stateIndependence: r.stateIndependence === undefined ? undefined : String(r.stateIndependence).toLowerCase() as Hypothesis["stateIndependence"],
+    stateIndependence:
+      r.stateIndependence === undefined
+        ? undefined
+        : (String(r.stateIndependence).toLowerCase() as Hypothesis["stateIndependence"]),
     requiresReentry: r.requiresReentry === undefined ? undefined : Boolean(r.requiresReentry),
-    closureCandidates: Array.isArray(r.closureCandidates) ? r.closureCandidates.map((x) => typeof x === "string" ? x : String((x as AnyRecord).name ?? JSON.stringify(x))) : undefined,
+    closureCandidates: Array.isArray(r.closureCandidates)
+      ? r.closureCandidates.map((x) => (typeof x === "string" ? x : String((x as AnyRecord).name ?? JSON.stringify(x))))
+      : undefined,
     closureCandidatesDetailed: Array.isArray(r.closureCandidatesDetailed)
       ? r.closureCandidatesDetailed.map((x, i) => normalizeClosureCandidate(x, primitive, i))
       : Array.isArray(r.closureQueue)
@@ -315,11 +356,18 @@ function normalizeHypothesis(raw: unknown, idx: number): Hypothesis {
 }
 
 function activeHypotheses(state: State) {
-  return state.hypotheses.filter((h) => !["killed", "falsified", "done", "locked", "blocked", "dead"].includes(String(h.status ?? "active").toLowerCase()))
+  return state.hypotheses.filter(
+    (h) =>
+      !["killed", "falsified", "done", "locked", "blocked", "dead"].includes(
+        String(h.status ?? "active").toLowerCase(),
+      ),
+  )
 }
 
 function sortRank(hyps: Hypothesis[], knowledgeMode = "") {
-  return [...hyps].sort((a, b) => (effectiveScore(b) + rankingBias(b, knowledgeMode)) - (effectiveScore(a) + rankingBias(a, knowledgeMode)))
+  return [...hyps].sort(
+    (a, b) => effectiveScore(b) + rankingBias(b, knowledgeMode) - (effectiveScore(a) + rankingBias(a, knowledgeMode)),
+  )
 }
 
 function deriveChainPenalty(status: string): ChainPenalty {
@@ -383,18 +431,28 @@ function topThreeCompositionWarnings(state: State, knowledgeMode: string) {
   const hasKb = top.some((h) => hypothesisOrigin(h) === "kb")
   const hasModelOrHybrid = top.some((h) => ["model", "hybrid"].includes(hypothesisOrigin(h)))
   if (knowledgeMode === "matched" && !hasKb) {
-    warnings.push("top3_admission: knowledgeMode=matched but top-3 has no KB-supported hypothesis; keep at least one KB chain unless all are falsified or unsafe")
+    warnings.push(
+      "top3_admission: knowledgeMode=matched but top-3 has no KB-supported hypothesis; keep at least one KB chain unless all are falsified or unsafe",
+    )
   }
   if (knowledgeMode === "weak_match" && !hasModelOrHybrid) {
-    warnings.push("top3_admission: knowledgeMode=weak_match but top-3 has no model/hybrid hypothesis; admit one evidence-aligned non-KB branch")
+    warnings.push(
+      "top3_admission: knowledgeMode=weak_match but top-3 has no model/hybrid hypothesis; admit one evidence-aligned non-KB branch",
+    )
   }
   if (knowledgeMode === "no_match_explained" && hasKb && !hasModelOrHybrid) {
-    warnings.push("top3_admission: knowledgeMode=no_match_explained but top-3 is still KB-only; prefer model/hybrid hypotheses after documented zero-hit")
+    warnings.push(
+      "top3_admission: knowledgeMode=no_match_explained but top-3 is still KB-only; prefer model/hybrid hypotheses after documented zero-hit",
+    )
   }
   const owners = new Set(top.map((h) => String(h.owner ?? "")).filter(Boolean))
-  if (owners.size > 1) warnings.push(`mixed_owner_conflict: top-3 currently spans ${owners.size} owners; choose one primary owner and at most one supporting surface`)
+  if (owners.size > 1)
+    warnings.push(
+      `mixed_owner_conflict: top-3 currently spans ${owners.size} owners; choose one primary owner and at most one supporting surface`,
+    )
   const closureOwners = new Set(top.map((h) => String(h.closureOwnerHint ?? "")).filter(Boolean))
-  if (closureOwners.size > 1) warnings.push("closure_owner_conflict: competing closure owners detected; resolve handoff before deepening probes")
+  if (closureOwners.size > 1)
+    warnings.push("closure_owner_conflict: competing closure owners detected; resolve handoff before deepening probes")
   return warnings
 }
 
@@ -406,7 +464,10 @@ function prerequisiteWarnings(h: Hypothesis, state: State) {
     const depStatus = String(dep?.status ?? "").toLowerCase()
     const depSegment = String(dep?.segmentState ?? "").toUpperCase()
     if (!dep) warnings.push(`missing_prerequisite_ref: ${h.id} depends on unknown ${id}`)
-    else if (!(depStatus === "locked" || depSegment === "CONFIRMED" || depSegment === "BYPASSED")) warnings.push(`prerequisite_not_confirmed: ${h.id} depends on ${id} status=${dep.status ?? ""} segment=${dep.segmentState ?? ""}`)
+    else if (!(depStatus === "locked" || depSegment === "CONFIRMED" || depSegment === "BYPASSED"))
+      warnings.push(
+        `prerequisite_not_confirmed: ${h.id} depends on ${id} status=${dep.status ?? ""} segment=${dep.segmentState ?? ""}`,
+      )
   }
   return warnings
 }
@@ -439,23 +500,43 @@ function dagWarnings(state: State) {
       const parent = state.hypotheses.find((x) => x.id === h.parentId || x.segmentId === h.parentId)
       if (!parent) warnings.push(`missing_parent_ref: ${h.id} parentId=${h.parentId}`)
     }
-    if (h.segmentState === "BLOCKED" && !h.bypassPlan && !h.bypassEvidence) warnings.push(`blocked_without_bypass_plan: ${h.id}; run bypass planner or backtrack to nearest confirmed segment`)
-    if (h.segmentState === "BYPASSED" && !h.bypassEvidence) warnings.push(`bypassed_without_evidence: ${h.id}; record bypassEvidence before treating path as open`)
-    if (h.blindOrOob === true && !h.oracleEvidence) warnings.push(`blind_oob_without_oracle: ${h.id}; cannot confirm blind segment without timing/OOB/writeback oracle evidence`)
+    if (h.segmentState === "BLOCKED" && !h.bypassPlan && !h.bypassEvidence)
+      warnings.push(
+        `blocked_without_bypass_plan: ${h.id}; run bypass planner or backtrack to nearest confirmed segment`,
+      )
+    if (h.segmentState === "BYPASSED" && !h.bypassEvidence)
+      warnings.push(`bypassed_without_evidence: ${h.id}; record bypassEvidence before treating path as open`)
+    if (h.blindOrOob === true && !h.oracleEvidence)
+      warnings.push(
+        `blind_oob_without_oracle: ${h.id}; cannot confirm blind segment without timing/OOB/writeback oracle evidence`,
+      )
   }
   for (const h of state.hypotheses) {
     const isFailed = h.segmentState === "FALSIFIED" || ["killed", "dead"].includes(String(h.status ?? "").toLowerCase())
     const isBlocked = h.segmentState === "BLOCKED" || String(h.status ?? "").toLowerCase() === "blocked"
     if (isFailed) {
       const ancestor = nearestConfirmedAncestor(h, state)
-      const siblings = siblingTerminalBranches(h, state).filter((x) => !["killed", "dead"].includes(String(x.status ?? "").toLowerCase()) && x.segmentState !== "FALSIFIED")
-      if (ancestor && siblings.length) warnings.push(`backtrack_hint: ${h.id} failed; resume from ${ancestor.id} and try sibling branch(es): ${siblings.map((x) => x.id).join(",")}`)
+      const siblings = siblingTerminalBranches(h, state).filter(
+        (x) => !["killed", "dead"].includes(String(x.status ?? "").toLowerCase()) && x.segmentState !== "FALSIFIED",
+      )
+      if (ancestor && siblings.length)
+        warnings.push(
+          `backtrack_hint: ${h.id} failed; resume from ${ancestor.id} and try sibling branch(es): ${siblings.map((x) => x.id).join(",")}`,
+        )
     }
     if (isBlocked) {
       const ancestor = nearestConfirmedAncestor(h, state)
-      const siblings = siblingTerminalBranches(h, state).filter((x) => x.segmentState !== "FALSIFIED" && !["killed", "dead"].includes(String(x.status ?? "").toLowerCase()))
-      if (h.bypassPlan || h.bypassEvidence) warnings.push(`blocked_bypass_candidate: ${h.id}; bypass info exists, consider explicit bypass probe before abandoning`)
-      else if (ancestor && siblings.length) warnings.push(`blocked_backtrack_hint: ${h.id} blocked; backtrack to ${ancestor.id} or try sibling branch(es): ${siblings.map((x) => x.id).join(",")}`)
+      const siblings = siblingTerminalBranches(h, state).filter(
+        (x) => x.segmentState !== "FALSIFIED" && !["killed", "dead"].includes(String(x.status ?? "").toLowerCase()),
+      )
+      if (h.bypassPlan || h.bypassEvidence)
+        warnings.push(
+          `blocked_bypass_candidate: ${h.id}; bypass info exists, consider explicit bypass probe before abandoning`,
+        )
+      else if (ancestor && siblings.length)
+        warnings.push(
+          `blocked_backtrack_hint: ${h.id} blocked; backtrack to ${ancestor.id} or try sibling branch(es): ${siblings.map((x) => x.id).join(",")}`,
+        )
     }
   }
   return warnings
@@ -466,31 +547,89 @@ function validationWarnings(state: State, knowledgeMode = "") {
   const active = activeHypotheses(state)
   if (active.length > 3) warnings.push(`BLOCK: active_hypotheses=${active.length}; keep at most top 3 before probing`)
   const knowledgeAge = historyDistanceFromLastGate(state, "knowledge")
-  if (knowledgeAge !== null && knowledgeAge > 8) warnings.push(`knowledge_context_stale: last knowledge gate is ${knowledgeAge} history event(s) old; consider re-running knowledge gate after major new evidence`)
+  if (knowledgeAge !== null && knowledgeAge > 8)
+    warnings.push(
+      `knowledge_context_stale: last knowledge gate is ${knowledgeAge} history event(s) old; consider re-running knowledge gate after major new evidence`,
+    )
   const bypassNoDiff = bypassNoDiffCount(state)
-  if (bypassNoDiff >= 3) warnings.push(`bypass_no_diff_limit: ${bypassNoDiff} bypass-family observation(s) without differential; mark branch BLOCKED/backtrack unless a new oracle exists`)
-  if (primitiveLockedActive(state) && !closureGateSatisfied(state)) warnings.push("closure_required: a primitive is confirmed/locked but closure gate has not been satisfied; write Flag Location Model and Closure Queue before new discovery")
-  if (hasSourcePressure(state) && !hasSatisfiedSourceFirst(state)) warnings.push("source_first_required: source/source-guided evidence exists but source-first gate is not satisfied; demote blind black-box branches until source audit is done")
-  if (recentOwnerConflict(state)) warnings.push("owner_conflict: more than one active owner remains; choose one primary owner and at most one supporting surface")
+  if (bypassNoDiff >= 3)
+    warnings.push(
+      `bypass_no_diff_limit: ${bypassNoDiff} bypass-family observation(s) without differential; mark branch BLOCKED/backtrack unless a new oracle exists`,
+    )
+  if (primitiveLockedActive(state) && !closureGateSatisfied(state))
+    warnings.push(
+      "closure_required: a primitive is confirmed/locked but closure gate has not been satisfied; write Flag Location Model and Closure Queue before new discovery",
+    )
+  if (hasSourcePressure(state) && !hasSatisfiedSourceFirst(state))
+    warnings.push(
+      "source_first_required: source/source-guided evidence exists but source-first gate is not satisfied; demote blind black-box branches until source audit is done",
+    )
+  if (recentOwnerConflict(state))
+    warnings.push(
+      "owner_conflict: more than one active owner remains; choose one primary owner and at most one supporting surface",
+    )
   const blockedRefs = blockedChainRefs(state)
   for (const h of active) {
     const modelOrigin = !h.chainRef
-    if (h.confidence > 3) warnings.push(`cap_check: ${h.id} confidence=${h.confidence}; only valid with source reachability or repeatable behavioral evidence`)
-    if (h.value > 3) warnings.push(`cap_check: ${h.id} value=${h.value}; only valid with a plausible direct flag path or composable primitive chain`)
+    if (h.confidence > 3)
+      warnings.push(
+        `cap_check: ${h.id} confidence=${h.confidence}; only valid with source reachability or repeatable behavioral evidence`,
+      )
+    if (h.value > 3)
+      warnings.push(
+        `cap_check: ${h.id} value=${h.value}; only valid with a plausible direct flag path or composable primitive chain`,
+      )
     if (!h.nextTest) warnings.push(`missing_next_test: ${h.id}`)
     if (!h.killRule) warnings.push(`missing_kill_or_pivot_rule: ${h.id}`)
     if (!h.whyNow) warnings.push(`missing_why_now: ${h.id}`)
     if (!h.whyNotOthers) warnings.push(`missing_why_not_others: ${h.id}`)
-    if (h.owner && !h.closureOwnerHint && primitiveLockedActive(state)) warnings.push(`missing_closure_owner_hint: ${h.id}; closure branches should declare closure owner once a primitive exists`)
-    if (primitiveLockedActive(state) && !h.primitiveCard) warnings.push(`primitive_abstraction_missing: ${h.id}; endgame-ready branches should declare primitiveCard after primitive lock`)
-    if (primitiveLockedActive(state) && h.stateIndependence === undefined) warnings.push(`state_independence_missing: ${h.id}; closure branches should score state independence after primitive lock`)
-    if (primitiveLockedActive(state) && h.requiresReentry === true && (!Array.isArray(h.closureCandidates) || h.closureCandidates.length === 0)) warnings.push(`closure_candidates_missing: ${h.id}; replay/reentry-heavy branches must justify why closure templates are not shorter`)
-    if (primitiveLockedActive(state) && h.nextTest && isBusinessNarrativeProbe(h.nextTest) && (h.requiresReentry === true || h.stateIndependence === "low")) warnings.push(`business_narrative_drift: ${h.id}; replay-heavy business-flow nextTest should not outrank canonical closure after primitive lock`)
-    if (h.chainRef && blockedRefs.has(h.chainRef)) warnings.push(`blocked_chain_ref_active: ${h.id} references blocked/dead chain ${h.chainRef}; require revisitTrigger or rerank away from it`)
-    if (h.sourceAvailable === true && h.sourceFirstSatisfied !== true && h.sourceGuided !== true) warnings.push(`source_first_penalty: ${h.id}; source is available but this branch is not source-guided and source-first is unsatisfied`)
-    if (modelOrigin && !h.nextTest) warnings.push(`model_hypothesis_missing_probe: ${h.id}; non-KB hypotheses must define one next test`)
-    if (modelOrigin && !h.killRule) warnings.push(`model_hypothesis_missing_kill_rule: ${h.id}; non-KB hypotheses must define a falsify or pivot rule`)
-    if (modelOrigin && h.confidence > 2 && h.infoGain < 2) warnings.push(`model_hypothesis_confidence_check: ${h.id}; non-KB hypothesis has elevated confidence without matching information gain`)
+    if (h.owner && !h.closureOwnerHint && primitiveLockedActive(state))
+      warnings.push(
+        `missing_closure_owner_hint: ${h.id}; closure branches should declare closure owner once a primitive exists`,
+      )
+    if (primitiveLockedActive(state) && !h.primitiveCard)
+      warnings.push(
+        `primitive_abstraction_missing: ${h.id}; endgame-ready branches should declare primitiveCard after primitive lock`,
+      )
+    if (primitiveLockedActive(state) && h.stateIndependence === undefined)
+      warnings.push(
+        `state_independence_missing: ${h.id}; closure branches should score state independence after primitive lock`,
+      )
+    if (
+      primitiveLockedActive(state) &&
+      h.requiresReentry === true &&
+      (!Array.isArray(h.closureCandidates) || h.closureCandidates.length === 0)
+    )
+      warnings.push(
+        `closure_candidates_missing: ${h.id}; replay/reentry-heavy branches must justify why closure templates are not shorter`,
+      )
+    if (
+      primitiveLockedActive(state) &&
+      h.nextTest &&
+      isBusinessNarrativeProbe(h.nextTest) &&
+      (h.requiresReentry === true || h.stateIndependence === "low")
+    )
+      warnings.push(
+        `business_narrative_drift: ${h.id}; replay-heavy business-flow nextTest should not outrank canonical closure after primitive lock`,
+      )
+    if (h.chainRef && blockedRefs.has(h.chainRef))
+      warnings.push(
+        `blocked_chain_ref_active: ${h.id} references blocked/dead chain ${h.chainRef}; require revisitTrigger or rerank away from it`,
+      )
+    if (h.sourceAvailable === true && h.sourceFirstSatisfied !== true && h.sourceGuided !== true)
+      warnings.push(
+        `source_first_penalty: ${h.id}; source is available but this branch is not source-guided and source-first is unsatisfied`,
+      )
+    if (modelOrigin && !h.nextTest)
+      warnings.push(`model_hypothesis_missing_probe: ${h.id}; non-KB hypotheses must define one next test`)
+    if (modelOrigin && !h.killRule)
+      warnings.push(
+        `model_hypothesis_missing_kill_rule: ${h.id}; non-KB hypotheses must define a falsify or pivot rule`,
+      )
+    if (modelOrigin && h.confidence > 2 && h.infoGain < 2)
+      warnings.push(
+        `model_hypothesis_confidence_check: ${h.id}; non-KB hypothesis has elevated confidence without matching information gain`,
+      )
     if (h.lessonPenalty) warnings.push(`lesson_penalty_active: ${h.id} -> ${h.lessonPenalty}`)
     if (h.ownerFlipTrigger) warnings.push(`owner_flip_trigger_present: ${h.id} -> ${h.ownerFlipTrigger}`)
     if (h.closureOwnerHint) warnings.push(`closure_owner_hint_present: ${h.id} -> ${h.closureOwnerHint}`)
@@ -505,11 +644,20 @@ function validationWarnings(state: State, knowledgeMode = "") {
 }
 
 function sameFamilyNoDiffCount(state: State, family: string) {
-  return state.history.filter((x) => x.kind === "observation" && x.family === family && x.newDifferential === false).length
+  return state.history.filter((x) => x.kind === "observation" && x.family === family && x.newDifferential === false)
+    .length
 }
 
 function bypassNoDiffCount(state: State) {
-  return state.history.filter((x) => x.kind === "observation" && (x.bypassContext === true || String(x.family ?? "").toLowerCase().includes("bypass")) && x.newDifferential === false).length
+  return state.history.filter(
+    (x) =>
+      x.kind === "observation" &&
+      (x.bypassContext === true ||
+        String(x.family ?? "")
+          .toLowerCase()
+          .includes("bypass")) &&
+      x.newDifferential === false,
+  ).length
 }
 
 function familyNoDiffSummary(state: State) {
@@ -531,15 +679,22 @@ function historyDistanceFromLastGate(state: State, gate: string) {
 }
 
 function lastHistoryItem(state: State, kind: string, family = "") {
-  return [...state.history].reverse().find((x) => x.kind === kind && (!family || String(x.family ?? "") === family)) as AnyRecord | undefined
+  return [...state.history].reverse().find((x) => x.kind === kind && (!family || String(x.family ?? "") === family)) as
+    AnyRecord | undefined
 }
 
 function hasSourcePressure(state: State) {
-  return state.hypotheses.some((h) => h.sourceAvailable === true || h.sourceGuided === true) || state.history.some((x) => x.kind === "gate" && x.gate === "source_first" && x.pass === true)
+  return (
+    state.hypotheses.some((h) => h.sourceAvailable === true || h.sourceGuided === true) ||
+    state.history.some((x) => x.kind === "gate" && x.gate === "source_first" && x.pass === true)
+  )
 }
 
 function hasSatisfiedSourceFirst(state: State) {
-  return state.hypotheses.some((h) => h.sourceFirstSatisfied === true) || state.history.some((x) => x.kind === "gate" && x.gate === "source_first" && x.pass === true)
+  return (
+    state.hypotheses.some((h) => h.sourceFirstSatisfied === true) ||
+    state.history.some((x) => x.kind === "gate" && x.gate === "source_first" && x.pass === true)
+  )
 }
 
 function currentPrimaryOwner(state: State) {
@@ -553,9 +708,11 @@ function currentSupportingSurface(state: State) {
 }
 
 function primitiveLockedActive(state: State) {
-  return state.hypotheses.some((h) => String(h.status ?? "").toLowerCase() === "locked")
-    || state.history.some((x) => x.kind === "primitive")
-    || state.history.some((x) => x.kind === "observation" && x.confirmed === true)
+  return (
+    state.hypotheses.some((h) => String(h.status ?? "").toLowerCase() === "locked") ||
+    state.history.some((x) => x.kind === "primitive") ||
+    state.history.some((x) => x.kind === "observation" && x.confirmed === true)
+  )
 }
 
 function closureGateSatisfied(state: State) {
@@ -563,25 +720,36 @@ function closureGateSatisfied(state: State) {
 }
 
 function lastProbeForFamily(state: State, family: string) {
-  return [...state.history].reverse().find((x) => x.kind === "probe" && String(x.family ?? "") === family) as AnyRecord | undefined
+  return [...state.history].reverse().find((x) => x.kind === "probe" && String(x.family ?? "") === family) as
+    AnyRecord | undefined
 }
 
 function observationExistsAfter(state: State, family: string, probeAt: string) {
   const probeTime = Date.parse(probeAt)
   if (!Number.isFinite(probeTime)) return false
-  return state.history.some((x) => x.kind === "observation" && String(x.family ?? "") === family && Number.isFinite(Date.parse(String(x.at ?? ""))) && Date.parse(String(x.at ?? "")) >= probeTime)
+  return state.history.some(
+    (x) =>
+      x.kind === "observation" &&
+      String(x.family ?? "") === family &&
+      Number.isFinite(Date.parse(String(x.at ?? ""))) &&
+      Date.parse(String(x.at ?? "")) >= probeTime,
+  )
 }
 
 function blockedChainRefs(state: State) {
   const blocked = new Set<string>()
   for (const item of state.history) {
-    if (item.kind === "chain_state" && ["BLOCKED", "DEAD"].includes(String(item.state ?? item.status ?? "").toUpperCase())) {
+    if (
+      item.kind === "chain_state" &&
+      ["BLOCKED", "DEAD"].includes(String(item.state ?? item.status ?? "").toUpperCase())
+    ) {
       const ref = String(item.chainRef ?? item.chain_id ?? item.id ?? "")
       if (ref) blocked.add(ref)
     }
   }
   for (const h of state.hypotheses) {
-    if (h.chainRef && ["blocked", "dead", "killed"].includes(String(h.status ?? "").toLowerCase())) blocked.add(h.chainRef)
+    if (h.chainRef && ["blocked", "dead", "killed"].includes(String(h.status ?? "").toLowerCase()))
+      blocked.add(h.chainRef)
   }
   return blocked
 }
@@ -610,28 +778,44 @@ function gateCheck(state: State, gate: string, gateJson: AnyRecord) {
   const failures: string[] = []
   const notes: string[] = []
   if (g === "route") {
-    failures.push(...requiredKeys(gateJson, ["categoryEvidence", "cheapestDirectSolve", "whyNotPrimary", "firstSubagentTask"]).map((k) => `missing ${k}`))
+    failures.push(
+      ...requiredKeys(gateJson, ["categoryEvidence", "cheapestDirectSolve", "whyNotPrimary", "firstSubagentTask"]).map(
+        (k) => `missing ${k}`,
+      ),
+    )
     if (gateJson.ownerFlipPending === true && !String(gateJson.ownerFlipResolution ?? "").trim()) {
       failures.push("ownerFlipPending requires ownerFlipResolution before route continues")
     }
   } else if (g === "depth") {
-    failures.push(...requiredKeys(gateJson, ["inputReachability", "oracle", "oneVariable", "queueImpact", "budget"]).map((k) => `missing ${k}`))
+    failures.push(
+      ...requiredKeys(gateJson, ["inputReachability", "oracle", "oneVariable", "queueImpact", "budget"]).map(
+        (k) => `missing ${k}`,
+      ),
+    )
     if (gateJson.oneVariable === false) failures.push("probe changes more than one variable")
     const hadKnowledgeGate = state.history.some((x) => x.kind === "gate" && x.gate === "knowledge" && x.pass === true)
     if (gateJson.knowledgeChecked !== true && !hadKnowledgeGate) {
-      failures.push("knowledge gate not satisfied; run SecKB segment/chain matching and pass gate=knowledge before depth")
+      failures.push(
+        "knowledge gate not satisfied; run SecKB segment/chain matching and pass gate=knowledge before depth",
+      )
     }
     if (primitiveLockedActive(state) && gateJson.closureJustification !== true) {
-      failures.push("depth gate denied while a primitive is locked; satisfy closure gate or justify why closure is not yet active")
+      failures.push(
+        "depth gate denied while a primitive is locked; satisfy closure gate or justify why closure is not yet active",
+      )
     }
     if (hasSourcePressure(state) && !hasSatisfiedSourceFirst(state) && gateJson.sourceOverride !== true) {
-      failures.push("source-first gate unsatisfied; satisfy source_first gate or provide sourceOverride=true with explicit reason")
+      failures.push(
+        "source-first gate unsatisfied; satisfy source_first gate or provide sourceOverride=true with explicit reason",
+      )
     }
   } else if (g === "knowledge") {
     failures.push(...requiredKeys(gateJson, ["queryRun", "matchedSegments"]).map((k) => `missing ${k}`))
     if (gateJson.queryRun !== true) failures.push("queryRun must be true after actual SecKB retrieval/segment matching")
     const knowledgeMode = String(gateJson.knowledgeMode ?? "").toLowerCase()
-    const matched = Array.isArray(gateJson.matchedSegments) ? gateJson.matchedSegments.length : Number(gateJson.matchedSegments ?? 0)
+    const matched = Array.isArray(gateJson.matchedSegments)
+      ? gateJson.matchedSegments.length
+      : Number(gateJson.matchedSegments ?? 0)
     if (!Number.isFinite(matched)) {
       failures.push("matchedSegments must be an array or finite count")
     } else if (matched > 0) {
@@ -648,88 +832,185 @@ function gateCheck(state: State, gate: string, gateJson: AnyRecord) {
     } else {
       const category = String(gateJson.category ?? state.model?.category ?? "").toLowerCase()
       const unfamiliar = gateJson.unfamiliarType === true || gateJson.novelType === true
-      const externalChecked = gateJson.gapSearchPlanned === true || gateJson.externalKnowledgeChecked === true || gateJson.blockerDocumented === true
+      const externalChecked =
+        gateJson.gapSearchPlanned === true ||
+        gateJson.externalKnowledgeChecked === true ||
+        gateJson.blockerDocumented === true
       const nonWeb = category.length > 0 && !category.includes("web")
       const noMatchReason = String(gateJson.noMatchReason ?? "").trim()
       const nextModelHypothesis = String(gateJson.nextModelHypothesis ?? "").trim()
-      const modeAllowsZeroHit = knowledgeMode === "no_match_explained" || knowledgeMode === "weak_match" || knowledgeMode === ""
+      const modeAllowsZeroHit =
+        knowledgeMode === "no_match_explained" || knowledgeMode === "weak_match" || knowledgeMode === ""
       if (!modeAllowsZeroHit) failures.push(`knowledgeMode '${knowledgeMode}' is inconsistent with matchedSegments = 0`)
       if (!(nonWeb && (unfamiliar || externalChecked))) {
-        failures.push("must have queried SecKB and found at least one matching segment before entering depth phase, unless this is a non-Web unfamiliar/novel type with zero-hit evidence recorded")
+        failures.push(
+          "must have queried SecKB and found at least one matching segment before entering depth phase, unless this is a non-Web unfamiliar/novel type with zero-hit evidence recorded",
+        )
       }
       if (!noMatchReason) failures.push("zero-hit knowledge gate requires noMatchReason")
       if (!nextModelHypothesis) failures.push("zero-hit knowledge gate requires nextModelHypothesis")
-      if (!failures.length) notes.push("knowledge_zero_hit_allowed: non-Web unfamiliar/novel branch with documented zero-hit retrieval")
+      if (!failures.length)
+        notes.push("knowledge_zero_hit_allowed: non-Web unfamiliar/novel branch with documented zero-hit retrieval")
     }
   } else if (g === "chain_dag") {
-    failures.push(...requiredKeys(gateJson, ["segments", "sharedPrefixes", "terminalBranches", "routeStates", "nextSegment", "backtrackRule"]).map((k) => `missing ${k}`))
+    failures.push(
+      ...requiredKeys(gateJson, [
+        "segments",
+        "sharedPrefixes",
+        "terminalBranches",
+        "routeStates",
+        "nextSegment",
+        "backtrackRule",
+      ]).map((k) => `missing ${k}`),
+    )
     const segments = Array.isArray(gateJson.segments) ? gateJson.segments : []
     const terminalBranches = Array.isArray(gateJson.terminalBranches) ? gateJson.terminalBranches : []
     if (segments.length < 1) failures.push("chain_dag gate requires at least one segment")
-    if (terminalBranches.length > 0 && !Array.isArray(gateJson.sharedPrefixes)) failures.push("terminal branches require sharedPrefixes array, even if empty")
-    if (gateJson.hasBlocked === true && !String(gateJson.blockedHandling ?? "").trim()) failures.push("blocked chain/segment requires blockedHandling: bypass_plan or backtrack target")
-    if (gateJson.hasBlindOrOob === true && !String(gateJson.oracleEvidencePolicy ?? "").trim()) failures.push("blind/OOB segment requires oracleEvidencePolicy")
-    if (gateJson.hasMissingPrerequisites === true && !String(gateJson.missingPrereqRecon ?? "").trim()) failures.push("missing prerequisites require missingPrereqRecon targeted task")
+    if (terminalBranches.length > 0 && !Array.isArray(gateJson.sharedPrefixes))
+      failures.push("terminal branches require sharedPrefixes array, even if empty")
+    if (gateJson.hasBlocked === true && !String(gateJson.blockedHandling ?? "").trim())
+      failures.push("blocked chain/segment requires blockedHandling: bypass_plan or backtrack target")
+    if (gateJson.hasBlindOrOob === true && !String(gateJson.oracleEvidencePolicy ?? "").trim())
+      failures.push("blind/OOB segment requires oracleEvidencePolicy")
+    if (gateJson.hasMissingPrerequisites === true && !String(gateJson.missingPrereqRecon ?? "").trim())
+      failures.push("missing prerequisites require missingPrereqRecon targeted task")
     if (!failures.length) notes.push("chain_dag_gate_passed: segmented chain state may drive ranking/probing")
   } else if (g === "source_first") {
-    failures.push(...requiredKeys(gateJson, ["sourceAvailable", "sourceMapDone", "sinkMapDone", "whyNotBlackBox"]).map((k) => `missing ${k}`))
+    failures.push(
+      ...requiredKeys(gateJson, ["sourceAvailable", "sourceMapDone", "sinkMapDone", "whyNotBlackBox"]).map(
+        (k) => `missing ${k}`,
+      ),
+    )
     if (gateJson.sourceAvailable !== true) failures.push("source_first gate requires sourceAvailable=true")
     if (gateJson.sourceMapDone !== true) failures.push("source_first gate requires sourceMapDone=true")
     if (gateJson.sinkMapDone !== true) failures.push("source_first gate requires sinkMapDone=true")
-    if (!failures.length) notes.push("source_first_passed: source-guided branch may outrank blind black-box exploration")
+    if (!failures.length)
+      notes.push("source_first_passed: source-guided branch may outrank blind black-box exploration")
   } else if (g === "closure") {
-    failures.push(...requiredKeys(gateJson, ["primitive", "primitiveCard", "currentBoundary", "flagLocationType", "storageCandidates", "topClosureProbes", "closureOwner", "whyNow", "whyNotOtherFamilies"]).map((k) => `missing ${k}`))
-    if (!Array.isArray(gateJson.topClosureProbes) || gateJson.topClosureProbes.length < 1) failures.push("closure gate requires at least one ordered closure probe")
-    if (Array.isArray(gateJson.topClosureProbes) && gateJson.topClosureProbes.length > 5) failures.push("closure gate allows at most five closure probes")
-    if (Array.isArray(gateJson.closureCandidates) && gateJson.closureCandidates.length < 1) failures.push("closure gate requires at least one closure candidate when provided")
-    if (gateJson.requiresReentry === true && !String(gateJson.replayJustification ?? "").trim()) failures.push("replay-heavy closure requires replayJustification")
+    failures.push(
+      ...requiredKeys(gateJson, [
+        "primitive",
+        "primitiveCard",
+        "currentBoundary",
+        "flagLocationType",
+        "storageCandidates",
+        "topClosureProbes",
+        "closureOwner",
+        "whyNow",
+        "whyNotOtherFamilies",
+      ]).map((k) => `missing ${k}`),
+    )
+    if (!Array.isArray(gateJson.topClosureProbes) || gateJson.topClosureProbes.length < 1)
+      failures.push("closure gate requires at least one ordered closure probe")
+    if (Array.isArray(gateJson.topClosureProbes) && gateJson.topClosureProbes.length > 5)
+      failures.push("closure gate allows at most five closure probes")
+    if (Array.isArray(gateJson.closureCandidates) && gateJson.closureCandidates.length < 1)
+      failures.push("closure gate requires at least one closure candidate when provided")
+    if (gateJson.requiresReentry === true && !String(gateJson.replayJustification ?? "").trim())
+      failures.push("replay-heavy closure requires replayJustification")
     if (gateJson.stateIndependence === undefined) failures.push("closure gate requires stateIndependence")
     if (!failures.length) notes.push("closure_gate_passed: closure-first discipline is active")
   } else if (g === "owner") {
-    failures.push(...requiredKeys(gateJson, ["primaryOwner", "supportingSurface", "handoffTrigger", "returnTrigger", "closureOwner", "whyPrimary"]).map((k) => `missing ${k}`))
-    if (String(gateJson.primaryOwner ?? "") === String(gateJson.supportingSurface ?? "")) failures.push("supportingSurface must differ from primaryOwner")
+    failures.push(
+      ...requiredKeys(gateJson, [
+        "primaryOwner",
+        "supportingSurface",
+        "handoffTrigger",
+        "returnTrigger",
+        "closureOwner",
+        "whyPrimary",
+      ]).map((k) => `missing ${k}`),
+    )
+    if (String(gateJson.primaryOwner ?? "") === String(gateJson.supportingSurface ?? ""))
+      failures.push("supportingSurface must differ from primaryOwner")
     if (!failures.length) notes.push("owner_gate_passed: owner/surface split is explicit")
   } else if (g === "pivot") {
-    failures.push(...requiredKeys(gateJson, ["differentialType", "promote", "demote", "nextQueue"]).map((k) => `missing ${k}`))
+    failures.push(
+      ...requiredKeys(gateJson, ["differentialType", "promote", "demote", "nextQueue"]).map((k) => `missing ${k}`),
+    )
   } else if (g === "final") {
-    failures.push(...requiredKeys(gateJson, ["confirmedPrimitives", "oracles", "controlPlane", "cleanStatePlan"]).map((k) => `missing ${k}`))
-    const confirmed = Array.isArray(gateJson.confirmedPrimitives) ? gateJson.confirmedPrimitives.length : Number(gateJson.confirmedPrimitives ?? 0)
-    if (!Number.isFinite(confirmed) || confirmed < 1) failures.push("need one confirmed critical primitive or two composable high-value primitives")
-    if (gateJson.closureOwnerHint && gateJson.closureOwnerHintUsed === false) failures.push("final gate has closureOwnerHint but closureOwnerHintUsed=false")
+    failures.push(
+      ...requiredKeys(gateJson, ["confirmedPrimitives", "oracles", "controlPlane", "cleanStatePlan"]).map(
+        (k) => `missing ${k}`,
+      ),
+    )
+    const confirmed = Array.isArray(gateJson.confirmedPrimitives)
+      ? gateJson.confirmedPrimitives.length
+      : Number(gateJson.confirmedPrimitives ?? 0)
+    if (!Number.isFinite(confirmed) || confirmed < 1)
+      failures.push("need one confirmed critical primitive or two composable high-value primitives")
+    if (gateJson.closureOwnerHint && gateJson.closureOwnerHintUsed === false)
+      failures.push("final gate has closureOwnerHint but closureOwnerHintUsed=false")
   } else if (g === "stuck") {
-    failures.push(...requiredKeys(gateJson, ["likelyWrongAssumption", "strongestAlternativeModel", "ignoredUnfamiliarBranch", "orthogonalTest", "evidenceSource"]).map((k) => `missing ${k}`))
+    failures.push(
+      ...requiredKeys(gateJson, [
+        "likelyWrongAssumption",
+        "strongestAlternativeModel",
+        "ignoredUnfamiliarBranch",
+        "orthogonalTest",
+        "evidenceSource",
+      ]).map((k) => `missing ${k}`),
+    )
     const src = String(gateJson.evidenceSource ?? "").toLowerCase()
     if (src && !/(source|runtime|protocol|state|environment|config|math|file|dependency|version|browser)/.test(src)) {
       failures.push(`orthogonal evidenceSource is not recognized: ${src}`)
     }
   } else {
-    failures.push(`unknown gate ${gate}; use route, depth, pivot, final, stuck, knowledge, chain_dag, source_first, closure, or owner`)
+    failures.push(
+      `unknown gate ${gate}; use route, depth, pivot, final, stuck, knowledge, chain_dag, source_first, closure, or owner`,
+    )
   }
   if (!failures.length) notes.push(`PASS: ${g} gate`)
   else notes.push(`BLOCK: ${g} gate`)
   return { pass: failures.length === 0, failures, notes }
 }
 
-
 function nextAction(state: State) {
   const warnings = validationWarnings(state)
   const active = sortRank(activeHypotheses(state)).slice(0, 3)
-  if (warnings.some((w) => w.startsWith("BLOCK") || w.includes("active_hypotheses="))) return { action: "RERANK_OR_REDUCE_QUEUE", reason: warnings[0] }
-  if (primitiveLockedActive(state) && !closureGateSatisfied(state)) return { action: "BUILD_CLOSURE_GATE", reason: "primitive locked without closure gate" }
-  const lastClosureGate = [...state.history].reverse().find((x) => x.kind === "gate" && x.gate === "closure" && x.pass === true) as AnyRecord | undefined
+  if (warnings.some((w) => w.startsWith("BLOCK") || w.includes("active_hypotheses=")))
+    return { action: "RERANK_OR_REDUCE_QUEUE", reason: warnings[0] }
+  if (primitiveLockedActive(state) && !closureGateSatisfied(state))
+    return { action: "BUILD_CLOSURE_GATE", reason: "primitive locked without closure gate" }
+  const lastClosureGate = [...state.history]
+    .reverse()
+    .find((x) => x.kind === "gate" && x.gate === "closure" && x.pass === true) as AnyRecord | undefined
   const topClosureProbes = Array.isArray(lastClosureGate?.topClosureProbes) ? lastClosureGate.topClosureProbes : []
   if (primitiveLockedActive(state) && topClosureProbes.length) {
-    return { action: "RUN_CLOSURE_PROBE", probe: topClosureProbes[0], reason: "primitive locked and closure queue exists" }
+    return {
+      action: "RUN_CLOSURE_PROBE",
+      probe: topClosureProbes[0],
+      reason: "primitive locked and closure queue exists",
+    }
   }
-  if (hasSourcePressure(state) && !hasSatisfiedSourceFirst(state)) return { action: "RUN_SOURCE_FIRST", reason: "source evidence exists and source-first gate is unsatisfied" }
+  if (hasSourcePressure(state) && !hasSatisfiedSourceFirst(state))
+    return { action: "RUN_SOURCE_FIRST", reason: "source evidence exists and source-first gate is unsatisfied" }
   const top = active[0]
   if (!top) return { action: "ADD_HYPOTHESIS", reason: "no active hypotheses" }
-  if (primitiveLockedActive(state) && top.nextTest && isBusinessNarrativeProbe(top.nextTest) && (top.requiresReentry === true || top.stateIndependence === "low")) {
-    return { action: "RERANK_CLOSURE_CANDIDATES", hypothesisId: top.id, reason: "primitive locked and top branch is replay-heavy/business-narrative driven" }
+  if (
+    primitiveLockedActive(state) &&
+    top.nextTest &&
+    isBusinessNarrativeProbe(top.nextTest) &&
+    (top.requiresReentry === true || top.stateIndependence === "low")
+  ) {
+    return {
+      action: "RERANK_CLOSURE_CANDIDATES",
+      hypothesisId: top.id,
+      reason: "primitive locked and top branch is replay-heavy/business-narrative driven",
+    }
   }
-  if (top.segmentState === "BLOCKED" && (top.bypassPlan || top.bypassEvidence)) return { action: "TRY_BYPASS_OR_BACKTRACK", hypothesisId: top.id, reason: "top segment blocked with bypass info" }
-  if (top.segmentState === "BLOCKED") return { action: "BACKTRACK_OR_MARK_BLOCKED", hypothesisId: top.id, reason: "top segment blocked" }
-  if (top.nextTest) return { action: "RUN_PROBE", hypothesisId: top.id, family: top.family ?? "", probe: top.nextTest, reason: "highest ranked executable hypothesis" }
+  if (top.segmentState === "BLOCKED" && (top.bypassPlan || top.bypassEvidence))
+    return { action: "TRY_BYPASS_OR_BACKTRACK", hypothesisId: top.id, reason: "top segment blocked with bypass info" }
+  if (top.segmentState === "BLOCKED")
+    return { action: "BACKTRACK_OR_MARK_BLOCKED", hypothesisId: top.id, reason: "top segment blocked" }
+  if (top.nextTest)
+    return {
+      action: "RUN_PROBE",
+      hypothesisId: top.id,
+      family: top.family ?? "",
+      probe: top.nextTest,
+      reason: "highest ranked executable hypothesis",
+    }
   return { action: "COMPLETE_PROBE_CONTRACT", hypothesisId: top.id, reason: "top hypothesis lacks nextTest" }
 }
 
@@ -742,19 +1023,42 @@ function actionRecord(action: string, payload: AnyRecord) {
 }
 
 export default tool({
-  description: "CTF decision-state controller: executable top-3 hypothesis queue, probe contract, same-family attempt limiter, and route/depth/pivot/final/stuck gate checker.",
+  description:
+    "CTF decision-state controller: executable top-3 hypothesis queue, probe contract, same-family attempt limiter, and route/depth/pivot/final/stuck gate checker.",
   args: {
-    operation: tool.schema.string().describe("init | rank | probe | observe | gate | report | init_challenge | set_route | add_asset | add_signal | add_hypothesis | add_observation | mark_confirmed | mark_falsified | mark_blocked | add_primitive | closure_promote | add_closure_probe | next_action | snapshot | resume_summary | final_candidate"),
-    statePath: tool.schema.string().optional().describe("Workspace-relative state JSON path. Default .ctf-decision-state.json"),
+    operation: tool.schema
+      .string()
+      .describe(
+        "init | rank | probe | observe | gate | report | init_challenge | set_route | add_asset | add_signal | add_hypothesis | add_observation | mark_confirmed | mark_falsified | mark_blocked | add_primitive | closure_promote | add_closure_probe | next_action | snapshot | resume_summary | final_candidate",
+      ),
+    statePath: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative state JSON path. Default .ctf-decision-state.json"),
     mode: tool.schema.string().optional().describe("direct | medium | hard"),
     modelJson: tool.schema.string().optional().describe("Challenge Model JSON object"),
-    hypothesesJson: tool.schema.string().optional().describe("JSON array of hypotheses with value/confidence/infoGain/cost/risk/stateDamage/stability"),
-    probeJson: tool.schema.string().optional().describe("Probe Contract JSON with hypothesisId,family,variable,confirm,falsify,distinguish,oneVariable"),
-    observationJson: tool.schema.string().optional().describe("Observation JSON with hypothesisId,family,result,newDifferential,confirmed,falsified,evidence"),
-    gate: tool.schema.string().optional().describe("route | depth | pivot | final | stuck | knowledge | chain_dag | source_first | closure | owner"),
+    hypothesesJson: tool.schema
+      .string()
+      .optional()
+      .describe("JSON array of hypotheses with value/confidence/infoGain/cost/risk/stateDamage/stability"),
+    probeJson: tool.schema
+      .string()
+      .optional()
+      .describe("Probe Contract JSON with hypothesisId,family,variable,confirm,falsify,distinguish,oneVariable"),
+    observationJson: tool.schema
+      .string()
+      .optional()
+      .describe("Observation JSON with hypothesisId,family,result,newDifferential,confirmed,falsified,evidence"),
+    gate: tool.schema
+      .string()
+      .optional()
+      .describe("route | depth | pivot | final | stuck | knowledge | chain_dag | source_first | closure | owner"),
 
     gateJson: tool.schema.string().optional().describe("Gate evidence JSON; required for operation=gate"),
-    actionJson: tool.schema.string().optional().describe("Action-style operation payload JSON for action-style operations"),
+    actionJson: tool.schema
+      .string()
+      .optional()
+      .describe("Action-style operation payload JSON for action-style operations"),
   },
   async execute(args, context) {
     const file = resolveInsideWorkspace(context.directory, args.statePath ?? ".ctf-decision-state.json")
@@ -772,7 +1076,8 @@ export default tool({
       out.push("operation: init")
     } else if (operation === "rank") {
       if (args.modelJson) state.model = jsonArg<AnyRecord>(args.modelJson, state.model)
-      if (args.hypothesesJson) state.hypotheses = jsonArg<unknown[]>(args.hypothesesJson, state.hypotheses).map(normalizeHypothesis)
+      if (args.hypothesesJson)
+        state.hypotheses = jsonArg<unknown[]>(args.hypothesesJson, state.hypotheses).map(normalizeHypothesis)
 
       let rankedSource = state.hypotheses
       try {
@@ -783,7 +1088,9 @@ export default tool({
         // Chain state doesn't exist or is invalid; rank without chain-linked penalties.
       }
 
-      const lastKnowledgeGate = [...state.history].reverse().find((x) => x.kind === "gate" && x.gate === "knowledge") as AnyRecord | undefined
+      const lastKnowledgeGate = [...state.history]
+        .reverse()
+        .find((x) => x.kind === "gate" && x.gate === "knowledge") as AnyRecord | undefined
       const currentKnowledgeMode = String(lastKnowledgeGate?.knowledgeMode ?? "")
       state.hypotheses = sortRank(rankedSource, currentKnowledgeMode)
       state.history.push({ kind: "rank", at: now(), active: activeHypotheses(state).length })
@@ -791,32 +1098,73 @@ export default tool({
       out.push("operation: rank")
     } else if (operation === "probe") {
       const probe = jsonArg<Probe>(args.probeJson, {})
-      const missing = requiredKeys(probe as AnyRecord, ["hypothesisId", "family", "variable", "confirm", "falsify", "distinguish"])
+      const missing = requiredKeys(probe as AnyRecord, [
+        "hypothesisId",
+        "family",
+        "variable",
+        "confirm",
+        "falsify",
+        "distinguish",
+      ])
       if (missing.length) out.push(`BLOCK: invalid_probe_contract missing ${missing.join(", ")}`)
       if (probe.oneVariable === false) out.push("BLOCK: probe must change one variable at a time")
       const family = String(probe.family ?? "")
-      if (family && sameFamilyNoDiffCount(state, family) >= 3) out.push(`BLOCK: same-family branch '${family}' already has 3 no-differential observations; rerank or run an orthogonal test`)
+      if (family && sameFamilyNoDiffCount(state, family) >= 3)
+        out.push(
+          `BLOCK: same-family branch '${family}' already has 3 no-differential observations; rerank or run an orthogonal test`,
+        )
       if (family) {
         const previousProbe = lastProbeForFamily(state, family)
         if (previousProbe?.at && !observationExistsAfter(state, family, String(previousProbe.at))) {
-          out.push(`BLOCK: family '${family}' has a previous probe without a later observation; call observe before another same-family probe`)
+          out.push(
+            `BLOCK: family '${family}' has a previous probe without a later observation; call observe before another same-family probe`,
+          )
         }
       }
-      if ((probe as AnyRecord).bypassContext === true && bypassNoDiffCount(state) >= 3) out.push("BLOCK: bypass context already has 3 no-differential observations; mark branch BLOCKED/backtrack or define a new oracle")
-      if (primitiveLockedActive(state) && probe.closureProbe !== true && probe.fastPath !== true) out.push("BLOCK: a primitive is locked; only closure probes or explicit fast-path probes are allowed until closure is downgraded")
-      if (hasSourcePressure(state) && !hasSatisfiedSourceFirst(state) && probe.fastPath !== true) out.push("BLOCK: source-first gate is unsatisfied while source-guided evidence exists; finish source-first audit before blind probing")
+      if ((probe as AnyRecord).bypassContext === true && bypassNoDiffCount(state) >= 3)
+        out.push(
+          "BLOCK: bypass context already has 3 no-differential observations; mark branch BLOCKED/backtrack or define a new oracle",
+        )
+      if (primitiveLockedActive(state) && probe.closureProbe !== true && probe.fastPath !== true)
+        out.push(
+          "BLOCK: a primitive is locked; only closure probes or explicit fast-path probes are allowed until closure is downgraded",
+        )
+      if (hasSourcePressure(state) && !hasSatisfiedSourceFirst(state) && probe.fastPath !== true)
+        out.push(
+          "BLOCK: source-first gate is unsatisfied while source-guided evidence exists; finish source-first audit before blind probing",
+        )
       const hypothesisId = String(probe.hypothesisId ?? "")
       const targetHypothesis = state.hypotheses.find((x) => x.id === hypothesisId)
       if (!targetHypothesis) out.push(`BLOCK: unknown hypothesisId '${hypothesisId}'`)
       if (targetHypothesis) {
         const terminalStatus = String(targetHypothesis.status ?? "").toLowerCase()
-        if (["killed", "dead"].includes(terminalStatus) || targetHypothesis.segmentState === "FALSIFIED") out.push(`BLOCK: hypothesis '${hypothesisId}' is already ${targetHypothesis.status ?? targetHypothesis.segmentState}; use revisitTrigger/new evidence before probing`)
+        if (["killed", "dead"].includes(terminalStatus) || targetHypothesis.segmentState === "FALSIFIED")
+          out.push(
+            `BLOCK: hypothesis '${hypothesisId}' is already ${targetHypothesis.status ?? targetHypothesis.segmentState}; use revisitTrigger/new evidence before probing`,
+          )
         for (const w of prerequisiteWarnings(targetHypothesis, state)) out.push(`BLOCK: ${w}`)
-        if (targetHypothesis.segmentState === "BLOCKED" && !targetHypothesis.bypassPlan && !targetHypothesis.bypassEvidence && (probe as AnyRecord).bypassContext !== true) out.push(`BLOCK: hypothesis '${hypothesisId}' is BLOCKED without bypassPlan/bypassEvidence; run bypass planning or backtrack`)
-        if (targetHypothesis.blindOrOob === true && !targetHypothesis.oracleEvidence && probe.closureProbe === true) out.push(`BLOCK: blind/OOB closure for '${hypothesisId}' needs oracleEvidence before primitive/closure confirmation`)
+        if (
+          targetHypothesis.segmentState === "BLOCKED" &&
+          !targetHypothesis.bypassPlan &&
+          !targetHypothesis.bypassEvidence &&
+          (probe as AnyRecord).bypassContext !== true
+        )
+          out.push(
+            `BLOCK: hypothesis '${hypothesisId}' is BLOCKED without bypassPlan/bypassEvidence; run bypass planning or backtrack`,
+          )
+        if (targetHypothesis.blindOrOob === true && !targetHypothesis.oracleEvidence && probe.closureProbe === true)
+          out.push(
+            `BLOCK: blind/OOB closure for '${hypothesisId}' needs oracleEvidence before primitive/closure confirmation`,
+          )
       }
-      if (targetHypothesis?.chainRef && blockedChainRefs(state).has(targetHypothesis.chainRef) && !targetHypothesis.revisitTrigger) {
-        out.push(`BLOCK: hypothesis '${hypothesisId}' references blocked/dead chain ${targetHypothesis.chainRef} without a revisitTrigger`)
+      if (
+        targetHypothesis?.chainRef &&
+        blockedChainRefs(state).has(targetHypothesis.chainRef) &&
+        !targetHypothesis.revisitTrigger
+      ) {
+        out.push(
+          `BLOCK: hypothesis '${hypothesisId}' references blocked/dead chain ${targetHypothesis.chainRef} without a revisitTrigger`,
+        )
       }
       if (!out.some((x) => x.startsWith("BLOCK"))) out.push("PASS: probe contract accepted")
       state.history.push({ kind: "probe", at: now(), ...probe, pass: !out.some((x) => x.startsWith("BLOCK")) })
@@ -828,7 +1176,8 @@ export default tool({
       const id = String(obs.hypothesisId ?? "")
       const h = state.hypotheses.find((x) => x.id === id)
       if (h) {
-        const blindConfirmWithoutOracle = obs.confirmed === true && h.blindOrOob === true && !h.oracleEvidence && !obs.oracleEvidence
+        const blindConfirmWithoutOracle =
+          obs.confirmed === true && h.blindOrOob === true && !h.oracleEvidence && !obs.oracleEvidence
         if (blindConfirmWithoutOracle) {
           h.status = "active"
           out.push(`BLOCK: blind/OOB hypothesis '${id}' cannot be locked without oracleEvidence`)
@@ -843,7 +1192,8 @@ export default tool({
         if (obs.bypassPlan) h.bypassPlan = String(obs.bypassPlan)
         if (obs.bypassEvidence) h.bypassEvidence = String(obs.bypassEvidence)
         if (obs.oracleEvidence) h.oracleEvidence = String(obs.oracleEvidence)
-        if (obs.missingPrerequisites && Array.isArray(obs.missingPrerequisites)) h.missingPrerequisites = obs.missingPrerequisites.map(String)
+        if (obs.missingPrerequisites && Array.isArray(obs.missingPrerequisites))
+          h.missingPrerequisites = obs.missingPrerequisites.map(String)
         if (obs.challengeSpecific !== undefined) h.challengeSpecific = Boolean(obs.challengeSpecific)
         if (obs.authorIntent) h.authorIntent = String(obs.authorIntent)
       }
@@ -853,24 +1203,34 @@ export default tool({
       const gate = args.gate ?? ""
       const gatePayload = jsonArg<AnyRecord>(args.gateJson, {})
       const checked = gateCheck(state, gate, gatePayload)
-      const gateRecord: AnyRecord = { kind: "gate", at: now(), gate: gate.toLowerCase(), pass: checked.pass, failures: checked.failures }
+      const gateRecord: AnyRecord = {
+        kind: "gate",
+        at: now(),
+        gate: gate.toLowerCase(),
+        pass: checked.pass,
+        failures: checked.failures,
+      }
       if (gate.toLowerCase() === "knowledge") {
         gateRecord.knowledgeMode = String(gatePayload.knowledgeMode ?? "") || undefined
-        gateRecord.matchedSegmentsCount = Array.isArray(gatePayload.matchedSegments) ? gatePayload.matchedSegments.length : Number(gatePayload.matchedSegments ?? 0)
+        gateRecord.matchedSegmentsCount = Array.isArray(gatePayload.matchedSegments)
+          ? gatePayload.matchedSegments.length
+          : Number(gatePayload.matchedSegments ?? 0)
         gateRecord.category = gatePayload.category ?? state.model?.category
         gateRecord.noMatchReason = gatePayload.noMatchReason
         gateRecord.whyNotPrimary = gatePayload.whyNotPrimary
         gateRecord.nextModelHypothesis = gatePayload.nextModelHypothesis
       }
       if (gate.toLowerCase() === "chain_dag") {
-          gateRecord.segmentCount = Array.isArray(gatePayload.segments) ? gatePayload.segments.length : Number(gatePayload.segments ?? 0)
-          gateRecord.sharedPrefixes = gatePayload.sharedPrefixes
-          gateRecord.terminalBranches = gatePayload.terminalBranches
-          gateRecord.routeStates = gatePayload.routeStates
-          gateRecord.nextSegment = gatePayload.nextSegment
-          gateRecord.backtrackRule = gatePayload.backtrackRule
-        }
-        if (gate.toLowerCase() === "source_first") {
+        gateRecord.segmentCount = Array.isArray(gatePayload.segments)
+          ? gatePayload.segments.length
+          : Number(gatePayload.segments ?? 0)
+        gateRecord.sharedPrefixes = gatePayload.sharedPrefixes
+        gateRecord.terminalBranches = gatePayload.terminalBranches
+        gateRecord.routeStates = gatePayload.routeStates
+        gateRecord.nextSegment = gatePayload.nextSegment
+        gateRecord.backtrackRule = gatePayload.backtrackRule
+      }
+      if (gate.toLowerCase() === "source_first") {
         gateRecord.sourceAvailable = gatePayload.sourceAvailable
         gateRecord.sourceMapDone = gatePayload.sourceMapDone
         gateRecord.sinkMapDone = gatePayload.sinkMapDone
@@ -893,13 +1253,38 @@ export default tool({
       out.push("operation: gate", ...checked.notes, ...checked.failures.map((x) => `- ${x}`))
     } else if (operation === "report") {
       out.push("operation: report")
-    } else if (["init_challenge", "set_route", "add_asset", "add_signal", "add_hypothesis", "add_observation", "mark_confirmed", "mark_falsified", "mark_blocked", "add_primitive", "closure_promote", "add_closure_probe", "next_action", "snapshot", "resume_summary", "final_candidate"].includes(operation)) {
+    } else if (
+      [
+        "init_challenge",
+        "set_route",
+        "add_asset",
+        "add_signal",
+        "add_hypothesis",
+        "add_observation",
+        "mark_confirmed",
+        "mark_falsified",
+        "mark_blocked",
+        "add_primitive",
+        "closure_promote",
+        "add_closure_probe",
+        "next_action",
+        "snapshot",
+        "resume_summary",
+        "final_candidate",
+      ].includes(operation)
+    ) {
       const payload = jsonArg<AnyRecord>(args.actionJson, {})
       if (operation === "init_challenge") {
         state.mode = String(payload.mode ?? args.mode ?? state.mode ?? "medium")
-        mergeModel(state, payload.model && typeof payload.model === "object" ? payload.model as AnyRecord : payload)
+        mergeModel(state, payload.model && typeof payload.model === "object" ? (payload.model as AnyRecord) : payload)
       } else if (operation === "set_route") {
-        mergeModel(state, { category: payload.category, target: payload.target, primary_owner: payload.primaryOwner ?? payload.primary_owner, support_surface: payload.supportingSurface ?? payload.supporting_surface, constraints: payload.constraints })
+        mergeModel(state, {
+          category: payload.category,
+          target: payload.target,
+          primary_owner: payload.primaryOwner ?? payload.primary_owner,
+          support_surface: payload.supportingSurface ?? payload.supporting_surface,
+          constraints: payload.constraints,
+        })
       } else if (operation === "add_hypothesis") {
         const h = normalizeHypothesis(payload, state.hypotheses.length)
         state.hypotheses = [...state.hypotheses.filter((x) => x.id !== h.id), h]
@@ -935,7 +1320,8 @@ export default tool({
       out.push(`BLOCK: unknown operation '${args.operation}'`)
     }
 
-    const lastKnowledgeGate = [...state.history].reverse().find((x) => x.kind === "gate" && x.gate === "knowledge") as AnyRecord | undefined
+    const lastKnowledgeGate = [...state.history].reverse().find((x) => x.kind === "gate" && x.gate === "knowledge") as
+      AnyRecord | undefined
     const currentKnowledgeMode = String(lastKnowledgeGate?.knowledgeMode ?? "")
     const warnings = validationWarnings(state, currentKnowledgeMode)
     const ranked = sortRank(activeHypotheses(state), currentKnowledgeMode).slice(0, 5)
@@ -961,10 +1347,15 @@ export default tool({
         const replay = h.replayCost !== undefined ? ` replayCost=${h.replayCost}` : ""
         const moving = h.movingParts !== undefined ? ` movingParts=${h.movingParts}` : ""
         const reentry = h.requiresReentry === true ? " requiresReentry=yes" : ""
-        const source = h.sourceAvailable === true ? ` sourceAvailable=${h.sourceAvailable} sourceFirst=${h.sourceFirstSatisfied === true ? "yes" : "no"}` : ""
+        const source =
+          h.sourceAvailable === true
+            ? ` sourceAvailable=${h.sourceAvailable} sourceFirst=${h.sourceFirstSatisfied === true ? "yes" : "no"}`
+            : ""
         const dag = `${h.segmentId ? ` segment=${h.segmentId}` : ""}${h.parentId ? ` parent=${h.parentId}` : ""}${h.prerequisiteIds?.length ? ` prereq=${h.prerequisiteIds.join("|")}` : ""}${h.segmentState ? ` segmentState=${h.segmentState}` : ""}${h.branchId ? ` branch=${h.branchId}` : ""}${h.sharedPrefix ? " sharedPrefix=yes" : ""}${h.terminalBranch ? " terminalBranch=yes" : ""}`
         const blockers = `${h.blockedBy ? ` blockedBy=${h.blockedBy}` : ""}${h.bypassPlan ? " bypassPlan=yes" : ""}${h.bypassEvidence ? " bypassEvidence=yes" : ""}${h.blindOrOob ? " blindOrOob=yes" : ""}${h.oracleEvidence ? " oracleEvidence=yes" : ""}${h.challengeSpecific ? " challengeSpecific=yes" : ""}`
-        out.push(`- ${h.id} score=${score(h)} lesson_bias=${lessonActionBias(h)} effective=${effectiveScore(h)} kb_bias=${rankingBias(h, currentKnowledgeMode)} origin=${origin} status=${h.status ?? "active"}${chain}${owner}${support}${closure}${primitiveCard}${stateInd}${replay}${moving}${reentry}${source}${dag}${blockers} primitive=${h.primitive} closure_delta=${h.closureDelta} branch_kill_value=${h.branchKillValue} next=${h.nextTest || "<missing>"}`)
+        out.push(
+          `- ${h.id} score=${score(h)} lesson_bias=${lessonActionBias(h)} effective=${effectiveScore(h)} kb_bias=${rankingBias(h, currentKnowledgeMode)} origin=${origin} status=${h.status ?? "active"}${chain}${owner}${support}${closure}${primitiveCard}${stateInd}${replay}${moving}${reentry}${source}${dag}${blockers} primitive=${h.primitive} closure_delta=${h.closureDelta} branch_kill_value=${h.branchKillValue} next=${h.nextTest || "<missing>"}`,
+        )
       }
     } else out.push("- none")
     if (lastKnowledgeGate) {
@@ -976,30 +1367,39 @@ export default tool({
       if (lastKnowledgeGate.category) out.push(`- category=${String(lastKnowledgeGate.category)}`)
       if (lastKnowledgeGate.noMatchReason) out.push(`- noMatchReason=${String(lastKnowledgeGate.noMatchReason)}`)
       if (lastKnowledgeGate.whyNotPrimary) out.push(`- whyNotPrimary=${String(lastKnowledgeGate.whyNotPrimary)}`)
-      if (lastKnowledgeGate.nextModelHypothesis) out.push(`- nextModelHypothesis=${String(lastKnowledgeGate.nextModelHypothesis)}`)
+      if (lastKnowledgeGate.nextModelHypothesis)
+        out.push(`- nextModelHypothesis=${String(lastKnowledgeGate.nextModelHypothesis)}`)
     }
-    const lastChainDagGate = [...state.history].reverse().find((x) => x.kind === "gate" && x.gate === "chain_dag" && x.pass === true) as AnyRecord | undefined
+    const lastChainDagGate = [...state.history]
+      .reverse()
+      .find((x) => x.kind === "gate" && x.gate === "chain_dag" && x.pass === true) as AnyRecord | undefined
     if (lastChainDagGate) {
       out.push("chain_dag_context:")
       out.push(`- segmentCount=${String(lastChainDagGate.segmentCount ?? "unknown")}`)
       if (lastChainDagGate.nextSegment) out.push(`- nextSegment=${String(lastChainDagGate.nextSegment)}`)
       if (lastChainDagGate.backtrackRule) out.push(`- backtrackRule=${String(lastChainDagGate.backtrackRule)}`)
     }
-    const lastSourceGate = [...state.history].reverse().find((x) => x.kind === "gate" && x.gate === "source_first" && x.pass === true) as AnyRecord | undefined
+    const lastSourceGate = [...state.history]
+      .reverse()
+      .find((x) => x.kind === "gate" && x.gate === "source_first" && x.pass === true) as AnyRecord | undefined
     if (lastSourceGate) {
       out.push("source_first_context:")
       out.push(`- sourceAvailable=${String(lastSourceGate.sourceAvailable ?? "unknown")}`)
       out.push(`- sourceMapDone=${String(lastSourceGate.sourceMapDone ?? "unknown")}`)
       out.push(`- sinkMapDone=${String(lastSourceGate.sinkMapDone ?? "unknown")}`)
     }
-    const lastClosureGate = [...state.history].reverse().find((x) => x.kind === "gate" && x.gate === "closure" && x.pass === true) as AnyRecord | undefined
+    const lastClosureGate = [...state.history]
+      .reverse()
+      .find((x) => x.kind === "gate" && x.gate === "closure" && x.pass === true) as AnyRecord | undefined
     if (lastClosureGate) {
       out.push("closure_context:")
       if (lastClosureGate.primitive) out.push(`- primitive=${String(lastClosureGate.primitive)}`)
       if (lastClosureGate.flagLocationType) out.push(`- flagLocationType=${String(lastClosureGate.flagLocationType)}`)
       if (lastClosureGate.closureOwner) out.push(`- closureOwner=${String(lastClosureGate.closureOwner)}`)
     }
-    const lastOwnerGate = [...state.history].reverse().find((x) => x.kind === "gate" && x.gate === "owner" && x.pass === true) as AnyRecord | undefined
+    const lastOwnerGate = [...state.history]
+      .reverse()
+      .find((x) => x.kind === "gate" && x.gate === "owner" && x.pass === true) as AnyRecord | undefined
     if (lastOwnerGate) {
       out.push("owner_context:")
       if (lastOwnerGate.primaryOwner) out.push(`- primaryOwner=${String(lastOwnerGate.primaryOwner)}`)
@@ -1021,9 +1421,14 @@ export default tool({
     }
     if (warnings.length) out.push("warnings:", ...warnings.map((x) => `- ${x}`))
     out.push("next_required:")
-    if (out.some((x) => x.startsWith("BLOCK"))) out.push("- do not continue that action; fix the contract, reduce active hypotheses, rerank, or choose an orthogonal test")
-    else if (operation === "probe") out.push("- run exactly this probe, then call observe with the result before another same-family probe")
-    else if (operation === "rank" || operation === "init") out.push("- choose the top safe one-variable test or call gate before depth/high-risk/final/stuck actions")
+    if (out.some((x) => x.startsWith("BLOCK")))
+      out.push(
+        "- do not continue that action; fix the contract, reduce active hypotheses, rerank, or choose an orthogonal test",
+      )
+    else if (operation === "probe")
+      out.push("- run exactly this probe, then call observe with the result before another same-family probe")
+    else if (operation === "rank" || operation === "init")
+      out.push("- choose the top safe one-variable test or call gate before depth/high-risk/final/stuck actions")
     else if (operation === "next_action") out.push("- follow suggested_action unless new evidence contradicts it")
     else out.push("- continue with the highest-scoring valid branch")
     return out.join("\n")

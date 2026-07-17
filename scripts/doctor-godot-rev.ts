@@ -1,11 +1,14 @@
 import { existsSync } from "fs"
 import { spawnSync } from "child_process"
+import path from "path"
 
+const home = process.env.USERPROFILE || process.env.HOME || ""
 const candidates = [
-  "C:\\Users\\Administrator\\tools\\godot\\gdsdecomp\\v2.5.0\\gdre_tools.exe",
-  "C:\\Users\\Administrator\\tools\\godot\\gdsdecomp\\gdre_tools.exe",
+  process.env.GDRE_TOOLS_PATH,
+  path.join(home, "tools", "godot", "gdsdecomp", "v2.5.0", "gdre_tools.exe"),
+  path.join(home, "tools", "godot", "gdsdecomp", "gdre_tools.exe"),
   "C:\\Tools\\godot\\gdsdecomp\\gdre_tools.exe",
-]
+].filter((value): value is string => Boolean(value))
 
 const gdre = candidates.find((p) => existsSync(p)) || ""
 
@@ -40,7 +43,11 @@ console.log("\n## recommended_path")
 if (!gdre) {
   console.log("Install or unpack gdsdecomp (GDRE Tools) before expecting fast Godot .gdc/.pck recovery.")
 } else if (!version.ok || !help.ok) {
-  console.log("GDRE exists but is not healthy enough for wrapper use; inspect the local release directory and executable dependencies.")
+  console.log(
+    "GDRE exists but is not healthy enough for wrapper use; inspect the local release directory and executable dependencies.",
+  )
 } else {
-  console.log("Godot RE fast-path is available. Use ctf-godot-decompile for extract/recover/decompile wrappers and ctf-godot-pack-inspect to shrink scope first.")
+  console.log(
+    "Godot RE fast-path is available. Use ctf-godot-decompile for extract/recover/decompile wrappers and ctf-godot-pack-inspect to shrink scope first.",
+  )
 }

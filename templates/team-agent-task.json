@@ -1,0 +1,33 @@
+{
+  "agent": {
+    "id": "",
+    "task": "",
+    "wave": 1
+  },
+  "challenge_context": {
+    "target": "",
+    "category": "",
+    "source_path": "",
+    "artifacts": []
+  },
+  "skill_reference": "",
+  "instructions": "",
+  "input_contract": {
+    "files": [],
+    "urls": [],
+    "data": ""
+  },
+  "output_contract": {
+    "format": "json",
+    "schema": {},
+    "required_fields": []
+  },
+  "kill_conditions": [
+    "task objective achieved",
+    "3 same-family probes with no new differential",
+    "resource budget exhausted",
+    "path proven impossible"
+  ],
+  "success_criteria": "",
+  "timeout_minutes": 15
+}

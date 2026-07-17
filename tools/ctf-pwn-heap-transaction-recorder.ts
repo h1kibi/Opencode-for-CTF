@@ -12,7 +12,10 @@ type Step = {
 }
 
 function lines(text: string) {
-  return text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean)
+  return text
+    .split(/\r?\n/)
+    .map((x) => x.trim())
+    .filter(Boolean)
 }
 
 function firstMatch(line: string, re: RegExp) {
@@ -36,7 +39,10 @@ function classifyStep(line: string): Step {
   const sizeHex = firstMatch(line, /(?:size|chunk|bin|tcache|malloc)\s*[:=]?\s*(0x[0-9a-fA-F]+)/)
   const sizeDec = firstMatch(line, /(?:size|chunk)\s*[:=]?\s*(\d{2,5})\b/)
   const pointer = firstMatch(line, /(0x[0-9a-fA-F]{5,16})/)
-  const objectHint = firstMatch(line, /\b(ring|bomb|sword|shield|item|name|description|skill|accessory|inventory|equipment|object|wrapper)\b/i)
+  const objectHint = firstMatch(
+    line,
+    /\b(ring|bomb|sword|shield|item|name|description|skill|accessory|inventory|equipment|object|wrapper)\b/i,
+  )
   const staleHint = /stale|uaf|use-after-free|post-free|after free|dangling/i.test(lower)
 
   return {
@@ -60,18 +66,25 @@ function unique<T>(items: T[]) {
 }
 
 export default tool({
-  description: "CTF pwn heap transaction recorder: reduce menu/game/inventory notes into allocator lifecycle, likely size-class/refill facts, stale-reference clues, and the next heap reduction probes.",
+  description:
+    "CTF pwn heap transaction recorder: reduce menu/game/inventory notes into allocator lifecycle, likely size-class/refill facts, stale-reference clues, and the next heap reduction probes.",
   args: {
-    evidence: tool.schema.string().describe("Menu transcripts, notes, source snippets, debugger notes, or malloc/free log lines describing a heap/UAF branch."),
+    evidence: tool.schema
+      .string()
+      .describe(
+        "Menu transcripts, notes, source snippets, debugger notes, or malloc/free log lines describing a heap/UAF branch.",
+      ),
   },
   async execute(args) {
     const text = String(args.evidence || "")
-    if (text.trim().length < 20) return "BLOCK: provide menu transcripts, notes, source snippets, or allocator log lines"
+    if (text.trim().length < 20)
+      return "BLOCK: provide menu transcripts, notes, source snippets, or allocator log lines"
 
     const steps = lines(text).slice(0, 120).map(classifyStep)
     const counts = summarizeKinds(steps)
     const allocLike = (counts.get("alloc") || 0) + (counts.get("buy") || 0)
-    const freeLike = (counts.get("free") || 0) + (counts.get("sell") || 0) + (counts.get("consume") || 0) + (counts.get("remove") || 0)
+    const freeLike =
+      (counts.get("free") || 0) + (counts.get("sell") || 0) + (counts.get("consume") || 0) + (counts.get("remove") || 0)
     const editLike = counts.get("edit") || 0
     const showLike = counts.get("show") || 0
 
@@ -89,17 +102,36 @@ export default tool({
     if (pointers.length > 0) highSignals.push("pointer_or_leak_hints_present")
 
     const likelyStaleOwners = steps
-      .filter((s) => s.staleHint || (s.kind === "show" && /description|name|item|skill|accessory|inventory|equipment/i.test(s.line)))
+      .filter(
+        (s) =>
+          s.staleHint ||
+          (s.kind === "show" && /description|name|item|skill|accessory|inventory|equipment/i.test(s.line)),
+      )
       .map((s) => `${s.objectHint || "object"} via ${s.kind}`)
     const refillCandidates = objectHints.map((h) => `re-buy or recreate ${h} with same size class to test refill`)
 
     const nextProbes: string[] = []
-    if (allocLike > 0 && freeLike > 0) nextProbes.push("Write a chunk lifecycle table and mark which action allocates, which frees, and which consumer still reads afterwards.")
+    if (allocLike > 0 && freeLike > 0)
+      nextProbes.push(
+        "Write a chunk lifecycle table and mark which action allocates, which frees, and which consumer still reads afterwards.",
+      )
     if (sizeClasses.length) nextProbes.push(`Focus on same-size refill testing for: ${sizeClasses.join(", ")}.`)
-    else nextProbes.push("Confirm one likely size class from source, allocator log, or object field lengths before naming a heap technique.")
-    if (pointers.length) nextProbes.push("Classify the first pointer-shaped leak with ctf-pwn-heap-leak-classifier before final heap/libc math.")
-    else nextProbes.push("Try one leak-oriented readback after a free/rebuy sequence to determine whether freed chunk contents are exposed.")
-    if (editLike > 0) nextProbes.push("Check whether edit/rename/new-name crosses an object-field boundary and whether that pivot yields AAR or AAW.")
+    else
+      nextProbes.push(
+        "Confirm one likely size class from source, allocator log, or object field lengths before naming a heap technique.",
+      )
+    if (pointers.length)
+      nextProbes.push(
+        "Classify the first pointer-shaped leak with ctf-pwn-heap-leak-classifier before final heap/libc math.",
+      )
+    else
+      nextProbes.push(
+        "Try one leak-oriented readback after a free/rebuy sequence to determine whether freed chunk contents are exposed.",
+      )
+    if (editLike > 0)
+      nextProbes.push(
+        "Check whether edit/rename/new-name crosses an object-field boundary and whether that pivot yields AAR or AAW.",
+      )
 
     return [
       "pwn_heap_transaction_recorder:",
@@ -113,11 +145,20 @@ export default tool({
       "high_value_signals:",
       ...(highSignals.length ? highSignals.map((s) => `- ${s}`) : ["- none strong; gather more lifecycle notes"]),
       "transaction_table:",
-      ...steps.slice(0, 24).map((s, idx) => `- step ${idx + 1}: kind=${s.kind} size=${s.sizeClass || "?"} ptr=${s.pointer || ""} object=${s.objectHint || ""} stale=${s.staleHint ? "yes" : "no"} line=${s.line}`),
+      ...steps
+        .slice(0, 24)
+        .map(
+          (s, idx) =>
+            `- step ${idx + 1}: kind=${s.kind} size=${s.sizeClass || "?"} ptr=${s.pointer || ""} object=${s.objectHint || ""} stale=${s.staleHint ? "yes" : "no"} line=${s.line}`,
+        ),
       "likely_stale_owners:",
-      ...(likelyStaleOwners.length ? likelyStaleOwners.map((s) => `- ${s}`) : ["- none explicit; identify which show/display path still touches a freed field"]),
+      ...(likelyStaleOwners.length
+        ? likelyStaleOwners.map((s) => `- ${s}`)
+        : ["- none explicit; identify which show/display path still touches a freed field"]),
       "refill_candidates:",
-      ...(refillCandidates.length ? refillCandidates.map((s) => `- ${s}`) : ["- identify one object type that can be recreated to occupy the same size class"]),
+      ...(refillCandidates.length
+        ? refillCandidates.map((s) => `- ${s}`)
+        : ["- identify one object type that can be recreated to occupy the same size class"]),
       "next_reduction_probes:",
       ...nextProbes.map((s) => `- ${s}`),
       "stop_rule:",

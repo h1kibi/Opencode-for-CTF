@@ -1,4 +1,4 @@
-# Build/Refresh the CTF revlab image and verify it.
+﻿# Build/Refresh the CTF revlab image and verify it.
 # Usage:
 #   .\build-revlab.ps1                          # build only (no mirror)
 #   .\build-revlab.ps1 -UseCNMirror             # use Tsinghua/PyPI/Goproxy CN mirrors
@@ -30,7 +30,7 @@ if (-not $TemplatesDir) {
     $TemplatesDir = (Resolve-Path $TemplatesDir).Path
 }
 
-$composeFile = Join-Path $TemplatesDir "docker-compose.revlab.yml"
+$composeFile = Join-Path $TemplatesDir "docker/docker-compose.revlab.yml"
 $dockerfilePath = Join-Path $TemplatesDir $Dockerfile
 
 if (-not (Test-Path -LiteralPath $dockerfilePath)) {
@@ -38,7 +38,7 @@ if (-not (Test-Path -LiteralPath $dockerfilePath)) {
     exit 1
 }
 
-# 默认中国镜像预设
+# 榛樿涓浗闀滃儚棰勮
 if ($UseCNMirror) {
     if (-not $AptMirror)    { $AptMirror    = "http://mirrors.tuna.tsinghua.edu.cn/ubuntu/" }
     if (-not $AptSecurity)  { $AptSecurity  = "http://mirrors.tuna.tsinghua.edu.cn/ubuntu/" }
@@ -76,13 +76,13 @@ if ($SkipBuild) {
     }
     Write-Host "==> image present: $existingId"
 } else {
-    # 优先用 docker build --build-arg 透传 mirror
+    # 浼樺厛鐢?docker build --build-arg 閫忎紶 mirror
     $buildArgs = @("--build-arg", "APT_MIRROR=$AptMirror",
                    "--build-arg", "APT_SECURITY=$AptSecurity",
                    "--build-arg", "PIP_INDEX_URL=$PipIndexUrl",
                    "--build-arg", "PIP_TRUSTED_HOST=$PipTrustedHost",
                    "--build-arg", "GOPROXY=$GoProxy")
-    # 过滤空值 (build-arg 传空字符串等价于不传)
+    # 杩囨护绌哄€?(build-arg 浼犵┖瀛楃涓茬瓑浠蜂簬涓嶄紶)
     $filteredArgs = @()
     for ($i = 0; $i -lt $buildArgs.Count; $i += 2) {
         $val = $buildArgs[$i + 1]

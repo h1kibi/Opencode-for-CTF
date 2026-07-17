@@ -1,0 +1,38 @@
+{
+  // Optional user config for opencode-for-ctf.
+  // Search order (closest wins): project walk → $OPENCODE_CONFIG_DIR → ~/.config/opencode/
+  // Filenames: opencode-for-ctf.jsonc | opencode-for-ctf.json
+
+  // Default intensity for /ctf auto-routing (BINDING when mode is not forced).
+  // auto = pure heuristics; fast|expert = force that lane via ctf-route-plan + /ctf hook.
+  "default_mode": "auto", // auto | fast | expert
+
+  // Disable individual runtime hooks.
+  // Allowed: hashline | permission_auto_allow | chat_params | session_compacting
+  //          | continuation | skill_mcp | team_events
+  "disabled_hooks": [],
+
+  "hashline": {
+    "enabled": true
+  },
+
+  "continuation": {
+    "enabled": true
+  },
+
+  "team_mode": {
+    "enabled": true,
+    "max_workers": 8
+  },
+
+  // Tool packs registered at plugin startup (restart OpenCode after changes).
+  // This is the PROCESS registry (superset). ctf-fast is still filtered by allowlist.
+  // Default omits rare packs: android, godot.
+  // Use ["all"] for true full expert environment, or list packs explicitly.
+  // "tool_packs": ["core", "web", "pwn", "rev", "crypto", "forensics", "misc", "java"],
+  // "tool_packs": ["all"],
+  // Optional merge into registry for expert-heavy machines:
+  // "expert_tool_packs": ["android", "godot"],
+
+  "external_skills": false
+}
