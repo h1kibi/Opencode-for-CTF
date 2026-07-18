@@ -216,7 +216,7 @@ ctf-evidence-board command=set-route-state routeId=R1 routeState=blocked|dead|li
 
 **All three routes dead or stuck — retrospect**
 
-When all three routes are dead or stuck, do NOT immediately generate new routes.
+When all three routes are dead or stuck, do NOT immediately generate new routes or stop.
 
 Instead, follow the **retrospect procedure**:
 
@@ -227,21 +227,28 @@ Instead, follow the **retrospect procedure**:
    - Is there evidence of a direction that was never properly explored?
 3. If gaps, missed signals, or prematurely killed routes are found:
    - Record the oversight in Evidence.md as a new fact/clue.
-   - **Return to Phase ①** — fresh recon wave with the accumulated knowledge.
-4. If no gaps remain and all routes are genuinely exhausted:
-   - Stop or request user input.
+   - **Return to Phase ①** — supplemental recon wave with the accumulated knowledge.
+4. After supplemental recon, evaluate:
+   - **If Phase ① found new information** → continue normal iteration (enter Phase ② with fresh evidence).
+   - **If Phase ① found no new information** → do **NOT** stop yet. Enter Phase ② one final time for a **total analysis pass** over ALL accumulated evidence (old + any marginal new findings).
+5. In this final Phase ② total analysis:
+   - If a new viable route emerges from the complete evidence review → **continue iteration** (proceed to Phase ③).
+   - If even after total analysis all routes are genuinely dead → **then stop**.
 
 ```
 ctf-evidence-board command=next-round
 # Re-read Evidence.md carefully before deciding next action
-# If new angle found → return to Phase ① for supplemental recon
-# If truly exhausted → stop
+# If new angle during retrospect → Phase ① supplemental recon
+#   → recon found something? → continue iteration
+#   → recon found nothing? → ONE more Phase ② total analysis
+#     → Phase ② finds new angle? → continue
+#     → Phase ② confirms all dead? → stop
 ```
 
 **Stop conditions**
 
 - Flag returned
-- No remaining non-dead route with positive EV
+- No remaining non-dead route with positive EV (after retrospect + final Phase ② if applicable)
 - Need user resource (VPN, paid API, physical device)
 - Out of authorized scope
 
