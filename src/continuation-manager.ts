@@ -18,7 +18,7 @@ export type FastBudgetPolicy = {
 export type FastBudgetEvaluation = {
   shouldEscalate: boolean
   shouldPromptReview: boolean
-  status: "active" | "review" | "escalated"
+  status: "active" | "review" | "escalated" | "blocked"
   reason?: string
   handoffSummary?: string
 }

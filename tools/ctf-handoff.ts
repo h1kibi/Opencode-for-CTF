@@ -31,19 +31,20 @@ export default tool({
         config.default_mode,
       )
       lane = primaryAgentForDecision(decision) === "ctf-expert" ? "expert" : "fast"
-      if (lane === "expert") {
+      const toExpert = lane === "expert"
+      if (toExpert) {
         throw new Error("Expert handoff must be initiated from the plugin-routed /ctf or /ctf-expert flow so runtime readiness can be verified first.")
       }
-      rememberSessionSurface(context.sessionID, lane === "expert" ? "ctf-expert" : "ctf-fast")
+      rememberSessionSurface(context.sessionID, toExpert ? "ctf-expert" : "ctf-fast")
       return [
         formatHardRouteHandoff(decision, {
           configDefaultMode: config.default_mode,
           source: "ctf-handoff",
         }),
         "",
-        `HANDOFF COMPLETE → behave as **${lane === "expert" ? "ctf-expert" : "ctf-fast"}** from this message on.`,
+        `HANDOFF COMPLETE → behave as **${toExpert ? "ctf-expert" : "ctf-fast"}** from this message on.`,
         args.reason ? `reason: ${args.reason}` : "",
-        lane === "expert"
+        toExpert
           ? "Load skill ctf-expert. Use Evidence.md + Team Mode. Full tool surface enabled for this session."
           : "Stay on fast allowlist. No Team Mode / Evidence ceremony.",
       ]
@@ -55,9 +56,9 @@ export default tool({
       throw new Error("Expert handoff must be initiated from the plugin-routed /ctf or /ctf-expert flow so runtime readiness can be verified first.")
     }
 
-    rememberSessionSurface(context.sessionID, lane === "expert" ? "ctf-expert" : "ctf-fast")
+    rememberSessionSurface(context.sessionID, "ctf-fast")
 
-    if (lane === "expert") {
+    if (false) {
       return [
         "═══ HANDOFF → ctf-expert (BINDING) ═══",
         args.reason ? `reason: ${args.reason}` : "reason: route/escalation",

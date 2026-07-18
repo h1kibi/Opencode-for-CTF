@@ -19,7 +19,7 @@ import { agentMcpStateFile } from "./paths.ts"
 import { ensureNamedServerLeases, releaseSkillMcpLeases } from "./skill-mcp-manager.ts"
 import type { RuntimeMcpConfig } from "./skill-mcp-registry.ts"
 import { atomicUpdateJsonFile, loadJsonFile, nowIso } from "./state-store.ts"
-import type { AgentMcpRequest, AgentMcpState, McpServerMeta } from "./types.ts"
+import type { AgentMcpRequest, AgentMcpState, CtfFamily, McpServerMeta } from "./types.ts"
 import type { OpencodeClient } from "@opencode-ai/sdk"
 
 /** Convert registry server meta into a skill-mcp RuntimeMcpConfig. */
@@ -479,12 +479,12 @@ export async function getAgentMcpState(worktree: string) {
 // ---------------------------------------------------------------------------
 
 /** @visibleForTesting */
-export function agentNameToCategory(agent: string): string | undefined {
+export function agentNameToCategory(agent: string): CtfFamily | undefined {
   // Category agents map to their domain. Cross-category agents
   // (ctf-expert, ctf-scout, ctf-oracle, ctf-retro) are deliberately
   // omitted — they work across all categories and their MCP requests
   // should remain pending for human/ctf-expert decision.
-  const map: Record<string, string> = {
+  const map: Record<string, CtfFamily> = {
     "ctf-web": "web",
     "ctf-pwn": "pwn",
     "ctf-rev": "rev",
