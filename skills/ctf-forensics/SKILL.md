@@ -16,9 +16,16 @@ This skill is the forensics challenge controller. It enforces the forensics solv
 
 Use only on provided challenge artifacts or explicitly authorized evidence.
 
+## Contract
+
+- Load `references/REFERENCE_INDEX.md` first when the artifact surface is unclear.
+- Prefer dedicated probes (`ctf-pcap-probe`, `ctf-stego-probe`, `ctf-artifact-page`) before broad raw-tool loops.
+- Keep exact derived paths, offsets, stream IDs, inodes, and hashes in `notes.md`.
+- Pivot quickly when the evidence is actually rev/crypto/web/misc shaped.
+
 ## Phase Workflow
 
-```
+```text
 preserve → triage → classify → extract → reconstruct → verify → retro
 ```
 
@@ -108,6 +115,7 @@ tcpdump -r <pcap> -A          → ASCII packet content
 #### Image / Stego Analysis
 ```
 Checklist:
+□ `ctf-stego-probe` first for quick triage
 □ File type and appended data (binwalk / strings after image end)
 □ EXIF metadata (exiftool)
 □ LSB in each color channel (zsteg / stegsolve)
@@ -171,6 +179,13 @@ Before starting, inventory:
 - [ ] Any passwords, keys, or hints provided?
 - [ ] Any known tool requirements?
 
+## When to Pivot
+
+- If the dominant evidence is executable logic or validation code, hand off to `ctf-rev`.
+- If the dominant evidence is encoded/math recovery rather than extraction, hand off to `ctf-crypto`.
+- If the task becomes service/protocol interaction more than artifact extraction, hand off to `ctf-misc` or `ctf-web`.
+- If a child artifact clearly belongs to another family, preserve provenance and transfer ownership early.
+
 ## Output Contract
 
 ```
@@ -211,6 +226,6 @@ Stop or ask when:
 | Memory / RAM dump / hibernation file | `ctf-forensics-memory` |
 | PCAP / network capture | `ctf-forensics-network` |
 | Stego / media / image / audio | `ctf-forensics-stego` |
-| Document / OLE / OOXML / PDF | `ctf-forensics-doc` |
-| Binary / blob / firmware | `ctf-forensics-binary` |
+| Document / OLE / OOXML / PDF | `references/document-and-binary.md` |
+| Binary / blob / firmware | `references/document-and-binary.md` |
 | Archive / compressed / encrypted | `ctf-safe-extract` tool |

@@ -112,11 +112,26 @@ export type TeamState = {
 // ---------------------------------------------------------------------------
 
 const TEAM_AGENT = "ctf-expert"
-const MAX_JOBS = 8
+/** Default concurrent job cap when config does not override team_mode.max_workers. */
+export const DEFAULT_MAX_JOBS = 8
+const ABSOLUTE_MAX_JOBS = 16
 const MAX_JOB_RESULT = 6_000
 const MAX_COLLECT_OUTPUT = 32_000
 const STATE_FILE = ".ctf-team.json"
 const STATE_VERSION = 1
+
+/** Clamp configured max workers into a safe dispatch range. */
+export function resolveMaxJobs(maxWorkers?: number): number {
+  if (typeof maxWorkers !== "number" || !Number.isFinite(maxWorkers) || maxWorkers <= 0) {
+    return DEFAULT_MAX_JOBS
+  }
+  return Math.min(ABSOLUTE_MAX_JOBS, Math.max(2, Math.floor(maxWorkers)))
+}
+
+export type CreateTeamToolsOptions = {
+  /** Upper bound for jobs in one ctf-team-dispatch wave (from team_mode.max_workers). */
+  maxWorkers?: number
+}
 
 function now() {
   return new Date().toISOString()
@@ -372,7 +387,13 @@ function renderRun(run: TeamRun, includeResults = false) {
 // Tool definitions
 // ---------------------------------------------------------------------------
 
-export function createTeamTools(client: any, directory: string, worktree = directory): ToolMap {
+export function createTeamTools(
+  client: any,
+  directory: string,
+  worktree = directory,
+  options: CreateTeamToolsOptions = {},
+): ToolMap {
+  const maxJobs = resolveMaxJobs(options.maxWorkers)
   // ---- Internal helpers that close over client + directory ----
 
   async function collectJob(sessionID: string) {
@@ -515,7 +536,7 @@ export function createTeamTools(client: any, directory: string, worktree = direc
   const tools: ToolMap = {
     "ctf-team-dispatch": tool({
       description:
-        "CTF Expert Team Mode: atomically create and concurrently start 2-8 CTF subagent sessions. " +
+        `CTF Expert Team Mode: atomically create and concurrently start 2-${maxJobs} CTF subagent sessions. ` +
         "Each job MUST bind routeId (recon|R1|R2|R3|general). Independent routes run concurrent; " +
         "shared_state jobs should not share a mutable target with another running job. Only ctf-expert (or /ctf expert surface).",
       args: {
@@ -536,7 +557,7 @@ export function createTeamTools(client: any, directory: string, worktree = direc
             }),
           )
           .min(2)
-          .max(MAX_JOBS),
+          .max(maxJobs),
       },
       async execute(args, context) {
         requireExpert(context.agent, context.sessionID)

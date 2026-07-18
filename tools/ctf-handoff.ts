@@ -31,6 +31,9 @@ export default tool({
         config.default_mode,
       )
       lane = primaryAgentForDecision(decision) === "ctf-expert" ? "expert" : "fast"
+      if (lane === "expert") {
+        throw new Error("Expert handoff must be initiated from the plugin-routed /ctf or /ctf-expert flow so runtime readiness can be verified first.")
+      }
       rememberSessionSurface(context.sessionID, lane === "expert" ? "ctf-expert" : "ctf-fast")
       return [
         formatHardRouteHandoff(decision, {
@@ -46,6 +49,10 @@ export default tool({
       ]
         .filter(Boolean)
         .join("\n")
+    }
+
+    if (lane === "expert") {
+      throw new Error("Expert handoff must be initiated from the plugin-routed /ctf or /ctf-expert flow so runtime readiness can be verified first.")
     }
 
     rememberSessionSurface(context.sessionID, lane === "expert" ? "ctf-expert" : "ctf-fast")

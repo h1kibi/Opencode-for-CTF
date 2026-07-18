@@ -5,6 +5,8 @@ agent: ctf-web
 
 Use `ctf-common`, `ctf-terminal`, and `ctf-web` skills.
 
+Open `skills/ctf-web/references/REFERENCE_INDEX.md` first when multiple Web phases or bug families compete.
+
 Start every Web challenge by entering the solve state machine: recon → attack-queue → focused-probe → primitive-lock → control-plane → final-chain → retro.
 
 ### Phase dispatch:
@@ -63,6 +65,7 @@ Rules:
 - Do not try more than 3 variants of the same payload family unless the hypothesis changed.
 - Write `solve.py` or `solve.js` when practical.
 - Write only the verified final flag to `agent_flag.txt`.
+- Pivot early to `ctf-pwn`, `ctf-rev`, `ctf-crypto`, `ctf-forensics`, or `ctf-misc` once dominant evidence leaves the Web family.
 - Custom Python/Node/Bash/browser scripts are high-risk if they send more than 20 requests, use concurrency, repeatedly trigger bots, repeatedly upload files, dump data, mutate backend state, or write/overwrite files.
 - Use browser MCP only after recon identifies a browser-specific need: SPA route discovery, DOM sink evidence, login/admin UI, network capture, console error, or screenshot evidence.
 - Prefer curl/source review for reproducible HTTP behavior.

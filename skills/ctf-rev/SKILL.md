@@ -10,7 +10,12 @@ compatibility: opencode
 
 Use this skill to recover validation logic, secrets, encodings, algorithms, or flags from compiled programs and mobile apps.
 
-Use `ctf-terminal` for command, debugger, emulator, Frida, or adb interactions.
+## Contract
+
+- Load `references/REFERENCE_INDEX.md` first when multiple reverse subfamilies compete.
+- Use `ctf-terminal` for command, debugger, emulator, Frida, or adb interactions.
+- Prefer the smallest artifact-specific reference before broad decompilation.
+- Keep `notes.md` centered on the current bottleneck, extracted checker path, and next discriminator.
 
 For native validation/checker slicing, load `references/native-checker-slice.md`.
 
@@ -91,6 +96,15 @@ Collect:
 7. Use dynamic analysis only to confirm static hypotheses or handle anti-analysis/VM/hardware-runtime barriers.
 8. For mobile, inspect Java/Kotlin, native libraries, assets, reflection, dynamic loading, and network behavior.
 9. Verify recovered input or flag against the program/app when possible.
+
+Pick the first branch supported by artifact evidence. If a branch fails, record why before switching.
+
+## When to Pivot
+
+- If the artifact is really memory corruption or runtime exploitation after checker recovery, hand off to `ctf-pwn`.
+- If the artifact is actually an evidence container / disk / pcap / document workflow, hand off to `ctf-forensics`.
+- If the branch is mostly protocol, puzzle, or mixed transform logic after classification, hand off to `ctf-misc`.
+- If the core problem is mathematical cryptanalysis rather than executable validation, hand off to `ctf-crypto`.
 
 ## Scoreboard Speed Lane
 

@@ -10,7 +10,12 @@ compatibility: opencode
 
 Use this skill for binary exploitation. It structures triage, crash reproduction, primitive discovery, exploitation, and reliable pwntools output.
 
-Always combine this with `ctf-terminal` for real-output command discipline.
+## Contract
+
+- Start reference navigation from `references/REFERENCE_INDEX.md` when multiple PWN subfamilies are plausible.
+- Always combine this with `ctf-terminal` for real-output command discipline.
+- Prefer the smallest matching route template or reference instead of expanding doctrine inline.
+- Keep `notes.md` focused on the current primitive, substrate state, and next shortest verification step.
 
 Keep this skill thin. Use it for PWN routing, evidence gates, and reference dispatch. Detailed route trees, calibration doctrine, closure variants, runtime-substrate rules, and version-specific exploitation pressure belong in `references/*.md`, `../../../knowledge/pwn/**/*.md`, and the PWN agents.
 
@@ -139,3 +144,10 @@ If the solve becomes branchy, keep the heavy doctrine in references and let `ctf
 ## Stop Conditions
 
 Stop or ask when required binaries/libc are missing, remote service is unavailable, exploit reliability is too low to verify, or an operation would attack out-of-scope infrastructure.
+
+## When to Pivot
+
+- If the target is not actually native-binary or memory-corruption shaped, hand off to `ctf-rev`, `ctf-web`, or `ctf-misc` based on the dominant evidence.
+- If the branch becomes mostly protocol/client state rather than exploitation, hand off to `ctf-misc`.
+- If the path is now mathematical/encoding recovery instead of binary exploitation, hand off to `ctf-crypto`.
+- If the key blockers are artifact extraction or preserved evidence handling, hand off to `ctf-forensics`.

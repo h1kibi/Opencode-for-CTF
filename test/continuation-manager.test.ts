@@ -6,6 +6,7 @@ import type { ContinuationState } from "../src/types.js"
 import { nowIso } from "../src/state-store.js"
 import {
   loadContinuationState,
+  saveContinuationState,
   clearContinuationUserPause,
   noteContinuationSessionStatus,
   summarizeTodos,
@@ -13,6 +14,9 @@ import {
   needsContinuationPrompt,
   buildSuppressionReason,
   isoPlusMsFrom,
+  evaluateFastBudget,
+  applyFastBudgetAction,
+  setContinuationSessionMode,
 } from "../src/continuation-manager.js"
 
 // ---------------------------------------------------------------------------
@@ -291,6 +295,154 @@ describe("loadContinuationState", () => {
   })
 })
 
+describe("evaluateFastBudget", () => {
+  it("remains active before deadline", () => {
+    const state = freshState({
+      lastAgent: "ctf-fast",
+      fastBudgetDeadlineAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+      lastTodoSummary: "pending=0,in_progress=1,high_open=0",
+    })
+    const result = evaluateFastBudget(
+      state,
+      { total: 1, pending: 0, inProgress: 1, highOpen: 0 },
+      { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+    )
+    expect(result.status).toBe("active")
+    expect(result.shouldEscalate).toBe(false)
+  })
+
+  it("prompts review near expiry once", () => {
+    const state = freshState({
+      lastAgent: "ctf-fast",
+      fastBudgetDeadlineAt: new Date(Date.now() + 30_000).toISOString(),
+      lastTodoSummary: "pending=0,in_progress=0,high_open=0",
+    })
+    const result = evaluateFastBudget(
+      state,
+      { total: 1, pending: 0, inProgress: 0, highOpen: 0 },
+      { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+    )
+    expect(result.status).toBe("review")
+    expect(result.shouldPromptReview).toBe(true)
+
+    const followUp = evaluateFastBudget(
+      { ...state, fastBudgetStatus: "review" },
+      { total: 1, pending: 0, inProgress: 0, highOpen: 0 },
+      { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+    )
+    expect(followUp.shouldPromptReview).toBe(false)
+    expect(followUp.status).toBe("review")
+  })
+
+  it("escalates after expiry when configured", () => {
+    const state = freshState({
+      lastAgent: "ctf-fast",
+      fastBudgetDeadlineAt: new Date(Date.now() - 30_000).toISOString(),
+      lastTodoSummary: "pending=0,in_progress=0,high_open=0",
+      lastSessionStatus: "idle",
+    })
+    const result = evaluateFastBudget(
+      state,
+      { total: 1, pending: 0, inProgress: 0, highOpen: 0 },
+      { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+    )
+    expect(result.status).toBe("escalated")
+    expect(result.shouldEscalate).toBe(true)
+    expect(result.handoffSummary).toContain("ESCALATE: ctf-expert")
+  })
+
+  it("uses review status after expiry when auto-escalation is disabled", () => {
+    const state = freshState({
+      lastAgent: "ctf-fast",
+      fastBudgetDeadlineAt: new Date(Date.now() - 30_000).toISOString(),
+      lastTodoSummary: "pending=0,in_progress=0,high_open=0",
+      lastSessionStatus: "idle",
+    })
+    const result = evaluateFastBudget(
+      state,
+      { total: 1, pending: 0, inProgress: 0, highOpen: 0 },
+      { enabled: true, soft_minutes: 15, escalate_on_expiry: false },
+    )
+    expect(result.status).toBe("review")
+    expect(result.shouldEscalate).toBe(false)
+    expect(result.shouldPromptReview).toBe(true)
+  })
+})
+
+describe("applyFastBudgetAction", () => {
+  it("prompts ctf-expert when expired escalation is configured", async () => {
+    const dir = tempPath("ctf-test-budget-")
+    const worktree = tempPath("ctf-test-worktree-")
+    const sessionID = "budget-escalate"
+    const state = await loadContinuationState(worktree, sessionID, dir)
+    state.mode = "ctf"
+    state.lastAgent = "ctf-fast"
+    state.fastBudgetStartedAt = new Date(Date.now() - 16 * 60_000).toISOString()
+    state.fastBudgetDeadlineAt = new Date(Date.now() - 30_000).toISOString()
+    state.fastBudgetStatus = "active"
+    await saveContinuationState(worktree, state)
+    const promptCalls: unknown[] = []
+    const client = {
+      session: {
+        todo: async () => ({ data: [] }),
+        promptAsync: async (args: unknown) => {
+          promptCalls.push(args)
+          return { data: {} }
+        },
+      },
+    } as any
+
+    const result = await applyFastBudgetAction({
+      client,
+      worktree,
+      sessionID,
+      directory: dir,
+      policy: { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+    })
+
+    expect(result.prompted).toBe(true)
+    expect(promptCalls).toHaveLength(1)
+    expect(JSON.stringify(promptCalls[0])).toContain("ctf-expert")
+    expect(result.prompt).toContain("ESCALATE: ctf-expert")
+    const saved = await loadContinuationState(worktree, sessionID, dir)
+    expect(saved.fastBudgetStatus).toBe("escalated")
+    expect(saved.fastBudgetDeadlineAt).toBeUndefined()
+  })
+
+  it("records prompt failure backoff", async () => {
+    const dir = tempPath("ctf-test-budget-")
+    const worktree = tempPath("ctf-test-worktree-")
+    const sessionID = "budget-failure"
+    const state = await loadContinuationState(worktree, sessionID, dir)
+    state.mode = "ctf"
+    state.lastAgent = "ctf-fast"
+    state.fastBudgetDeadlineAt = new Date(Date.now() - 30_000).toISOString()
+    await saveContinuationState(worktree, state)
+    const client = {
+      session: {
+        todo: async () => ({ data: [] }),
+        promptAsync: async () => {
+          throw new Error("boom")
+        },
+      },
+    } as any
+
+    const result = await applyFastBudgetAction({
+      client,
+      worktree,
+      sessionID,
+      directory: dir,
+      policy: { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+    })
+
+    expect(result.prompted).toBe(false)
+    expect(result.suppressionReason).toBe("prompt_failure_backoff")
+    const saved = await loadContinuationState(worktree, sessionID, dir)
+    expect(saved.lastFailureReason).toBe("boom")
+    expect(saved.suppressUntil).toBeDefined()
+  })
+})
+
 // ---------------------------------------------------------------------------
 // clearContinuationUserPause — state mutation
 // ---------------------------------------------------------------------------
@@ -341,12 +493,45 @@ describe("noteContinuationSessionStatus", () => {
     expect(state.idleEligible).toBe(true)
   })
 
-  it("marks idleEligible on retry status", async () => {
+  it("starts fast budget in a non-CTF-named directory when explicitly on the fast lane", async () => {
+    const dir = tempPath("web-app-")
+    const worktree = tempPath("ctf-test-worktree-")
+    const state = await setContinuationSessionMode(worktree, "test-session", dir, "ctf", "ctf-fast")
+    state.fastBudgetStartedAt = undefined
+    state.fastBudgetDeadlineAt = undefined
+    state.fastBudgetStatus = undefined
+    await saveContinuationState(worktree, state)
+
+    const updated = await noteContinuationSessionStatus(worktree, "test-session", dir, "busy", {
+      agent: "ctf-fast",
+      fastBudget: { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+    })
+
+    expect(updated.fastBudgetStartedAt).toBeDefined()
+    expect(updated.fastBudgetDeadlineAt).toBeDefined()
+    expect(updated.fastBudgetStatus).toBe("active")
+  })
+
+  it("does not restart the fast budget once review has been sent", async () => {
     const dir = tempPath("ctf-test-status-")
     const worktree = tempPath("ctf-test-worktree-")
-    const state = await noteContinuationSessionStatus(worktree, "test-session", dir, "retry")
-    expect(state.lastSessionStatus).toBe("retry")
-    expect(state.idleEligible).toBe(true)
+    const state = await loadContinuationState(worktree, "test-session", dir)
+    state.mode = "ctf"
+    state.lastAgent = "ctf-fast"
+    state.fastBudgetStartedAt = new Date(Date.now() - 20 * 60_000).toISOString()
+    state.fastBudgetDeadlineAt = new Date(Date.now() + 30_000).toISOString()
+    state.fastBudgetStatus = "review"
+    state.fastBudgetSummary = "old handoff"
+    state.fastBudgetReviewSentAt = nowIso()
+    await saveContinuationState(worktree, state)
+
+    const updated = await noteContinuationSessionStatus(worktree, "test-session", dir, "busy", {
+      agent: "ctf-fast",
+      fastBudget: { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+    })
+
+    expect(updated.fastBudgetDeadlineAt).toBe(state.fastBudgetDeadlineAt)
+    expect(updated.fastBudgetSummary).toBe("old handoff")
   })
 })
 

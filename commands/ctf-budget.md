@@ -21,6 +21,7 @@ Rules:
 - If budget is exhausted, return STOP_GATE_REQUIRED.
 - Default hard budget unless overridden: two same-family no-differential probes, one low-volume fuzz plan before any fuzzer, one harmless bot/admin trigger canary before exploit payloads, one upload/write canary before destructive-looking writes, one OOB confirmation canary before exfil, and a checkpoint after roughly 25% of the expected solve time.
 - Preferred entrypoint note: `/ctf-budget` is a support command. Use it when budget itself is the question; otherwise let `/ctf-hard-open`, `/ctf-expert`, or `/ctf-stop-gate` carry the default budget model.
+- `ctf-fast` soft budget default: 15 minutes. Near expiry, judge whether progress is still likely to yield a flag; if not, save progress and escalate to `ctf-expert`.
 - Profile intent:
   - `speedrun`: fastest safe closure bias, minimal bookkeeping, low branch fanout.
   - `medium`: balanced branch exploration with modest same-family budget.

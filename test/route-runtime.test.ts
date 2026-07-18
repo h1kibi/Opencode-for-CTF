@@ -86,4 +86,9 @@ describe("session tool surface", () => {
     clearSessionSurface(sid)
     expect(surfaceAgentForTools(sid, "ctf-fast")).toBe("ctf-fast")
   })
+
+  it("does not route expert without readiness helper", () => {
+    const d = planRoute({ text: "checksec libc ret2libc", mode: "fast" }, "auto")
+    expect(primaryAgentForDecision(d)).toBe("ctf-fast")
+  })
 })

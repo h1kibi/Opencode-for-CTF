@@ -61,6 +61,11 @@ export type ContinuationState = {
   lastFailureReason?: string
   lastSessionStatus?: "idle" | "busy" | "retry"
   idleEligible?: boolean
+  fastBudgetStartedAt?: string
+  fastBudgetDeadlineAt?: string
+  fastBudgetStatus?: "active" | "review" | "escalated" | "blocked"
+  fastBudgetSummary?: string
+  fastBudgetReviewSentAt?: string
   pausedByUser?: boolean
   pauseReason?: "user_interrupt" | "manual_disable" | "cooldown"
   suppressUntil?: string
@@ -97,6 +102,8 @@ export type ServerWeight = "light" | "medium" | "heavy"
 
 export type ServerGroup = "recon" | "analysis" | "knowledge" | "debug"
 
+export type CtfFamily = "web" | "pwn" | "rev" | "crypto" | "forensics" | "misc"
+
 export type McpRequestStatus = "pending" | "approved" | "denied"
 
 export type McpServerMeta = {
@@ -104,7 +111,7 @@ export type McpServerMeta = {
   description: string
   weight: ServerWeight
   group: ServerGroup
-  categories: string[]
+  categories: CtfFamily[]
   config: Record<string, unknown>
   timeout?: number
   envRequired?: string[]

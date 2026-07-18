@@ -14,7 +14,12 @@ Use this skill to turn challenge parameters and oracle behavior into a mathemati
 
 Use only on provided CTF/lab crypto material or explicitly authorized services.
 
-For RSA challenges, load `references/rsa.md` and prefer `ctf-rsa-probe` before writing attacks.
+## Contract
+
+- Load `references/REFERENCE_INDEX.md` first when the primitive is unclear.
+- For RSA challenges, load `references/rsa.md` and prefer `ctf-rsa-probe` before writing attacks.
+- Keep `notes.md` small, explicit, and reversible-first.
+- Pivot quickly to misc, rev, or forensics when the challenge is only crypto-adjacent.
 
 ## Inputs
 
@@ -50,6 +55,12 @@ Collect:
    - Check XOR, known plaintext, repeated key, substitution, transposition, base encodings, compression, and layered transforms.
 
 Pick the first branch supported by parameters or source. If a branch fails, record why before switching.
+
+## When to Pivot
+
+- If the challenge is actually protocol/client logic, hand off to `ctf-misc`.
+- If the output depends on binary checker behavior or runtime validation, hand off to `ctf-rev`.
+- If the artifact is embedded in a file/container, hand off to `ctf-forensics` after preserving the original.
 
 ## Tool Discipline
 

@@ -11,6 +11,7 @@ $ARGUMENTS
 
 Rules:
 - Use after budget exhaustion, two failed top hypotheses, repeated tool failures, state-damage risk, no new differential, or 2-3 probes without legitimate progress.
+- A `ctf-fast` soft-budget expiry with no promising progress should be treated as a first-class stop/escalation trigger.
 - Do not run new probes in this command.
 - Check whether the current branch has a confirmed primitive, a useful differential, or only noise.
 - If a candidate flag exists, prefer FINAL gate over continued exploration.

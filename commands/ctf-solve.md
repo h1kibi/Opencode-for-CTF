@@ -4,9 +4,9 @@ agent: ctf-fast
 subtask: false
 ---
 
-# /ctf-solve — compatibility alias
+# /ctf-solve — compatibility-only alias
 
-Prefer **`/ctf`**. This command remains for older docs and muscle memory.
+Prefer **`/ctf`**. This command remains only for older docs and muscle memory, and is not part of the main command surface.
 
 Challenge info:
 $ARGUMENTS

@@ -12,9 +12,12 @@ Core rule: Start every Web challenge in recon phase. Map the full attack surface
 
 This skill is the Web challenge controller and phase dispatcher. It enforces the solve state machine and routes to specialized skills at each phase.
 
-Keep this skill thin. It should own phase discipline, route selection, and skill dispatch. Detailed bug-family payload ladders, runtime quirks, and closure matrices belong in the focused `ctf-web-*` skills and `references/*.md`.
+## Contract
 
-Start reference navigation from `references/REFERENCE_INDEX.md` when multiple Web subfamilies or phases compete.
+- Start reference navigation from `references/REFERENCE_INDEX.md` when multiple Web subfamilies or phases compete.
+- Keep this skill thin: own phase discipline, route selection, and skill dispatch only.
+- Keep `notes.md` centered on the current phase, current primitive candidate, and next smallest safe check.
+- Pivot early when the dominant evidence is really pwn/rev/crypto/forensics/misc shaped.
 
 ## Scope
 
@@ -132,6 +135,21 @@ Use references to keep this controller compact:
 - Analyze what worked and what failed.
 - Generate lessons learned.
 - Produce skill patch proposals if needed.
+
+### Phase: retro
+
+- Load `ctf-web-retro`.
+- Analyze what worked and what failed.
+- Generate lessons learned.
+- Produce skill patch proposals if needed.
+
+## When to Pivot
+
+- If the dominant signal is native memory corruption or direct binary exploitation, hand off to `ctf-pwn`.
+- If the dominant signal is executable validation or mobile/native analysis, hand off to `ctf-rev`.
+- If the dominant signal is mathematical cryptanalysis or parameter recovery, hand off to `ctf-crypto`.
+- If the dominant signal is artifact extraction / stego / pcap / document handling, hand off to `ctf-forensics`.
+- If the challenge is mostly protocol, puzzle, or mixed routing rather than web exploitation, hand off to `ctf-misc`.
 
 ## Skill Dispatch
 

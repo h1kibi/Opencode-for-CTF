@@ -8,18 +8,22 @@ subtask: false
 
 You only need these for normal work.
 
-## L0 — default product surface
+## L0 — default main entry
 
 | Command | Purpose |
 | --- | --- |
-| `/ctf <target>` | **Default entry** — auto-route + solve |
+| `/ctf <target>` | **唯一默认主入口** — auto-route + solve |
+| `/ctf-help` | This help |
+
+## L1 — core modes
+
+| Command | Purpose |
+| --- | --- |
 | `/ctf-fast <target>` | Force lightweight fast lane |
 | `/ctf-expert <target>` | Force evidence-driven expert lane |
 | `/ctf-resume <context>` | Resume an existing evidence branch |
-| `/ctf-help` | This help |
-| `/ctf-team-mode ...` | Team Mode controls (expert only) |
 
-## L1 — category specialists (when type is already clear)
+## L2 — category specialists (when type is already clear)
 
 | Command | Agent |
 | --- | --- |
@@ -30,9 +34,14 @@ You only need these for normal work.
 | `/ctf-forensics` | `ctf-forensics` |
 | `/ctf-misc` | `ctf-misc` |
 
-## L2 — advanced / compatibility
+## L3 — compatibility / advanced support
 
-Heap mappers, Android macros, Godot helpers, ledger/control-plane commands, and the historical alias `/ctf-solve` remain installed for power users and old workflows. They are **not** part of the default product surface.
+| Command | Purpose |
+| --- | --- |
+| `/ctf-solve <target>` | Historical compatibility alias — prefer `/ctf` |
+| `/ctf-team-mode ...` | Team Mode controls (expert only) |
+
+Heap mappers, Android macros, Godot helpers, ledger/control-plane commands, and other specialist helpers remain installed for power users and old workflows. They are **not** part of the main entry surface.
 
 ## Runtime routing
 

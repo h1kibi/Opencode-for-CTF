@@ -212,6 +212,45 @@ Re-enter phase ②. Re-read target feedback carefully before killing a previousl
 OpenCode loads **one process tool registry** at startup (`tool_packs` ∪ `expert_tool_packs` in `opencode-for-ctf.jsonc`).  
 ctf-fast is narrowed by allowlist; expert uses the full registered set. For true full coverage set `"tool_packs": ["all"]` and restart.
 
+### Hard dependencies
+
+Loading this skill does **not** mean the runtime tools are available. Expert Mode depends on:
+
+| Category | Tools |
+|----------|-------|
+| Team runtime (mandatory) | `ctf-team-dispatch`, `ctf-team-status`, `ctf-team-collect`, `ctf-team-cancel`, `ctf-team-cancel-route`, `ctf-team-close`, `ctf-team-recover` |
+| Core workflow (mandatory) | `ctf-evidence-board`, `ctf-mcp-control`, `ctf-decompose-task` |
+
+Support tools are expected but non-blocking: `ctf-team-mode`, `ctf-handoff`, `ctf-tool-packs`.
+If a support tool is unavailable, continue the Expert contract directly with the hard-required tools.
+
+**If hard-required tools are missing, the `/ctf-expert` command will fail fast with diagnostics.**
+This is not a skill corruption — it means OpenCode was started before the config was applied.
+
+Fix: set `team_mode.enabled=true` and `tool_packs=["all"]` (or the explicit pack list with `"core"`) in `opencode-for-ctf.jsonc`, then **restart OpenCode**.
+
+### Route-specific soft dependencies
+
+Expert Mode does **not** require every binary helper to be installed up front. Tools like `ida`, `jadx`, `ghidra`, `apktool`, and `frida` are **soft dependencies** that only matter when the current route needs them.
+
+That means:
+- Web/Crypto/Misc solves can still run Expert Mode without Android or reversing binaries
+- Missing `ida`/`jadx` should block only the route that needs them, not the whole Expert lane
+- Prefer lane-specific diagnostics over global expert failure for those tools
+
+### Recovery on restart
+
+If an Evidence.md or expert handoff already exists, resume from it — do not restart from zero.
+
+```
+After restart:
+1. Start OpenCode with the CTF plugin/config enabled.
+2. Run:
+   /ctf-expert
+   <challenge description, attachments>
+   Resume from <handoff-path>; do not restart from zero.
+```
+
 ---
 
 ## Anti-patterns

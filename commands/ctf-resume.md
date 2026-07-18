@@ -13,7 +13,8 @@ Rules:
 - Do not restart broad recon by default.
 - First inspect existing `notes.md`, `.ctf-decision-state.json`, `agent_flag.txt`, `solve.py`, and relevant work/extracted directories if present.
 - Prefer `templates/ctf_resume_packet.md`-style content first when it exists.
-- If the solve came from `ctf-fast` or `ctf-fast`, prefer `templates/ctf_fast_handoff.md`-style content before falling back to freeform notes.
+- If the solve came from `ctf-fast`, prefer `templates/ctf_fast_handoff.md`-style content before falling back to freeform notes.
+- Budget-driven `ctf-fast` escalations should resume from the saved fast handoff / evidence packet rather than restarting broad recon.
 - Prefer `ctf:evidence-doctor <challenge-slug>` or `node scripts/ctf-evidence-doctor.ts <challenge-slug>` when the slug is known but the restart packet quality is uncertain.
 - Prefer a fixed `CTF Resume Block` in `notes.md` when available:
   ```markdown

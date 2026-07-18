@@ -38,6 +38,9 @@ export default tool({
       config.default_mode,
     )
     const primary = primaryAgentForDecision(decision)
+    if (primary === "ctf-expert") {
+      throw new Error("Expert route planning must be initiated from the plugin-routed /ctf or /ctf-expert flow so runtime readiness can be verified first.")
+    }
     rememberSessionSurface(context.sessionID, primary)
 
     return [

@@ -8,6 +8,17 @@ subtask: false
 
 Force the expert primary agent. For automatic routing, prefer `/ctf`.
 
+> **Preflight:** Expert Mode requires Team Mode tools (`ctf-team-*`) and core workflow
+> tools (`ctf-evidence-board`, `ctf-mcp-control`, `ctf-decompose-task`). If these are
+> not in the process registry, the command will fail fast with diagnostics and recovery
+> steps. This is usually because OpenCode was started before the config was applied.
+> Fix: restart OpenCode after enabling `team_mode.enabled=true` and appropriate tool
+> packs. Do **not** use ordinary task/delegate concurrency as a substitute.
+>
+> **Scope note:** external binaries such as `ida`, `jadx`, `ghidra`, `apktool`, and
+> `frida` are route-specific soft dependencies, not Expert Mode hard dependencies.
+> Missing them should only block the route that needs them.
+
 Challenge info:
 $ARGUMENTS
 
@@ -38,3 +49,24 @@ $ARGUMENTS
 - Independent routes: concurrent; shared_state: serial.
 - On live route: `ctf-team-cancel-route keepRouteId=R*`.
 - After every collect: `ctf-mcp-control list-pending` then approve/deny before next dispatch.
+
+## Tool requirements
+
+The following hard-required tools must be registered in the process tool registry (fixed at OpenCode startup):
+
+| Category | Tools |
+|----------|-------|
+| Team runtime | `ctf-team-dispatch`, `ctf-team-status`, `ctf-team-collect`, `ctf-team-cancel`, `ctf-team-cancel-route`, `ctf-team-close`, `ctf-team-recover` |
+| Core workflow | `ctf-evidence-board`, `ctf-mcp-control`, `ctf-decompose-task` |
+
+Support tools are helpful but non-blocking: `ctf-team-mode`, `ctf-handoff`, `ctf-tool-packs`.
+If a support tool is unavailable, continue the Expert contract directly with the hard-required tools.
+
+If hard-required tools are missing, restart OpenCode after setting `team_mode.enabled=true`
+and `tool_packs=["all"]` in `opencode-for-ctf.jsonc`.
+
+## Recovery after restart
+
+If a handoff or Evidence.md already exists (e.g. `work/ctf-evidence/<slug>/`),
+resume from it — do not restart from zero. Pass the challenge context and
+handoff path to `/ctf-expert` when re-invoking.

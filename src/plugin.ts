@@ -1,5 +1,6 @@
 import type { Hooks, Plugin } from "@opencode-ai/plugin"
 import {
+  applyFastBudgetAction,
   clearContinuationUserPause,
   continuationCheck,
   loadContinuationState,
@@ -12,14 +13,21 @@ import { activateAgentDefaults, processPendingRequests } from "./dynamic-mcp-man
 import { getAgentDefaults } from "./agent-mcp-profiles.ts"
 import { loadCtfTools } from "./ctf-tools.ts"
 import { createTeamTools, handleTeamEvent, initializeTeamRuntime } from "./team-runtime.ts"
-import { isHookEnabled, loadPluginConfig, type PluginUserConfig } from "./plugin-config.ts"
+import { isHookEnabled, loadPluginConfigWithPath, type PluginUserConfig } from "./plugin-config.ts"
 import { toolAllowedForAgent } from "./tool-packs.ts"
 import { buildCtfEntryInjection } from "./route-runtime.ts"
 import {
   rememberSessionSurface,
   surfaceAgentForTools,
+  surfaceAgentForStatus,
   clearSessionSurface,
 } from "./session-surface.ts"
+import {
+  evaluateExpertReadiness,
+  extractResumeHints,
+  formatExpertReadinessFailure,
+} from "./expert-readiness.ts"
+import { evaluateAllFamilyReadiness, formatFamilyReadinessSummary } from "./family-readiness.ts"
 
 // ---------------------------------------------------------------------------
 // Hash-anchored editing — inject content hashes into Read output and verify
@@ -260,7 +268,9 @@ function isCtfSafePermission(permission: { type: string; title: string }): boole
 // ---------------------------------------------------------------------------
 
 const RuntimePlugin: Plugin = async (input, _options) => {
-  const pluginConfig: PluginUserConfig = await loadPluginConfig(input.directory)
+  const loaded = await loadPluginConfigWithPath(input.directory)
+  const pluginConfig: PluginUserConfig = loaded.config
+  const pluginConfigPath = loaded.path
   // Process-level registry = tool_packs ∪ expert_tool_packs (superset for expert).
   // ctf-fast is narrowed later via FAST_TOOL_ALLOWLIST + session surface.
   const packUnion = [
@@ -270,23 +280,83 @@ const RuntimePlugin: Plugin = async (input, _options) => {
   const tools = await loadCtfTools({
     packs: packUnion.length ? packUnion : undefined,
   })
-  // Merge Team Mode tools into the tool registry
-  const teamTools = createTeamTools(input.client, input.directory, input.worktree)
-  Object.assign(tools, teamTools)
+  // Team Mode tools are only registered when config enables them (requires restart).
+  if (pluginConfig.team_mode.enabled) {
+    const teamTools = createTeamTools(input.client, input.directory, input.worktree, {
+      maxWorkers: pluginConfig.team_mode.max_workers,
+    })
+    Object.assign(tools, teamTools)
+  }
   // Reconcile any dangling worker sessions on plugin startup
-  if (isHookEnabled(pluginConfig, "team_events")) {
+  if (teamEventsEnabled()) {
     initializeTeamRuntime(input.client, input.directory).catch((err) =>
       console.warn("[plugin] team-runtime init (non-fatal):", err),
     )
   }
+  const registeredToolNames = Object.keys(tools)
+
+  function expertReadinessReport() {
+    return evaluateExpertReadiness({
+      registeredTools: registeredToolNames,
+      teamModeEnabled: pluginConfig.team_mode.enabled,
+      maxWorkers: pluginConfig.team_mode.max_workers,
+      toolPacks: pluginConfig.tool_packs,
+      expertToolPacks: pluginConfig.expert_tool_packs,
+      configPath: pluginConfigPath,
+    })
+  }
+
+  function expertReadinessFailureText(userText = "", sessionNote?: string) {
+    const report = expertReadinessReport()
+    const resume = extractResumeHints(userText)
+    return formatExpertReadinessFailure(report, {
+      challengeText: userText,
+      handoffPath: resume.handoffPath,
+      evidencePath: resume.evidencePath,
+      sessionNote,
+    })
+  }
+
+  function familyReadinessReports() {
+    return evaluateAllFamilyReadiness({
+      registeredTools: registeredToolNames,
+      enabledToolPacks: packUnion.length ? packUnion : ["core", "web", "pwn", "rev", "crypto", "forensics", "misc", "java"],
+    })
+  }
+
+  function familyReadinessSummaryText() {
+    return familyReadinessReports().map((report) => formatFamilyReadinessSummary(report)).join("\n\n")
+  }
+
+  function teamEventsEnabled() {
+    return pluginConfig.team_mode.enabled && isHookEnabled(pluginConfig, "team_events")
+  }
+
+  function firstNonEmptyString(...values: string[]) {
+    return values.find((value) => value !== "") ?? ""
+  }
+
+  function requireExpertReadiness(userText = "", sessionNote?: string) {
+    const report = expertReadinessReport()
+    if (!report.ready) throw new Error(expertReadinessFailureText(userText, sessionNote))
+  }
+
+  function promoteExpertSurface(sessionID: string | undefined | null) {
+    rememberSessionSurface(sessionID ?? undefined, "ctf-expert")
+  }
+
+  function promoteFastSurface(sessionID: string | undefined | null) {
+    rememberSessionSurface(sessionID ?? undefined, "ctf-fast")
+  }
+
   const hooks: Hooks = {
     event: async ({ event }) => {
       if (event.type === "tui.command.execute") {
         const command = propString(event.properties, "command")
         if (command === "session.interrupt") {
           if (!isHookEnabled(pluginConfig, "continuation")) return
-          const sessionID = propString(event.properties, "sessionID") || propString(event.properties, "sessionId")
-          const activeSessionID = sessionID || propString(event, "sessionID")
+          const sessionID = firstNonEmptyString(propString(event.properties, "sessionID"), propString(event.properties, "sessionId"))
+          const activeSessionID = firstNonEmptyString(sessionID, propString(event, "sessionID"))
           if (activeSessionID) {
             await markContinuationInterruptedByUser(input.worktree, activeSessionID, input.directory)
           } else {
@@ -301,14 +371,22 @@ const RuntimePlugin: Plugin = async (input, _options) => {
         const statusObj = propObject<{ type?: string }>(event.properties, "status")
         const status = (statusObj?.type || "") as "idle" | "busy" | "retry" | ""
         if (
-          isHookEnabled(pluginConfig, "continuation") &&
           sessionID &&
+          (isHookEnabled(pluginConfig, "continuation") || pluginConfig.ctf_fast_budget.enabled) &&
           (status === "idle" || status === "busy" || status === "retry")
         ) {
-          await noteContinuationSessionStatus(input.worktree, sessionID, input.directory, status)
+          const rawAgent = firstNonEmptyString(
+            propString(event.properties, "agent"),
+            propString(event.properties, "agentName"),
+            propString(propObject<Record<string, unknown>>(event.properties, "session") ?? {}, "agent"),
+          )
+          await noteContinuationSessionStatus(input.worktree, sessionID, input.directory, status, {
+            fastBudget: pluginConfig.ctf_fast_budget,
+            agent: surfaceAgentForStatus(sessionID, rawAgent),
+          })
         }
         // Team Mode: track worker lifecycle (non-fatal)
-        if (isHookEnabled(pluginConfig, "team_events")) {
+        if (teamEventsEnabled()) {
           try {
             await handleTeamEvent(event, input.client, input.directory)
           } catch (err) {
@@ -328,13 +406,30 @@ const RuntimePlugin: Plugin = async (input, _options) => {
         // Clean up stale activated-defaults entries so the Set doesn't leak memory.
         trimActivatedDefaults()
 
+        let continuationSummary: Awaited<ReturnType<typeof continuationCheck>>["summary"] | undefined
         if (isHookEnabled(pluginConfig, "continuation")) {
-          await continuationCheck({
+          const cont = await continuationCheck({
             client: input.client,
             worktree: input.worktree,
             sessionID,
             directory: input.directory,
           })
+          continuationSummary = cont.summary
+        }
+
+        if (pluginConfig.ctf_fast_budget.enabled) {
+          const result = await applyFastBudgetAction({
+            client: input.client,
+            worktree: input.worktree,
+            sessionID,
+            directory: input.directory,
+            policy: pluginConfig.ctf_fast_budget,
+            summary: continuationSummary,
+          })
+          if (result.prompted && result.budget.shouldEscalate) {
+            promoteExpertSurface(sessionID)
+            console.log(`[plugin] fast-budget: session=${sessionID.slice(0, 12)} escalated to ctf-expert`)
+          }
         }
 
         if (isHookEnabled(pluginConfig, "skill_mcp")) {
@@ -368,7 +463,7 @@ const RuntimePlugin: Plugin = async (input, _options) => {
         }
 
         // Team Mode: collect finished worker results & notify parent (non-fatal)
-        if (isHookEnabled(pluginConfig, "team_events")) {
+        if (teamEventsEnabled()) {
           try {
             await handleTeamEvent(event, input.client, input.directory)
           } catch (err) {
@@ -382,7 +477,16 @@ const RuntimePlugin: Plugin = async (input, _options) => {
 
       // Team Mode: handle worker session errors and deletions (non-fatal)
       if (event.type === "session.error" || event.type === "session.deleted") {
-        if (!isHookEnabled(pluginConfig, "team_events")) return
+        const sessionID = firstNonEmptyString(
+          propString(event.properties, "sessionID"),
+          propString(event.properties, "sessionId"),
+          propString(propObject<Record<string, unknown>>(event.properties, "info") ?? {}, "id"),
+        )
+        if (event.type === "session.deleted" && sessionID) {
+          clearActivatedDefaults(sessionID)
+          clearSessionSurface(sessionID)
+        }
+        if (!teamEventsEnabled()) return
         try {
           await handleTeamEvent(event, input.client, input.directory)
         } catch (err) {
@@ -409,12 +513,12 @@ const RuntimePlugin: Plugin = async (input, _options) => {
       const cmd = _meta.command || ""
       if (cmd === "ctf" || cmd === "ctf-solve") {
         output.parts = output.parts || []
-        const userText =
-          propString(_meta, "arguments") ||
-          propString(_meta, "args") ||
-          propString(_meta, "text") ||
-          propString(output, "text") ||
-          ""
+        const userText = firstNonEmptyString(
+          propString(_meta, "arguments"),
+          propString(_meta, "args"),
+          propString(_meta, "text"),
+          propString(output, "text"),
+        )
         // Best-effort evidence branch detection from free text
         const hasEvidence =
           /\bwork[\\/]+ctf-evidence\b/i.test(userText) || /\bEvidence\.md\b/i.test(userText)
@@ -446,21 +550,25 @@ const RuntimePlugin: Plugin = async (input, _options) => {
         // primary is expert, force a hard handoff instruction so the model does
         // not keep the fast persona.
         if (primary === "ctf-expert") {
+          // Preflight: confirm expert runtime is ready before hard-handoff.
+          // If not ready, fail fast; do not substitute ctf-fast for Expert Mode.
+          requireExpertReadiness(userText, "/ctf routed to ctf-expert")
           try {
             ;(output as { agent?: string }).agent = "ctf-expert"
           } catch {
             /* harness may ignore */
           }
+          promoteExpertSurface(_meta.sessionID)
           injection += [
             "",
             "",
             "⚠️ COMMAND AGENT MAY STILL BE LABELLED ctf-fast — IGNORE THAT LABEL.",
-            "IMMEDIATELY call tool `ctf-handoff` with lane=expert (or follow the expert contract below without delay).",
+            "If available, call tool `ctf-handoff` with lane=expert; otherwise follow the expert contract below without delay.",
             "You must behave as **ctf-expert** for the rest of this session: Evidence.md, Team Mode, full tools.",
             "Do not use ctf-fast intuition-only workflow.",
           ].join("\n")
         }
-        rememberSessionSurface(_meta.sessionID, primary)
+        output.parts = output.parts || []
         output.parts.push({
           id: "",
           sessionID: _meta.sessionID || "",
@@ -471,7 +579,29 @@ const RuntimePlugin: Plugin = async (input, _options) => {
         return
       }
       if (cmd === "ctf-expert") {
-        rememberSessionSurface(_meta.sessionID, "ctf-expert")
+        const userText = firstNonEmptyString(
+          propString(_meta, "arguments"),
+          propString(_meta, "args"),
+          propString(_meta, "text"),
+          propString(output, "text"),
+        )
+        // Preflight: confirm expert runtime is ready before injecting the contract.
+        const readied = expertReadinessReport()
+        if (!readied.ready) {
+          throw new Error(expertReadinessFailureText(userText, "command agent via /ctf-expert"))
+        }
+        // If fast mode previously expired into a budget-driven escalation,
+        // surface the saved handoff block so expert can continue without re-triage.
+        let fastBudgetHandoff = ""
+        try {
+          const contState = await loadContinuationState(input.worktree, _meta.sessionID, input.directory)
+          if (contState.fastBudgetStatus === "escalated" && contState.fastBudgetSummary) {
+            fastBudgetHandoff = `\n\n🔁 FAST BUDGET HANDOFF — resume from saved fast-lane state:\n${contState.fastBudgetSummary}`
+          }
+        } catch {
+          /* non-fatal */
+        }
+        promoteExpertSurface(_meta.sessionID)
         output.parts = output.parts || []
         output.parts.push({
           id: "",
@@ -484,12 +614,12 @@ const RuntimePlugin: Plugin = async (input, _options) => {
 - Concurrent subagents for independent work; you orchestrate only.
 - Heavy MCP: ctf-mcp-control approve/deny after worker request.
 - Flag → return directly and stop (no mandatory flag file).
-- Optional: ctf-route-plan mode=expert for category hints.`,
+- Optional: ctf-route-plan mode=expert for category hints.${fastBudgetHandoff}`,
         } as any)
         return
       }
       if (cmd === "ctf-fast") {
-        rememberSessionSurface(_meta.sessionID, "ctf-fast")
+        promoteFastSurface(_meta.sessionID)
         output.parts = output.parts || []
         output.parts.push({
           id: "",
@@ -505,11 +635,12 @@ const RuntimePlugin: Plugin = async (input, _options) => {
     "tool.execute.before": async (meta, output) => {
       // ctf-fast may only use the lightweight tool allowlist (expert keeps full packs).
       // /ctf may stay on command agent ctf-fast while BINDING route is expert — honor session surface.
-      const rawAgent =
-        propString(meta, "agent") ||
-        propString(meta, "agentName") ||
-        propString(output, "agent") ||
-        propString((meta as { agent?: unknown }).agent, "name")
+        const rawAgent = firstNonEmptyString(
+          propString(meta, "agent"),
+          propString(meta, "agentName"),
+          propString(output, "agent"),
+          propString((meta as { agent?: unknown }).agent, "name"),
+        )
       const agentName = surfaceAgentForTools(meta.sessionID, rawAgent)
       const toolName = typeof meta.tool === "string" ? meta.tool : ""
       if (
@@ -525,7 +656,7 @@ const RuntimePlugin: Plugin = async (input, _options) => {
       }
 
       if (meta.tool === "skill") {
-        const skillName = propString(output.args, "name") || propString(output.args, "skillName")
+        const skillName = firstNonEmptyString(propString(output.args, "name"), propString(output.args, "skillName"))
         if (!skillName) return
 
         // 1) Existing: activate skill-bound MCPs
@@ -544,6 +675,16 @@ const RuntimePlugin: Plugin = async (input, _options) => {
             // which may reduce capability but should not block the task.
             const msg = err instanceof Error ? err.message : String(err)
             console.warn(`[plugin] ensureSkillMcpLeases failed for skill "${skillName}" (non-fatal): ${msg}`)
+          }
+        }
+
+        // 1b) Secondary guard: loading ctf-expert skill while expert is not ready
+        // should block early. The command-level gate is primary; this is a safety net.
+        if (skillName === "ctf-expert") {
+          const agent = surfaceAgentForTools(meta.sessionID, rawAgent)
+          const readied = expertReadinessReport()
+          if (!readied.ready) {
+            throw new Error(expertReadinessFailureText("", `skill ctf-expert requested on surface "${agent}"`))
           }
         }
 

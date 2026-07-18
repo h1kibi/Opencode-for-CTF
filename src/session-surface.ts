@@ -40,3 +40,14 @@ export function surfaceAgentForTools(
   if (sessionID && sessionToolSurface.get(sessionID) === "ctf-expert") return "ctf-expert"
   return agentName
 }
+
+/** Resolve agent name for status/continuation bookkeeping. */
+export function surfaceAgentForStatus(
+  sessionID: string | undefined | null,
+  agentName: string | undefined,
+): string | undefined {
+  const remembered = getSessionSurface(sessionID)
+  if (remembered === "ctf-expert") return "ctf-expert"
+  if (agentName !== undefined && agentName !== "") return agentName
+  return remembered
+}

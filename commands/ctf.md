@@ -10,8 +10,8 @@ subtask: false
 
 > **Agent note:** Frontmatter `agent: ctf-fast` is the OpenCode default shell only.
 > The plugin injects a **BINDING** route. If `primary_session_agent` is `ctf-expert`,
-> you **must** immediately call `ctf-handoff lane=expert` and then follow the expert contract.
-> Session tool surface is already switched; Team Mode is allowed after handoff.
+> call `ctf-handoff lane=expert` when available; otherwise follow the expert contract directly.
+> Session tool surface is already switched; Team Mode is allowed after handoff/contract binding.
 
 Challenge info:
 $ARGUMENTS
@@ -21,7 +21,7 @@ $ARGUMENTS
 1. **Authorize** — only authorized CTF / lab / local targets.
 2. **Read the injected ROUTE DECISION** (plugin hook). It applied `opencode-for-ctf.jsonc` → `default_mode`.
 3. **Hard handoff if needed**
-   - `primary_session_agent: ctf-expert` (or mode expert/resume) → call **`ctf-handoff lane=expert`** first, then load skill `ctf-expert`.
+   - `primary_session_agent: ctf-expert` (or mode expert/resume) → call **`ctf-handoff lane=expert`** when available; otherwise follow the expert contract directly, then load skill `ctf-expert`.
    - `primary_session_agent: ctf-fast` → stay on fast allowlist; optional `ctf-handoff lane=fast` to lock surface.
 4. **Optional refresh** — `ctf-route-plan` if new signals (`hasEvidenceBranch=true` when evidence branch exists).
 5. **Execute the lane**
@@ -30,11 +30,18 @@ $ARGUMENTS
 6. **Solve** — flag, exhausted routes, or blocked on user resource.
 7. **Escalate** — from fast only: `ESCALATE: ctf-expert` then `ctf-handoff lane=expert`.
 
+## Entry taxonomy
+
+- **Main entry**: `/ctf`
+- **Core modes**: `/ctf-fast`, `/ctf-expert`, `/ctf-resume`
+- **Category specialists**: `/ctf-web`, `/ctf-pwn`, `/ctf-rev`, `/ctf-crypto`, `/ctf-forensics`, `/ctf-misc`
+- **Compatibility only**: `/ctf-solve`
+
 ## Mode guide
 
 | Route result | Meaning |
 | --- | --- |
-| `fast` | Intuition-first, minimal tooling, short budget |
+| `fast` | Intuition-first, minimal tooling, 15-minute soft budget |
 | `expert` | Evidence.md, 3-route plan, Team Mode concurrency |
 | `resume` | Continue existing evidence branch (expert) |
 
@@ -46,7 +53,7 @@ $ARGUMENTS
 
 ## Do not
 
-- Do not ignore the BINDING route block or skip `ctf-handoff` when primary is expert.
+- Do not ignore the BINDING route block or skip expert handoff/contract when primary is expert.
 - Do not re-run broad triage when an evidence branch already answers the question.
 - Do not invent flags or attack out-of-scope systems.
 

@@ -78,6 +78,25 @@
     "evidence_packet_bootstrap": true,
     "fanout_contract": true,
     "lesson_index_presence": true,
-    "benchmark_smoke": true
+    "benchmark_smoke": true,
+    "expert_required_tools": [
+      "ctf-team-dispatch",
+      "ctf-team-status",
+      "ctf-team-collect",
+      "ctf-team-cancel",
+      "ctf-team-cancel-route",
+      "ctf-team-close",
+      "ctf-team-recover",
+      "ctf-evidence-board",
+      "ctf-mcp-control",
+      "ctf-decompose-task"
+    ],
+    "expert_soft_dependencies": [
+      "ida",
+      "jadx",
+      "ghidra",
+      "apktool",
+      "frida"
+    ]
   }
 }

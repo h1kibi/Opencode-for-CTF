@@ -2,7 +2,7 @@ import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { parse } from "jsonc-parser"
+import { parse, type ParseError } from "jsonc-parser"
 
 /** Known runtime hooks that users may disable via config. */
 export type HookName =
@@ -25,6 +25,11 @@ export type PluginUserConfig = {
   }
   continuation: {
     enabled: boolean
+  }
+  ctf_fast_budget: {
+    enabled: boolean
+    soft_minutes: number
+    escalate_on_expiry: boolean
   }
   /** When false, Read/Edit hash tags are not injected/verified. */
   hashline: {
@@ -55,6 +60,11 @@ export const DEFAULT_PLUGIN_CONFIG: PluginUserConfig = {
   },
   continuation: {
     enabled: true,
+  },
+  ctf_fast_budget: {
+    enabled: true,
+    soft_minutes: 15,
+    escalate_on_expiry: true,
   },
   hashline: {
     enabled: true,
@@ -101,6 +111,17 @@ export function mergePluginConfig(partial: unknown): PluginUserConfig {
   }
   if (isRecord(partial.continuation) && typeof partial.continuation.enabled === "boolean") {
     base.continuation.enabled = partial.continuation.enabled
+  }
+  if (isRecord(partial.ctf_fast_budget)) {
+    if (typeof partial.ctf_fast_budget.enabled === "boolean") {
+      base.ctf_fast_budget.enabled = partial.ctf_fast_budget.enabled
+    }
+    if (typeof partial.ctf_fast_budget.soft_minutes === "number" && partial.ctf_fast_budget.soft_minutes > 0) {
+      base.ctf_fast_budget.soft_minutes = Math.min(120, Math.max(5, Math.floor(partial.ctf_fast_budget.soft_minutes)))
+    }
+    if (typeof partial.ctf_fast_budget.escalate_on_expiry === "boolean") {
+      base.ctf_fast_budget.escalate_on_expiry = partial.ctf_fast_budget.escalate_on_expiry
+    }
   }
   if (isRecord(partial.hashline) && typeof partial.hashline.enabled === "boolean") {
     base.hashline.enabled = partial.hashline.enabled
@@ -164,14 +185,31 @@ export function resolveConfigCandidates(startDir?: string): string[] {
   return out
 }
 
-/** Load the first existing opencode-for-ctf config, or defaults. */
-export async function loadPluginConfig(startDir?: string): Promise<PluginUserConfig> {
+export type LoadedPluginConfig = {
+  config: PluginUserConfig
+  /** Absolute path of the config file that was loaded, or null when defaults were used. */
+  path: string | null
+}
+
+/**
+ * Load the first existing opencode-for-ctf config plus its path.
+ * Parse failures warn and continue to the next candidate; if none load, defaults are returned.
+ */
+export async function loadPluginConfigWithPath(startDir?: string): Promise<LoadedPluginConfig> {
   for (const file of resolveConfigCandidates(startDir)) {
     if (!existsSync(file)) continue
     try {
       const raw = await readFile(file, "utf8")
-      const parsed = parse(raw) as unknown
-      return mergePluginConfig(parsed)
+      const errors: ParseError[] = []
+      const parsed = parse(raw, errors, { allowTrailingComma: true, disallowComments: false }) as unknown
+      if (errors.length > 0) {
+        throw new Error(
+          errors
+            .map((error) => `${file}:${error.offset} parse error ${error.error}`)
+            .join("; "),
+        )
+      }
+      return { config: mergePluginConfig(parsed), path: file }
     } catch (err) {
       console.warn(
         `[plugin] failed to parse config ${file}:`,
@@ -179,5 +217,10 @@ export async function loadPluginConfig(startDir?: string): Promise<PluginUserCon
       )
     }
   }
-  return structuredClone(DEFAULT_PLUGIN_CONFIG)
+  return { config: structuredClone(DEFAULT_PLUGIN_CONFIG), path: null }
+}
+
+/** Load the first existing opencode-for-ctf config, or defaults. */
+export async function loadPluginConfig(startDir?: string): Promise<PluginUserConfig> {
+  return (await loadPluginConfigWithPath(startDir)).config
 }

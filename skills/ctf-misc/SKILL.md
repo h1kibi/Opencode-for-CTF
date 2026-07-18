@@ -14,12 +14,19 @@ Use this skill as a classifier and lightweight controller for mixed or ambiguous
 
 Use only on provided CTF/lab/local challenge files and authorized services.
 
+## Contract
+
+- Load `references/REFERENCE_INDEX.md` first when the challenge shape is unclear.
+- Classify before heavy tools.
+- Keep `notes.md` focused on evidence, eliminations, and the chosen route.
+- Pivot quickly to web/pwn/rev/crypto/forensics once the real category is clear.
+
 ## Inputs
 
 Collect:
 
 - Challenge description, files, service protocol, interaction examples, constraints, and flag format.
-- Initial category signals: encoding, archive, QR/barcode, audio, image, jail, programming, game, blockchain, ML, protocol, or mixed web/rev/crypto.
+- Initial category signals: encoding, archive, QR/barcode, audio, image, jail, programming, game, blockchain, ML, protocol, or mixed web/rev/crypto/forensics.
 
 ## Workflow
 
@@ -31,6 +38,14 @@ Collect:
 6. For protocol tasks, capture grammar and implement a minimal client.
 7. For encoding/puzzle tasks, build a reversible transformation chain and verify each step.
 8. Keep solver reproducible in `solve.py` or `solve.js`.
+
+## When to Pivot
+
+- If the evidence is clearly crypto-shaped, hand off to `ctf-crypto`.
+- If the evidence is clearly artifact extraction or evidence handling, hand off to `ctf-forensics`.
+- If the evidence is clearly executable logic or binary validation, hand off to `ctf-rev`.
+- If the evidence becomes classic web/service exploitation, hand off to `ctf-web` or `ctf-pwn`.
+- If a specialist family is now obvious, transfer ownership early and preserve the eliminated routes.
 
 ## Tool Discipline
 

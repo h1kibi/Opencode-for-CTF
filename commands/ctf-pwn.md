@@ -5,6 +5,8 @@ agent: ctf-pwn
 
 Use `ctf-common`, `ctf-terminal`, and `ctf-pwn` skills.
 
+Open `skills/ctf-pwn/references/REFERENCE_INDEX.md` first when multiple PWN subfamilies compete.
+
 Challenge/target:
 $ARGUMENTS
 
@@ -23,5 +25,6 @@ Rules:
 - For local-vs-remote fixed-read or menu-framing drift, use `references/pwn-runtime-trigger-matrix.md` before rotating gadgets, libc, or exploit family.
 - For long Docker transcript debugging, prefer `ctf-pwn-docker-runner` raw log saving and continue from `output_path`.
 - If the branch keeps adding local semantic explanation without shortening the exploit chain, consult `references/pwn-anti-overcomplication.md` and rerank before more same-style probing.
+- Pivot early to `ctf-rev`, `ctf-web`, `ctf-misc`, `ctf-crypto`, or `ctf-forensics` once the dominant evidence is no longer binary-exploitation shaped.
 - Write `exploit.py` or `solve.py` and only verified final flag to `agent_flag.txt`.
 - If the challenge still looks simple after triage, prefer `/ctf-fast`; if runtime alignment, heap/versioning, or closure uncertainty dominate, prefer `/ctf-expert`. Use `references/pwn-mode-boundary.md` when the threshold is unclear.

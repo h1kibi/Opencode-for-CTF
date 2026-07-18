@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import {
   propString,
   propStringNullable,
@@ -6,6 +6,12 @@ import {
   clearActivatedDefaults,
   trimActivatedDefaults,
 } from "../src/plugin.js"
+
+const cleanup = () => clearActivatedDefaults("nonexistent-session")
+
+afterEach(() => {
+  cleanup()
+})
 
 // ---------------------------------------------------------------------------
 // propString — safe property accessor
@@ -41,8 +47,6 @@ describe("propString", () => {
   })
 
   it("returns empty string for empty string value", () => {
-    // This is the function's existing behavior: "" is falsy, so it returns ""
-    // which is consistent with "missing" — caller must distinguish if needed
     expect(propString({ empty: "" }, "empty")).toBe("")
   })
 })
@@ -92,10 +96,7 @@ describe("skillToAgent", () => {
   })
 
   it("returns undefined for ctf-common and ctf-terminal", () => {
-    // These are explicitly excluded in the lazy-activation guard
     expect(skillToAgent("ctf-common")).toBe("ctf-common")
-    // But they ARE in the known list, so they ARE returned
-    // The exclusion happens in the caller (tool.execute.before handler)
   })
 
   it("returns the agent for known special agents", () => {
@@ -107,7 +108,6 @@ describe("skillToAgent", () => {
   })
 
   it("returns undefined for unknown ctf-* skill that doesn't match known prefixes", () => {
-    // Only the first two segments are checked
     expect(skillToAgent("ctf-unknown-category")).toBeUndefined()
     expect(skillToAgent("ctf-nonsense-thing")).toBeUndefined()
   })
@@ -135,8 +135,6 @@ describe("propStringNullable", () => {
   })
 
   it("returns empty string when property is an empty string", () => {
-    // Unlike propString, this returns "" for empty string values
-    // so callers can distinguish missing (undefined) from empty ("")
     expect(propStringNullable({ empty: "" }, "empty")).toBe("")
   })
 
@@ -151,8 +149,6 @@ describe("propStringNullable", () => {
 
 describe("activatedDefaults cleanup", () => {
   it("clearActivatedDefaults removes a session ID", () => {
-    // This exercises the delete path; the set is module-scoped so
-    // we just verify the function exists and runs without error.
     expect(() => clearActivatedDefaults("nonexistent-session")).not.toThrow()
   })
 
@@ -161,7 +157,6 @@ describe("activatedDefaults cleanup", () => {
   })
 
   it("trimActivatedDefaults handles undersized set gracefully", () => {
-    // With a max larger than current size, should be a no-op
     expect(() => trimActivatedDefaults(1000)).not.toThrow()
   })
 })
