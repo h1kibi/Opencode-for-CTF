@@ -160,21 +160,24 @@ async function scanSourceAt(dir: string, slug: string): Promise<{ entries: Analy
   const calls: CallEdge[] = []
   const allEntries = await readdir(dir, { withFileTypes: true, recursive: true }).catch(() => [])
   const sourceFiles = allEntries
-    .filter((e) => e.isFile() && /\.(py|js|ts|java|go|rs|cpp|c|h|php|rb|yaml|yml|json|xml|html|sql)$/i.test(e.name))
+    .filter((e) => e.isFile() && /\.(py|js|ts|java|go|rs|cpp|c|h|php|rb|yaml|yml|json|xml|html|sql|\\.dockerfile|docker-compose|Dockerfile|env|conf)$/i.test(e.name))
     .map((e) => path.join(e.parentPath ?? dir, e.name))
 
   const lang = detectLanguage(sourceFiles)
 
   // Grep for common sink patterns
   const sinkPatterns: Array<{ regex: RegExp; kind: string; danger: string }> = [
-    { regex: /os\.system\(|subprocess\.call\(|subprocess\.Popen\(|exec\(|Runtime\.exec\(|child_process\.exec\(/g, kind: "exec", danger: "command_injection" },
-    { regex: /eval\(|exec\(|compile\(|__import__\(/g, kind: "eval", danger: "code_injection" },
-    { regex: /\.executeQuery\(|\.executeUpdate\(|\.query\(|\.raw\(|\.all\(|cursor\.execute\(/g, kind: "db_query", danger: "sqli" },
-    { regex: /render\(|render_template_string\(|\.render\(|template\(|\.Template\(|\.from_string\(/g, kind: "render", danger: "ssti" },
-    { regex: /urlopen\(|requests\.get\(|fetch\(|http\.get\(|axios\.get\(|curl\(/g, kind: "http_request", danger: "ssrf" },
-    { regex: /pickle\.loads\(|unserialize\(|JSON\.parse\(|JSON\.deserialize\(|ObjectInputStream\(|readObject\(/g, kind: "deserialize", danger: "deser" },
-    { regex: /open\(|fopen\(|File\.read|readFile\(|read_text\(/g, kind: "file_read", danger: "path_traversal" },
-    { regex: /sprintf\(|format_string\(|print\(|printf\(/g, kind: "format_string", danger: "fmt_string" },
+    { regex: /os\.system\(|subprocess\.call\(|subprocess\.Popen\(|subprocess\.run\(|exec\(|Runtime\.exec\(|child_process\.exec\(|child_process\.execSync\(/g, kind: "exec", danger: "command_injection" },
+    { regex: /eval\(|exec\(|compile\(|__import__\(|setTimeout\(|setInterval\(/g, kind: "eval", danger: "code_injection" },
+    { regex: /\.executeQuery\(|\.executeUpdate\(|\.execute\(|\.query\(|\.raw\(|\.all\(|\.find\(|\.findOne\(|cursor\.execute\(|\.prepareStatement\([^)]*\+=/g, kind: "db_query", danger: "sqli" },
+    { regex: /render\(|render_template_string\(|\.render\(|template\(|\.Template\(|\.from_string\(|\.fromStream\(|Twig_Environment|Smarty|Blade|Nunjucks|Jinja2/g, kind: "render", danger: "ssti" },
+    { regex: /urlopen\(|urllib\.request|requests\.get\(|requests\.post\(|fetch\(|http\.get\(|axios\.get\(|curl_exec\(|file_get_contents\(/g, kind: "http_request", danger: "ssrf" },
+    { regex: /pickle\.loads\(|pickle\.load\(|unserialize\(|unserialize|ObjectInputStream\(|readObject\(|readUnshared\(|JSON\.parse\([^)]*reviver|XMLDecoder\(/g, kind: "deserialize", danger: "deser" },
+    { regex: /open\(|fopen\(|File\(|FileReader\(|Files\.read|readFile\(|read_text\(|read_bytes\(|file_get_contents\(/g, kind: "file_read", danger: "path_traversal" },
+    { regex: /sprintf\(|format_string\(|printf\(|vuln_printf/gi, kind: "format_string", danger: "fmt_string" },
+    { regex: /sprintf\([^)]*%[sn]/gi, kind: "format_string", danger: "fmt_write" },
+    { regex: /\.md5\(|\.sha1\(|MD5|SHA1|RC4|DES_ecb|AES\.MODE_ECB|NoPadding|RSA\.NoPadding/g, kind: "crypto", danger: "weak_crypto" },
+    { regex: /getReader|getInputStream|getParameter|getQueryString|getHeader/gi, kind: "input", danger: "user_input" },
   ]
 
   // Find entrypoints
