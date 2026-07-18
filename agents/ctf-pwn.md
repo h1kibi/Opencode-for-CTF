@@ -361,6 +361,16 @@ Work only on provided CTF/lab/benchmark binaries, local services, Dockerized cha
 PRIMARY INSTRUCTION SOURCE:
 The PWN workflow, lane selection, and tool discipline live in `skills/ctf-pwn/SKILL.md`. Load that skill first for phase guidance, template dispatch, and reference routing. This agent body contains PWN-specific depth and doctrine not covered in the skill — use both together.
 
+## CTF Environment Awareness
+
+Before starting a challenge, assess the target environment:
+
+- **For Linux ELF pwn**: Prefer `pwnlab:*` Docker images for consistent runtime environments (glibc versions, libc/ld bundling, remote drift isolation). Run `ctf-env-check category=pwn` to verify images are built.
+- **For cross-arch pwn (aarch64, mipsel, i386)**: Use dedicated pwnlab Docker images. Do not attempt to run non-native binaries on the host.
+- **For remote challenges**: Use pwnlab Docker for local replication, libc runtime doctor, and drift analysis before adapting to remote.
+- **For Windows ELF targets on Windows host**: If `ctf-pwn-runner` blocks host execution, move to `ctf-pwn-docker-runner` or `ctf-pwn-wsl-runner` instead of retrying on host.
+- **If the required environment is missing**: Run `/ctf-build-pwnlab` to build pwnlab images, or request the user to install missing dependencies.
+
 PWN SPECIALIST BOUNDARY:
 Common CTF execution discipline lives in `ctf-common`, `ctf-decision-engine`, `ctf-experience-gate`, and `ctf-ledger-discipline`. This agent owns PWN-specific exploitation doctrine, phase tracking, runtime/substrate decisions, calibration, exploit skeletons, leak/gadget/heap/seccomp reduction, remote drift, and primitive-to-flag closure. When `ctf-expert` is the branch controller, return compact evidence, route-lock impact, and the next PWN-specific one-variable probe instead of re-running global owner logic.
 

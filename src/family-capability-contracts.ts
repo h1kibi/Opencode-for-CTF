@@ -45,6 +45,12 @@ export type FamilyCapabilityContract = {
     detail: string
     remediation?: string
   }>
+  envDependencies?: Array<{
+    id: string
+    label: string
+    detail: string
+    setupCommand?: string
+  }>
 }
 
 export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityContract> = {
@@ -135,6 +141,26 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
         remediation: "Install Docker/host runtime helpers or stay on local-static triage and lightweight runners.",
       },
     ],
+    envDependencies: [
+      {
+        id: "env:docker",
+        label: "Docker daemon",
+        detail: "Docker is required for pwnlab containers (remote drift, libc runtime, cross-arch execution).",
+        setupCommand: "Install Docker Desktop from https://www.docker.com/products/docker-desktop/",
+      },
+      {
+        id: "env:pwnlab-images",
+        label: "pwnlab Docker images",
+        detail: "pwnlab images provide controlled Ubuntu/Debian/Alpine environments with pwntools, gdb, ROPgadget, etc.",
+        setupCommand: "cd docker && docker compose -f docker-compose.pwnlab.yml build",
+      },
+      {
+        id: "env:pwntools",
+        label: "pwntools Python library",
+        detail: "Required for exploit development and interaction with challenge binaries.",
+        setupCommand: "pip install pwntools",
+      },
+    ],
   },
   rev: {
     family: "rev",
@@ -177,6 +203,32 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
         required: false,
         detail: "ReVa improves decompilation and xref flows, but static fallback paths should remain available.",
         remediation: "Configure ReVa/Ghidra env vars or stay on slice/static helpers.",
+      },
+    ],
+    envDependencies: [
+      {
+        id: "env:docker",
+        label: "Docker daemon",
+        detail: "Docker is required for revlab container (cross-arch emulation, network analysis, Android tooling).",
+        setupCommand: "Install Docker Desktop from https://www.docker.com/products/docker-desktop/",
+      },
+      {
+        id: "env:revlab-image",
+        label: "revlab Docker image",
+        detail: "revlab provides a full reverse engineering environment (rizin, binwalk, qemu, apktool, frida, angr, etc.).",
+        setupCommand: "cd docker && docker compose -f docker-compose.revlab.yml build",
+      },
+      {
+        id: "env:android-studio",
+        label: "Android Studio / SDK",
+        detail: "Required for APK analysis, emulator-based dynamic analysis, and ADB interaction.",
+        setupCommand: "Install Android Studio and set ANDROID_HOME environment variable.",
+      },
+      {
+        id: "env:adb",
+        label: "ADB (Android Debug Bridge)",
+        detail: "Required for interacting with Android devices/emulators during APK reversing.",
+        setupCommand: "Install via Android SDK platform-tools or Android Studio.",
       },
     ],
   },
