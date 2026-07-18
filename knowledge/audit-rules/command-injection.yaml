@@ -1,0 +1,17 @@
+rules:
+  - id: command-injection
+    name: Command Injection
+    description: Detect user-controlled input reaching shell/exec functions
+    languages: [python, javascript, typescript, java, go, php, ruby]
+    severity: high
+    sinks:
+      - os.system, subprocess.call, subprocess.Popen, subprocess.run
+      - exec, child_process.exec, child_process.execSync
+      - Runtime.exec, ProcessBuilder
+      - exec, shell_exec, system, passthru
+      - os.exec, exec.Command, exec.CommandContext
+    source_patterns:
+      - request, input, args, param, query, body, cookie, header
+    sanitizer_hints:
+      - shlex.quote, pipes.quote, escape.shell, escapeshellarg
+    ctf_relevance: high

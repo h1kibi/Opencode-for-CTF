@@ -1,0 +1,17 @@
+rules:
+  - id: sqli
+    name: SQL Injection
+    description: Detect unsanitized user input in database queries
+    languages: [python, javascript, typescript, java, php, go, ruby]
+    severity: high
+    sinks:
+      - executeQuery, executeUpdate, execute, createQuery
+      - query, raw, all, select, find, findOne
+      - cursor.execute, db.execute, connection.execute
+      - SELECT ... WHERE, INSERT INTO, UPDATE ... SET
+    source_patterns:
+      - request, input, args, param, query, body, cookie, header
+    sanitizer_hints:
+      - parameterize, bind, placeholder, preparedStatement, ?, $1, %s
+      - sqlalchemy.text, ORM query builder, query builder
+    ctf_relevance: high

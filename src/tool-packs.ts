@@ -80,6 +80,8 @@ export const FAST_TOOL_ALLOWLIST = new Set([
   "ctf-dynamic-mcp-advisor",
   // env check — all agents should verify environment readiness
   "ctf-env-check",
+  // artifact analysis — all agents should analyze challenge files
+  "ctf-artifact-analyze",
   // hard lane switch when /ctf command agent stays ctf-fast
   "ctf-handoff",
 ])
@@ -112,6 +114,7 @@ const CORE_EXACT = new Set([
   "ctf-decompose-task",
   "ctf-dynamic-mcp-advisor",
   "ctf-ensure-dir",
+  "ctf-artifact-analyze",
   "ctf-env-check",
   "ctf-evidence-board",
   "ctf-file-triage",

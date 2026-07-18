@@ -1,0 +1,17 @@
+rules:
+  - id: path-traversal
+    name: Path Traversal
+    description: Detect user-controlled file paths in file operations
+    languages: [python, javascript, typescript, java, php, go, ruby]
+    severity: high
+    sinks:
+      - open, readFile, read_text, read_bytes, writeFile, write_text
+      - fopen, fread, fwrite, file_get_contents, file_put_contents
+      - File, Files.read, Files.write, Paths.get, new File
+      - os.open, io.open, io.read, io.write
+    source_patterns:
+      - request, input, args, param, query, path, filename, file, name
+    sanitizer_hints:
+      - basename, realpath, os.path.abspath, path.resolve, Path
+      - allowed_dir, base_dir, chroot, jail_root
+    ctf_relevance: high
