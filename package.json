@@ -1,6 +1,6 @@
 {
   "name": "opencode-for-ctf",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CTF agent plugin for opencode — multi-agent orchestration, evidence-based solving, PWN/Web/Rev/Crypto/Forensics tools, knowledge base, and runtime hooks.",
   "license": "MIT",
   "homepage": "https://github.com/h1kibi/Opencode-for-CTF#readme",

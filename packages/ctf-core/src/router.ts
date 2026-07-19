@@ -34,32 +34,33 @@ export type RouteInput = {
 }
 
 export type RouteDecision = {
-  /** Execution lane after routing. */
+  /** Execution lane after routing. `resume` is an expert recovery mode. */
   mode: "fast" | "expert" | "resume"
+  /** Stable lane name for consumers that do not need resume semantics. */
+  lane: "fast" | "expert"
   category?: CtfCategory
-  /** Primary or specialist agent to run next. */
-  agent: string
+  /** The only valid primary agents are ctf-fast and ctf-expert. */
+  primaryAgent: "ctf-fast" | "ctf-expert"
+  /** @deprecated Use primaryAgent. Kept for adapter compatibility. */
+  agent: "ctf-fast" | "ctf-expert"
   /** Canonical slash command for humans / slash menus. */
   command: string
   /** Skills the agent should load first. */
   skills: string[]
   /** Tool packs to prefer for this route. */
   toolPacks: ToolPack[]
+  /** MCP profile selected by lane and family. */
+  mcpProfile: string
+  /** Capabilities unavailable in the current runtime (filled by readiness). */
+  missingCapabilities: string[]
+  /** Readiness is conservative until runtime probes are available. */
+  readiness: "ready" | "degraded" | "blocked"
   /** Human-readable routing rationale. */
   reasons: string[]
   /** 0–1 confidence in the top category / mode choice. */
   confidence: number
   /** Secondary categories still plausible. */
   alternates: CategoryScore[]
-}
-
-const CATEGORY_AGENTS: Record<CtfCategory, string> = {
-  web: "ctf-web",
-  pwn: "ctf-pwn",
-  rev: "ctf-rev",
-  crypto: "ctf-crypto",
-  forensics: "ctf-forensics",
-  misc: "ctf-misc",
 }
 
 const CATEGORY_SKILLS: Record<CtfCategory, string[]> = {
@@ -195,11 +196,16 @@ export function decideRoute(input: RouteInput = {}): RouteDecision {
   if (input.hasEvidenceBranch || RESUME_SIGNALS.test(corpus)) {
     return {
       mode: "resume",
+      lane: "expert",
       category: top.score > 0 ? top.category : undefined,
+      primaryAgent: "ctf-expert",
       agent: "ctf-expert",
       command: "/ctf-resume",
       skills: ["ctf-common", "ctf-expert"],
       toolPacks: ["core", ...(top.score > 0 ? CATEGORY_PACKS[top.category] : [])],
+      mcpProfile: "expert-resume",
+      missingCapabilities: [],
+      readiness: "degraded",
       reasons: [
         input.hasEvidenceBranch
           ? "existing evidence branch detected"
@@ -218,11 +224,16 @@ export function decideRoute(input: RouteInput = {}): RouteDecision {
     const category = top.category
     return {
       mode: "fast",
+      lane: "fast",
       category,
-      agent: CATEGORY_AGENTS[category],
-      command: `/ctf-${category}`,
+      primaryAgent: "ctf-fast",
+      agent: "ctf-fast",
+      command: "/ctf-fast",
       skills: CATEGORY_SKILLS[category],
       toolPacks: CATEGORY_PACKS[category],
+      mcpProfile: `fast-${category}`,
+      missingCapabilities: [],
+      readiness: "degraded",
       reasons: [`strong ${category} signals`, ...top.reasons.slice(0, 4)],
       confidence: confidenceFrom(top, second),
       alternates: ranked.filter((s) => s.score > 0).slice(1, 4),
@@ -232,7 +243,9 @@ export function decideRoute(input: RouteInput = {}): RouteDecision {
   if (mode === "expert") {
     return {
       mode: "expert",
+      lane: "expert",
       category: top.score > 0 ? top.category : undefined,
+      primaryAgent: "ctf-expert",
       agent: "ctf-expert",
       command: "/ctf-expert",
       skills: [
@@ -242,6 +255,9 @@ export function decideRoute(input: RouteInput = {}): RouteDecision {
         ...(top.score > 0 ? CATEGORY_SKILLS[top.category].filter((s) => s.startsWith("ctf-") && !s.endsWith("common")) : []),
       ],
       toolPacks: ["core", ...(top.score > 0 ? CATEGORY_PACKS[top.category].filter((p) => p !== "core") : [])],
+      mcpProfile: `expert-${top.score > 0 ? top.category : "common"}`,
+      missingCapabilities: [],
+      readiness: "degraded",
       reasons: [
         top.score > 0 ? `leading category: ${top.category}` : "category unclear — expert triage",
         ...top.reasons.slice(0, 3),
@@ -254,11 +270,16 @@ export function decideRoute(input: RouteInput = {}): RouteDecision {
 
   return {
     mode: "fast",
+    lane: "fast",
     category: top.score > 0 ? top.category : undefined,
+    primaryAgent: "ctf-fast",
     agent: "ctf-fast",
     command: "/ctf-fast",
     skills: ["ctf-common", "ctf-terminal", "ctf-router"],
     toolPacks: ["core", ...(top.score > 0 ? CATEGORY_PACKS[top.category].filter((p) => p !== "core") : [])],
+    mcpProfile: `fast-${top.score > 0 ? top.category : "common"}`,
+    missingCapabilities: [],
+    readiness: "degraded",
     reasons: [
       top.score > 0 ? `likely ${top.category} — fast lane` : "no strong signals — fast triage first",
       ...top.reasons.slice(0, 3),
@@ -293,13 +314,16 @@ export const COMMAND_SURFACE = {
 export function formatRouteDecision(decision: RouteDecision): string {
   const lines = [
     `mode: ${decision.mode}`,
-    `agent: ${decision.agent}`,
+    `lane: ${decision.lane}`,
+    `primary_agent: ${decision.primaryAgent}`,
+    `agent: ${decision.primaryAgent}`,
     `command: ${decision.command}`,
     decision.category ? `category: ${decision.category}` : "category: unknown",
     `confidence: ${decision.confidence}`,
     `skills: ${decision.skills.join(", ")}`,
     `tool_packs: ${decision.toolPacks.join(", ")}`,
-    `reasons:`,
+    `mcp_profile: ${decision.mcpProfile}`,
+    `readiness: ${decision.readiness}`,
     ...decision.reasons.map((r) => `  - ${r}`),
   ]
   if (decision.alternates.length) {

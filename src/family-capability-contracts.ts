@@ -152,7 +152,7 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
         id: "env:pwnlab-images",
         label: "pwnlab Docker images",
         detail: "pwnlab images provide controlled Ubuntu/Debian/Alpine environments with pwntools, gdb, ROPgadget, etc.",
-        setupCommand: "cd docker && docker compose -f docker-compose.pwnlab.yml build",
+        setupCommand: "docker compose -f docker/docker-compose.revlab.yml --profile general build pwn-general",
       },
       {
         id: "env:pwntools",
@@ -216,7 +216,7 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
         id: "env:revlab-image",
         label: "revlab Docker image",
         detail: "revlab provides a full reverse engineering environment (rizin, binwalk, qemu, apktool, frida, angr, etc.).",
-        setupCommand: "cd docker && docker compose -f docker-compose.revlab.yml build",
+        setupCommand: "docker compose -f docker/docker-compose.revlab.yml --profile revlab build revlab",
       },
       {
         id: "env:android-studio",

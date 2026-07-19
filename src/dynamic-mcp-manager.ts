@@ -11,6 +11,7 @@
  * per-skill lease lifecycle) and drives it via `ensureSkillMcpLeases`.
  */
 
+import path from "node:path"
 import { randomUUID } from "node:crypto"
 import { PLUGIN_ROOT } from "./asset-paths.ts"
 import { getAgentDefaults } from "./agent-mcp-profiles.ts"
@@ -125,33 +126,42 @@ async function loadState(worktree: string) {
 }
 
 const IN_MEMORY_APPROVED = new Map<string, number>()
+
+function approvalKey(args: { worktree: string; sessionID: string; agentName: string; serverName: string }) {
+  return [path.resolve(args.worktree), args.sessionID, args.agentName, args.serverName].join("|")
+}
 const IN_MEMORY_TTL_MS = 30 * 60_000 // 30 minutes
 const IN_MEMORY_MAX = 50
 
 /** @visibleForTesting */
-export function isInMemoryApproved(serverName: string): boolean {
-  const ts = IN_MEMORY_APPROVED.get(serverName)
+export function isInMemoryApproved(
+  serverName: string,
+  scope?: { worktree: string; sessionID: string; agentName: string },
+): boolean {
+  const key = scope ? approvalKey({ ...scope, serverName }) : serverName
+  const ts = IN_MEMORY_APPROVED.get(key)
   if (ts === undefined) return false
   if (Date.now() - ts > IN_MEMORY_TTL_MS) {
-    IN_MEMORY_APPROVED.delete(serverName)
+    IN_MEMORY_APPROVED.delete(key)
     return false
   }
   return true
 }
 
 /** Add a server to the in-memory approved set with TTL and max-size enforcement. */
-function addInMemoryApproved(serverName: string): void {
+function addInMemoryApproved(scope: { worktree: string; sessionID: string; agentName: string; serverName: string }): void {
   // Enforce cap: evict oldest entries when over limit
   if (IN_MEMORY_APPROVED.size >= IN_MEMORY_MAX) {
     const oldest = [...IN_MEMORY_APPROVED.entries()].sort((a, b) => a[1] - b[1])[0]
     if (oldest) IN_MEMORY_APPROVED.delete(oldest[0])
   }
-  IN_MEMORY_APPROVED.set(serverName, Date.now())
+  const key = approvalKey(scope)
+  IN_MEMORY_APPROVED.set(key, Date.now())
 }
 
 /** Remove a server from the in-memory approved set (e.g. on disconnect). */
-function removeInMemoryApproved(serverName: string): void {
-  IN_MEMORY_APPROVED.delete(serverName)
+function removeInMemoryApproved(scope: { worktree: string; sessionID: string; agentName: string; serverName: string }): void {
+  IN_MEMORY_APPROVED.delete(approvalKey(scope))
 }
 
 /** @visibleForTesting */
@@ -272,7 +282,7 @@ export async function requestMcp(args: {
       continue
     }
 
-    if (isInMemoryApproved(serverName)) {
+    if (isInMemoryApproved(serverName, { worktree: args.worktree, sessionID: args.sessionID, agentName: args.agentName })) {
       results.push({ serverName, status: "approved (in-memory)" })
       continue
     }
@@ -289,13 +299,25 @@ export async function requestMcp(args: {
       updatedAt: now,
     }
 
+    let persistedRequestId = request.id
     await atomicUpdateJsonFile<AgentMcpState>(path, initialState(), (state) => {
+      const existing = state.requests.find(
+        (candidate) =>
+          candidate.agent === args.agentName &&
+          candidate.sessionID === args.sessionID &&
+          candidate.serverName === serverName &&
+          !["denied", "released", "expired"].includes(candidate.status),
+      )
+      if (existing) {
+        persistedRequestId = existing.id
+        return state
+      }
       state.requests.push(request)
       return state
     })
 
-    requestIds.push(request.id)
-    results.push({ serverName, status: "pending" })
+    requestIds.push(persistedRequestId)
+    results.push({ serverName, status: persistedRequestId === request.id ? "pending" : "already_pending" })
   }
 
   return { requestIds, results }
@@ -345,7 +367,12 @@ export async function processPendingRequests(args: { client: OpencodeClient; wor
       if (act.activated.length) {
         await setRequestStatus(args.worktree, req.id, "approved")
         await recordActiveServer(args.worktree, req.agent, req.sessionID, req.serverName)
-        addInMemoryApproved(req.serverName)
+        addInMemoryApproved({
+          worktree: args.worktree,
+          sessionID: req.sessionID,
+          agentName: req.agent,
+          serverName: req.serverName,
+        })
         autoApproved++
       } else {
         stillPending++
@@ -379,8 +406,8 @@ export async function approveRequest(args: {
   await atomicUpdateJsonFile<AgentMcpState>(path, initialState(), (state) => {
     const req = state.requests.find((r) => r.id === args.requestId)
     if (!req) return state
-    if (req.status !== "pending" && req.status !== "approved") return state
-    req.status = "approved"
+    if (req.status !== "pending" && req.status !== "approved" && req.status !== "activation_failed") return state
+    req.status = "activating"
     req.decidedBy = args.decidedBy ?? "ctf-expert"
     if (args.note) req.decidedNote = args.note
     req.updatedAt = nowIso()
@@ -404,11 +431,18 @@ export async function approveRequest(args: {
     serverNames: [serverName],
   })
 
-  if (!act.activated.length && act.skipped.length) {
-    return { ok: false, reason: act.skipped.join("; "), serverName }
+  if (!act.activated.length) {
+    await setRequestStatus(args.worktree, args.requestId, "activation_failed", {
+      decidedBy: args.decidedBy ?? "ctf-expert",
+      note: act.skipped.join("; ") || "activation returned no active servers",
+    })
+    return { ok: false, reason: act.skipped.join("; ") || "activation failed", serverName }
   }
 
-  addInMemoryApproved(serverName)
+  await setRequestStatus(args.worktree, args.requestId, "active", {
+    decidedBy: args.decidedBy ?? "ctf-expert",
+    note: args.note,
+  })
   await recordActiveServer(args.worktree, agentName || "unknown", sessionID, serverName)
 
   return { ok: true, serverName, agent: agentName, sessionID, skillName }
@@ -438,10 +472,6 @@ export async function releaseSessionMcps(args: {
   sessionID: string
   agentName: string
 }) {
-  const defaults = new Set(getAgentDefaults(args.agentName))
-
-  // The release uses the session-level lease; disconnect only servers
-  // that are NOT part of the agent's default (light + medium) set.
   await releaseSkillMcpLeases({
     client: args.client,
     worktree: args.worktree,
@@ -449,14 +479,35 @@ export async function releaseSessionMcps(args: {
     sessionID: args.sessionID,
   })
 
-  // Clean up the profile record
   const path = statePath(args.worktree)
+  const releasedScopes: Array<{ agentName: string; serverName: string }> = []
   await atomicUpdateJsonFile<AgentMcpState>(path, initialState(), (state) => {
+    for (const profile of state.activeProfiles) {
+      if (profile.agent !== args.agentName || profile.sessionID !== args.sessionID) continue
+      for (const serverName of profile.serverNames) {
+        releasedScopes.push({ agentName: profile.agent, serverName })
+      }
+    }
     state.activeProfiles = state.activeProfiles.filter(
-      (p) => !(p.agent === args.agentName && p.sessionID === args.sessionID),
+      (profile) => !(profile.agent === args.agentName && profile.sessionID === args.sessionID),
     )
+    for (const request of state.requests) {
+      if (request.sessionID !== args.sessionID || request.agent !== args.agentName) continue
+      if (["approving", "activating", "approved", "active"].includes(request.status)) {
+        request.status = "released"
+        request.updatedAt = nowIso()
+      }
+    }
     return state
   })
+  for (const scope of releasedScopes) {
+    removeInMemoryApproved({
+      worktree: args.worktree,
+      sessionID: args.sessionID,
+      agentName: scope.agentName,
+      serverName: scope.serverName,
+    })
+  }
 }
 
 /**
@@ -498,7 +549,7 @@ export function agentNameToCategory(agent: string): CtfFamily | undefined {
 async function setRequestStatus(
   worktree: string,
   requestId: string,
-  status: "approved" | "denied",
+  status: "pending" | "approving" | "activating" | "active" | "approved" | "activation_failed" | "denied" | "released" | "expired",
   opts?: { decidedBy?: string; note?: string },
 ) {
   const path = statePath(worktree)

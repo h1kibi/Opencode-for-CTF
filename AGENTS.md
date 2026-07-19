@@ -20,7 +20,7 @@ That is the product entry. It auto-routes category/mode via `ctf-route-plan`, th
 | Resume evidence branch | `/ctf-resume` |
 | Command surface | `/ctf-help` |
 
-`/ctf-solve` is a historical command alias only; primary agents are `ctf-fast` and `ctf-expert`.
+`/ctf-solve` is a compatibility-only alias; primary agents are `ctf-fast` and `ctf-expert`.
 
 ## Structure
 
@@ -104,7 +104,7 @@ See `opencode-for-ctf.example.jsonc`. Inspect packs with tool `ctf-tool-packs` (
 | `ctf-fast` | **Primary** | Lightweight, intuition-first solving |
 | `ctf-expert` | **Primary** | Evidence-driven iterative solving |
 | `researcher` | Support primary | Local knowledge-base maintenance (not a CTF solve lane) |
-| `ctf-web` / `ctf-pwn` / `ctf-rev` / `ctf-crypto` / `ctf-forensics` / `ctf-misc` | Subagent | Category specialists |
+| `ctf-web` / `ctf-pwn` / `ctf-rev` / `ctf-crypto` / `ctf-forensics` / `ctf-misc` | Subagent | Category specialist playbooks |
 | `ctf-scout` / `ctf-librarian` / `ctf-oracle` / `ctf-verifier` | Subagent | Meta helpers |
 
 ## Environment variables

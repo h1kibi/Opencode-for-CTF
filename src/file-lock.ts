@@ -16,8 +16,7 @@
 
 import { lock } from "proper-lockfile"
 import { createHash } from "node:crypto"
-import { mkdir, writeFile } from "node:fs/promises"
-import { existsSync } from "node:fs"
+import { mkdir, open } from "node:fs/promises"
 import path from "node:path"
 
 // ---------------------------------------------------------------------------
@@ -27,21 +26,18 @@ import path from "node:path"
 const queue = new Map<string, Promise<void>>()
 
 async function acquireMemQueue(key: string): Promise<() => void> {
-  while (true) {
-    const existing = queue.get(key)
-    if (!existing) break
-    await existing
-  }
-
-  let resolve: () => void
-  const slot = new Promise<void>((r) => {
+  const previous = queue.get(key) ?? Promise.resolve()
+  let resolve!: () => void
+  const current = new Promise<void>((r) => {
     resolve = r
   })
-  queue.set(key, slot)
+  const tail = previous.then(() => current)
+  queue.set(key, tail)
+  await previous
 
   return () => {
-    queue.delete(key)
-    resolve!()
+    if (queue.get(key) === tail) queue.delete(key)
+    resolve()
   }
 }
 
@@ -50,14 +46,12 @@ async function acquireMemQueue(key: string): Promise<() => void> {
 // ---------------------------------------------------------------------------
 let lockDir: string | undefined
 
-function ensureLockDir() {
+function ensureLockDir(key: string) {
   if (lockDir) return
-  // Use the plugin root directory for lock files, derived from the first
-  // locked path or process.cwd().  INIT_CWD is intentionally NOT used here
-  // because it is an npm-specific variable and may be empty when the plugin
-  // is loaded directly by the OpenCode runtime.
-  const root = process.cwd()
-  lockDir = path.resolve(root, "runtime", "state", ".locks")
+  const absoluteKey = path.resolve(key)
+  const root = path.parse(absoluteKey).root
+  const anchor = absoluteKey.startsWith(root) ? path.dirname(absoluteKey) : process.cwd()
+  lockDir = path.resolve(anchor, ".ctf-locks")
 }
 
 function resolveLockPath(key: string): string {
@@ -80,14 +74,12 @@ function resolveLockPath(key: string): string {
  * contended across processes or when a prior holder releases.
  */
 export async function withFileLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
-  ensureLockDir()
+  ensureLockDir(key)
 
   const sentinel = resolveLockPath(key)
   await mkdir(path.dirname(sentinel), { recursive: true })
-  if (!existsSync(sentinel)) {
-    // proper-lockfile requires the sentinel file to exist on disk.
-    await writeFile(sentinel, "", "utf-8")
-  }
+  const sentinelHandle = await open(sentinel, "a")
+  await sentinelHandle.close()
 
   const leaveMemQueue = await acquireMemQueue(key)
 
@@ -108,7 +100,7 @@ export async function withFileLock<T>(key: string, fn: () => Promise<T>): Promis
   } finally {
     if (releaseFileLock) {
       try {
-        releaseFileLock()
+        await releaseFileLock()
       } catch {
         /* best-effort */
       }

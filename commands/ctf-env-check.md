@@ -23,15 +23,13 @@ $ARGUMENTS
 If pwnlab images are missing:
 
 ```
-cd docker
-docker compose -f docker-compose.pwnlab.yml build
+docker compose -f docker/docker-compose.revlab.yml --profile general build pwn-general
 ```
 
 If revlab image is missing:
 
 ```
-cd docker
-docker compose -f docker-compose.revlab.yml build
+docker compose -f docker/docker-compose.revlab.yml --profile revlab build revlab
 ```
 
 ## Workflow

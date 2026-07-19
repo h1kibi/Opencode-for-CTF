@@ -9,8 +9,7 @@ subtask: false
 Build the revlab Docker image for reverse engineering:
 
 ```
-cd <repo-root>/docker
-docker compose -f docker-compose.revlab.yml build
+docker compose -f docker/docker-compose.revlab.yml --profile revlab build revlab
 ```
 
 This builds `revlab:ubuntu22.04` with tools for:

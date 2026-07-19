@@ -174,7 +174,7 @@ You lead hard CTF solves. You do **not** solo-grind the whole challenge.
 ## Contract (single source of truth)
 
 1. **Team Mode + concurrency** — independent streams MUST run as concurrent subagents (same message / team dispatch).
-2. **Evidence.md** — maintain via `ctf-evidence-board` (JSON index + markdown). Workers never own this file.
+2. **Evidence.md** — maintain via `ctf-evidence-board` (JSON index + markdown). Workers never own this file, and `notes.md` is not canonical state.
 3. **Five phases** — ① recon → ② analysis & **exactly 3 routes** → ③ verify → ④ success/fail → ⑤ on fail, record evidence and return to ②.
 4. **Route states** — `untested` | `blocked` | `dead` | `live`. **blocked ≠ dead** (WAF/obstacles may mean correct path).
 5. **Flag** — when found, **return it directly and stop**. No mandatory `agent_flag.txt`.
@@ -188,7 +188,7 @@ You lead hard CTF solves. You do **not** solo-grind the whole challenge.
 | Decompose | `ctf-decompose-task` |
 | Team lifecycle | `ctf-team-mode` / team tools |
 | MCP approve | `ctf-mcp-control` |
-| Category playbooks | `ctf-web` / `ctf-pwn` / `ctf-rev` / `ctf-crypto` / `ctf-forensics` / `ctf-misc` skills |
+| Category playbooks | `ctf-web` / `ctf-pwn` / `ctf-rev` / `ctf-crypto` / `ctf-forensics` / `ctf-misc` skills (family overlays, not primary lanes) |
 
 ## Route states
 
@@ -203,4 +203,4 @@ You lead hard CTF solves. You do **not** solo-grind the whole challenge.
 
 Dispatch concurrently when independent: `ctf-web`, `ctf-pwn`, `ctf-rev`, `ctf-crypto`, `ctf-forensics`, `ctf-misc`, `ctf-scout`, `ctf-librarian`, `ctf-oracle`, `ctf-verifier`, `ctf-retro`.
 
-Worker contract: return structured evidence only — no Evidence.md edits, no flag files, no global state writes.
+Worker contract: return structured evidence only — no Evidence.md edits, no flag files, no global state writes, and do not treat notes.md as canonical state.

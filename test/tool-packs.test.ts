@@ -27,6 +27,10 @@ describe("resolveEnabledPacks env isolation", () => {
   it("accepts explicit list over empty", () => {
     expect([...resolveEnabledPacks(["pwn"])].sort()).toEqual(["core", "pwn"])
   })
+
+  it("ignores unknown packs while preserving the validated core surface", () => {
+    expect([...resolveEnabledPacks(["typo-pack"])].sort()).toEqual(["core"])
+  })
 })
 
 describe("packForTool stability", () => {

@@ -12,11 +12,13 @@
  */
 
 import { randomUUID } from "node:crypto"
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
+import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import { activateAgentDefaults } from "./dynamic-mcp-manager.ts"
 import { getSessionSurface } from "./session-surface.ts"
+import { atomicUpdateJsonFile } from "./state-store.ts"
+import { canTransitionTeamJob, deriveTeamRunStatus, transitionTeamJob } from "./team-reducer.ts"
 
 // ---- Minimal event type — accept any shape from the harness hook ----
 
@@ -177,10 +179,8 @@ function slug(value: string) {
 }
 
 // ---------------------------------------------------------------------------
-// State persistence — atomic write via temp file + rename
+// State persistence — shared cross-process atomic JSON updates
 // ---------------------------------------------------------------------------
-
-const stateQueues = new Map<string, Promise<void>>()
 
 function statePath(directory: string) {
   return path.join(directory, STATE_FILE)
@@ -200,6 +200,12 @@ function parseState(value: unknown): TeamState {
     throw new Error(`Unsupported CTF team state version: ${String(value.schemaVersion)}`)
   }
   if (!Array.isArray(value.runs)) throw new Error("Invalid CTF team state: runs must be an array.")
+  for (const run of value.runs) {
+    if (!isObject(run) || typeof run.id !== "string" || !run.id) {
+      throw new Error("Invalid CTF team state: each run must have an id.")
+    }
+    if (!Array.isArray(run.jobs)) throw new Error(`Invalid CTF team state: run ${run.id} jobs must be an array.`)
+  }
   return value as TeamState
 }
 
@@ -213,45 +219,23 @@ export async function readTeamState(directory: string): Promise<TeamState> {
 }
 
 async function writeTeamState(directory: string, state: TeamState) {
-  await mkdir(directory, { recursive: true })
-  const target = statePath(directory)
-  const temporary = `${target}.tmp-${process.pid}-${randomUUID()}`
-  try {
-    await writeFile(temporary, `${JSON.stringify(state, null, 2)}\n`, "utf8")
-    await rename(temporary, target)
-  } finally {
-    await rm(temporary, { force: true })
-  }
+  await atomicUpdateJsonFile<TeamState>(statePath(directory), emptyState(), () => state)
 }
 
-/** Mutate team state with an in-memory serial queue (not a distributed lock,
- *  but sufficient for the single-parent-session use case). */
+/** Mutate team state under the shared cross-process JSON lock. */
 async function updateTeamState(
   directory: string,
   update: (state: TeamState) => void | Promise<void>,
 ): Promise<TeamState> {
-  const key = statePath(directory)
-  const previous = stateQueues.get(key) ?? Promise.resolve()
-  let release = () => {}
-  const current = new Promise<void>((resolve) => {
-    release = resolve
+  const file = statePath(directory)
+  return atomicUpdateJsonFile<TeamState>(file, emptyState(), async (state) => {
+    const parsed = parseState(state)
+    await update(parsed)
+    parsed.revision++
+    parsed.updatedAt = now()
+    parsed.runs = parsed.runs.slice(-20)
+    return parsed
   })
-  stateQueues.set(
-    key,
-    previous.then(() => current),
-  )
-  await previous
-  try {
-    const state = await readTeamState(directory)
-    await update(state)
-    state.revision++
-    state.updatedAt = now()
-    state.runs = state.runs.slice(-20)
-    await writeTeamState(directory, state)
-    return state
-  } finally {
-    release()
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -272,23 +256,14 @@ function findJobBySession(state: TeamState, sessionID: string) {
 }
 
 function isTerminalJob(status: TeamJobStatus) {
-  return ["completed", "failed", "cancelled", "interrupted"].includes(status)
+  return ["completed", "failed", "cancelled", "cancel_failed", "interrupted"].includes(status)
 }
 
 function refreshRunStatus(_state: TeamState, run: TeamRun) {
   run.updatedAt = now()
   if (run.status === "completed" || run.status === "cancelled" || run.status === "cancelling") return
-  if (run.jobs.some((j) => j.status === "cancel_failed")) {
-    run.status = "degraded"
-    run.notificationPending = true
-    return
-  }
-  if (run.jobs.some((j) => !isTerminalJob(j.status))) {
-    run.status = run.jobs.some((j) => j.status === "queued" || j.status === "starting") ? "dispatching" : "running"
-    return
-  }
-  run.status = run.jobs.some((j) => j.status === "completed") ? "ready_for_synthesis" : "degraded"
-  run.notificationPending = true
+  run.status = deriveTeamRunStatus(run.jobs, run.status)
+  if (run.status === "ready_for_synthesis" || run.status === "degraded") run.notificationPending = true
 }
 
 function summarizeTeamState(state: TeamState, sessionID?: string) {
@@ -412,10 +387,9 @@ export function createTeamTools(
         current.job.updatedAt = now()
         current.job.finishedAt = now()
         if (collected.error) {
-          current.job.status = "failed"
-          current.job.error = collected.error
+          transitionTeamJob(current.job, "failed", collected.error)
         } else {
-          current.job.status = "completed"
+          transitionTeamJob(current.job, "completed")
           current.job.result = collected.result
         }
         refreshRunStatus(draft, current.run)
@@ -424,8 +398,7 @@ export function createTeamTools(
       await updateTeamState(directory, (draft) => {
         const current = findJobBySession(draft, sessionID)
         if (!current || isTerminalJob(current.job.status)) return
-        current.job.status = "failed"
-        current.job.error = safeError(error)
+        transitionTeamJob(current.job, "failed", safeError(error))
         current.job.updatedAt = now()
         current.job.finishedAt = now()
         refreshRunStatus(draft, current.run)
@@ -520,7 +493,7 @@ export function createTeamTools(
           await updateTeamState(directory, (draft) => {
             const current = findJobBySession(draft, job.sessionID!)
             if (!current || isTerminalJob(current.job.status)) return
-            current.job.status = "retrying"
+            transitionTeamJob(current.job, "retrying")
             current.job.retryAttempt = status.attempt
             current.job.updatedAt = now()
             refreshRunStatus(draft, current.run)
@@ -631,8 +604,7 @@ export function createTeamTools(
             const job = current.jobs[index]
             job.updatedAt = now()
             if (result.status === "rejected") {
-              job.status = "failed"
-              job.error = safeError(result.reason)
+              transitionTeamJob(job, "failed", safeError(result.reason))
               job.finishedAt = now()
               return
             }
@@ -640,8 +612,7 @@ export function createTeamTools(
               job.sessionID = (responseData(result.value, `Create worker ${job.id}`) as { id: string }).id
               job.status = "starting"
             } catch (error) {
-              job.status = "failed"
-              job.error = safeError(error)
+              transitionTeamJob(job, "failed", safeError(error))
               job.finishedAt = now()
             }
           })
@@ -732,12 +703,12 @@ export function createTeamTools(
           let failIdx = 0
           for (const job of current.jobs) {
             if (startedIDs.has(job.id)) {
-              job.status = "running"
+              transitionTeamJob(job, "running")
               job.startedAt = now()
               job.updatedAt = now()
             } else if (job.status === "starting") {
-              job.status = "failed"
-              job.error = safeError(failedStarts[failIdx++]?.reason ?? "Worker start failed")
+              transitionTeamJob(job, "failed", safeError(failedStarts[failIdx++]?.reason ?? "Worker start failed"))
+              job.error = safeError(failedStarts[failIdx - 1]?.reason ?? "Worker start failed")
               job.finishedAt = now()
               job.updatedAt = now()
             }
@@ -805,13 +776,17 @@ export function createTeamTools(
             const cj = current.jobs.find((j) => j.id === job.id)
             if (!cj || isTerminalJob(cj.status)) continue
             const result = aborts[index]
-            if (result?.status === "rejected") {
-              cj.status = "cancel_failed"
-              cj.error = `${args.reason}; abort failed: ${safeError(result.reason)}`
-              abortFailure++
+            if (result?.status === "fulfilled") {
+              const value = result.value as { error?: unknown } | undefined
+              if (value?.error) {
+                transitionTeamJob(cj, "cancel_failed", `${args.reason}; abort failed: ${safeError(value.error)}`)
+                abortFailure++
+              } else {
+                transitionTeamJob(cj, "cancelled", args.reason)
+              }
             } else {
-              cj.status = "cancelled"
-              cj.error = args.reason
+              transitionTeamJob(cj, "cancel_failed", `${args.reason}; abort failed: ${safeError(result?.reason)}`)
+              abortFailure++
             }
             cj.finishedAt = now()
             cj.updatedAt = now()
@@ -866,12 +841,15 @@ export function createTeamTools(
             const cj = current.jobs.find((j) => j.id === job.id)
             if (!cj || isTerminalJob(cj.status)) continue
             const result = aborts[index]
-            if (result?.status === "rejected") {
-              cj.status = "cancel_failed"
-              cj.error = `${reason}; abort failed: ${safeError(result.reason)}`
+            if (result?.status === "fulfilled") {
+              const value = result.value as { error?: unknown } | undefined
+              if (value?.error) {
+                transitionTeamJob(cj, "cancel_failed", `${reason}; abort failed: ${safeError(value.error)}`)
+              } else {
+                transitionTeamJob(cj, "cancelled", reason)
+              }
             } else {
-              cj.status = "cancelled"
-              cj.error = reason
+              transitionTeamJob(cj, "cancel_failed", `${reason}; abort failed: ${safeError(result?.reason)}`)
             }
             cj.finishedAt = now()
             cj.updatedAt = now()
@@ -970,14 +948,14 @@ export async function handleTeamEvent(event: TeamEventish, client: any, director
     const status = props.status as { type?: string; attempt?: number } | undefined
     if (!sessionID || !status) return
     const existing = findJobBySession(await readTeamState(directory), sessionID)
-    if (!existing || isTerminalJob(existing.job.status) || existing.job.status === "cancel_failed") return
+    if (!existing || isTerminalJob(existing.job.status)) return
     await updateTeamState(directory, (state) => {
-      const located = findJobBySession(state, sessionID)
-      if (!located || isTerminalJob(located.job.status) || located.job.status === "cancel_failed") return
-      located.job.status = status.type === "retry" ? "retrying" : "running"
-      located.job.retryAttempt = status.type === "retry" ? status.attempt : undefined
-      located.job.updatedAt = now()
-      refreshRunStatus(state, located.run)
+      const current = findJobBySession(state, sessionID)
+      if (!current || isTerminalJob(current.job.status)) return
+      transitionTeamJob(current.job, status.type === "retry" ? "retrying" : status.type === "error" ? "failed" : "running")
+      current.job.retryAttempt = status.type === "retry" ? status.attempt : undefined
+      current.job.updatedAt = now()
+      refreshRunStatus(state, current.run)
     })
     return
   }
@@ -990,8 +968,7 @@ export async function handleTeamEvent(event: TeamEventish, client: any, director
     await updateTeamState(directory, (state) => {
       const located = findJobBySession(state, sessionID)
       if (!located || isTerminalJob(located.job.status)) return
-      located.job.status = "failed"
-      located.job.error = safeError(props.error ?? "Unknown worker session error")
+      transitionTeamJob(located.job, "failed", safeError(props.error ?? "Unknown worker session error"))
       located.job.finishedAt = now()
       located.job.updatedAt = now()
       refreshRunStatus(state, located.run)
@@ -1008,8 +985,7 @@ export async function handleTeamEvent(event: TeamEventish, client: any, director
     await updateTeamState(directory, (state) => {
       const located = findJobBySession(state, info.id!)
       if (!located || isTerminalJob(located.job.status)) return
-      located.job.status = "interrupted"
-      located.job.error = "Worker session was deleted before completion."
+      transitionTeamJob(located.job, "interrupted", "Worker session was deleted before completion.")
       located.job.finishedAt = now()
       located.job.updatedAt = now()
       refreshRunStatus(state, located.run)

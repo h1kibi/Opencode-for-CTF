@@ -63,18 +63,7 @@ export function planRoute(
 
 /** Primary agent the session should behave as after routing. */
 export function primaryAgentForDecision(decision: RouteDecision): "ctf-fast" | "ctf-expert" {
-  if (decision.mode === "fast" && decision.agent !== "ctf-expert") {
-    // Specialist agents under strong fast signals still run under fast primary
-    // when the command is /ctf-fast; for /ctf we may name a specialist but
-    // the session primary is still ctf-fast unless expert/resume.
-    if (decision.agent.startsWith("ctf-") && decision.agent !== "ctf-fast") {
-      // Strong category fast → stay on ctf-fast primary but load category skill;
-      // specialist subagent is optional later.
-      return "ctf-fast"
-    }
-    return "ctf-fast"
-  }
-  return "ctf-expert"
+  return decision.mode === "fast" ? "ctf-fast" : "ctf-expert"
 }
 
 /**

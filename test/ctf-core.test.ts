@@ -63,6 +63,7 @@ describe("decideRoute", () => {
     const d = decideRoute({ text: "web chall", hasEvidenceBranch: true })
     expect(d.mode).toBe("resume")
     expect(d.command).toBe("/ctf-resume")
+    expect(d.primaryAgent).toBe("ctf-expert")
     expect(d.agent).toBe("ctf-expert")
   })
 
@@ -78,9 +79,8 @@ describe("decideRoute", () => {
       mode: "auto",
     })
     expect(["fast", "expert"]).toContain(d.mode)
-    expect(d.category === "pwn" || d.agent === "ctf-pwn" || d.agent === "ctf-fast" || d.agent === "ctf-expert").toBe(
-      true,
-    )
+    expect(d.primaryAgent).toBe(d.mode === "fast" ? "ctf-fast" : "ctf-expert")
+    expect(d.category).toBe("pwn")
   })
 
   it("exposes a small L0 command surface", () => {

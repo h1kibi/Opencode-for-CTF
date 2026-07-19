@@ -40,6 +40,21 @@ describe("withFileLock", () => {
     expect(oneThenTwo || twoThenOne).toBe(true)
   })
 
+  it("serializes more than two same-key waiters", async () => {
+    let active = 0
+    let maximum = 0
+    await Promise.all(
+      Array.from({ length: 8 }, (_, index) =>
+        withFileLock("many-waiters", async () => {
+          active++
+          maximum = Math.max(maximum, active)
+          await new Promise((resolve) => setTimeout(resolve, index % 2 ? 2 : 1))
+          active--
+        }),
+      ),
+    )
+    expect(maximum).toBe(1)
+  })
   it("allows independent keys to run in parallel", async () => {
     const order: number[] = []
 

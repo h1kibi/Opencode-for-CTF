@@ -2,6 +2,9 @@ import { tool } from "@opencode-ai/plugin"
 import { safeExec } from "./lib/exec-utils.ts"
 import { DOCKER_IMAGES } from "./lib/docker-config.ts"
 import path from "node:path"
+import { existsSync } from "node:fs"
+import { evaluateAllFamilyReadiness, type EnvironmentProbeResult } from "../src/family-readiness.ts"
+import { resolveEnabledPacks } from "../src/tool-packs.ts"
 
 type EnvCheckResult = {
   name: string
@@ -10,6 +13,18 @@ type EnvCheckResult = {
   category: string
   detail: string
   hint: string
+}
+
+type EnvCheckJson = {
+  category: string
+  ready: boolean
+  missing_critical: string[]
+  missing_optional: string[]
+  pwn_build_commands: string[]
+  rev_build_commands: string[]
+  results: EnvCheckResult[]
+  environment_probes: Record<string, EnvironmentProbeResult>
+  readiness: ReturnType<typeof evaluateAllFamilyReadiness>
 }
 
 async function check(cmd: string, args: string[], timeout = 10000): Promise<{ ok: boolean; output: string }> {
@@ -22,15 +37,18 @@ async function dockerImageExists(image: string): Promise<boolean> {
   return r.ok && r.output.includes(image)
 }
 
-async function dockerDaemonRunning(): Promise<boolean> {
+async function dockerDaemonRunning(): Promise<{ ok: boolean; version?: string }> {
   const r = await safeExec("docker", ["info", "--format", "{{.ServerVersion}}"], undefined, 8000)
-  return r.ok
+  return { ok: r.ok, version: r.ok ? (r.output || "").trim() : undefined }
 }
 
 async function adbDeviceConnected(): Promise<boolean> {
   const r = await safeExec("adb", ["devices"], undefined, 8000)
   if (!r.ok) return false
-  return /\bdevice\b/.test(r.output)
+  return r.output
+    .split(/\r?\n/)
+    .slice(1)
+    .some((line) => /^\S+\s+device\s*$/.test(line.trim()))
 }
 
 async function androidStudioDetected(): Promise<boolean> {
@@ -46,8 +64,7 @@ async function androidStudioDetected(): Promise<boolean> {
   // Check if adb or emulator exist from SDK
   for (const base of paths) {
     const adbPath = path.join(base, "platform-tools", process.platform === "win32" ? "adb.exe" : "adb")
-    const r = await safeExec("test", ["-e", adbPath], undefined, 3000)
-    if (r.ok) return true
+    if (existsSync(adbPath)) return true
   }
   return false
 }
@@ -64,21 +81,32 @@ export default tool({
   },
   async execute(args) {
     const category = (args.category || "all").toLowerCase()
-    const results: EnvCheckResult[] = []
+    const rawResults: EnvCheckResult[] = []
+    const results = rawResults
+    const environmentProbes: Record<string, EnvironmentProbeResult> = {}
 
     // -- Docker daemon (always check if any docker test is needed) --
     if (category === "pwn" || category === "rev" || category === "all") {
-      const dockerOk = await dockerDaemonRunning()
+      const dockerInfo = await dockerDaemonRunning()
       results.push({
         name: "docker-daemon",
-        ok: dockerOk,
+        ok: dockerInfo.ok,
         required: category !== "all",
         category: "runtime",
-        detail: dockerOk ? "Docker daemon is running" : "Docker daemon not reachable",
-        hint: dockerOk
+        detail: dockerInfo.ok
+          ? `Docker daemon is running${dockerInfo.version ? ` (${dockerInfo.version})` : ""}`
+          : "Docker daemon not reachable",
+        hint: dockerInfo.ok
           ? ""
           : "Install Docker Desktop (Windows/Mac) or docker.io (Linux). On Windows, Docker Desktop must be running.",
       })
+      environmentProbes["env:docker"] = {
+        ok: dockerInfo.ok,
+        executed: true,
+        version: dockerInfo.version,
+        detail: dockerInfo.ok ? "docker daemon reachable" : "docker daemon not reachable",
+        behaviorOk: dockerInfo.ok,
+      }
     }
 
     // -- PWN images --
@@ -96,8 +124,10 @@ export default tool({
           { name: "pwnlab:mipsel", key: "pwn-mipsel" },
           { name: "pwnlab:heavy-ubuntu22.04", key: "pwn-heavy-ubuntu22.04" },
         ]
+        let anyPwnImage = false
         for (const img of pwnImages) {
           const exists = await dockerImageExists(img.name)
+          if (exists) anyPwnImage = true
           results.push({
             name: `docker-image:${img.key}`,
             ok: exists,
@@ -106,8 +136,14 @@ export default tool({
             detail: exists ? `${img.name} image exists` : `${img.name} image not built`,
             hint: exists
               ? ""
-              : `Build with: cd docker && docker compose -f docker-compose.pwnlab.yml build ${img.name.split(":")[1]?.replace(/^pwnlab:/, "")?.replace(/^general-/, "pwn-general")}`,
+              : `Build with: docker compose -f docker/docker-compose.revlab.yml --profile general build pwn-general`,
           })
+        }
+        environmentProbes["env:pwnlab-images"] = {
+          ok: anyPwnImage,
+          executed: true,
+          detail: anyPwnImage ? "at least one pwnlab image is available" : "no pwnlab images are built",
+          behaviorOk: anyPwnImage,
         }
       }
 
@@ -152,7 +188,7 @@ export default tool({
             detail: exists ? `${img.name} image exists` : `${img.name} image not built`,
             hint: exists
               ? ""
-              : `Build with: cd docker && docker compose -f docker-compose.revlab.yml build`,
+              : `Build with: docker compose -f docker/docker-compose.revlab.yml --profile revlab build revlab`,
           })
         }
       }
@@ -177,6 +213,18 @@ export default tool({
         detail: androidStudioOk ? "Android Studio / SDK detected" : "Android Studio / SDK not detected",
         hint: androidStudioOk ? "" : "Install Android Studio and set ANDROID_HOME or ANDROID_SDK_ROOT.",
       })
+      environmentProbes["env:android-studio"] = {
+        ok: androidStudioOk,
+        executed: true,
+        detail: androidStudioOk ? "Android Studio / SDK detected" : "Android Studio / SDK not detected",
+        behaviorOk: androidStudioOk,
+      }
+      environmentProbes["env:adb"] = {
+        ok: adbOk,
+        executed: true,
+        detail: adbOk ? "ADB device connected" : "No ADB device connected",
+        behaviorOk: adbOk,
+      }
 
       // ADB CLI
       const adbCLI = await check("adb", ["--version"])
@@ -215,8 +263,11 @@ export default tool({
     const missingCritical = results.filter((r) => r.required && !r.ok)
     const missingOptional = results.filter((r) => !r.required && !r.ok)
     const ready = missingCritical.length === 0
-
-    // Build hints for docker image building
+    const familyReadiness = evaluateAllFamilyReadiness({
+      registeredTools: results.map((r) => r.name),
+      enabledToolPacks: [...resolveEnabledPacks()],
+      environmentProbes,
+    })
     const pwnBuildHints = results
       .filter((r) => r.category === "pwn-docker" && !r.ok)
       .map((r) => r.hint)
@@ -236,6 +287,8 @@ export default tool({
           pwn_build_commands: pwnBuildHints,
           rev_build_commands: revBuildHints,
           results,
+          environment_probes: environmentProbes,
+          readiness: familyReadiness,
         },
         null,
         2,
@@ -262,17 +315,17 @@ export default tool({
     if (pwnBuildHints.length) {
       lines.push("", "--- PWN DOCKER BUILD HINTS ---")
       lines.push("  Some pwnlab images are not built. Build them:")
-      lines.push("  cd docker")
+      lines.push("  # Run from the repository root:")
       lines.push("  # Build all pwnlab images:")
-      lines.push("  docker compose -f docker-compose.pwnlab.yml build")
+      lines.push("  docker compose -f docker/docker-compose.revlab.yml --profile general build pwn-general")
       lines.push("  # Or build individual images using the hints above.")
     }
 
     if (revBuildHints.length) {
       lines.push("", "--- REVLAB DOCKER BUILD HINTS ---")
       lines.push("  revlab image is not built. Build it:")
-      lines.push("  cd docker")
-      lines.push("  docker compose -f docker-compose.revlab.yml build")
+      lines.push("  # Run from the repository root:")
+      lines.push("  docker compose -f docker/docker-compose.revlab.yml --profile revlab build revlab")
     }
 
     const adbResult = results.find((r) => r.name === "adb-device")

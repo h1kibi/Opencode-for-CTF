@@ -4,8 +4,8 @@ agent: ctf-expert
 subtask: false
 ---
 
-Soft-deprecated helper note:
-- Prefer `/ctf` as the standard route-only front door.
+Compatibility helper note:
+- Prefer `/ctf` as the standard front door.
 - Keep `/ctf-route` only when you explicitly want the narrow route-gate contract and nothing else.
 
 Run the CTF Route Gate only.

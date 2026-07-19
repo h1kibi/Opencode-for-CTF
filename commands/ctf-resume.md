@@ -10,8 +10,10 @@ Context or path:
 $ARGUMENTS
 
 Rules:
+- Locate `work/ctf-evidence/<case-id>/case.json` first; it is the canonical machine state.
+- If only legacy `notes.md`, `.ctf-state.json`, or `.ctf-decision-state.json` exists, migrate it once before resuming; never silently reset corrupt state.
+- Treat `Evidence.md` and resume packets as human-readable views of canonical state, not independent sources of truth.
 - Do not restart broad recon by default.
-- First inspect existing `notes.md`, `.ctf-decision-state.json`, `agent_flag.txt`, `solve.py`, and relevant work/extracted directories if present.
 - Prefer `templates/ctf_resume_packet.md`-style content first when it exists.
 - If the solve came from `ctf-fast`, prefer `templates/ctf_fast_handoff.md`-style content before falling back to freeform notes.
 - Budget-driven `ctf-fast` escalations should resume from the saved fast handoff / evidence packet rather than restarting broad recon.

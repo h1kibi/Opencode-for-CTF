@@ -46,7 +46,9 @@ describe("planRoute + default_mode", () => {
       { text: "http://127.0.0.1:8000 flask xss admin bot", mode: "auto" },
       "auto",
     )
-    expect(d.category === "web" || d.agent.includes("web") || d.mode === "expert").toBe(true)
+    expect(d.category).toBe("web")
+    expect(d.primaryAgent).toBe("ctf-fast")
+    expect(d.agent).toBe("ctf-fast")
   })
 })
 

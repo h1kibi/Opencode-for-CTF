@@ -9,8 +9,7 @@ subtask: false
 Build the pwnlab Docker images for binary exploitation:
 
 ```
-cd <repo-root>/docker
-docker compose -f docker-compose.pwnlab.yml build
+docker compose -f docker/docker-compose.revlab.yml --profile general build pwn-general
 ```
 
 This builds all pwnlab variants:

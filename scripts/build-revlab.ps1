@@ -25,13 +25,15 @@ param(
 $ErrorActionPreference = "Stop"
 
 if (-not $TemplatesDir) {
-    $TemplatesDir = (Resolve-Path (Join-Path (Join-Path $PSScriptRoot "..") "templates")).Path
+    $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+    $TemplatesDir = Join-Path $RepoRoot "docker"
 } else {
     $TemplatesDir = (Resolve-Path $TemplatesDir).Path
 }
 
-$composeFile = Join-Path $TemplatesDir "docker/docker-compose.revlab.yml"
+$composeFile = Join-Path $TemplatesDir "docker-compose.revlab.yml"
 $dockerfilePath = Join-Path $TemplatesDir $Dockerfile
+$buildContext = Split-Path -Parent $TemplatesDir
 
 if (-not (Test-Path -LiteralPath $dockerfilePath)) {
     Write-Error "Dockerfile not found: $dockerfilePath"
@@ -93,7 +95,7 @@ if ($SkipBuild) {
     }
 
     Write-Host "==> building via direct docker build (supports build-args)"
-    & docker build -t $ImageName -f $dockerfilePath $TemplatesDir @filteredArgs
+    & docker build -t $ImageName -f $dockerfilePath $buildContext @filteredArgs
     if ($LASTEXITCODE -ne 0) {
         Write-Host "==> direct docker build failed; falling back to compose --profile revlab build"
         & docker compose -f $composeFile --profile revlab build revlab

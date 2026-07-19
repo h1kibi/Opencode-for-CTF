@@ -9,12 +9,12 @@ import {
   noteContinuationSessionStatus,
 } from "./continuation-manager.ts"
 import { ensureSkillMcpLeases, releaseSkillMcpLeases } from "./skill-mcp-manager.ts"
-import { activateAgentDefaults, processPendingRequests } from "./dynamic-mcp-manager.ts"
+import { activateAgentDefaults, processPendingRequests, releaseSessionMcps } from "./dynamic-mcp-manager.ts"
 import { getAgentDefaults } from "./agent-mcp-profiles.ts"
 import { loadCtfTools } from "./ctf-tools.ts"
 import { createTeamTools, handleTeamEvent, initializeTeamRuntime } from "./team-runtime.ts"
 import { isHookEnabled, loadPluginConfigWithPath, type PluginUserConfig } from "./plugin-config.ts"
-import { toolAllowedForAgent } from "./tool-packs.ts"
+import { resolveEnabledPacks, toolAllowedForAgent } from "./tool-packs.ts"
 import { buildCtfEntryInjection } from "./route-runtime.ts"
 import {
   rememberSessionSurface,
@@ -277,8 +277,9 @@ const RuntimePlugin: Plugin = async (input, _options) => {
     ...(pluginConfig.tool_packs ?? []),
     ...(pluginConfig.expert_tool_packs ?? []),
   ]
+  const enabledPacks = resolveEnabledPacks(packUnion.length ? packUnion : undefined)
   const tools = await loadCtfTools({
-    packs: packUnion.length ? packUnion : undefined,
+    packs: [...enabledPacks],
   })
   // Team Mode tools are only registered when config enables them (requires restart).
   if (pluginConfig.team_mode.enabled) {
@@ -320,7 +321,7 @@ const RuntimePlugin: Plugin = async (input, _options) => {
   function familyReadinessReports() {
     return evaluateAllFamilyReadiness({
       registeredTools: registeredToolNames,
-      enabledToolPacks: packUnion.length ? packUnion : ["core", "web", "pwn", "rev", "crypto", "forensics", "misc", "java"],
+      enabledToolPacks: [...enabledPacks],
     })
   }
 
@@ -483,6 +484,19 @@ const RuntimePlugin: Plugin = async (input, _options) => {
           propString(propObject<Record<string, unknown>>(event.properties, "info") ?? {}, "id"),
         )
         if (event.type === "session.deleted" && sessionID) {
+          const agentName = firstNonEmptyString(
+            propString(event.properties, "agent"),
+            propString(event.properties, "agentName"),
+            propString(propObject<Record<string, unknown>>(event.properties, "session") ?? {}, "agent"),
+            surfaceAgentForStatus(sessionID, undefined) ?? "ctf-fast",
+          ) ?? "ctf-fast"
+          await releaseSessionMcps({
+            client: input.client,
+            worktree: input.worktree,
+            directory: input.directory,
+            sessionID,
+            agentName,
+          }).catch(() => undefined)
           clearActivatedDefaults(sessionID)
           clearSessionSurface(sessionID)
         }
@@ -643,11 +657,7 @@ const RuntimePlugin: Plugin = async (input, _options) => {
         )
       const agentName = surfaceAgentForTools(meta.sessionID, rawAgent)
       const toolName = typeof meta.tool === "string" ? meta.tool : ""
-      if (
-        toolName &&
-        (toolName.startsWith("ctf-") || toolName.startsWith("archive-") || toolName === "doc-read" || toolName === "image-file-info") &&
-        !toolAllowedForAgent(toolName, agentName)
-      ) {
+      if (toolName && !toolAllowedForAgent(toolName, agentName)) {
         throw new Error(
           `FastToolSurface: tool "${toolName}" is not available on ctf-fast. ` +
             `Use a lightweight alternative, escalate to /ctf-expert, or stay within the fast allowlist ` +
@@ -708,13 +718,16 @@ const RuntimePlugin: Plugin = async (input, _options) => {
                   )
                 }
               }
+              activatedDefaults.add(meta.sessionID)
             } catch (err) {
-              // Non-fatal: agent defaults are a best-effort optimization.
+              // Non-fatal: agent defaults are a best-effort optimization. Do not
+              // mark the session permanently attempted so a later skill can retry.
               const msg = err instanceof Error ? err.message : String(err)
               console.warn(`[plugin] activateAgentDefaults failed for agent "${agent}" (non-fatal): ${msg}`)
             }
+          } else {
+            activatedDefaults.add(meta.sessionID)
           }
-          activatedDefaults.add(meta.sessionID)
         }
         return
       }

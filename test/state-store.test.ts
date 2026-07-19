@@ -64,11 +64,10 @@ describe("loadJsonFile", () => {
     expect(result).toEqual([])
   })
 
-  it("returns fallback for invalid JSON", async () => {
+  it("throws for invalid JSON instead of silently resetting state", async () => {
     const file = tmpFile("invalid")
     writeFileSync(file, "not-json", "utf-8")
-    const result = await loadJsonFile(file, { ok: false })
-    expect(result).toEqual({ ok: false })
+    await expect(loadJsonFile(file, { ok: false })).rejects.toThrow(SyntaxError)
   })
 
   it("parses valid JSON", async () => {

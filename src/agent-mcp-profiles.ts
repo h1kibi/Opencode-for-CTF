@@ -21,6 +21,9 @@ export const COMMON_LIGHT_MCPS = ["filesystem", "context7", "github", "markitdow
  */
 export const AGENT_MCP_DEFAULTS: Record<string, string[]> = {
   // === Primary agents ===
+  /** Fast is the single lightweight execution Agent; family is selected by route packs. */
+  "ctf-fast": [...COMMON_LIGHT_MCPS],
+  /** Expert owns evidence-driven orchestration and the default browser capability. */
   "ctf-expert": [...COMMON_LIGHT_MCPS, "browser"],
 
   // === Category subagents ===

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-07-19
+
+### Added
+
+- Release gate and preflight cleanup for the v0.1.1 GitHub release candidate.
+
+### Changed
+
+- Route/runtime contract tightened so primary agents remain `ctf-fast` / `ctf-expert` while family/category selection only affects capability overlays.
+- `ctf-env-check` now emits structured environment probe results and feeds family readiness with real probe-backed data.
+- Dynamic MCP lifecycle and release cleanup were hardened to reduce approval/state drift.
+- Compatibility/documentation wording was narrowed around legacy aliases and `notes.md` vs canonical Evidence.md state.
+
 ## [0.1.0] — 2026-07-17
 
 ### Added

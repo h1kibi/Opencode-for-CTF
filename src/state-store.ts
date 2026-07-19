@@ -1,19 +1,37 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { withFileLock } from "./file-lock.ts"
 
 export async function loadJsonFile<T>(file: string, fallback: T): Promise<T> {
   try {
     const raw = await readFile(file, "utf8")
+    if (!raw.trim()) return fallback
     return JSON.parse(raw) as T
-  } catch {
-    return fallback
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return fallback
+    throw error
   }
 }
 
 export async function saveJsonFile(file: string, value: unknown) {
   await mkdir(path.dirname(file), { recursive: true })
-  await writeFile(file, `${JSON.stringify(value, null, 2)}\n`, "utf8")
+  const temporary = `${file}.tmp-${process.pid}-${Date.now()}`
+  try {
+    await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8")
+    try {
+      await rename(temporary, file)
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (code === "EEXIST" || code === "EPERM") {
+        await rm(file, { force: true })
+        await rename(temporary, file)
+      } else {
+        throw error
+      }
+    }
+  } finally {
+    await rm(temporary, { force: true })
+  }
 }
 
 export async function removeFileIfExists(file: string) {

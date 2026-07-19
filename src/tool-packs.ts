@@ -17,7 +17,10 @@ export type ToolPackId =
   | "android"
   | "godot"
   | "java"
-
+  | "web-heavy"
+  | "crypto-heavy"
+  | "android-dynamic"
+  | "forensics-heavy"
 export const ALL_TOOL_PACKS: ToolPackId[] = [
   "core",
   "web",
@@ -29,6 +32,10 @@ export const ALL_TOOL_PACKS: ToolPackId[] = [
   "android",
   "godot",
   "java",
+  "web-heavy",
+  "crypto-heavy",
+  "android-dynamic",
+  "forensics-heavy",
 ]
 
 /** Default packs registered without user config (main CTF categories, not rare specialists). */
@@ -149,6 +156,7 @@ const CORE_EXACT = new Set([
 ])
 
 const PREFIX_RULES: Array<{ prefix: string; pack: ToolPackId }> = [
+  { prefix: "ctf-web-observe", pack: "core" },
   { prefix: "ctf-android-", pack: "android" },
   { prefix: "ctf-apk-", pack: "android" },
   { prefix: "ctf-dex-", pack: "android" },
@@ -164,7 +172,10 @@ const PREFIX_RULES: Array<{ prefix: string; pack: ToolPackId }> = [
   { prefix: "ctf-go-", pack: "rev" },
   { prefix: "ctf-windows-gui-", pack: "rev" },
   { prefix: "ctf-rsa-", pack: "crypto" },
+  { prefix: "ctf-pcap-extract", pack: "forensics-heavy" },
   { prefix: "ctf-pcap-", pack: "forensics" },
+  { prefix: "ctf-web-observe", pack: "core" },
+  { prefix: "ctf-stego-triage", pack: "forensics-heavy" },
   { prefix: "ctf-stego-", pack: "forensics" },
   { prefix: "ctf-image-open", pack: "forensics" },
   { prefix: "ctf-media-open", pack: "forensics" },

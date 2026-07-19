@@ -104,7 +104,16 @@ export type ServerGroup = "recon" | "analysis" | "knowledge" | "debug"
 
 export type CtfFamily = "web" | "pwn" | "rev" | "crypto" | "forensics" | "misc"
 
-export type McpRequestStatus = "pending" | "approved" | "denied"
+export type McpRequestStatus =
+  | "pending"
+  | "approving"
+  | "activating"
+  | "active"
+  | "approved"
+  | "activation_failed"
+  | "denied"
+  | "released"
+  | "expired"
 
 export type McpServerMeta = {
   id: string
@@ -124,6 +133,7 @@ export type AgentMcpRequest = {
   serverName: string
   reason: string
   status: McpRequestStatus
+  activationState?: "idle" | "activating" | "active" | "released" | "failed"
   decidedBy?: string
   decidedNote?: string
   createdAt: string

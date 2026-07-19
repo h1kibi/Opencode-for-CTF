@@ -16,7 +16,7 @@
 /ctf ./challenge
 ```
 
-`/ctf` 会先走内置 category 路由（工具 `ctf-route-plan`），再进入 `ctf-fast` 或 `ctf-expert` 解题流水线。更多入口见 `/ctf-help`。
+`/ctf` 会先走内置 category 路由（工具 `ctf-route-plan`），再进入 `ctf-fast` 或 `ctf-expert` 解题流水线。family 只影响能力包与工具面，不是独立 primary agent。更多入口见 `/ctf-help`。
 
 ## 特性
 
@@ -193,7 +193,7 @@ npm run fetch-skills
 | `ctf-fast` | **主 agent** | 轻量快速解题 — 直觉优先、最小工具依赖 |
 | `ctf-expert` | **主 agent** | 证据驱动 — 侦查→分析→路线验证→迭代 |
 | `researcher` | 支持主 agent | 本地知识库维护（非 CTF 解题车道） |
-| `ctf-web` / `ctf-pwn` / `ctf-rev` / `ctf-crypto` / `ctf-forensics` | 子 agent | 题型专家 |
+| `ctf-web` / `ctf-pwn` / `ctf-rev` / `ctf-crypto` / `ctf-forensics` | 子 agent | 题型 playbook / family overlay |
 | `ctf-scout` / `ctf-librarian` / `ctf-oracle` | 子 agent | 侦察 / 知识库 / 模式推断 |
 
 ### 选择指南
@@ -248,7 +248,7 @@ graph TD
 - `ctf-team-dispatch` — 启动 2–8 个独立子会话
 - `ctf-team-status` / `ctf-team-collect` / `ctf-team-cancel` / `ctf-team-close` / `ctf-team-recover`
 
-worker 只返回证据，不应直接写 `notes.md`、`.ctf-state.json`、`.ctf-team.json` 或 `agent_flag.txt`。
+worker 只返回证据，不应直接写 `notes.md`、`.ctf-state.json`、`.ctf-team.json` 或 `agent_flag.txt`；其中 `notes.md` 仅作迁移/导出，不是 canonical state。
 
 ## 仓库结构
 

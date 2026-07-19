@@ -1,6 +1,6 @@
 # Pre-publish checklist
 
-Use this before the first public GitHub push of **opencode-for-ctf** `0.1.0`.
+Use this before the first public GitHub push of **opencode-for-ctf** `0.1.1`.
 
 ## Must pass locally
 
@@ -58,7 +58,7 @@ npm run ctf:status -- --strict
 - [ ] Description + topics: `opencode`, `ctf`, `security`, `plugin`, `capture-the-flag`
 - [ ] Enable Security Advisories
 - [ ] Default branch protection optional for solo maintainers
-- [ ] Create release tag `v0.1.0` when ready (docs already describe source install)
+- [ ] Create release tag `v0.1.1` when ready (docs already describe source install)
 
 ## Do not confuse with npm publish
 

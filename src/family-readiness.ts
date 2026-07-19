@@ -14,10 +14,20 @@ export type FamilyReadinessCheck = FamilyCapabilityCheck & {
   ok: boolean
 }
 
+export type EnvironmentProbeResult = {
+  ok: boolean
+  detail?: string
+  version?: string
+  behaviorOk?: boolean
+  executed?: boolean
+}
+
 export type FamilyReadinessInput = {
   family: CtfFamily
   registeredTools: Iterable<string>
   enabledToolPacks: string[]
+  /** Optional real environment probe results keyed by contract envDependency id. */
+  environmentProbes?: Record<string, EnvironmentProbeResult>
 }
 
 export type FamilyReadinessReport = {
@@ -29,6 +39,7 @@ export type FamilyReadinessReport = {
   missingToolPacks: ToolPackId[]
   missingDefaultMcps: string[]
   missingHeavyMcps: string[]
+  missingCapabilities: string[]
 }
 
 function uniqueSorted(values: Iterable<string>): string[] {
@@ -112,6 +123,24 @@ export function evaluateFamilyReadiness(input: FamilyReadinessInput): FamilyRead
     })
   }
 
+  const missingCapabilities: string[] = []
+  for (const dependency of contract.envDependencies ?? []) {
+    const probe = input.environmentProbes?.[dependency.id]
+    const executed = probe?.executed === true || probe !== undefined
+    const ok = probe?.ok === true && probe.behaviorOk !== false
+    const required = dependency.id.includes("docker") && input.family === "pwn"
+    checks.push({
+      id: dependency.id,
+      ok,
+      required,
+      detail: probe
+        ? `${dependency.label}: ${probe.detail ?? (ok ? "available" : "unavailable")}${probe.version ? ` (${probe.version})` : ""}`
+        : `${dependency.label}: probe not executed`,
+      remediation: ok ? undefined : dependency.setupCommand,
+    })
+    if (!ok) missingCapabilities.push(dependency.id)
+  }
+
   const hardFailures = checks.filter((check) => check.required && !check.ok)
   const softFailures = checks.filter((check) => !check.required && !check.ok)
   const status: FamilyCapabilityStatus = hardFailures.length
@@ -129,18 +158,21 @@ export function evaluateFamilyReadiness(input: FamilyReadinessInput): FamilyRead
     missingToolPacks,
     missingDefaultMcps: uniqueSorted(missingDefaultMcps),
     missingHeavyMcps: uniqueSorted(missingHeavyMcps),
+    missingCapabilities: uniqueSorted(missingCapabilities),
   }
 }
 
 export function evaluateAllFamilyReadiness(input: {
   registeredTools: Iterable<string>
   enabledToolPacks: string[]
+  environmentProbes?: Record<string, EnvironmentProbeResult>
 }): FamilyReadinessReport[] {
   return CTF_FAMILIES.map((family) =>
     evaluateFamilyReadiness({
       family,
       registeredTools: input.registeredTools,
       enabledToolPacks: input.enabledToolPacks,
+      environmentProbes: input.environmentProbes,
     }),
   )
 }
@@ -159,6 +191,9 @@ export function formatFamilyReadinessSummary(report: FamilyReadinessReport): str
   }
   if (report.missingDefaultMcps.length) {
     lines.push(`- missing default MCPs: ${report.missingDefaultMcps.join(", ")}`)
+  }
+  if (report.missingCapabilities.length) {
+    lines.push(`- missing capabilities: ${report.missingCapabilities.join(", ")}`)
   }
   if (report.missingHeavyMcps.length) {
     lines.push(`- missing requestable MCPs: ${report.missingHeavyMcps.join(", ")}`)
