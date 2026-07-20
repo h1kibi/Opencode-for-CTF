@@ -40,3 +40,5 @@ dist/
 # Temporary test and verification directories
 .tmp-*
 *.tmp
+.ctf-locks/
+pwn-tools-add.txt
