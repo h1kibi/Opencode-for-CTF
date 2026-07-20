@@ -22,6 +22,13 @@ export type EnvironmentProbeResult = {
   executed?: boolean
 }
 
+export type StartupEnvironmentSummary = {
+  os: "windows" | "linux" | "macos" | "unknown"
+  shell: "powershell" | "bash" | "sh" | "zsh" | "cmd" | "unknown"
+  substrate: "kali" | "native-linux" | "docker-capable" | "unknown"
+  guidance: string[]
+}
+
 export type FamilyReadinessInput = {
   family: CtfFamily
   registeredTools: Iterable<string>
@@ -52,6 +59,77 @@ function familyAgentName(family: CtfFamily): string {
 
 function baselineChecks(contract: FamilyCapabilityContract): FamilyReadinessCheck[] {
   return contract.readinessChecks.map((check) => ({ ...check, ok: true }))
+}
+
+function truthyDetail(probe: EnvironmentProbeResult | undefined): string {
+  return (probe?.detail || "").toLowerCase()
+}
+
+export function summarizeStartupEnvironment(
+  environmentProbes?: Record<string, EnvironmentProbeResult>,
+): StartupEnvironmentSummary {
+  const osProbe = environmentProbes?.["env:os"]
+  const shellProbe = environmentProbes?.["env:shell"]
+  const kaliProbe = environmentProbes?.["env:kali"]
+  const wslProbe = environmentProbes?.["env:wsl"]
+  const dockerProbe = environmentProbes?.["env:docker"]
+
+  const osDetail = truthyDetail(osProbe)
+  const shellDetail = truthyDetail(shellProbe)
+
+  let os: StartupEnvironmentSummary["os"] = "unknown"
+  if (osProbe?.ok) {
+    if (osDetail.includes("windows") || osDetail.includes("win32")) os = "windows"
+    else if (osDetail.includes("mac") || osDetail.includes("darwin")) os = "macos"
+    else if (osDetail.includes("linux")) os = "linux"
+  }
+
+  let shell: StartupEnvironmentSummary["shell"] = "unknown"
+  if (shellProbe?.ok) {
+    if (shellDetail.includes("powershell") || shellDetail.includes("pwsh")) shell = "powershell"
+    else if (shellDetail.includes("bash")) shell = "bash"
+    else if (shellDetail.includes("zsh")) shell = "zsh"
+    else if (shellDetail.includes("cmd")) shell = "cmd"
+    else if (shellDetail.includes("sh")) shell = "sh"
+  }
+
+  let substrate: StartupEnvironmentSummary["substrate"] = "unknown"
+  if (kaliProbe?.ok) substrate = "kali"
+  else if (wslProbe?.ok || os === "linux") substrate = "native-linux"
+  else if (dockerProbe?.ok) substrate = "docker-capable"
+
+  const guidance: string[] = []
+  if (substrate === "kali") {
+    guidance.push("Detected Kali Linux — remember Kali's built-in security tooling is likely available, so prefer native system tools before inventing workarounds.")
+  }
+  if (os === "windows" || shell === "powershell") {
+    guidance.push("Detected Windows/PowerShell — for fast probing, default to PowerShell-safe syntax, use `curl.exe` when literal curl semantics matter, avoid bash/heredoc examples like `python - <<'PY'`, use `python -c` for trivial snippets, and prefer `ctf-python-inline` or small script files when quoting, redirection, loops, or multi-line HTTP payloads would make one-liners fragile.")
+  }
+  if (wslProbe?.ok) {
+    guidance.push("Detected a Linux environment launched via WSL — keep Linux-heavy probes inside that Linux environment and use Linux-native bash/heredoc patterns there instead of assembling them in PowerShell first.")
+  }
+  if (!guidance.length && substrate === "native-linux") {
+    guidance.push("Detected native Linux — use the host's native CLI/toolchain directly when it matches the challenge workflow; bash-native pipelines, shell loops, heredocs, and inline `python - <<'PY'` snippets are appropriate here.")
+  }
+
+  return { os, shell, substrate, guidance }
+}
+
+export function formatStartupEnvironmentSummary(
+  environmentProbes?: Record<string, EnvironmentProbeResult>,
+): string | undefined {
+  const summary = summarizeStartupEnvironment(environmentProbes)
+  if (!summary.guidance.length && summary.os === "unknown" && summary.shell === "unknown" && summary.substrate === "unknown") {
+    return undefined
+  }
+  const parts = [
+    `os=${summary.os}`,
+    `shell=${summary.shell}`,
+    `substrate=${summary.substrate}`,
+  ]
+  const lines = [`Startup environment: ${parts.join(", ")}`]
+  for (const note of summary.guidance) lines.push(`- ${note}`)
+  return lines.join("\n")
 }
 
 export function evaluateFamilyReadiness(input: FamilyReadinessInput): FamilyReadinessReport {
@@ -126,7 +204,6 @@ export function evaluateFamilyReadiness(input: FamilyReadinessInput): FamilyRead
   const missingCapabilities: string[] = []
   for (const dependency of contract.envDependencies ?? []) {
     const probe = input.environmentProbes?.[dependency.id]
-    const executed = probe?.executed === true || probe !== undefined
     const ok = probe?.ok === true && probe.behaviorOk !== false
     const required = dependency.id.includes("docker") && input.family === "pwn"
     checks.push({

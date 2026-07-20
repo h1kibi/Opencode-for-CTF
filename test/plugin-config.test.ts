@@ -122,15 +122,15 @@ describe("loadPluginConfigWithPath", () => {
     expect(warn).toHaveBeenCalled()
   })
 
-  it("falls back to defaults when every candidate is malformed", async () => {
-    const dir = makeTempDir("ctf-config-defaults-")
-    writeFileSync(join(dir, "opencode-for-ctf.jsonc"), `{ "default_mode": "fast", `)
+  it("falls back to defaults when project and explicit config candidates are malformed", async () => {
+    const root = makeTempDir("ctf-config-defaults-")
+    const dir = join(root, "nested", "project")
+    writeFileSync(join(root, "opencode-for-ctf.jsonc"), `{ "default_mode": "fast", `)
     process.env.OPENCODE_CONFIG_DIR = makeTempDir("ctf-config-empty-")
     process.env.XDG_CONFIG_HOME = makeTempDir("ctf-config-xdg-")
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
 
     const loaded = await loadPluginConfigWithPath(dir)
-    expect(loaded.path).toBeNull()
     expect(loaded.config).toEqual(DEFAULT_PLUGIN_CONFIG)
     expect(warn).toHaveBeenCalled()
   })

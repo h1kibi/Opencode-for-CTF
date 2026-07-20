@@ -7,6 +7,13 @@ import {
 } from "../src/tool-packs.ts"
 import { loadCtfTools } from "../src/ctf-tools.ts"
 
+const FAST_LIGHT_WEB_TOOLS = [
+  "ctf-web-fingerprint",
+  "ctf-web-blackbox-map",
+  "ctf-web-probe",
+  "ctf-python-inline",
+] as const
+
 describe("packForTool", () => {
   it("classifies core helpers", () => {
     expect(packForTool("ctf-route-plan")).toBe("core")
@@ -18,6 +25,11 @@ describe("packForTool", () => {
   it("classifies category prefixes", () => {
     expect(packForTool("ctf-web-probe")).toBe("web")
     expect(packForTool("ctf-pwn-runner")).toBe("pwn")
+    expect(packForTool("ctf-pwn-offset")).toBe("pwn")
+    expect(packForTool("ctf-pwn-remote-check")).toBe("pwn")
+    expect(packForTool("ctf-proto-probe")).toBe("core")
+    expect(packForTool("ctf-pwn-probe")).toBe("pwn")
+    expect(packForTool("ctf-pwn-libc-hint")).toBe("pwn")
     expect(packForTool("ctf-rev-pe-slice")).toBe("rev")
     expect(packForTool("ctf-rsa-probe")).toBe("crypto")
     expect(packForTool("ctf-pcap-probe")).toBe("forensics")
@@ -67,5 +79,13 @@ describe("loadCtfTools packs", () => {
     expect(tools["ctf-pwn-runner"]).toBeUndefined()
     expect(tools["ctf-android-runtime-check"]).toBeUndefined()
     expect(toolAllowedByPacks("ctf-web-probe", resolveEnabledPacks(["core", "web"]))).toBe(true)
+  }, 60_000)
+
+  it("keeps the fast lightweight web and script helpers loadable under core+web packs", async () => {
+    const tools = await loadCtfTools({ packs: ["core", "web"] })
+    for (const toolName of FAST_LIGHT_WEB_TOOLS) {
+      expect(tools[toolName]).toBeDefined()
+      expect(toolAllowedByPacks(toolName, resolveEnabledPacks(["core", "web"]))).toBe(true)
+    }
   }, 60_000)
 })

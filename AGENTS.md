@@ -17,8 +17,8 @@ That is the product entry. It auto-routes category/mode via `ctf-route-plan`, th
 | Auto-route + solve | `/ctf` |
 | Force fast lane | `/ctf-fast` |
 | Force expert lane | `/ctf-expert` |
-| Resume evidence branch | `/ctf-resume` |
-| Command surface | `/ctf-help` |
+| Resume evidence branch | `/resume` |
+| Command surface | `/help` |
 
 `/ctf-solve` is a compatibility-only alias; primary agents are `ctf-fast` and `ctf-expert`.
 

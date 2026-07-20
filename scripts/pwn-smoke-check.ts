@@ -185,14 +185,13 @@ const checks: Check[] = [
     needles: ['schema_version: "pwn_stage_delta_runner.v1"', "snapshot_file=", "registers_added:", "recommended_use:"],
   },
   {
-    file: "tools/ctf-pwn-fast-bootstrap.ts",
+    file: "tools/ctf-pwn-probe.ts",
     needles: [
-      "route_scores",
-      '"heap-simple": 0',
-      "const routeDecision = classifyRoute(evidence)",
-      "substrate_gate",
+      'schema_version: "pwn_probe.v1"',
+      "best_fast_path",
+      "one_variable_probe",
+      "recommended_next_action",
       "ctf-pwn-libc-runtime-doctor",
-      "pwn_fast_shellcode.py",
     ],
   },
   {
@@ -284,8 +283,8 @@ const checks: Check[] = [
     ],
   },
   {
-    file: "tools/ctf-go-binary-assist.ts",
-    needles: ["detected_go", "go_signals", "user_code_candidates", "runtime_noise_candidates", "recommended_next"],
+    file: "tools/ctf-go-pclntool.ts",
+    needles: ["gopclntab_offsets", "user_code_candidates", "runtime_noise_candidates", "analysis_pivots", "recommended_next"],
   },
   {
     file: "commands/image-info.md",
@@ -503,7 +502,7 @@ const checks: Check[] = [
       "references/pwn-fast-autonomy.md",
       "references/pwn-mode-boundary.md",
       "references/pwn-runtime-trigger-matrix.md",
-      "ctf-pwn-fast-bootstrap",
+      "ctf-pwn-probe",
       "ctf-pwn-template-init",
       "ctf-pwn-container-probe",
       "ctf-pwn-libc-resolver",

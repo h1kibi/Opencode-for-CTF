@@ -4,7 +4,7 @@ agent: ctf-fast
 subtask: false
 ---
 
-# /ctf-help — Command surface
+# /help — Command surface
 
 You only need these for normal work.
 
@@ -13,7 +13,7 @@ You only need these for normal work.
 | Command | Purpose |
 | --- | --- |
 | `/ctf <target>` | **唯一默认主入口** — auto-route + solve |
-| `/ctf-help` | This help |
+| `/help` | This help |
 
 ## L1 — core modes
 
@@ -21,9 +21,9 @@ You only need these for normal work.
 | --- | --- |
 | `/ctf-fast <target>` | Force lightweight fast lane |
 | `/ctf-expert <target>` | Force evidence-driven expert lane |
-| `/ctf-resume <context>` | Resume an existing evidence branch |
+| `/resume <context>` | Resume an existing evidence branch |
 
-## L2 — category specialists (when type is already clear)
+## L2 — category specialists
 
 | Command | Agent |
 | --- | --- |
@@ -42,6 +42,18 @@ You only need these for normal work.
 | `/ctf-team-mode ...` | Team Mode controls (expert only) |
 
 Heap mappers, Android macros, Godot helpers, ledger/control-plane commands, and other specialist helpers remain installed for power users and old workflows. They are **not** part of the main entry surface.
+
+## Public surface only
+
+The command surface is intentionally small for this semi-automated plugin. Public entrypoints are only:
+- `/ctf`
+- `/help`
+- `/ctf-fast`
+- `/ctf-expert`
+- `/resume`
+- `/ctf-web`, `/ctf-pwn`, `/ctf-rev`, `/ctf-crypto`, `/ctf-forensics`, `/ctf-misc`
+
+Compatibility aliases, control-plane helpers, and specialist micro-commands may remain installed for migration or internal routing, but they are **not** part of the public command surface.
 
 ## Runtime routing
 

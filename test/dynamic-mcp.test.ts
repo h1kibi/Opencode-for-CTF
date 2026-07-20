@@ -45,17 +45,26 @@ describe("agent-mcp-profiles", () => {
     expect(AGENT_MCP_DEFAULTS["ctf-rev"]).toContain("ReVa")
   })
 
-  it("ctf-forensics defaults to wireshark but keeps GUI simulators on-demand", () => {
+  it("ctf-forensics defaults to wireshark and CyberChef", () => {
     expect(AGENT_MCP_DEFAULTS["ctf-forensics"]).toContain("wireshark-mcp")
-    expect(AGENT_MCP_DEFAULTS["ctf-forensics"]).not.toContain("packettracer-gui-mcp")
+    expect(AGENT_MCP_DEFAULTS["ctf-forensics"]).toContain("cyberchef-mcp")
+  })
+
+  it("ctf-crypto defaults to CyberChef", () => {
+    expect(AGENT_MCP_DEFAULTS["ctf-crypto"]).toContain("cyberchef-mcp")
+  })
+
+  it("ctf-misc defaults to wireshark and CyberChef", () => {
+    expect(AGENT_MCP_DEFAULTS["ctf-misc"]).toContain("wireshark-mcp")
+    expect(AGENT_MCP_DEFAULTS["ctf-misc"]).toContain("cyberchef-mcp")
   })
 
   it("ctf-pwn has only common light MCPs", () => {
     expect(AGENT_MCP_DEFAULTS["ctf-pwn"]).toEqual([...COMMON_LIGHT_MCPS])
   })
 
-  it("ctf-crypto has only common light MCPs", () => {
-    expect(AGENT_MCP_DEFAULTS["ctf-crypto"]).toEqual([...COMMON_LIGHT_MCPS])
+  it("ctf-crypto defaults to common light MCPs plus CyberChef", () => {
+    expect(AGENT_MCP_DEFAULTS["ctf-crypto"]).toEqual([...COMMON_LIGHT_MCPS, "cyberchef-mcp"])
   })
 
   it("ctf-scout has browser", () => {
@@ -146,18 +155,21 @@ describe("mcp-server-registry", () => {
     }
   })
 
-  it("expands plugin_root placeholders in local MCP commands", () => {
+  it("expands env-based launcher placeholders for external local MCP commands", () => {
+    process.env.WIREMCP_LAUNCHER = "/tmp/wiremcp/server.py"
     const server = lookupMcpServer("wireshark-mcp")!
     const config = metaToRuntimeConfig(server)
     expect(config?.type).toBe("local")
-    expect(config?.command?.join(" ")).toContain("mcp-servers")
-    expect(config?.command?.join(" ")).not.toContain("{plugin_root}")
+    expect(config?.command?.join(" ")).toContain("/tmp/wiremcp/server.py")
+    expect(config?.command?.join(" ")).not.toContain("{env:WIREMCP_LAUNCHER}")
+    delete process.env.WIREMCP_LAUNCHER
   })
 
-  it("keeps Packet Tracer GUI and Flutter AOT as heavy on-demand MCPs", () => {
-    expect(lookupMcpServer("packettracer-gui-mcp")?.weight).toBe("heavy")
+  it("keeps IDA and Flutter AOT as heavy on-demand MCPs and exposes optional CTFd", () => {
+    expect(lookupMcpServer("ida-pro")?.weight).toBe("heavy")
     expect(lookupMcpServer("flutter-aot")?.weight).toBe("heavy")
     expect(lookupMcpServer("flutter-aot")?.envRequired).toContain("FLUTTER_AOT_MCP_SERVER")
+    expect(lookupMcpServer("ctfd-mcp")?.weight).toBe("heavy")
   })
 })
 

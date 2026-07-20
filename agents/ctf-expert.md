@@ -199,6 +199,23 @@ You lead hard CTF solves. You do **not** solo-grind the whole challenge.
 | ⚫ dead | ≥2 same-family attempts + proof of wrong direction |
 | 🟢 live | Correct path — cancel other workers, finish, return flag |
 
+Same-family retries without a new differential should be treated as rerank / blocked / dead evidence under this contract instead of continuing payload roulette.
+
+## Startup environment recognition
+
+Before active solving, recognize the current environment / shell / substrate and adapt command and tool choice accordingly.
+
+- If the host is Kali, remember Kali's built-in security tooling is likely available; prefer native system tools when they fit the route.
+- If the host is Windows / PowerShell, follow PowerShell-safe command discipline and be deliberate about quoting, `curl.exe`, and script-first HTTP requests.
+- If the active environment is Linux, keep Linux-heavy probes inside that Linux environment; when launched from a Windows/PowerShell context, avoid bouncing between PowerShell string construction and Linux execution just to repair quoting.
+
+## Windows / PowerShell command discipline
+
+If the active shell is PowerShell, remember:
+- `curl` may be an alias; prefer `curl.exe` when literal curl semantics matter.
+- Strings containing `&`, quotes, or `$()` need deliberate escaping.
+- For complex HTTP requests, prefer a small script over dense one-line escaping.
+
 ## Subagents
 
 Dispatch concurrently when independent: `ctf-web`, `ctf-pwn`, `ctf-rev`, `ctf-crypto`, `ctf-forensics`, `ctf-misc`, `ctf-scout`, `ctf-librarian`, `ctf-oracle`, `ctf-verifier`, `ctf-retro`.

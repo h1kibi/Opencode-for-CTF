@@ -34,5 +34,41 @@
   // Optional merge into registry for expert-heavy machines:
   // "expert_tool_packs": ["android", "godot"],
 
+  // Recommended MCP backend notes:
+  // - browser uses @playwright/mcp by default.
+  // - wireshark-mcp expects WIREMCP_LAUNCHER to point at WireMCP's server launcher.
+  // - ida-pro expects mrexodia/ida-pro-mcp installed as `ida-pro-mcp` on PATH.
+  // - cyberchef-mcp is defaulted only for crypto / forensics / misc agents.
+  // - ctfd-mcp is configurable but disabled by default.
+
+  // Example disabled MCP stubs for workspace-level opencode.jsonc:
+  // "mcp": {
+  //   "browser": {
+  //     "type": "local",
+  //     "command": ["npx", "-y", "@playwright/mcp@latest"],
+  //     "enabled": false
+  //   },
+  //   "wireshark-mcp": {
+  //     "type": "local",
+  //     "command": ["python", "{env:WIREMCP_LAUNCHER}", "--stdio"],
+  //     "enabled": false
+  //   },
+  //   "ida-pro": {
+  //     "type": "local",
+  //     "command": ["ida-pro-mcp", "--stdio"],
+  //     "enabled": false
+  //   },
+  //   "cyberchef-mcp": {
+  //     "type": "local",
+  //     "command": ["npx", "-y", "cyberchef-mcp"],
+  //     "enabled": false
+  //   },
+  //   "ctfd-mcp": {
+  //     "type": "local",
+  //     "command": ["npx", "-y", "ctfd-mcp"],
+  //     "enabled": false
+  //   }
+  // },
+
   "external_skills": false
 }

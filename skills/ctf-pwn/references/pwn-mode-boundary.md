@@ -1,14 +1,14 @@
 # PWN Mode Boundary
 
-Use this reference when deciding whether a branch should stay in `ctf-pwn-fast`, escalate to `ctf-rigorous`, or be executed by `ctf-pwn` under a rigorous controller.
+Use this reference when deciding whether a branch should stay in `ctf-fast`, escalate to `ctf-expert`, or be executed by `ctf-pwn` under an expert controller.
 
 ## Role Split
 
-- `ctf-pwn-fast`: fast primary opener for simple or medium native PWN with one short closure path.
-- `ctf-rigorous`: primary controller for complex, branchy, source-rich, unstable, or multi-family CTF branches.
-- `ctf-pwn`: PWN execution specialist. Under rigorous mode it owns exploit doctrine, runtime calibration, leak reduction, heap reduction, and closure experiments, but it does not take over controller duties.
+- `ctf-fast`: fast primary opener for simple or medium native PWN with one short closure path.
+- `ctf-expert`: primary controller for complex, branchy, source-rich, unstable, or multi-family CTF branches.
+- `ctf-pwn`: PWN execution specialist. Under expert mode it owns exploit doctrine, runtime calibration, leak reduction, heap reduction, and closure experiments, but it does not take over controller duties.
 
-## Keep the Branch in `ctf-pwn-fast` When
+## Keep the Branch in `ctf-fast` When
 
 - one classic route is already obvious: `ret2win`, `ret2libc`, `fmt`, `shellcode`, `orw`, `stack-pivot`, `ret2csu`, or one simple heap primitive;
 - the next best action is creating or editing `exploit.py` rather than building a larger queue;
@@ -16,7 +16,7 @@ Use this reference when deciding whether a branch should stay in `ctf-pwn-fast`,
 - the leak class is stable enough for one closure family;
 - the branch does not need repeated gdb, allocator theory, or competing top routes.
 
-## Escalate to `ctf-rigorous` When
+## Escalate to `ctf-expert` When
 
 - allocator or glibc versioning determines whether the branch is real;
 - leak class or base math is unstable, contested, or unknown;
@@ -26,7 +26,7 @@ Use this reference when deciding whether a branch should stay in `ctf-pwn-fast`,
 - more than one serious exploit family is still alive;
 - repeated debugger, replay, or state checkpoints are now cheaper than another fast attempt.
 
-## `ctf-rigorous` Controller Rules for PWN Branches
+## `ctf-expert` Controller Rules for PWN Branches
 
 - keep at most top-3 live hypotheses;
 - keep one active execution substrate per branch;
@@ -36,7 +36,7 @@ Use this reference when deciding whether a branch should stay in `ctf-pwn-fast`,
 
 ## `ctf-pwn` Specialist Return Contract
 
-When `ctf-pwn` returns control to a rigorous branch, it should return only:
+When `ctf-pwn` returns control to an expert branch, it should return only:
 
 - strongest runtime or source-backed evidence;
 - current PWN route owner and route-lock status;
@@ -45,7 +45,7 @@ When `ctf-pwn` returns control to a rigorous branch, it should return only:
 - stable versus unstable leaks or calibration blockers;
 - one best next PWN-specific probe with oracle and falsify condition.
 
-## Fast-to-Rigorous Handoff Minimum
+## Fast-to-Expert Handoff Minimum
 
 - exploit artifact path;
 - binary/libc/ld/runtime summary;

@@ -352,7 +352,7 @@ export default tool({
 
     if (!symbols.length)
       payload.recommended_next.push(
-        "go tool nm produced no symbols; verify the binary is Go-built or the binary is fully stripped (.gopclntab may still help 鈥?try ctf-go-binary-assist)",
+        "go tool nm produced no symbols; verify the binary is Go-built or the binary is fully stripped (.gopclntab may still help — this tool already surfaces the same pivots that ctf-go-binary-assist used to provide)",
       )
     else {
       payload.recommended_next.push(`apply rename script ${payload.rename_script_path} in your decompiler`)

@@ -84,13 +84,13 @@ export const MCP_SERVER_REGISTRY: McpServerMeta[] = [
   // ====================================================================
   {
     id: "browser",
-    description: "Headless Chrome automation — inspect live web apps, click, fill forms, JS context.",
+    description: "Playwright browser automation — inspect live web apps, click, fill forms, trace stateful flows.",
     weight: "medium",
     group: "recon",
     categories: ["web", "forensics"],
     config: {
       type: "local",
-      command: ["npx", "-y", "chrome-devtools-mcp", "--headless", "--isolated", "--slim"],
+      command: ["npx", "-y", "@playwright/mcp@latest"],
     },
   },
   {
@@ -108,24 +108,25 @@ export const MCP_SERVER_REGISTRY: McpServerMeta[] = [
   },
   {
     id: "wireshark-mcp",
-    description: "Wireshark/tshark packet analysis — pcap parsing, protocol dissection, stream follow.",
+    description: "WireMCP-backed Wireshark/tshark packet analysis — pcap parsing, protocol dissection, stream follow.",
     weight: "medium",
     group: "analysis",
     categories: ["forensics", "misc"],
     config: {
       type: "local",
-      command: ["node", "{plugin_root}/mcp-servers/wireshark-mcp/server.js"],
+      command: ["python", "{env:WIREMCP_LAUNCHER}", "--stdio"],
     },
+    envRequired: ["WIREMCP_LAUNCHER"],
   },
   {
-    id: "packettracer-gui-mcp",
-    description: "Cisco Packet Tracer GUI automation — network simulation control for CTF challenges.",
-    weight: "heavy",
+    id: "cyberchef-mcp",
+    description: "CyberChef workflow automation — structured transforms for encodings, crypto helpers, and artifact triage.",
+    weight: "medium",
     group: "analysis",
-    categories: ["forensics", "misc"],
+    categories: ["crypto", "forensics", "misc"],
     config: {
       type: "local",
-      command: ["python", "{plugin_root}/mcp-servers/packettracer-gui-mcp/server.py"],
+      command: ["npx", "-y", "cyberchef-mcp"],
     },
   },
   {
@@ -152,15 +153,14 @@ export const MCP_SERVER_REGISTRY: McpServerMeta[] = [
   // ====================================================================
   {
     id: "ida-pro",
-    description: "IDA Pro disassembler — advanced static analysis, decompilation, script execution.",
+    description: "IDA Pro / mrexodia ida-pro-mcp backend — advanced static analysis, decompilation, script execution.",
     weight: "heavy",
     group: "analysis",
     categories: ["rev", "pwn"],
     config: {
       type: "local",
-      command: ["python", "{env:IDALIB_MCP_LAUNCHER}", "--stdio"],
+      command: ["ida-pro-mcp", "--stdio"],
     },
-    envRequired: ["IDALIB_MCP_LAUNCHER"],
   },
   {
     id: "flutter-aot",
@@ -191,6 +191,17 @@ export const MCP_SERVER_REGISTRY: McpServerMeta[] = [
       },
     },
     envRequired: ["SECKB_PYTHON", "CVEKB_MCP_SERVER", "CVEKB_ROOT"],
+  },
+  {
+    id: "ctfd-mcp",
+    description: "CTFd integration — challenge metadata and event workflow helper, kept disabled unless explicitly configured.",
+    weight: "heavy",
+    group: "knowledge",
+    categories: ["web", "pwn", "rev", "crypto", "forensics", "misc"],
+    config: {
+      type: "local",
+      command: ["npx", "-y", "ctfd-mcp"],
+    },
   },
   {
     id: "anysearch",

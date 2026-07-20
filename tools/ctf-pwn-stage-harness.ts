@@ -125,7 +125,7 @@ export default tool({
       recommended_flow: [
         "Use ctf-pwn-docker-runner with payload_file per stage to replay the exact bytes sent.",
         "Use ctf-pwn-gdb-snapshot after each stage with matching breakpoints and memoryExprs to capture rbp/rsp/rip and leak deltas.",
-        "Compare stage outputs with ctf-pwn-remote-transcript-diff or ctf-pwn-io-diff-check when local/remote diverge.",
+        "Compare stage outputs with ctf-pwn-remote-drift-check or ctf-pwn-io-diff-check when local/remote diverge.",
         "For leave-ret pseudostack or mid-function reentry, keep breakpoints at the leave;ret site, fake-frame landing, and reused callsite; verify rdi/rsi/rdx before assuming printf/puts semantics.",
       ],
       preset,

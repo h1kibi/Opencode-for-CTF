@@ -10,13 +10,13 @@ Use this skill when a challenge has multiple plausible branches, repeated pivots
 
 ## Agent Integration Contract
 
-Category agents and `ctf-rigorous` should treat this skill as the shared source for executable checkpoints, top-3 queue refreshes, best-evidence snapshots, pivot bookkeeping, and resume-state hygiene. Keep agent prompts focused on domain or controller behavior; use this skill when the solve needs compact restart value, not another long prose refresh.
+Category agents and `ctf-expert` should treat this skill as the shared source for executable checkpoints, top-3 queue refreshes, best-evidence snapshots, pivot bookkeeping, and resume-state hygiene. Keep agent prompts focused on domain or controller behavior; use this skill when the solve needs compact restart value, not another long prose refresh.
 
 This skill is not about discovering new payloads. It is about keeping the solve state executable.
 
 ## Source of Truth
 
-`ctf-rigorous` is the normative source of truth for queue size, pivot discipline, shared-segment reuse, and anti-drift behavior. This skill should synchronize state, not restate the whole doctrine.
+`ctf-expert` is the normative source of truth for queue size, pivot discipline, shared-segment reuse, and anti-drift behavior. This skill should synchronize state, not restate the whole doctrine.
 
 ## When To Use
 
@@ -37,7 +37,7 @@ When active, do only four things:
 3. Refresh the Best Evidence Snapshot.
 4. Make the next pivot or next probe explicit.
 
-If the current state is already crisp and one obvious low-noise action can win immediately, let `ctf-rigorous` fast-path rules win instead of forcing extra ceremony.
+If the current state is already crisp and one obvious low-noise action can win immediately, let `ctf-expert` fast-path rules win instead of forcing extra ceremony.
 
 ## Minimal Required State
 

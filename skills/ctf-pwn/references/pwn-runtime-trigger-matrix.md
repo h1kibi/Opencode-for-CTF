@@ -12,7 +12,7 @@ Use this reference to decide which runtime helper or probe should run before mor
 | exact `read(size+1)` or mixed menu/raw phases | `ctf-pwn-menu-contract-probe` | locks helper semantics before payload retries | send/sendline contract is trusted |
 | checker loop, explicit null termination, indexed writes | `ctf-pwn-redflag-panel` | checks disguised stack-smash or checker-style corruption pressure | red-flag family is accepted or killed |
 | local works, remote fails | `ctf-pwn-remote-drift-check` | prevents gadget/libc roulette | drift class is named |
-| local pipe / remote socket framing mismatch | `ctf-pwn-remote-transcript-diff` then `ctf-pwn-io-diff-check` | isolates pacing, fixed-read, EOF, padding, and prompt drift | transport contract is trusted |
+| local pipe / remote socket framing mismatch | `ctf-pwn-remote-drift-check` then `ctf-pwn-io-diff-check` | isolates pacing, fixed-read, EOF, padding, and prompt drift | transport contract is trusted |
 | bundled libc and remote libc suspicion | `ctf-pwn-libc-fingerprint` + `ctf-pwn-libc-resolver` | clarifies version and offset assumptions | libc class is known |
 | seccomp / blocked shell / static syscall route | `ctf-pwn-syscall-orw-check` | selects ORW/file-read before shell fixation | closure family is chosen |
 | stale pointer + pointer-shaped leak + repeated allocator actions | `ctf-pwn-heap-menu-map` + `ctf-pwn-heap-reduction-check` | forces primitive reduction before naming techniques | heap primitive ladder advances |

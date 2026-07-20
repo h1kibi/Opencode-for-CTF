@@ -35,7 +35,7 @@ Examples:
 
 After install, restart OpenCode and run:
   /ctf ./challenge
-  /ctf-help
+  /help
 `
 
 if (command === "help" || command === "--help" || command === "-h") {

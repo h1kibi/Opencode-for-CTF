@@ -1,6 +1,6 @@
 # PWN Fast Autonomy
 
-Use this reference when `ctf-pwn-fast` should prefer model intuition and exploit throughput over human-authored micro-workflows.
+Use this reference when `ctf-fast` should prefer model intuition and exploit throughput over human-authored micro-workflows.
 
 ## Core Rule
 

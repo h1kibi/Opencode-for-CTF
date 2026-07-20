@@ -1,11 +1,16 @@
 import { afterEach, describe, expect, it } from "vitest"
-import {
+import RuntimePlugin, {
   propString,
   propStringNullable,
   skillToAgent,
   clearActivatedDefaults,
   trimActivatedDefaults,
+  summarizeRuntimeToolRegistry,
+  diagnoseToolVisibility,
 } from "../src/plugin.js"
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 const cleanup = () => clearActivatedDefaults("nonexistent-session")
 
@@ -159,4 +164,120 @@ describe("activatedDefaults cleanup", () => {
   it("trimActivatedDefaults handles undersized set gracefully", () => {
     expect(() => trimActivatedDefaults(1000)).not.toThrow()
   })
+})
+
+describe("runtime tool registry summary", () => {
+  it("summarizes exported and fast-visible tools", () => {
+    const summary = summarizeRuntimeToolRegistry({
+      configPath: null,
+      enabledPacks: ["core", "web"],
+      teamModeEnabled: true,
+      tools: {
+        "ctf-route-plan": { execute() {} },
+        "ctf-web-probe": { execute() {} },
+        "ctf-python-inline": { execute() {} },
+        "ctf-evidence-board": { execute() {} },
+        "ctf-team-dispatch": { execute() {} },
+      },
+    })
+    expect(summary.exportedToolCount).toBe(5)
+    expect(summary.ctfToolNames).toContain("ctf-web-probe")
+    expect(summary.fastVisibleToolNames).toContain("ctf-web-probe")
+    expect(summary.fastVisibleToolNames).not.toContain("ctf-evidence-board")
+    expect(summary.teamToolNames).toContain("ctf-team-dispatch")
+  })
+
+  it("classifies pack and fast-surface visibility failures", () => {
+    const summary = summarizeRuntimeToolRegistry({
+      configPath: null,
+      enabledPacks: ["core", "web"],
+      teamModeEnabled: false,
+      tools: {
+        "ctf-route-plan": { execute() {} },
+        "ctf-web-probe": { execute() {} },
+        "ctf-evidence-board": { execute() {} },
+      },
+    })
+
+    const visible = diagnoseToolVisibility({
+      summary,
+      toolName: "ctf-web-probe",
+      agentSurface: "ctf-fast",
+    })
+    expect(visible.category).toBe("visible_in_plugin_registry")
+
+    const fastBlocked = diagnoseToolVisibility({
+      summary,
+      toolName: "ctf-evidence-board",
+      agentSurface: "ctf-fast",
+    })
+    expect(fastBlocked.category).toBe("fast_surface_blocked")
+
+    const packDisabled = diagnoseToolVisibility({
+      summary,
+      toolName: "ctf-pwn-runner",
+      agentSurface: "ctf-fast",
+    })
+    expect(packDisabled.category).toBe("pack_not_enabled")
+  })
+})
+
+describe("RuntimePlugin startup export", () => {
+  it("exports representative ctf tools from plugin startup", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ctf-plugin-startup-"))
+    const client = {
+      mcp: {
+        add: async () => undefined,
+        connect: async () => undefined,
+        disconnect: async () => undefined,
+        status: async () => ({ data: {} }),
+      },
+    }
+    const plugin = await RuntimePlugin(
+      {
+        client,
+        directory: dir,
+        worktree: dir,
+      } as never,
+      {} as never,
+    )
+    const tools = (plugin as { tool?: Record<string, unknown> }).tool ?? {}
+    expect(tools["ctf-route-plan"]).toBeDefined()
+    expect(tools["ctf-web-probe"]).toBeDefined()
+    expect(tools["ctf-python-inline"]).toBeDefined()
+  }, 60_000)
+
+  it("unions startup packs with expert packs when exporting tools", async () => {
+    const root = mkdtempSync(join(tmpdir(), "ctf-plugin-packs-"))
+    const dir = join(root, "workspace")
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(
+      join(root, "opencode-for-ctf.jsonc"),
+      JSON.stringify({
+        tool_packs: ["core"],
+        expert_tool_packs: ["web"],
+        team_mode: { enabled: false },
+      }),
+    )
+    const client = {
+      mcp: {
+        add: async () => undefined,
+        connect: async () => undefined,
+        disconnect: async () => undefined,
+        status: async () => ({ data: {} }),
+      },
+    }
+    const plugin = await RuntimePlugin(
+      {
+        client,
+        directory: dir,
+        worktree: dir,
+      } as never,
+      {} as never,
+    )
+    const tools = (plugin as { tool?: Record<string, unknown> }).tool ?? {}
+    expect(tools["ctf-route-plan"]).toBeDefined()
+    expect(tools["ctf-web-probe"]).toBeDefined()
+    expect(tools["ctf-pwn-runner"]).toBeUndefined()
+  }, 60_000)
 })

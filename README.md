@@ -16,7 +16,7 @@
 /ctf ./challenge
 ```
 
-`/ctf` 会先走内置 category 路由（工具 `ctf-route-plan`），再进入 `ctf-fast` 或 `ctf-expert` 解题流水线。family 只影响能力包与工具面，不是独立 primary agent。更多入口见 `/ctf-help`。
+`/ctf` 会先走内置 category 路由（工具 `ctf-route-plan`），再进入 `ctf-fast` 或 `ctf-expert` 解题流水线。family 只影响能力包与工具面，不是独立 primary agent。更多入口见 `/help`。
 
 ## 特性
 
@@ -66,7 +66,7 @@ npm run ctf:status -- --strict
 默认 profile 为 **`safe`**（不写入可立即启用的 MCP）。重启 OpenCode 后执行：
 
 ```text
-/ctf-help
+/help
 /ctf ./challenge
 ```
 
@@ -143,6 +143,7 @@ npm run ctf:status -- --strict
 | `DEEPSEEK_API_KEY` | DeepSeek API Key |
 | `GITHUB_PAT` | GitHub Personal Access Token（只读即可） |
 | `GHIDRA_INSTALL_DIR` | Ghidra 安装目录 |
+| `WIREMCP_LAUNCHER` | WireMCP 启动脚本路径（默认 Wireshark MCP 槽位） |
 | `JINA_API_KEY` / `BRAVE_API_KEY` 等 | 搜索 / 抓取类 MCP |
 | `CTF_ALLOWED_ROOTS` | 额外允许的文件根（Windows `;`，Unix `:`） |
 | `CTF_ALLOWED_HOSTS` | 额外允许的 Web 探测主机 |
@@ -151,6 +152,26 @@ npm run ctf:status -- --strict
 | `OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS=1` | 安装时复制外部 ctf-skills（体积大） |
 
 完整 `.env` 模板见 [`.env.example`](./.env.example)。**不要提交真实密钥。**
+
+### 默认 MCP 后端建议
+
+当前项目推荐的 MCP 后端组合如下：
+
+- `browser` → `@playwright/mcp`
+- `wireshark-mcp` → WireMCP（通过 `WIREMCP_LAUNCHER` 外部接入）
+- `ida-pro` → `mrexodia/ida-pro-mcp`（要求 `ida-pro-mcp --stdio` 可直接执行）
+- `cyberchef-mcp` → 默认通过 `npx -y cyberchef-mcp` 使用
+- `ctfd-mcp` → 可配置，但默认不启用
+
+默认 family 开启策略：
+
+- `ctf-web` / `ctf-scout` / `ctf-expert`：`browser`
+- `ctf-rev`：`ReVa`
+- `ctf-forensics`：`wireshark-mcp` + `cyberchef-mcp`
+- `ctf-crypto`：`cyberchef-mcp`
+- `ctf-misc`：`wireshark-mcp` + `cyberchef-mcp`
+
+其余高成本能力（如 `ida-pro`、`flutter-aot`、`ctfd-mcp`、`anysearch`）保持按需启用。
 
 ### 外部 skills
 
@@ -164,11 +185,13 @@ npm run fetch-skills
 
 ## 手动配置（不推荐）
 
-若不想用受管安装器，可在 `~/.config/opencode/opencode.jsonc` 中自行引用源码路径。请把路径换成你本机的绝对路径：
+若不想用受管安装器，可在 `~/.config/opencode/opencode.jsonc` 中自行引用**已构建的插件入口文件**，不要直接把仓库根目录写成 `file:/absolute/path/to/Opencode-for-CTF`。后者可能让宿主尝试执行依赖安装，并在某些环境里触发 `@opencode-ai/plugin@local` 解析失败。
+
+请把路径换成你本机的绝对路径（先执行 `npm run build:plugin`）：
 
 ```jsonc
 {
-  "plugin": ["file:/absolute/path/to/Opencode-for-CTF"],
+  "plugin": ["file:/absolute/path/to/Opencode-for-CTF/dist/plugin/index.js"],
   "default_agent": "ctf-fast",
   "skills": {
     "paths": [

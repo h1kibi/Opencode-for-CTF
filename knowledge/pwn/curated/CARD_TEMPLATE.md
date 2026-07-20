@@ -1,6 +1,6 @@
 # PWN Decision Card Template
 
-Use this template when curating a high-value PWN card for `ctf-rigorous`.
+Use this template when curating a high-value PWN card for `ctf-expert`.
 
 ## Metadata
 - `glibc_version`:

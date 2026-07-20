@@ -1,5 +1,18 @@
 import { tool } from "@opencode-ai/plugin"
 
+function normalizeLines(text: string) {
+  return text
+    .split(/\r?\n/)
+    .map((x) => x.trim())
+    .filter(Boolean)
+}
+
+function commonPrefixLen(a: string, b: string) {
+  let i = 0
+  while (i < a.length && i < b.length && a[i] === b[i]) i++
+  return i
+}
+
 function has(text: string, re: RegExp) {
   return re.test(text)
 }
@@ -11,6 +24,8 @@ export default tool({
     evidence: tool.schema
       .string()
       .describe("Concise local-vs-remote notes, ctf-pwn-runner summary, or observed failure text."),
+    localTranscript: tool.schema.string().optional().describe("Optional local transcript tail for structured diff hints."),
+    remoteTranscript: tool.schema.string().optional().describe("Optional remote transcript tail for structured diff hints."),
   },
   async execute(args) {
     const text = (args.evidence || "").toLowerCase()
@@ -39,6 +54,30 @@ export default tool({
       signals.localWorks && signals.remoteFails ? "preserve_local_proof_and_change_one_remote_assumption_only" : "",
     ].filter(Boolean)
 
+    const local = String(args.localTranscript || "")
+    const remote = String(args.remoteTranscript || "")
+    const ll = local.trim().length >= 3 ? normalizeLines(local) : []
+    const rl = remote.trim().length >= 3 ? normalizeLines(remote) : []
+    const joinedLocal = ll.join("\n")
+    const joinedRemote = rl.join("\n")
+    const prefix = ll.length && rl.length ? commonPrefixLen(joinedLocal, joinedRemote) : 0
+    const localPtrs = [...local.matchAll(/0x[0-9a-fA-F]{4,16}/g)].map((m) => m[0]).slice(0, 12)
+    const remotePtrs = [...remote.matchAll(/0x[0-9a-fA-F]{4,16}/g)].map((m) => m[0]).slice(0, 12)
+    const leakShapeSame = localPtrs.length && remotePtrs.length ? localPtrs[0].length === remotePtrs[0].length : false
+    const transcriptRanked = ll.length && rl.length
+      ? [
+          ll.slice(-4).join(" | ") !== rl.slice(-4).join(" | ") ? "prompt_or_pacing_mismatch" : "",
+          /eof|end of file|connection closed/i.test(remote) && !/eof|end of file|connection closed/i.test(local)
+            ? "remote_eof_without_local_eof"
+            : "",
+          /timeout|timed out/i.test(remote) && !/timeout|timed out/i.test(local)
+            ? "remote_timeout_without_local_timeout"
+            : "",
+          localPtrs.length !== remotePtrs.length || !leakShapeSame ? "leak_shape_difference" : "",
+          prefix < Math.min(joinedLocal.length, joinedRemote.length) * 0.35 ? "early_transcript_divergence" : "",
+        ].filter(Boolean)
+      : []
+
     const firstChecks = [
       "Confirm the exact libc/ld pair used locally versus the remote assumption.",
       "Re-run with deterministic prompt sync and explicit recvuntil/sendafter boundaries.",
@@ -61,6 +100,8 @@ export default tool({
       `fork_signal: ${signals.fork}`,
       "ranked_rechecks:",
       ...(ranked.length ? ranked.map((x) => `- ${x}`) : ["- gather more differential evidence first"]),
+      "transcript_ranked_differences:",
+      ...(transcriptRanked.length ? transcriptRanked.map((x) => `- ${x}`) : ["- none_or_not_provided"]),
       "first_checks:",
       ...firstChecks.map((x) => `- ${x}`),
       "stop_rule:",

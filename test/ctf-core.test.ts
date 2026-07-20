@@ -62,7 +62,7 @@ describe("decideRoute", () => {
   it("resumes when evidence branch is present", () => {
     const d = decideRoute({ text: "web chall", hasEvidenceBranch: true })
     expect(d.mode).toBe("resume")
-    expect(d.command).toBe("/ctf-resume")
+    expect(d.command).toBe("/resume")
     expect(d.primaryAgent).toBe("ctf-expert")
     expect(d.agent).toBe("ctf-expert")
   })

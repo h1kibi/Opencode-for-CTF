@@ -237,8 +237,8 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     expectedToolPacks: ["core", "crypto"],
     requiredTools: ["ctf-rsa-probe"],
     supportTools: ["ctf-python-inline", "ctf-pattern-to-hypothesis"],
-    softDependencies: ["sage", "python"],
-    defaultMcps: ["filesystem", "context7", "github", "markitdown"],
+    softDependencies: ["sage", "python", "cyberchef-mcp"],
+    defaultMcps: ["filesystem", "context7", "github", "markitdown", "cyberchef-mcp"],
     requestableHeavyMcps: ["anysearch", "cvekb"],
     fallbackModes: [
       {
@@ -269,10 +269,24 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
         remediation: 'Enable tool_packs including "crypto" and restart OpenCode.',
       },
       {
+        id: "mcp:cyberchef",
+        required: false,
+        detail: "cyberchef-mcp accelerates reversible transform chains, but Python/manual transforms remain a valid fallback.",
+        remediation: "Install cyberchef-mcp or continue with reversible-first workflows and lightweight local scripts.",
+      },
+      {
         id: "solver:sage",
         required: false,
         detail: "Advanced algebra/lattice routes degrade without Sage, but reversible/parameter-led routes should remain available.",
         remediation: "Install Sage or keep crypto flows on reversible, oracle, and lightweight Python paths.",
+      },
+    ],
+    envDependencies: [
+      {
+        id: "env:cyberchef-mcp",
+        label: "CyberChef MCP",
+        detail: "Optional MCP backend for structured decode/transform chains; registry can still launch through npx when enabled.",
+        setupCommand: "Install or expose cyberchef-mcp, or rely on npx-backed activation and local Python transforms.",
       },
     ],
   },
@@ -281,9 +295,9 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     expectedToolPacks: ["core", "forensics"],
     requiredTools: ["ctf-pcap-probe", "ctf-stego-probe"],
     supportTools: ["ctf-pcap-carve", "ctf-image-open", "ctf-artifact-page"],
-    softDependencies: ["wireshark-mcp", "volatility", "binwalk"],
-    defaultMcps: ["filesystem", "context7", "github", "markitdown", "wireshark-mcp"],
-    requestableHeavyMcps: ["packettracer-gui-mcp"],
+    softDependencies: ["wireshark-mcp", "volatility", "binwalk", "cyberchef-mcp"],
+    defaultMcps: ["filesystem", "context7", "github", "markitdown", "wireshark-mcp", "cyberchef-mcp"],
+    requestableHeavyMcps: [],
     fallbackModes: [
       {
         id: "forensics:probe-first",
@@ -316,18 +330,38 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
         id: "mcp:wireshark",
         required: false,
         detail: "wireshark-mcp improves packet workflows but raw pcap probe/carve fallback should remain viable.",
-        remediation: "Configure wireshark-mcp or stay on pcap probe/carve plus shell-level protocol extraction.",
+        remediation: "Configure WireMCP via WIREMCP_LAUNCHER or stay on pcap probe/carve plus shell-level protocol extraction.",
+      },
+      {
+        id: "mcp:cyberchef",
+        required: false,
+        detail: "cyberchef-mcp speeds structured decode/transform chains, but manual carving and local scripts remain valid fallbacks.",
+        remediation: "Install cyberchef-mcp or keep using dedicated probes, manual carving, and small helper scripts.",
+      },
+    ],
+    envDependencies: [
+      {
+        id: "env:wiremcp-launcher",
+        label: "WireMCP launcher",
+        detail: "WIREMCP_LAUNCHER points at the WireMCP server launcher used by wireshark-mcp.",
+        setupCommand: "Set WIREMCP_LAUNCHER to the WireMCP server launcher path, or use raw pcap probe/carve fallback.",
+      },
+      {
+        id: "env:cyberchef-mcp",
+        label: "CyberChef MCP",
+        detail: "CyberChef MCP provides structured transforms for encoded or carved forensic artifacts.",
+        setupCommand: "Install or expose cyberchef-mcp, or rely on npx-backed activation and local scripts.",
       },
     ],
   },
   misc: {
     family: "misc",
     expectedToolPacks: ["core", "misc"],
-    requiredTools: ["ctf-one-shot-triage", "ctf-quick-triage"],
+    requiredTools: ["ctf-one-shot-triage"],
     supportTools: ["ctf-file-triage", "ctf-flag-grep", "ctf-pattern-to-hypothesis"],
-    softDependencies: ["browser", "wireshark-mcp", "flutter-aot"],
-    defaultMcps: ["filesystem", "context7", "github", "markitdown"],
-    requestableHeavyMcps: ["flutter-aot", "packettracer-gui-mcp", "anysearch"],
+    softDependencies: ["browser", "wireshark-mcp", "flutter-aot", "cyberchef-mcp"],
+    defaultMcps: ["filesystem", "context7", "github", "markitdown", "wireshark-mcp", "cyberchef-mcp"],
+    requestableHeavyMcps: ["flutter-aot", "anysearch"],
     fallbackModes: [
       {
         id: "misc:classify-first",
@@ -357,10 +391,36 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
         remediation: 'Enable tool_packs including "misc" and restart OpenCode.',
       },
       {
+        id: "mcp:wireshark",
+        required: false,
+        detail: "wireshark-mcp helps when misc pivots into packet/protocol artifacts.",
+        remediation: "Configure WireMCP via WIREMCP_LAUNCHER only when misc evidence is packet-shaped; otherwise hand off or use core triage.",
+      },
+      {
+        id: "mcp:cyberchef",
+        required: false,
+        detail: "cyberchef-mcp helps with mixed encodings and layered artifact transforms.",
+        remediation: "Install cyberchef-mcp for transform-heavy misc; otherwise keep classification-first and hand off to crypto/forensics as soon as evidence supports it.",
+      },
+      {
         id: "handoff:misc",
         required: true,
         detail: "misc must preserve a fast handoff path to specialist families rather than solving by undirected trial.",
         remediation: "Keep misc routed through quick triage and explicit specialist handoff triggers.",
+      },
+    ],
+    envDependencies: [
+      {
+        id: "env:wiremcp-launcher",
+        label: "WireMCP launcher",
+        detail: "Optional for misc challenges that pivot into packet/protocol artifacts.",
+        setupCommand: "Set WIREMCP_LAUNCHER when misc evidence is packet-shaped; otherwise keep the classify-first fallback.",
+      },
+      {
+        id: "env:cyberchef-mcp",
+        label: "CyberChef MCP",
+        detail: "Optional for transform-heavy misc challenges with layered encodings.",
+        setupCommand: "Install or expose cyberchef-mcp, or keep using local scripts and handoff to crypto/forensics.",
       },
     ],
   },

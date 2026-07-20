@@ -42,13 +42,13 @@ const PROFILE_MCP = {
   safe: [],
   web: ["browser", "markitdown", "context7"],
   // Definitions with repository- or machine-specific absolute paths are never copied.
-  full: ["browser", "markitdown", "context7", "github", "ReVa", "seckb", "cvekb"],
+  full: ["browser", "markitdown", "context7", "github", "ReVa", "wireshark-mcp", "cyberchef-mcp", "ctfd-mcp", "seckb", "cvekb"],
 }
 
 const MCP_DEFAULTS = {
   browser: {
     type: "local",
-    command: ["npx", "-y", "chrome-devtools-mcp", "--headless", "--isolated", "--slim"],
+    command: ["npx", "-y", "@playwright/mcp@latest"],
   },
   markitdown: {
     type: "local",
@@ -70,6 +70,18 @@ const MCP_DEFAULTS = {
     type: "local",
     command: ["mcp-reva"],
     timeout: 120000,
+  },
+  "wireshark-mcp": {
+    type: "local",
+    command: ["python", "{env:WIREMCP_LAUNCHER}", "--stdio"],
+  },
+  "cyberchef-mcp": {
+    type: "local",
+    command: ["npx", "-y", "cyberchef-mcp"],
+  },
+  "ctfd-mcp": {
+    type: "local",
+    command: ["npx", "-y", "ctfd-mcp"],
   },
   seckb: {
     type: "local",
@@ -95,7 +107,6 @@ function managedAssetMappings() {
     { source: "templates", target: path.join("opencode-for-ctf", "templates") },
     { source: "knowledge", target: path.join("opencode-for-ctf", "knowledge") },
     { source: "lessons", target: path.join("opencode-for-ctf", "lessons") },
-    { source: "mcp-servers", target: path.join("opencode-for-ctf", "mcp-servers") },
     { source: "runtime", target: path.join("opencode-for-ctf", "runtime") },
     { source: path.join("dist", "plugin"), target: path.join("opencode-for-ctf", "plugin") },
   ]
@@ -398,6 +409,23 @@ function shouldCopyManagedRelative(mappingSource, rel) {
   return true
 }
 
+export async function writePluginRuntimeMetadata(configDir = opencodeConfigDir()) {
+  const pluginRoot = path.join(configDir, "opencode-for-ctf")
+  const pluginPackageJson = path.join(pluginRoot, "package.json")
+  const metadata = {
+    name: "opencode-for-ctf-runtime",
+    private: true,
+    type: "module",
+    main: "./plugin/index.js",
+    opencode: {
+      type: "plugin-runtime-bundle",
+      note: "Managed installed runtime bundle. Host should load plugin/index.js directly without resolving source-checkout dependencies.",
+    },
+  }
+  await writeJsonAtomic(pluginPackageJson, metadata)
+  return pluginPackageJson
+}
+
 export async function copyManagedFiles(configDir = opencodeConfigDir()) {
   await mkdir(configDir, { recursive: true })
   const copied = []
@@ -420,6 +448,11 @@ export async function copyManagedFiles(configDir = opencodeConfigDir()) {
         entry.sha256 = await managedFileHash(to)
       }
     }
+    const pluginPackageJson = await writePluginRuntimeMetadata(configDir)
+    copied.push({
+      path: path.relative(configDir, pluginPackageJson),
+      sha256: await managedFileHash(pluginPackageJson),
+    })
   } catch (error) {
     await removeManagedFiles(configDir, { copied, backups })
     throw error

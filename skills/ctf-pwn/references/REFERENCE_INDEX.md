@@ -6,7 +6,7 @@ For contest-speed lookups, check `quick-reference.md` first, then `runtime-closu
 
 For anti-overcomplication / closure-compression questions, read `pwn-anti-overcomplication.md` before expanding a branch that already has a strong primitive.
 
-Simple-first closure order for `ctf-rigorous` and `ctf-pwn-fast`:
+Simple-first closure order for `ctf-expert` and `ctf-fast`:
 1. direct `win` / direct secret path / shortest ret2win close
 2. one classified leak -> one minimal ret2libc or PIE-resolved close
 3. read-only format-string or show/leak closure before write-first expansion
@@ -154,7 +154,7 @@ High-priority direct filenames for retrieval:
   - `../../../knowledge/pwn/runtime/glibc-version-route-map.md`
   - `../../../knowledge/pwn/runtime/exact-read-contracts.md`
   - `../../../knowledge/pwn/curated/glibc27-fake-stdout-shortplaybook.md`
-  - tool pressure: `ctf-pwn-libc-runtime-doctor`, `ctf-pwn-menu-contract-probe`, `ctf-pwn-remote-drift-check`, `ctf-pwn-remote-transcript-diff`, `ctf-pwn-io-diff-check`
+  - tool pressure: `ctf-pwn-libc-runtime-doctor`, `ctf-pwn-menu-contract-probe`, `ctf-pwn-remote-drift-check`, `ctf-pwn-io-diff-check`
 
 - specialized or uncommon families
   - `../../../knowledge/pwn/advanced/kernel-uaf-route-gate.md`

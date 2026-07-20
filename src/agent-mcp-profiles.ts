@@ -36,14 +36,14 @@ export const AGENT_MCP_DEFAULTS: Record<string, string[]> = {
   /** Reverse engineering — Ghidra/ReVa for decompilation. */
   "ctf-rev": [...COMMON_LIGHT_MCPS, "ReVa"],
 
-  /** Cryptography — mostly computation, no domain-specific MCP needed. */
-  "ctf-crypto": [...COMMON_LIGHT_MCPS],
+  /** Cryptography — default CyberChef supports structured transform chains. */
+  "ctf-crypto": [...COMMON_LIGHT_MCPS, "cyberchef-mcp"],
 
-  /** Forensics — Wireshark for pcap; GUI simulators remain on-demand heavy MCPs. */
-  "ctf-forensics": [...COMMON_LIGHT_MCPS, "wireshark-mcp"],
+  /** Forensics — WireMCP for pcap plus CyberChef for structured transforms. */
+  "ctf-forensics": [...COMMON_LIGHT_MCPS, "wireshark-mcp", "cyberchef-mcp"],
 
-  /** Misc/jail/blockchain — open-ended, give common baseline only. */
-  "ctf-misc": [...COMMON_LIGHT_MCPS],
+  /** Misc/jail/blockchain — open-ended, give Wireshark/CyberChef as medium helpers. */
+  "ctf-misc": [...COMMON_LIGHT_MCPS, "wireshark-mcp", "cyberchef-mcp"],
 
   // === Support subagents ===
   /** Info gathering scout — needs browser for OSINT. */

@@ -24,7 +24,7 @@ Use this template for fast -> rigorous escalation, owner handoff, interruption r
 - Next one-variable probe:
 
 ## Fast-Lane Context
-- Current mode: ctf-fast / ctf-pwn-fast / ctf-rigorous
+- Current mode: ctf-fast / ctf-expert / category specialist
 - Why no longer fast-lane simple:
 - Continue probability next 5m: high / medium / low
 - Best rigorous follow-up:

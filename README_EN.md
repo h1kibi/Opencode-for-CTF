@@ -16,7 +16,7 @@ After install and restarting OpenCode, most users only need:
 /ctf ./challenge
 ```
 
-`/ctf` runs the built-in category router (`ctf-route-plan`) and then solves on the fast or expert lane. See `/ctf-help`.
+`/ctf` runs the built-in category router (`ctf-route-plan`) and then solves on the fast or expert lane. See `/help`.
 
 ## Features
 
@@ -62,11 +62,12 @@ The installer:
 2. Copies agents / commands / skills / rules / templates / knowledge / lessons + plugin into the OpenCode config directory
 3. Merges paths into existing JSONC with minimal edits (comments preserved)
 4. Writes a SHA-256 manifest so upgrades/uninstalls do not clobber later user edits
+5. Keeps specialist MCP launchers external so machine-specific paths are never baked into the managed install
 
 Default profile is **`safe`** (no immediately enabled MCP). Restart OpenCode, then:
 
 ```text
-/ctf-help
+/help
 /ctf ./challenge
 ```
 
@@ -141,6 +142,7 @@ See [`CTF_WORKSPACE_OPENCODE_TEMPLATE.jsonc`](./CTF_WORKSPACE_OPENCODE_TEMPLATE.
 | `DEEPSEEK_API_KEY` | DeepSeek API key |
 | `GITHUB_PAT` | GitHub personal access token (read-only is enough) |
 | `GHIDRA_INSTALL_DIR` | Ghidra install directory |
+| `WIREMCP_LAUNCHER` | WireMCP launcher path for the default Wireshark MCP slot |
 | `JINA_API_KEY` / `BRAVE_API_KEY` … | Search / scrape MCP providers |
 | `CTF_ALLOWED_ROOTS` | Extra file roots (`;` on Windows, `:` on Unix) |
 | `CTF_ALLOWED_HOSTS` | Extra hosts for web probes |
@@ -149,6 +151,26 @@ See [`CTF_WORKSPACE_OPENCODE_TEMPLATE.jsonc`](./CTF_WORKSPACE_OPENCODE_TEMPLATE.
 | `OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS=1` | Copy external ctf-skills on install (large) |
 
 Full template: [`.env.example`](./.env.example). **Never commit real secrets.**
+
+### Recommended MCP backends
+
+The current recommended backend mix is:
+
+- `browser` → `@playwright/mcp`
+- `wireshark-mcp` → WireMCP via external `WIREMCP_LAUNCHER`
+- `ida-pro` → `mrexodia/ida-pro-mcp` (expects `ida-pro-mcp --stdio` on PATH)
+- `cyberchef-mcp` → default command `npx -y cyberchef-mcp`
+- `ctfd-mcp` → configurable, but disabled by default
+
+Default family enablement:
+
+- `ctf-web` / `ctf-scout` / `ctf-expert`: `browser`
+- `ctf-rev`: `ReVa`
+- `ctf-forensics`: `wireshark-mcp` + `cyberchef-mcp`
+- `ctf-crypto`: `cyberchef-mcp`
+- `ctf-misc`: `wireshark-mcp` + `cyberchef-mcp`
+
+Higher-cost capabilities such as `ida-pro`, `flutter-aot`, `ctfd-mcp`, and `anysearch` remain on-demand.
 
 ### External skills
 
@@ -162,11 +184,13 @@ Attribution: [`third_party/NOTICE.md`](./third_party/NOTICE.md). See [INSTALL.md
 
 ## Manual setup (not recommended)
 
-You can point OpenCode at a source checkout yourself. Replace paths with absolute paths on your machine:
+You can wire OpenCode to a local checkout, but point it at the **built plugin entry file**, not the repository root. Using `file:/absolute/path/to/Opencode-for-CTF` can make the host try to install plugin dependencies and may fail in some environments with errors such as `@opencode-ai/plugin@local`.
+
+Replace paths with absolute paths on your machine (run `npm run build:plugin` first):
 
 ```jsonc
 {
-  "plugin": ["file:/absolute/path/to/Opencode-for-CTF"],
+  "plugin": ["file:/absolute/path/to/Opencode-for-CTF/dist/plugin/index.js"],
   "default_agent": "ctf-fast",
   "skills": {
     "paths": [

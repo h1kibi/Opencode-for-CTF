@@ -165,7 +165,7 @@ const rules: BenchmarkRule[] = [
     name: "remote drift checked before roulette",
     check(output) {
       if (!/(?:remote fails|local works|EOF|timeout|remote drift|transcript diff)/i.test(output)) return "N/A"
-      const hasDriftCheck = /ctf-pwn-remote-drift-check|ctf-pwn-remote-transcript-diff|remote-local-divergence/i.test(
+      const hasDriftCheck = /ctf-pwn-remote-drift-check|remote-local-divergence/i.test(
         output,
       )
       return hasDriftCheck ? "PASS" : "FAIL"

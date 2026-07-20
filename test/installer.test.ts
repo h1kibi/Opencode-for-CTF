@@ -62,9 +62,13 @@ describe("managed installer", () => {
     expect(existsSync(path.join(configDir, "commands", "ctf.md"))).toBe(true)
     expect(existsSync(path.join(configDir, "opencode-for-ctf", "skills"))).toBe(true)
     expect(existsSync(path.join(configDir, "opencode-for-ctf", "plugin", "index.js"))).toBe(true)
-    expect(existsSync(path.join(configDir, "opencode-for-ctf", "mcp-servers", "wireshark-mcp", "server.js"))).toBe(
-      true,
-    )
+    expect(existsSync(path.join(configDir, "opencode-for-ctf", "package.json"))).toBe(true)
+    const pluginMetadata = JSON.parse(
+      await readFile(path.join(configDir, "opencode-for-ctf", "package.json"), "utf8"),
+    ) as { main?: string; opencode?: { type?: string } }
+    expect(pluginMetadata.main).toBe("./plugin/index.js")
+    expect(pluginMetadata.opencode?.type).toBe("plugin-runtime-bundle")
+    expect(existsSync(path.join(configDir, "opencode-for-ctf", "mcp-servers"))).toBe(false)
     expect(existsSync(path.join(configDir, "opencode-for-ctf", "runtime", "win-env", "setup_build_path.ps1"))).toBe(
       true,
     )
@@ -99,6 +103,9 @@ describe("managed installer", () => {
     expect(valueAt(web, ["mcp", "browser"])?.enabled).toBe(false)
     expect(valueAt(full, ["mcp", "ReVa"])?.enabled).toBe(false)
     expect(valueAt(full, ["mcp", "ReVa"])?.environment).toBeUndefined()
+    expect(valueAt(full, ["mcp", "wireshark-mcp"])?.enabled).toBe(false)
+    expect(valueAt(full, ["mcp", "cyberchef-mcp"])?.enabled).toBe(false)
+    expect(valueAt(full, ["mcp", "ctfd-mcp"])?.enabled).toBe(false)
     expect(valueAt(full, ["mcp", "ida-pro"])).toBeUndefined()
   })
 
@@ -173,7 +180,14 @@ describe("managed installer", () => {
 
     const status = run("status.mjs", ["--json", "--strict"])
     expect(status.status, status.stderr).toBe(0)
-    expect(JSON.parse(status.stdout)).toMatchObject({ state: "installed", pluginRegistered: true })
+    expect(JSON.parse(status.stdout)).toMatchObject({
+      state: "installed",
+      pluginRegistered: true,
+      pluginDiagnostic: {
+        installedPluginPresent: true,
+        sourcePluginRisk: false,
+      },
+    })
 
     const upgrade = run("upgrade.mjs")
     expect(upgrade.status, upgrade.stderr).toBe(0)

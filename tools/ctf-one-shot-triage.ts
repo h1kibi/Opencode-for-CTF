@@ -474,7 +474,7 @@ export default tool({
       recommended.push("read only the source line/file for verification, then write the exact flag to agent_flag.txt")
     if (decision.verdict === "unknown")
       recommended.push(
-        "fall back to ctf-quick-triage or inspect only top_files; spawn one subagent only after a category is evidenced",
+        "fall back to ctf-file-triage or inspect only top_files; spawn one subagent only after a category is evidenced",
       )
     if (decision.verdict === "web_source")
       recommended.push("use source map output to inspect only top routes/config/sinks before any fuzzing")
@@ -482,7 +482,7 @@ export default tool({
       recommended.push("after extraction, rerun ctf-one-shot-triage on the extracted directory")
     if (decision.verdict === "pwn_bundle")
       recommended.push(
-        "after extraction, stay in the PWN fast lane: run ctf-pwn-fast-bootstrap or ctf-binary-probe on the extracted ELF before archive/forensics branching",
+        "after extraction, stay in the PWN fast lane: run ctf-pwn-probe or ctf-binary-probe on the extracted ELF before archive/forensics branching",
       )
 
     return [

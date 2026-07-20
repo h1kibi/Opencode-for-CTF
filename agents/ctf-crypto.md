@@ -253,7 +253,6 @@
   "jina_*": "allow"
   "firecrawl_*": "allow"
   "tavily_*": "allow"
-  "ctf-quick-triage": "allow"
   "external_directory":
     "*": "allow"
     "{env:CTF_WORKSPACE}": "allow"

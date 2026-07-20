@@ -1,9 +1,10 @@
 import { existsSync } from "node:fs"
-import { readFile } from "node:fs/promises"
+import { access, readFile } from "node:fs/promises"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import {
   configPath,
+  ensurePluginBuild,
   installedPluginFile,
   managedFileHash,
   manifestPath,
@@ -11,6 +12,44 @@ import {
   projectVersion,
   readJsonc,
 } from "./lib/opencode-ctf-install.mjs"
+
+async function pluginRuntimeDiagnostic(configDir, config) {
+  const installed = installedPluginFile(configDir)
+  const installedUrl = pathToFileURL(installed).href
+  const pluginEntries = Array.isArray(config.plugin) ? config.plugin : []
+  const pluginStrings = pluginEntries.map((entry) => (Array.isArray(entry) ? entry[0] : entry)).filter((entry) => typeof entry === "string")
+  const rawSourcePlugin = pluginStrings.find((entry) => typeof entry === "string" && entry.startsWith("file:") && !entry.endsWith("/plugin/index.js") && !entry.endsWith("\\plugin\\index.js"))
+
+  const diagnostics = {
+    installedPluginFile: installed,
+    installedPluginUrl: installedUrl,
+    sourcePluginConfigured: rawSourcePlugin ?? null,
+    sourcePluginRisk: Boolean(rawSourcePlugin),
+    installedPluginPresent: existsSync(installed),
+    bundledPluginPresent: false,
+    nextAction: "",
+  }
+
+  try {
+    await ensurePluginBuild()
+    diagnostics.bundledPluginPresent = true
+  } catch {
+    diagnostics.bundledPluginPresent = false
+  }
+
+  if (diagnostics.sourcePluginRisk) {
+    diagnostics.nextAction =
+      "Config points OpenCode at a source checkout via file:/.../Opencode-for-CTF. Prefer the managed installed bundle (.../opencode-for-ctf/plugin/index.js) because source mode can trigger host-side dependency installs such as @opencode-ai/plugin@local."
+  } else if (!diagnostics.installedPluginPresent) {
+    diagnostics.nextAction =
+      "Managed plugin bundle is missing from the OpenCode config directory. Re-run npm run ctf:install or npm run ctf:upgrade."
+  } else {
+    diagnostics.nextAction =
+      "Managed plugin bundle path is present. If tools are still missing, restart OpenCode and inspect host logs for plugin dependency/runtime errors."
+  }
+
+  return diagnostics
+}
 
 const configDir = opencodeConfigDir()
 const json = process.argv.includes("--json")
@@ -41,6 +80,7 @@ if (!existsSync(manifestFile)) {
   const pluginRegistered =
     Array.isArray(config.plugin) &&
     config.plugin.some((entry) => (Array.isArray(entry) ? entry[0] : entry) === pluginSpec)
+  const pluginDiagnostic = await pluginRuntimeDiagnostic(configDir, config)
   const agents = expectedFiles
     .map((entry) => (typeof entry === "string" ? entry : entry.path))
     .filter((entry) => entry.startsWith(`agents${path.sep}`) && entry.endsWith(".md"))
@@ -63,6 +103,7 @@ if (!existsSync(manifestFile)) {
     agents: agents.length,
     commands: commands.length,
     pluginRegistered,
+    pluginDiagnostic,
   }
   if (json) console.log(JSON.stringify(result, null, 2))
   else {
@@ -76,6 +117,10 @@ if (!existsSync(manifestFile)) {
     console.log(`agents: ${result.agents}`)
     console.log(`commands: ${result.commands}`)
     console.log(`plugin_registered: ${result.pluginRegistered ? "yes" : "no"}`)
+    console.log(`plugin_bundle_present: ${result.pluginDiagnostic.installedPluginPresent ? "yes" : "no"}`)
+    console.log(`bundled_build_present: ${result.pluginDiagnostic.bundledPluginPresent ? "yes" : "no"}`)
+    console.log(`source_plugin_configured: ${result.pluginDiagnostic.sourcePluginConfigured ?? "no"}`)
+    console.log(`plugin_runtime_note: ${result.pluginDiagnostic.nextAction}`)
   }
   if (strict && result.state !== "installed") process.exitCode = 1
 }

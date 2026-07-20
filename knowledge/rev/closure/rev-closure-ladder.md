@@ -42,7 +42,7 @@ Maintain `work/ctf-evidence/<slug>/rev-closure-ledger.md`:
 
 - Once **rank 1** confirms (real flag found): write `agent_flag.txt`, stop.
 - Once **rank 2-9** produces a working solver: verify with binary, stop.
-- After 30 min on rank 5+ with no progress: pivot to next rank or hand off to `ctf-rigorous`.
+- After 30 min on rank 5+ with no progress: pivot to next rank or hand off to `ctf-expert`.
 - After 2 falsified ranks: re-derive the closure family from `ctf-rev-closure-ladder` tool.
 
 ## Tool Integration
@@ -81,7 +81,7 @@ Use `ctf-decision-state add_observation owner=rev returnTrigger="..." closureOwn
 
 If REV closure stalls > 30 min:
 1. Fill `notes.md` with: target, identified primitive, falsified routes, current rank, blocker
-2. Hand off to `ctf-rigorous` with `templates/ctf_handoff.md`
+2. Hand off to `ctf-expert` with `templates/ctf_handoff.md`
 3. Include `work/ctf-evidence/<slug>/rev-closure-ledger.md` for context
 
 ## References

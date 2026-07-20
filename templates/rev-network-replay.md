@@ -100,7 +100,7 @@ ctf-pcap-carve target=<capture.pcap> magic=ET3RNUMX autoTryXorBytes=true
 
 ## Handoff
 
-When this template does not close in ~30 min, hand off to `ctf-rigorous` with:
+When this template does not close in ~30 min, hand off to `ctf-expert` with:
 
 - `work/ctf-evidence/<slug>/inventory.md` (target + observed protocol hints)
 - `work/rev-network-replay/replay.pcap` (if reproduced)

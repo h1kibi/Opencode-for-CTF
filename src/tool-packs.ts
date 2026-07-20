@@ -61,7 +61,6 @@ export const FAST_TOOL_ALLOWLIST = new Set([
   "ctf-tool-packs",
   "ctf-file-triage",
   "ctf-one-shot-triage",
-  "ctf-quick-triage",
   "ctf-binary-probe",
   "ctf-flag-grep",
   "archive-safe-extract",
@@ -75,6 +74,11 @@ export const FAST_TOOL_ALLOWLIST = new Set([
   // pwn light
   "ctf-pwn-runner",
   "ctf-pwn-check-env",
+  "ctf-pwn-offset",
+  "ctf-pwn-remote-check",
+  "ctf-proto-probe",
+  "ctf-pwn-probe",
+  "ctf-pwn-libc-hint",
   // crypto / forensics light
   "ctf-rsa-probe",
   "ctf-pcap-probe",
@@ -138,7 +142,6 @@ const CORE_EXACT = new Set([
   "ctf-pattern-to-hypothesis",
   "ctf-python-inline",
   "ctf-python-parallel",
-  "ctf-quick-triage",
   "ctf-route-plan",
   "ctf-runtime-selftest",
   "ctf-skill-mcp-lifecycle",

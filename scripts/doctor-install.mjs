@@ -27,6 +27,7 @@ const checks = [
   ["rev", "jadx", "jadx", ["--version"]],
   ["forensics", "tshark", "tshark", ["--version"]],
   ["forensics", "exiftool", "exiftool", ["-ver"]],
+  ["forensics", "ida-pro-mcp", "ida-pro-mcp", ["--help"]],
   ["crypto", "openssl", "openssl", ["version"]],
   ["crypto", "sage", "sage", ["--version"]],
 ]
@@ -94,5 +95,7 @@ else {
     console.log(`missing: ${bucket.missing.length ? bucket.missing.join(", ") : "none"}`)
   }
   console.log("\nOptional tools are only required for challenge paths that use them.")
+  console.log(`WireMCP launcher: ${process.env.WIREMCP_LAUNCHER ? "configured" : "not configured (set WIREMCP_LAUNCHER for wireshark-mcp)"}`)
+  console.log("IDA MCP backend: install mrexodia/ida-pro-mcp so `ida-pro-mcp --stdio` is available for the ida-pro slot.")
 }
 if (strict && unhealthy) process.exitCode = 1

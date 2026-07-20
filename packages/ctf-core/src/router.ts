@@ -200,7 +200,7 @@ export function decideRoute(input: RouteInput = {}): RouteDecision {
       category: top.score > 0 ? top.category : undefined,
       primaryAgent: "ctf-expert",
       agent: "ctf-expert",
-      command: "/ctf-resume",
+      command: "/resume",
       skills: ["ctf-common", "ctf-expert"],
       toolPacks: ["core", ...(top.score > 0 ? CATEGORY_PACKS[top.category] : [])],
       mcpProfile: "expert-resume",
@@ -293,10 +293,10 @@ export function decideRoute(input: RouteInput = {}): RouteDecision {
 export const COMMAND_SURFACE = {
   L0: [
     { command: "/ctf", purpose: "Default entry — auto-route and solve" },
+    { command: "/help", purpose: "Show command surface and routing rules" },
     { command: "/ctf-fast", purpose: "Force lightweight fast lane" },
     { command: "/ctf-expert", purpose: "Force evidence-driven expert lane" },
-    { command: "/ctf-resume", purpose: "Resume an existing evidence branch" },
-    { command: "/ctf-help", purpose: "Show command surface and routing rules" },
+    { command: "/resume", purpose: "Resume an existing evidence branch" },
     { command: "/ctf-team-mode", purpose: "Team Mode controls (expert only)" },
   ],
   L1: [
@@ -307,7 +307,7 @@ export const COMMAND_SURFACE = {
     { command: "/ctf-forensics", purpose: "Forensics specialist" },
     { command: "/ctf-misc", purpose: "Misc specialist" },
   ],
-  note: "L2 micro-commands (heap mappers, android macros, godot helpers, …) remain available but are not part of the default product surface.",
+  note: "Only /ctf, /help, /ctf-fast, /ctf-expert, /resume, and the family specialist commands are part of the public product surface. Internal micro-commands may remain installed but are not part of the public command set.",
 } as const
 
 /** Format a route decision for agent prompts or tool output. */

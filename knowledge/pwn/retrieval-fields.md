@@ -20,7 +20,7 @@ Prefer results in this order:
 3. runtime lock or anti-pattern card only when simple closure is blocked or polluted
 4. long reference only when no short card can produce the next probe
 
-## Retrieval Goal for `ctf-rigorous`
+## Retrieval Goal for `ctf-expert`
 
 The best hit should answer:
 - what mode does the current evidence most resemble?

@@ -7,7 +7,7 @@ This is a CTF agent plugin for OpenCode. Follow these conventions when working h
 ```
 src/           — Plugin runtime (TypeScript, ESM)
 agents/        — Agent definitions (YAML frontmatter + markdown)
-commands/      — Slash commands (markdown); L0 surface is /ctf + /ctf-help + a few overrides
+commands/      — Slash commands (markdown); public surface is /ctf + /help + core/family entrypoints
 skills/        — CTF skills (markdown + references/)
 tools/         — Tool definitions (TypeScript, @opencode-ai/plugin tool())
 packages/      — Shared workspace packages (ctf-core router, adapter surface, …)
@@ -17,7 +17,6 @@ knowledge/     — Knowledge base (lessons, pattern-cards, pwn, rev)
 rules/         — Safety and CTF solving rules
 templates/     — Solve/exploit templates
 docker/        — PWN/REV multi-arch Dockerfiles
-mcp-servers/   — Custom MCP server implementations
 runtime/       — Runtime environment helpers
 ```
 

@@ -96,7 +96,7 @@
 
 运行时只允许轻量工具白名单（插件会拦截其余 `ctf-*`）：
 
-- 路由/分诊：`ctf-route-plan`, `ctf-file-triage`, `ctf-one-shot-triage`, `ctf-quick-triage`, `ctf-binary-probe`, `ctf-flag-grep`
+- 路由/分诊：`ctf-route-plan`, `ctf-file-triage`, `ctf-one-shot-triage`, `ctf-binary-probe`, `ctf-flag-grep`
 - 解压/读档：`archive-safe-extract`, `ctf-safe-extract`, `doc-read`, `image-file-info`
 - Web 轻量：`ctf-web-fingerprint`, `ctf-web-blackbox-map`, `ctf-web-probe`
 - Pwn 轻量：`ctf-pwn-runner`, `ctf-pwn-check-env`
@@ -120,6 +120,10 @@
 ## 工作方式
 
 ### 快速评估 (30 秒)
+- 先识别当前执行环境 / shell / substrate：Windows PowerShell、WSL、Kali / 原生 Linux、Docker 能力是否存在；命令写法和工具选择必须匹配当前环境。
+- 如果识别到 Kali，记住可以优先利用 Kali 自带的安全工具环境，不要默认自己处在极简主机上。
+- 如果识别到 Windows / PowerShell，快速试探默认使用 `curl.exe`，短小 Python 逻辑优先 `python -c`，多行逻辑优先 `ctf-python-inline` 或临时脚本文件；避免默认给出 bash/heredoc 风格示例（如 `python - <<'PY'`）。
+- 如果识别到 Linux / WSL / Kali，bash 原生命令、shell 循环、pipeline、heredoc、`python - <<'PY'` 这类写法可以直接使用；不要先在 PowerShell 里拼好再转交 Linux 环境执行。
 - 快速识别题目类型：Web / PWN / Reverse / Crypto / Forensics / Misc
 - 确定 flag 格式和提交方式
 - 检查已有工具是否足够
@@ -129,11 +133,14 @@
 - 优先尝试最简单、最直接的方案
 - 相信首步直觉，先试再分析
 - 一个方案失败后快速切换，不要死磕
+- 两到三个连续的同家族尝试如果没有带来新差分，必须把表层 payload 改写视为同一路线，并切到一个正交家族 / closure path；如果没有可信的快路径可切，直接停止并建议 `ctf-expert`
 
 ### 工具使用原则
 - **优先使用已有工具**，不安装新依赖
-- 需要 Python 脚本？直接写 `python -c` 或临时 `.py` 文件
-- 需要网络请求？直接 `curl` 或 `wget`
+- 如果当前环境是 PowerShell：`curl` 可能是 alias，字面 curl 语义优先写 `curl.exe`；带 `&`、引号、`$()` 的字符串要显式考虑转义；复杂 HTTP 请求优先写小脚本或走 `ctf-python-inline`，不要把大量转义堆进单行命令，也不要默认给 bash/heredoc 示例。
+- 如果当前环境已经是 Linux / WSL / Kali：可以直接使用 bash / heredoc / shell loop / pipeline 风格做快速试探，不必为了兼容 PowerShell 改写成更笨重的单行命令。
+- 需要 Python 脚本？PowerShell 下优先 `python -c` 或临时 `.py` 文件；Linux/WSL/Kali 下可以直接用 `python - <<'PY'` 或同类 heredoc 风格。
+- 需要网络请求？PowerShell 下优先 `curl.exe`；Linux/WSL/Kali 下直接 `curl` 或 `wget`
 - 需要分析文件？使用 `strings`、`xxd`、`file` 等基础命令
 - 遇到不熟悉的文件格式，用 `ctf-file-triage` 快速识别
 - 找到疑似 flag 用 `ctf-flag-grep` 验证

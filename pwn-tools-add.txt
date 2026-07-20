@@ -1,0 +1,571 @@
+PWN 工具丰富与设计建议方案
+一、目标
+PWN 工具设计应服务这几个核心目标：
+
+缩短首 3 分钟建立利用方向的时间
+减少重复性脚本劳动
+让 agent 更快分辨题目属于哪类利用路径
+降低环境差异带来的试错成本
+避免误把复杂题当简单题死磕
+适用范围主要是：
+
+ret2win
+栈溢出
+fmt 基础题
+简单 UAF / off-by-one / tcache
+自定义交互服务
+简单 QEMU/VM/socket 题
+需要少量 leak + ret2libc 的题
+不优先覆盖：
+
+复杂堆利用自动化
+kernel
+sandbox
+browser
+全自动 symbolic execution
+大规模反编译 / lifting
+二、设计原则
+1. 轻量优先
+工具应尽量依赖：
+
+系统已有基础命令
+pwntools
+file / strings / checksec / readelf / objdump / ROPgadget 这类常见组件
+小型 Python 脚本
+避免默认依赖：
+
+angr
+IDA API
+Ghidra headless
+Qiling
+大型 DB / RAG / MCP 重服务
+2. 输出为“可行动信息”，不是长报告
+理想输出应该像这样：
+
+保护：PIE/NX/Canary/RELRO
+入口：main / win / puts@plt / puts@got
+模式：菜单题 / 一次性 stdin / 回显服务
+建议路线：ret2win / fmt leak / ret2libc / 堆题
+下一步命令：具体可执行
+而不是几百行原始枚举。
+
+3. 为 agent 服务，不只是为人服务
+很多工具是给 agent 调度的，所以要有：
+
+结构化输出 JSON
+同时附带简短人类摘要
+明确字段名，便于下游 exploit 生成
+例如：
+
+{
+  "arch": "amd64",
+  "pie": true,
+  "nx": true,
+  "canary": false,
+  "relro": "partial",
+  "interaction": "menu",
+  "likely_routes": ["ret2libc", "fmt"],
+  "confidence": 0.83
+}
+4. 强调“下一步建议”
+每个工具输出最后都应带：
+
+recommended_next_action
+fallback_action
+stop_if
+这样 agent 才能更快闭环。
+
+5. 把“快失败”做成特性
+工具应帮助 agent 尽快发现：
+
+这题不是快题
+这题需要专家逆向
+这题要安装重工具
+这题需要全面堆分析
+满足阈值就建议： ESCALATE: ctf-expert
+
+三、建议的工具分层
+建议把 PWN 工具分成 4 层：
+
+基础体检层
+交互探测层
+利用辅助层
+收尾验证层
+四、基础体检层
+1. ctf-binary-probe
+作用
+最基础的本地二进制体检。
+
+输入
+path
+可选 libc_path
+可选 ld_path
+输出
+ELF 类型、架构、位数
+动静态链接
+PIE / NX / Canary / RELRO
+是否 stripped
+导出符号摘要
+PLT/GOT 简要
+可疑字符串
+是否像 libc bundling 题
+适用
+几乎所有 PWN 题。
+
+建议增强
+当前如果已有这个工具，建议补字段：
+
+has_win_symbol
+has_system_plt
+has_binsh_string
+uses_alarm
+stdin_stdout_buffering_hints
+2. ctf-pwn-check-env
+作用
+检查本地 PWN 解题环境可用性。
+
+输出
+python/pwntools 是否可用
+gdb 是否可用
+patchelf / checksec / ROPgadget / one_gadget 是否存在
+WSL / Kali / Docker 情况
+远程连接能力
+shell 类型提示
+意义
+减少 agent 因环境误判浪费时间。
+
+建议补充
+assembler_available
+glibc_version
+qemu-user availability
+socat/nc availability
+3. ctf-pwn-probe
+作用
+基础体检 + 初始利用方向判断。
+
+输入
+binary path
+可选 host/port
+可选 run args
+输出
+保护信息
+首屏输出
+交互模式
+可疑漏洞族判断
+top-3 建议利用路线
+适用
+相当于 PWN 版 web-fingerprint。
+
+建议识别
+栈溢出信号
+格式化字符串信号
+整数长度控制信号
+edit/add/delete/view 堆题信号
+自定义协议题信号
+qemu/vm/device 题信号
+五、交互探测层
+4. ctf-pwn-runner
+作用
+快速运行本地程序并做有限交互。
+
+输入
+binary path
+stdin 数据
+timeout
+argv
+env
+输出
+退出码
+stdout/stderr
+是否 crash
+是否阻塞等待输入
+是否出现菜单/提示符
+建议增强
+增加模式：
+
+single-shot
+line-by-line
+menu-peek
+banner-only
+5. ctf-pwn-remote-check
+作用
+快速探测远程服务行为。
+
+输入
+host/port
+可选连接次数
+可选 payload 列表
+输出
+banner
+每次连接是否一致
+是否有 PoW
+是否超时自动断开
+是否每连即新进程
+是否有重启迹象
+echo / line-based / raw-binary 特征
+价值
+很多题能不能快解，关键就在这里。
+
+建议输出字段
+transport: tcp/raw/line-based
+pow_detected
+restart_likely
+stable_banner
+binary_protocol_likely
+6. ctf-proto-probe
+作用
+针对 非 HTTP、非标准菜单 的原始协议探针。
+
+输入
+host/port
+hex payload / ascii payload
+recv size
+recv timeout
+重发次数
+输出
+hex/ascii 响应
+是否有固定头
+响应长度变化
+简要协议特征
+意义
+这类工具对：
+
+Modbus
+自定义 socket
+二进制协议
+VM / QEMU device 很关键。
+这类工具优先级很高
+尤其适合你这类 fast CTF agent。
+
+7. ctf-pwn-io-map
+作用
+判断交互结构。
+
+输出
+menu
+once-stdin
+prompt-response
+length-prefixed
+binary-framed
+echo-service
+并给出：
+
+最适合的脚本交互模板
+最小探针 payload 建议
+六、利用辅助层
+8. ctf-pwn-template
+作用
+自动生成最小 exploit 骨架。
+
+输出文件
+exploit.py
+内容建议
+context.binary
+ELF, libc, ld
+start() 切换 local/remote/gdb
+sl, sla, ru 这些便捷函数
+留出 leak() / pwn() 结构
+可选菜单题模板
+价值
+极高。几乎每题都省时间。
+
+建议模板类型
+basic
+menu
+ret2libc
+fmt
+heap-lite
+raw-tcp
+9. ctf-pwn-offset
+作用
+快速处理 cyclic / offset。
+
+输入
+目标架构
+pattern 长度
+崩溃值或寄存器值
+endian
+输出
+cyclic pattern
+偏移位置
+pack 建议
+适用
+最常用基础工具之一。
+
+建议增强
+支持：
+
+32/64 位
+十六进制字符串输入
+RIP/EIP 覆盖判断
+部分字节覆盖判断
+10. ctf-pwn-crash-snapshot
+作用
+快速获取 crash 核心状态。
+
+输入
+binary
+payload
+可选 gdb mode
+输出
+signal
+RIP/EIP
+RSP/ESP
+栈附近数据
+fault addr
+是否像 cyclic
+是否像 NULL deref / OOB / bad free
+价值
+对于简单栈题非常提速。
+
+11. ctf-pwn-rop-lite
+作用
+轻量 ROP 辅助。
+
+输出
+ret
+pop rdi; ret
+pop rsi; ret
+pop rdx; ret
+pop rax; ret
+syscall; ret
+/bin/sh 字符串
+puts/read/write/system 的 plt/got
+ret2libc 最短链建议
+不建议做的
+不要做复杂全自动 ROP 编排。 只做：
+
+找 gadget
+给建议
+12. ctf-pwn-libc-hint
+作用
+快速把泄露值转成 libc 基址或候选版本。
+
+输入
+泄露地址
+泄露符号
+本地 libc 可选
+libc 数据库可选
+输出
+计算出的 libc base
+候选 libc 列表
+常用符号地址
+one_gadget 提示
+/bin/sh 偏移
+建议
+本地优先，不默认联网重查库。
+
+13. ctf-pwn-fmt-lite
+作用
+格式化字符串轻量辅助。
+
+输入
+程序输出样本
+少量 %p/%s 回显结果
+目标地址可选
+输出
+可能的 offset
+是否可读 / 可写
+推荐下一步 %n / leak 路线
+范围
+只做基础 fmt，不做重型自动化利用。
+
+14. ctf-pwn-heap-hint
+作用
+针对菜单堆题给“轻量路线提示”。
+
+输出
+识别 add/delete/edit/show
+推断可能漏洞：
+UAF
+double free
+tcache poisoning
+off-by-one
+推荐最小验证动作
+注意
+它不负责自动打复杂堆，只做分诊。
+
+七、收尾验证层
+15. ctf-pwn-flag-capture
+作用
+在 exploit 成功后帮助稳抓 flag。
+
+输入
+交互脚本输出
+raw socket transcript
+stdout/stderr
+输出
+提取的疑似 flag
+匹配置信度
+原始来源位置
+价值
+对 shell 混杂输出、二进制流里找 flag 很有用。
+
+16. ctf-flag-grep
+你白名单里已有，这个很有必要保留。
+建议增强对以下场景的兼容：
+
+shell 垃圾输出中提 flag
+二进制流中 ASCII flag
+UTF-16 / 分段 flag
+带颜色控制字符的输出
+八、建议新增的“协议型 PWN”工具
+这是我最建议你补的一类。
+
+17. ctf-pwn-rawsock
+作用
+面向非 HTTP 非标准 ELF 交互的 socket 解题工具。
+
+支持
+发 ascii
+发 hex
+发 binary
+显示 hexdump
+设 recv timeout
+支持脚本化序列发包
+输出
+每步请求
+每步响应
+变化摘要
+为什么重要
+现在很多“pwn”已经不只是 stdin/stdout 程序，而是：
+
+PLC / Modbus
+自定义 framed socket
+VM 设备
+服务端 parser
+这类题非常吃这个工具。
+
+九、推荐的最小工具组合
+如果你不想一口气做太多，建议优先做这 8 个：
+
+ctf-binary-probe
+ctf-pwn-check-env
+ctf-pwn-probe
+ctf-pwn-runner
+ctf-pwn-remote-check
+ctf-pwn-template
+ctf-pwn-offset
+ctf-pwn-rop-lite
+如果再扩两个：
+
+ctf-proto-probe
+ctf-pwn-crash-snapshot
+这套就已经非常实用了。
+
+十、输出格式建议
+每个工具都建议同时提供：
+
+1. 机器可读 JSON
+便于 agent 串联。
+
+例如：
+
+{
+  "tool": "ctf-pwn-probe",
+  "binary": "./chall",
+  "arch": "amd64",
+  "pie": true,
+  "nx": true,
+  "canary": false,
+  "relro": "partial",
+  "interaction": "menu",
+  "vuln_signals": ["buffer-overflow", "format-string"],
+  "recommended_next_action": "run ctf-pwn-template with mode=ret2libc",
+  "fallback_action": "try ctf-pwn-remote-check",
+  "stop_if": "requires deep heap reversing"
+}
+2. 人类摘要
+例如：
+
+amd64, PIE+NX, no canary, partial RELRO
+Looks like menu-driven heap/fmt hybrid
+Best fast path: leak libc -> ret2libc
+十一、和 fast agent 的协作建议
+工具设计不要只给“数据”，还要服务 solve loop。
+
+建议统一输出三个字段：
+
+best_fast_path
+one_variable_probe
+escalate_if
+例如：
+
+{
+  "best_fast_path": "overflow to ret2win",
+  "one_variable_probe": "send 256 cyclic bytes and observe RIP",
+  "escalate_if": "no crash and protocol is binary-stateful"
+}
+这样 agent 非常容易决策。
+
+十二、何时自动建议升级 expert
+建议这些工具内建升级判据：
+
+自动触发升级信号
+保护完善且无明显快速 primitive
+自定义协议复杂且多状态
+需要完整逆向结构体
+涉及复杂堆布局
+需要内核/沙箱/设备模型深度分析
+6–8 次有效探测无新差分
+输出： ESCALATE: ctf-expert
+
+十三、开发优先级路线图
+Phase 1：最高收益
+先做这些：
+
+ctf-pwn-probe
+ctf-pwn-template
+ctf-pwn-offset
+ctf-pwn-remote-check
+这是最划算的一期。
+
+Phase 2：补交互和崩溃
+再做：
+
+ctf-proto-probe
+ctf-pwn-crash-snapshot
+ctf-pwn-rop-lite
+Phase 3：补专项辅助
+最后做：
+
+ctf-pwn-libc-hint
+ctf-pwn-fmt-lite
+ctf-pwn-heap-hint
+ctf-pwn-flag-capture
+十四、对现有白名单的具体补强建议
+你当前思路里已经有：
+
+ctf-binary-probe
+ctf-pwn-runner
+ctf-pwn-check-env
+我建议最少再补：
+
+ctf-pwn-probe
+ctf-pwn-template
+ctf-pwn-offset
+ctf-pwn-remote-check
+ctf-proto-probe
+ctf-pwn-rop-lite
+这样 PWN fast lane 就比较完整了。
+
+十六、最终推荐清单
+基础必备
+ctf-binary-probe
+ctf-pwn-check-env
+ctf-pwn-probe
+ctf-pwn-runner
+交互必备
+ctf-pwn-remote-check
+ctf-proto-probe
+ctf-pwn-io-map
+利用辅助必备
+ctf-pwn-template
+ctf-pwn-offset
+ctf-pwn-rop-lite
+ctf-pwn-crash-snapshot
+增强可选
+ctf-pwn-libc-hint
+ctf-pwn-fmt-lite
+ctf-pwn-heap-hint
+ctf-pwn-flag-capture

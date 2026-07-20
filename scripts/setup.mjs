@@ -81,6 +81,14 @@ if (ghidraDir) {
   }
 }
 
+if (env.WIREMCP_LAUNCHER) {
+  config.mcp["wireshark-mcp"] = {
+    type: "local",
+    command: ["python", resolve(env.WIREMCP_LAUNCHER), "--stdio"],
+    enabled: true,
+  }
+}
+
 await mkdir(dirname(OUTPUT_PATH), { recursive: true })
 writeFileSync(OUTPUT_PATH, JSON.stringify(config, null, 2), "utf-8")
 

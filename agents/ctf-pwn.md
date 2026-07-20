@@ -280,7 +280,6 @@
   "jina_*": "allow"
   "firecrawl_*": "allow"
   "tavily_*": "allow"
-  "ctf-quick-triage": "allow"
   "external_directory":
     "*": "allow"
     "{env:CTF_WORKSPACE}": "allow"
@@ -348,7 +347,6 @@
   "ctf-pwn-fast-skeleton-hints": "allow"
   "ctf-pwn-experiment-ledger": "allow"
   "ctf-pwn-leak-stability-check": "allow"
-  "ctf-pwn-remote-transcript-diff": "allow"
   "ctf-pwn-wsl-runner": "allow"
   "ctf-pwn-check-env": "allow"
 "hidden": true
@@ -518,7 +516,7 @@ PWN-SPECIFIC GATES:
 
 REMOTE DRIFT CHECKLIST — MANDATORY WHEN LOCAL WORKS BUT REMOTE FAILS:
 Before changing gadgets, offsets, or libc assumptions, check in order: prompt synchronization, newline/null truncation, timeout/buffering, leak sanity, libc/ld mismatch, stack alignment/movaps, one_gadget constraints, forking service behavior, ASLR reset assumptions, remote flag path/environment, different binary hash, and seccomp/container differences. Use `ctf-pwn-remote-drift-check` before remote payload roulette.
-If concrete local and remote transcripts already exist, run `ctf-pwn-remote-transcript-diff` to isolate prompt, EOF, timeout, and leak-shape differences before modifying the payload family.
+If concrete local and remote transcripts already exist, pass them to `ctf-pwn-remote-drift-check` so it can rank prompt, EOF, timeout, and leak-shape differences before modifying the payload family.
 
 HEAP REDUCTION TRIGGER:
 When all of these are present:

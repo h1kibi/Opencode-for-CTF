@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { evaluateAllFamilyReadiness, evaluateFamilyReadiness, formatFamilyReadinessSummary } from "../src/family-readiness.js"
+import {
+  evaluateAllFamilyReadiness,
+  evaluateFamilyReadiness,
+  formatFamilyReadinessSummary,
+  formatStartupEnvironmentSummary,
+  summarizeStartupEnvironment,
+} from "../src/family-readiness.js"
 import { FAMILY_CAPABILITY_CONTRACTS } from "../src/family-capability-contracts.js"
 import { AGENT_MCP_DEFAULTS } from "../src/agent-mcp-profiles.js"
 
@@ -80,6 +86,12 @@ describe("family readiness", () => {
     expect(reports.every((report) => ["ready", "degraded", "blocked"].includes(report.status))).toBe(true)
   })
 
+  it("surfaces MCP backend remediation for forensics", () => {
+    const checks = FAMILY_CAPABILITY_CONTRACTS.forensics.readinessChecks
+    expect(checks.find((check) => check.id === "mcp:wireshark")?.remediation).toContain("WIREMCP_LAUNCHER")
+    expect(checks.find((check) => check.id === "mcp:cyberchef")?.detail).toContain("cyberchef-mcp")
+  })
+
   it("formats compact family readiness summaries", () => {
     const report = evaluateFamilyReadiness({
       family: "forensics",
@@ -89,5 +101,58 @@ describe("family readiness", () => {
     const text = formatFamilyReadinessSummary(report)
     expect(text).toContain("[forensics]")
     expect(text).toContain("missing required tools")
+  })
+})
+
+describe("startup environment summary", () => {
+  it("surfaces Kali guidance", () => {
+    const summary = summarizeStartupEnvironment({
+      "env:os": { ok: true, detail: "host os=linux", behaviorOk: true },
+      "env:shell": { ok: true, detail: "active shell=bash", behaviorOk: true },
+      "env:kali": { ok: true, detail: "kali linux detected", behaviorOk: true },
+      "env:wsl": { ok: false, detail: "wsl not detected", behaviorOk: false },
+    })
+    expect(summary.os).toBe("linux")
+    expect(summary.substrate).toBe("kali")
+    expect(summary.guidance.join(" ")).toContain("Kali")
+  })
+
+  it("surfaces Windows PowerShell guidance", () => {
+    const text = formatStartupEnvironmentSummary({
+      "env:os": { ok: true, detail: "host os=windows", behaviorOk: true },
+      "env:shell": { ok: true, detail: "active shell=powershell", behaviorOk: true },
+      "env:kali": { ok: false, detail: "kali linux not detected", behaviorOk: false },
+      "env:wsl": { ok: false, detail: "wsl not detected", behaviorOk: false },
+    })
+    expect(text).toContain("os=windows")
+    expect(text).toContain("shell=powershell")
+    expect(text).toContain("curl.exe")
+    expect(text).toContain("python -c")
+    expect(text).toContain("avoid bash/heredoc examples")
+  })
+
+  it("keeps WSL summary in the Linux bucket", () => {
+    const summary = summarizeStartupEnvironment({
+      "env:os": { ok: true, detail: "host os=linux", behaviorOk: true },
+      "env:shell": { ok: true, detail: "active shell=bash", behaviorOk: true },
+      "env:kali": { ok: false, detail: "kali linux not detected", behaviorOk: false },
+      "env:wsl": { ok: true, detail: "wsl detected", behaviorOk: true },
+    })
+    expect(summary.substrate).toBe("native-linux")
+    expect(summary.guidance.join(" ")).toContain("Linux environment launched via WSL")
+    expect(summary.guidance.join(" ")).toContain("bash/heredoc")
+  })
+
+  it("keeps generic native Linux guidance neutral", () => {
+    const summary = summarizeStartupEnvironment({
+      "env:os": { ok: true, detail: "host os=linux", behaviorOk: true },
+      "env:shell": { ok: true, detail: "active shell=bash", behaviorOk: true },
+      "env:kali": { ok: false, detail: "kali linux not detected", behaviorOk: false },
+      "env:wsl": { ok: false, detail: "wsl not detected", behaviorOk: false },
+    })
+    expect(summary.substrate).toBe("native-linux")
+    expect(summary.guidance.join(" ")).toContain("bash")
+    expect(summary.guidance.join(" ")).toContain("python - <<'PY'")
+    expect(summary.guidance.join(" ")).not.toContain("curl.exe")
   })
 })

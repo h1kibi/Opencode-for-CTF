@@ -1,6 +1,6 @@
 # PWN Fast Handoff
 
-Use this when `ctf-pwn-fast` escalates to `ctf-rigorous`. The goal is to let rigorous continue from the last-known-good probe without repeating triage.
+Use this when a fast PWN branch escalates to `ctf-expert`. The goal is to let expert continue from the last-known-good probe without repeating triage.
 
 ## target_runtime
 - challenge name / slug:

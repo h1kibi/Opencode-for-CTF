@@ -1,18 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
-import { safeExec } from "./lib/exec-utils.ts"
+import { runEnvChecks, summarizeEnvChecks, type EnvCheckItem } from "./lib/env-check-core.ts"
 
-type Check = {
-  name: string
-  command: string
-  args: string[]
-  required: boolean
-  category: string
-  hint: string
-}
-
-function firstLine(s: string) {
-  return (s.split(/\r?\n/).find(Boolean) || "<no output>").slice(0, 220)
-}
+type Check = EnvCheckItem
 
 export default tool({
   description:
@@ -151,6 +140,38 @@ export default tool({
         hint: "Install pwninit for libc/ld patching.",
       },
       {
+        name: "glibc-ldd",
+        command: "ldd",
+        args: ["--version"],
+        required: false,
+        category: "libc",
+        hint: "Install glibc runtime tools; on Windows prefer WSL2/Linux for ELF pwn.",
+      },
+      {
+        name: "assembler",
+        command: "as",
+        args: ["--version"],
+        required: false,
+        category: "asm",
+        hint: "Install binutils assembler for shellcode/ROP helper workflows.",
+      },
+      {
+        name: "socat",
+        command: "socat",
+        args: ["-V"],
+        required: false,
+        category: "remote",
+        hint: "Install socat for local socket harnesses and service mirroring.",
+      },
+      {
+        name: "nc",
+        command: "nc",
+        args: ["-h"],
+        required: false,
+        category: "remote",
+        hint: "Install netcat/ncat for manual remote connectivity checks.",
+      },
+      {
         name: "qemu-x86_64",
         command: "qemu-x86_64",
         args: ["--version"],
@@ -176,21 +197,28 @@ export default tool({
       },
     ]
     const selected = profile === "full" ? [...checks, ...optional] : checks
-    const results = []
-    for (const c of selected) {
-      const r = await safeExec(c.command, c.args, undefined, 5000)
-      results.push({ ...c, ok: r.ok, version: firstLine(r.output) })
-    }
-    const missingRequired = results.filter((x) => x.required && !x.ok)
-    const missingOptional = results.filter((x) => !x.required && !x.ok)
+    const results = await runEnvChecks(selected, 5000)
+    const baseSummary = summarizeEnvChecks(results)
     const summary = {
       profile,
-      ready: missingRequired.length === 0,
-      required_ok: results.filter((x) => x.required && x.ok).length,
-      required_total: results.filter((x) => x.required).length,
-      optional_missing: missingOptional.map((x) => x.name),
-      required_missing: missingRequired.map((x) => x.name),
+      ready: baseSummary.ready,
+      required_ok: baseSummary.required_ok,
+      required_total: baseSummary.required_total,
+      optional_missing: baseSummary.optional_missing,
+      required_missing: baseSummary.required_missing,
       results,
+      assembler_available: results.find((x) => x.name === "assembler")?.ok ?? false,
+      glibc_version: results.find((x) => x.name === "glibc-ldd")?.version ?? "unchecked",
+      qemu_user_available: results.some((x) => x.name.startsWith("qemu-") && x.ok),
+      remote_connectivity_helpers: {
+        socat: results.find((x) => x.name === "socat")?.ok ?? false,
+        nc: results.find((x) => x.name === "nc")?.ok ?? false,
+      },
+      recommended_next_action: baseSummary.required_missing.length === 0
+        ? "core pwn environment is ready; run ctf-pwn-probe or ctf-binary-probe on the challenge"
+        : "install missing required tools or switch to a prepared Linux/pwnlab substrate before exploit automation",
+      fallback_action: "if host setup is incomplete, use ctf-pwn-runbox / Docker / WSL and keep runner/gdb steps on that substrate",
+      stop_if: "required ELF tooling or pwntools remains unavailable after substrate selection",
     }
     if (args.jsonOnly) return JSON.stringify(summary, null, 2)
     return [
@@ -209,6 +237,9 @@ export default tool({
       summary.ready
         ? "- Core pwn environment is ready. Use profile=full to check optional advanced tooling."
         : "- Install missing required tools before contest pwn automation; WSL2/Linux is strongly preferred for ELF pwn.",
+      `recommended_next_action: ${summary.recommended_next_action}`,
+      `fallback_action: ${summary.fallback_action}`,
+      `stop_if: ${summary.stop_if}`,
     ].join("\n")
   },
 })

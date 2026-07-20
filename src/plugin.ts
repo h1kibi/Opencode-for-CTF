@@ -14,7 +14,7 @@ import { getAgentDefaults } from "./agent-mcp-profiles.ts"
 import { loadCtfTools } from "./ctf-tools.ts"
 import { createTeamTools, handleTeamEvent, initializeTeamRuntime } from "./team-runtime.ts"
 import { isHookEnabled, loadPluginConfigWithPath, type PluginUserConfig } from "./plugin-config.ts"
-import { resolveEnabledPacks, toolAllowedForAgent } from "./tool-packs.ts"
+import { resolveEnabledPacks, toolAllowedForAgent, packForTool } from "./tool-packs.ts"
 import { buildCtfEntryInjection } from "./route-runtime.ts"
 import {
   rememberSessionSurface,
@@ -263,6 +263,137 @@ function isCtfSafePermission(permission: { type: string; title: string }): boole
   return false
 }
 
+export type RuntimeToolRegistrySummary = {
+  configPath: string | null
+  enabledPacks: string[]
+  exportedToolNames: string[]
+  exportedToolCount: number
+  ctfToolNames: string[]
+  ctfToolCount: number
+  fastVisibleToolNames: string[]
+  fastVisibleToolCount: number
+  teamModeEnabled: boolean
+  teamToolNames: string[]
+}
+
+export type ToolVisibilityDiagnosisCategory =
+  | "plugin_not_loaded_or_no_ctf_registry"
+  | "pack_not_enabled"
+  | "tool_not_in_process_registry"
+  | "fast_surface_blocked"
+  | "visible_in_plugin_registry"
+  | "likely_host_schema_not_injected"
+
+export type ToolVisibilityDiagnosis = {
+  category: ToolVisibilityDiagnosisCategory
+  reasons: string[]
+  nextAction: string
+}
+
+export function diagnoseToolVisibility(input: {
+  summary: RuntimeToolRegistrySummary
+  toolName?: string | null
+  agentSurface?: string | null
+  hostSchemaVisible?: boolean | null
+}): ToolVisibilityDiagnosis {
+  const toolName = input.toolName || undefined
+  const reasons: string[] = []
+  const fastSurface = (input.agentSurface || "ctf-fast") === "ctf-fast"
+
+  if (input.summary.ctfToolCount === 0) {
+    return {
+      category: "plugin_not_loaded_or_no_ctf_registry",
+      reasons: ["No ctf-* tools were exported from the plugin registry."],
+      nextAction: "Confirm the plugin loaded successfully, packs were resolved, and OpenCode was restarted after plugin/config changes.",
+    }
+  }
+
+  if (!toolName) {
+    if (input.hostSchemaVisible === false) {
+      return {
+        category: "likely_host_schema_not_injected",
+        reasons: [
+          "The plugin exported ctf tools locally, but the live session still does not expose them.",
+          "This repo cannot directly inspect the host/model tool schema.",
+        ],
+        nextAction: "Compare this plugin-side export summary against the host/runtime tool schema bridge and session initialization path.",
+      }
+    }
+    return {
+      category: "visible_in_plugin_registry",
+      reasons: ["The plugin exported ctf tools locally."],
+      nextAction: "Inspect a specific tool name or compare against the live session tool schema if tools are still not visible to the model.",
+    }
+  }
+
+  if (!input.summary.enabledPacks.includes(packForTool(toolName))) {
+    return {
+      category: "pack_not_enabled",
+      reasons: [`${toolName} belongs to pack ${packForTool(toolName)}, which is not currently enabled.`],
+      nextAction: `Enable pack \"${packForTool(toolName)}\" in tool_packs or expert_tool_packs, then restart OpenCode.`,
+    }
+  }
+
+  if (!input.summary.exportedToolNames.includes(toolName)) {
+    return {
+      category: "tool_not_in_process_registry",
+      reasons: [
+        `${toolName} is expected under the enabled packs but is missing from the exported plugin registry.`,
+      ],
+      nextAction: "Inspect loadCtfTools import warnings, manifest/build outputs, and plugin startup export wiring.",
+    }
+  }
+
+  if (fastSurface && !input.summary.fastVisibleToolNames.includes(toolName)) {
+    return {
+      category: "fast_surface_blocked",
+      reasons: [`${toolName} is exported by the plugin but blocked on the ctf-fast surface.`],
+      nextAction: "Use a fast-allowed alternative or switch to /ctf-expert for the full registered tool set.",
+    }
+  }
+
+  if (input.hostSchemaVisible === false) {
+    return {
+      category: "likely_host_schema_not_injected",
+      reasons: [
+        `${toolName} is exported locally and allowed for the selected surface, but the live session still cannot see it.`,
+        "This suggests a host/runtime schema bridge issue outside this repo-local registry check.",
+      ],
+      nextAction: "Inspect how the host session builds the model-visible tool schema from plugin exports and whether the session needs restart/refresh.",
+    }
+  }
+
+  return {
+    category: "visible_in_plugin_registry",
+    reasons: [`${toolName} is exported by the plugin and allowed for the selected surface.`],
+    nextAction: "If the model still cannot see it, compare this repo-local export result against the live host/runtime tool schema.",
+  }
+}
+
+export function summarizeRuntimeToolRegistry(input: {
+  configPath: string | null
+  enabledPacks: Iterable<string>
+  tools: Record<string, unknown>
+  teamModeEnabled: boolean
+}): RuntimeToolRegistrySummary {
+  const exportedToolNames = Object.keys(input.tools).sort()
+  const ctfToolNames = exportedToolNames.filter((name) => name.startsWith("ctf-") || name.startsWith("archive-")).sort()
+  const fastVisibleToolNames = exportedToolNames.filter((name) => toolAllowedForAgent(name, "ctf-fast")).sort()
+  const teamToolNames = exportedToolNames.filter((name) => name.startsWith("ctf-team-")).sort()
+  return {
+    configPath: input.configPath,
+    enabledPacks: [...input.enabledPacks].sort(),
+    exportedToolNames,
+    exportedToolCount: exportedToolNames.length,
+    ctfToolNames,
+    ctfToolCount: ctfToolNames.length,
+    fastVisibleToolNames,
+    fastVisibleToolCount: fastVisibleToolNames.length,
+    teamModeEnabled: input.teamModeEnabled,
+    teamToolNames,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Plugin entry
 // ---------------------------------------------------------------------------
@@ -295,6 +426,15 @@ const RuntimePlugin: Plugin = async (input, _options) => {
     )
   }
   const registeredToolNames = Object.keys(tools)
+  const toolRegistrySummary = summarizeRuntimeToolRegistry({
+    configPath: pluginConfigPath,
+    enabledPacks,
+    tools,
+    teamModeEnabled: pluginConfig.team_mode.enabled,
+  })
+  console.log(
+    `[plugin] runtime-tools: exported=${toolRegistrySummary.exportedToolCount} ctf=${toolRegistrySummary.ctfToolCount} fast=${toolRegistrySummary.fastVisibleToolCount} packs=${toolRegistrySummary.enabledPacks.join(",")}`,
+  )
 
   function expertReadinessReport() {
     return evaluateExpertReadiness({
@@ -659,9 +799,8 @@ const RuntimePlugin: Plugin = async (input, _options) => {
       const toolName = typeof meta.tool === "string" ? meta.tool : ""
       if (toolName && !toolAllowedForAgent(toolName, agentName)) {
         throw new Error(
-          `FastToolSurface: tool "${toolName}" is not available on ctf-fast. ` +
-            `Use a lightweight alternative, escalate to /ctf-expert, or stay within the fast allowlist ` +
-            `(triage, fingerprint, probe, flag-grep, python-inline, pwn-runner, …).`,
+          `FastToolSurface: category=fast_surface_blocked tool="${toolName}" surface="${agentName}" ` +
+            `remedy="Use a lightweight alternative, escalate to /ctf-expert, or stay within the fast allowlist (triage, fingerprint, probe, flag-grep, python-inline, pwn-runner, …)."`,
         )
       }
 

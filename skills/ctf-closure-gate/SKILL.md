@@ -12,7 +12,7 @@ This skill is not for discovery. It is for endgame convergence.
 
 ## Source of Truth
 
-`ctf-rigorous` is the normative source of truth for fast-path, closure override, and low-noise endgame behavior. This skill should refine closure moves, not redefine the global discipline.
+`ctf-expert` is the normative source of truth for fast-path, closure override, and low-noise endgame behavior. This skill should refine closure moves, not redefine the global discipline.
 
 ## When To Use
 
@@ -33,7 +33,7 @@ When active, do only four things:
 3. Choose the top closure probe.
 4. Re-rank after the result.
 
-If an obvious low-noise direct win exists, let `ctf-rigorous` fast-path rules win and take it immediately.
+If an obvious low-noise direct win exists, let `ctf-expert` fast-path rules win and take it immediately.
 
 ## Sufficiency Rule
 
@@ -150,7 +150,7 @@ When a warning sign appears, prefer closure compression and reranking over more 
 
 ## Primitive-Specific Closure Guidance
 
-Use primitive-specific endgame instincts only as tie-breakers after the global `ctf-rigorous` closure rules are satisfied:
+Use primitive-specific endgame instincts only as tie-breakers after the global `ctf-expert` closure rules are satisfied:
 
 - command/code execution -> low-noise identity/location checks and likely flag paths first
 - file read/LFI -> likely flag paths, then config/source/deployment, then only clearly useful runtime files; if LFI/source reveals a controllable parser/fetcher with weak in-band output, downgrade LFI to `source_primitive` and evaluate OOB/writeback closure before more path aliasing

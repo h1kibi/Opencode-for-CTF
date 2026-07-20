@@ -5,6 +5,7 @@ import { mkdir, open, readdir, readFile, writeFile, lstat } from "node:fs/promis
 import path from "node:path"
 import { resolveAllowedPath } from "./lib/path-policy.ts"
 import { safeExec } from "./lib/exec-utils.ts"
+import { entropy, printableStrings } from "./lib/triage-core.ts"
 
 const SAMPLE_BYTES = 1024 * 1024
 const FLAG_RE = /[A-Za-z0-9_@.-]{2,32}\{[^\r\n}]{1,200}\}/g
@@ -63,24 +64,6 @@ async function readSample(target: string, maxBytes = SAMPLE_BYTES) {
   } finally {
     await fd.close()
   }
-}
-
-function entropy(buf: Buffer) {
-  if (buf.length === 0) return 0
-  const counts = new Array(256).fill(0)
-  for (const byte of buf) counts[byte]++
-  let result = 0
-  for (const count of counts) {
-    if (!count) continue
-    const p = count / buf.length
-    result -= p * Math.log2(p)
-  }
-  return result
-}
-
-function printableStrings(buf: Buffer) {
-  const text = buf.toString("latin1")
-  return Array.from(text.matchAll(/[ -~]{5,}/g), (m) => m[0])
 }
 
 function detectLanguage(files: string[]): Language {

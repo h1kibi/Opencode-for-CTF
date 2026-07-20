@@ -21,7 +21,6 @@
     "python *": "allow"
     "python3 *": "allow"
   "ctf-one-shot-triage": "allow"
-  "ctf-quick-triage": "allow"
   "ctf-web-fingerprint": "allow"
   "ctf-web-blackbox-map": "allow"
   "ctf-web-source-map": "allow"

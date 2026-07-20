@@ -27,5 +27,5 @@
 
 ## Companion tools
 - `ctf-elf-slice` (slice-only, avoids 50k+ line objdump)
-- `ctf-go-binary-assist` (when binary is Go)
+- `ctf-go-pclntool` (when binary is Go and you need gopclntab/function-address pivots)
 - `ctf-go-pclntool` (when Go pclntab unstable in IDA — use `go tool nm/objdump` for ground truth)

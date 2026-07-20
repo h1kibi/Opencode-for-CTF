@@ -41,6 +41,9 @@ export const COMPAT_AGENTS = [] as const
 /** Default slash entry for new users. */
 export const DEFAULT_ENTRY_COMMAND = "/ctf"
 
+/** Public help command for the reduced surface. */
+export const HELP_ENTRY_COMMAND = "/help"
+
 /** Map route mode → primary agent name for OpenCode session switches. */
 export function agentForMode(mode: "fast" | "expert" | "resume"): "ctf-fast" | "ctf-expert" {
   return mode === "fast" ? "ctf-fast" : "ctf-expert"

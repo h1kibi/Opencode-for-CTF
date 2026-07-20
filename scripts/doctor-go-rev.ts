@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 
 const files = [
-  path.join(process.cwd(), "tools", "ctf-go-binary-assist.ts"),
   path.join(process.cwd(), "tools", "ctf-elf-slice.ts"),
   path.join(process.cwd(), "tools", "ctf-binary-probe.ts"),
+  path.join(process.cwd(), "tools", "ctf-go-pclntool.ts"),
   path.join(process.cwd(), "tools", "lib", "go-elf-analysis.ts"),
 ]
 const text = files.map((f) => readFileSync(f, "utf8")).join("\n")

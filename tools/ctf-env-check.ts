@@ -2,8 +2,12 @@ import { tool } from "@opencode-ai/plugin"
 import { safeExec } from "./lib/exec-utils.ts"
 import { DOCKER_IMAGES } from "./lib/docker-config.ts"
 import path from "node:path"
-import { existsSync } from "node:fs"
-import { evaluateAllFamilyReadiness, type EnvironmentProbeResult } from "../src/family-readiness.ts"
+import { existsSync, readFileSync } from "node:fs"
+import {
+  evaluateAllFamilyReadiness,
+  formatStartupEnvironmentSummary,
+  type EnvironmentProbeResult,
+} from "../src/family-readiness.ts"
 import { resolveEnabledPacks } from "../src/tool-packs.ts"
 
 type EnvCheckResult = {
@@ -69,6 +73,42 @@ async function androidStudioDetected(): Promise<boolean> {
   return false
 }
 
+async function detectShellName(): Promise<string> {
+  if (process.platform === "win32") {
+    if (process.env.PSModulePath || process.env.PSExecutionPolicyPreference) return "powershell"
+    const ps = await safeExec("powershell", ["-NoProfile", "-Command", "$PSVersionTable.PSEdition"], undefined, 4000)
+    if (ps.ok) return "powershell"
+    return process.env.ComSpec?.toLowerCase().includes("cmd.exe") ? "cmd" : "unknown"
+  }
+  const shell = (process.env.SHELL || "").toLowerCase()
+  if (shell.includes("zsh")) return "zsh"
+  if (shell.includes("bash")) return "bash"
+  if (shell.endsWith("/sh") || shell === "sh") return "sh"
+  return shell ? shell.split("/").pop() || "unknown" : "unknown"
+}
+
+function detectKaliHost(): boolean {
+  if (process.platform !== "linux") return false
+  try {
+    const osRelease = readFileSync("/etc/os-release", "utf8").toLowerCase()
+    return osRelease.includes("id=kali") || osRelease.includes("id_like=kali") || osRelease.includes("kali rolling")
+  } catch {
+    return false
+  }
+}
+
+function detectWslHost(): boolean {
+  if (process.platform !== "linux") return false
+  const envHint = process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP
+  if (envHint) return true
+  try {
+    const procVersion = readFileSync("/proc/version", "utf8").toLowerCase()
+    return procVersion.includes("microsoft") || procVersion.includes("wsl")
+  } catch {
+    return false
+  }
+}
+
 export default tool({
   description:
     "CTF environment check: verify Docker daemon, pwnlab/revlab images, Android Studio/ADB/AVD, and core CLI tools for pwn/rev. Run before starting a challenge.",
@@ -84,6 +124,107 @@ export default tool({
     const rawResults: EnvCheckResult[] = []
     const results = rawResults
     const environmentProbes: Record<string, EnvironmentProbeResult> = {}
+
+    const shellName = await detectShellName()
+    const kaliHost = detectKaliHost()
+    const wslHost = detectWslHost()
+    const osLabel =
+      process.platform === "win32"
+        ? "windows"
+        : process.platform === "linux"
+          ? "linux"
+          : process.platform === "darwin"
+            ? "macos"
+            : process.platform || "unknown"
+
+    environmentProbes["env:os"] = {
+      ok: true,
+      executed: true,
+      detail: `host os=${osLabel}`,
+      behaviorOk: true,
+    }
+    environmentProbes["env:shell"] = {
+      ok: shellName !== "unknown",
+      executed: true,
+      detail: shellName === "unknown" ? "shell could not be inferred" : `active shell=${shellName}`,
+      behaviorOk: true,
+    }
+    environmentProbes["env:kali"] = {
+      ok: kaliHost,
+      executed: true,
+      detail: kaliHost ? "kali linux detected" : "kali linux not detected",
+      behaviorOk: kaliHost,
+    }
+    environmentProbes["env:wsl"] = {
+      ok: wslHost,
+      executed: true,
+      detail: wslHost ? "wsl detected" : "wsl not detected",
+      behaviorOk: wslHost,
+    }
+
+    // -- MCP backend observability --
+    if (category === "forensics" || category === "misc" || category === "all") {
+      const configured = Boolean(process.env.WIREMCP_LAUNCHER)
+      const launcherExists = configured ? existsSync(path.resolve(process.env.WIREMCP_LAUNCHER!)) : false
+      results.push({
+        name: "mcp:wiremcp-launcher",
+        ok: configured && launcherExists,
+        required: false,
+        category: "mcp-forensics",
+        detail: configured
+          ? launcherExists
+            ? `WIREMCP_LAUNCHER exists: ${process.env.WIREMCP_LAUNCHER}`
+            : `WIREMCP_LAUNCHER is set but file was not found: ${process.env.WIREMCP_LAUNCHER}`
+          : "WIREMCP_LAUNCHER not set",
+        hint: configured && launcherExists ? "" : "Set WIREMCP_LAUNCHER to the WireMCP server launcher path, or use pcap probe/carve fallback.",
+      })
+      environmentProbes["env:wiremcp-launcher"] = {
+        ok: configured && launcherExists,
+        executed: true,
+        detail: configured
+          ? launcherExists
+            ? "WireMCP launcher path exists"
+            : "WIREMCP_LAUNCHER set but launcher path missing"
+          : "WIREMCP_LAUNCHER not set",
+        behaviorOk: configured && launcherExists,
+      }
+    }
+
+    if (category === "crypto" || category === "forensics" || category === "misc" || category === "all") {
+      const cyberchef = await check("cyberchef-mcp", ["--help"], 8000)
+      results.push({
+        name: "mcp:cyberchef-mcp",
+        ok: cyberchef.ok,
+        required: false,
+        category: "mcp-transform",
+        detail: cyberchef.ok ? `cyberchef-mcp available: ${cyberchef.output}` : "cyberchef-mcp command not found on PATH",
+        hint: cyberchef.ok ? "" : "Install/expose cyberchef-mcp, or rely on npx-backed activation and local Python transform scripts.",
+      })
+      environmentProbes["env:cyberchef-mcp"] = {
+        ok: cyberchef.ok,
+        executed: true,
+        detail: cyberchef.ok ? "cyberchef-mcp command available" : "cyberchef-mcp command not found on PATH",
+        behaviorOk: cyberchef.ok,
+      }
+    }
+
+    if (category === "rev" || category === "pwn" || category === "all") {
+      const ida = await check("ida-pro-mcp", ["--help"], 8000)
+      results.push({
+        name: "mcp:ida-pro-mcp",
+        ok: ida.ok,
+        required: false,
+        category: "mcp-rev",
+        detail: ida.ok ? `ida-pro-mcp available: ${ida.output}` : "ida-pro-mcp command not found on PATH",
+        hint: ida.ok ? "" : "Install mrexodia/ida-pro-mcp so `ida-pro-mcp --stdio` is available for the ida-pro heavy MCP slot.",
+      })
+      environmentProbes["env:ida-pro-mcp"] = {
+        ok: ida.ok,
+        executed: true,
+        detail: ida.ok ? "ida-pro-mcp command available" : "ida-pro-mcp command not found on PATH",
+        behaviorOk: ida.ok,
+      }
+    }
 
     // -- Docker daemon (always check if any docker test is needed) --
     if (category === "pwn" || category === "rev" || category === "all") {
@@ -268,6 +409,7 @@ export default tool({
       enabledToolPacks: [...resolveEnabledPacks()],
       environmentProbes,
     })
+    const startupEnvironmentSummary = formatStartupEnvironmentSummary(environmentProbes)
     const pwnBuildHints = results
       .filter((r) => r.category === "pwn-docker" && !r.ok)
       .map((r) => r.hint)
@@ -275,6 +417,10 @@ export default tool({
     const revBuildHints = results
       .filter((r) => r.category === "rev-docker" && !r.ok)
       .map((r) => r.hint)
+      .filter(Boolean)
+    const mcpHints = results
+      .filter((r) => r.category.startsWith("mcp-") && !r.ok)
+      .map((r) => `${r.name}: ${r.hint}`)
       .filter(Boolean)
 
     if (args.jsonOnly) {
@@ -302,6 +448,10 @@ export default tool({
       "",
     ]
 
+    if (startupEnvironmentSummary) {
+      lines.push(startupEnvironmentSummary, "")
+    }
+
     for (const r of results) {
       const icon = r.ok ? "✓" : r.required ? "✗" : "?"
       lines.push(`  ${icon} [${r.category}] ${r.name}: ${r.detail}`)
@@ -326,6 +476,12 @@ export default tool({
       lines.push("  revlab image is not built. Build it:")
       lines.push("  # Run from the repository root:")
       lines.push("  docker compose -f docker/docker-compose.revlab.yml --profile revlab build revlab")
+    }
+
+    if (mcpHints.length) {
+      lines.push("", "--- MCP OBSERVABILITY HINTS ---")
+      lines.push("  Missing MCP backends degrade only the routes that need them; fallback tools remain valid.")
+      for (const hint of mcpHints) lines.push(`  ? ${hint}`)
     }
 
     const adbResult = results.find((r) => r.name === "adb-device")

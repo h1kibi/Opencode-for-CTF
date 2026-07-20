@@ -33,9 +33,9 @@ $ARGUMENTS
 ## Entry taxonomy
 
 - **Main entry**: `/ctf`
-- **Core modes**: `/ctf-fast`, `/ctf-expert`, `/ctf-resume`
+- **Core modes**: `/ctf-fast`, `/ctf-expert`, `/resume`
 - **Category specialists**: `/ctf-web`, `/ctf-pwn`, `/ctf-rev`, `/ctf-crypto`, `/ctf-forensics`, `/ctf-misc`
-- **Compatibility only**: `/ctf-solve`
+- **Public help**: `/help`
 
 ## Mode guide
 
@@ -61,5 +61,6 @@ $ARGUMENTS
 
 - Force fast: `/ctf-fast ...`
 - Force expert: `/ctf-expert ...`
+- Resume: `/resume ...`
 - Known category: `/ctf-web|pwn|rev|crypto|forensics|misc ...`
-- Help: `/ctf-help`
+- Help: `/help`

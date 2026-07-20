@@ -6,6 +6,8 @@ subtask: false
 
 Resume an interrupted CTF solve.
 
+This command is the public resume entry. `/ctf-resume` should be treated as a compatibility alias only.
+
 Context or path:
 $ARGUMENTS
 

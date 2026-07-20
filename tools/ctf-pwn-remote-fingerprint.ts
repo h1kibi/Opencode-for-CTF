@@ -58,6 +58,22 @@ function diffSummary(a: string, b: string) {
   }
 }
 
+function classifyTransport(text: string) {
+  const lower = text.toLowerCase()
+  if (/choice|menu|select|add|edit|delete|show|name|password|size|length|> |: /.test(lower)) return "line-based"
+  if (/\x00|�/.test(text) || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text)) return "tcp/raw"
+  return "tcp/raw"
+}
+
+function binaryProtocolLikely(text: string) {
+  return /\x00|�/.test(text) || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(text)
+}
+
+function restartLikely(a: string, b: string) {
+  const text = `${a}\n${b}`.toLowerCase()
+  return /new connection|forking|child process|session id|pid |process id|welcome back/.test(text)
+}
+
 export default tool({
   description:
     "CTF PWN remote fingerprint: low-noise baseline vs mutant remote probe for banner, initial output, EOF behavior, and leak-shape comparison.",
@@ -227,6 +243,26 @@ run_case('mutant', ${JSON.stringify(args.mutantPayloadText || "")}, ${JSON.strin
         },
       },
       stderr_compact: compact(stderr),
+      transport: classifyTransport(`${baseBlob}\n${mutantBlob}`),
+      pow_detected: /proof.?of.?work|pow|hashcash|sha256\(/i.test(`${baseBlob}\n${mutantBlob}`),
+      restart_likely: restartLikely(baseBlob, mutantBlob),
+      stable_banner:
+        splitLines(baseline.banner || "").join("\n") === splitLines(mutant.banner || "").join("\n"),
+      binary_protocol_likely: binaryProtocolLikely(`${baseBlob}\n${mutantBlob}`),
+      best_fast_path:
+        binaryProtocolLikely(`${baseBlob}\n${mutantBlob}`)
+          ? "compare fixed headers, response lengths, and one byte/field mutation only"
+          : "lock the prompt/banner shape, then make exactly one payload-family change",
+      one_variable_probe:
+        binaryProtocolLikely(`${baseBlob}\n${mutantBlob}`)
+          ? "one short hex-field or one-byte mutation only"
+          : "one baseline vs one mutant payload only",
+      recommended_next_action:
+        binaryProtocolLikely(`${baseBlob}\n${mutantBlob}`)
+          ? "use ctf-proto-probe to compare fixed headers, response lengths, and one minimal payload mutation"
+          : "lock the prompt/banner shape, then make exactly one payload-family change",
+      fallback_action: "if the same banner still hides inconsistent leak classes, keep payload structure fixed and compare one baseline vs one mutant only",
+      stop_if: "PoW, restart drift, or binary-stateful protocol effects dominate after a few bounded probes; ESCALATE: ctf-expert",
       matching_guess:
         splitLines(baseline.banner || "").join("\n") === splitLines(mutant.banner || "").join("\n")
           ? "likely_same_banner_shape"
@@ -237,6 +273,16 @@ run_case('mutant', ${JSON.stringify(args.mutantPayloadText || "")}, ${JSON.strin
       "PWN_REMOTE_FINGERPRINT",
       `remote: ${payload.remote}`,
       `matching_guess: ${payload.matching_guess}`,
+      `transport: ${payload.transport}`,
+      `pow_detected: ${payload.pow_detected}`,
+      `restart_likely: ${payload.restart_likely}`,
+      `stable_banner: ${payload.stable_banner}`,
+      `binary_protocol_likely: ${payload.binary_protocol_likely}`,
+      `best_fast_path: ${payload.best_fast_path}`,
+      `one_variable_probe: ${payload.one_variable_probe}`,
+      `recommended_next_action: ${payload.recommended_next_action}`,
+      `fallback_action: ${payload.fallback_action}`,
+      `stop_if: ${payload.stop_if}`,
       `baseline: status=${payload.baseline.status} send_size=${payload.baseline.send_size} eof_shape=${payload.baseline.eof_shape} leak_count=${payload.baseline.leak_shape.pointer_count}`,
       `mutant: status=${payload.mutant.status} send_size=${payload.mutant.send_size} eof_shape=${payload.mutant.eof_shape} leak_count=${payload.mutant.leak_shape.pointer_count}`,
       "baseline_banner:",

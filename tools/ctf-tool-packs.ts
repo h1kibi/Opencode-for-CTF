@@ -3,12 +3,15 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { tool } from "@opencode-ai/plugin"
 import { PLUGIN_ROOT } from "../src/asset-paths.ts"
+import { loadCtfTools } from "../src/ctf-tools.ts"
+import { diagnoseToolVisibility, summarizeRuntimeToolRegistry } from "../src/plugin.ts"
 import {
   ALL_TOOL_PACKS,
   DEFAULT_TOOL_PACKS,
   packForTool,
   resolveEnabledPacks,
   summarizePacks,
+  toolAllowedForAgent,
 } from "../src/tool-packs.ts"
 
 async function listToolNames(): Promise<string[]> {
@@ -48,12 +51,29 @@ export default tool({
     const names = await listToolNames()
     const byPack = summarizePacks(names)
     const enabled = resolveEnabledPacks()
+    const exportedTools = await loadCtfTools({ packs: [...enabled] })
+    const exportedNames = Object.keys(exportedTools).sort()
+    const summary = summarizeRuntimeToolRegistry({
+      configPath: null,
+      enabledPacks: enabled,
+      tools: exportedTools,
+      teamModeEnabled: false,
+    })
+    const diskCtfTools = names.filter((name) => name.startsWith("ctf-") || name.startsWith("archive-")).sort()
+    const exportedCtfTools = exportedNames.filter((name) => name.startsWith("ctf-") || name.startsWith("archive-")).sort()
+    const missingFromRegistry = diskCtfTools.filter((name) => !exportedCtfTools.includes(name))
+    const filteredByPack = diskCtfTools.filter((name) => !enabled.has(packForTool(name)))
+    const fastVisible = exportedNames.filter((name) => toolAllowedForAgent(name, "ctf-fast")).sort()
+    const filteredByFastSurface = exportedCtfTools.filter((name) => !fastVisible.includes(name))
     const lines: string[] = [
       "CTF tool packs",
       "",
       `enabled: ${[...enabled].sort().join(", ")}`,
       `defaults: ${DEFAULT_TOOL_PACKS.join(", ")}`,
       `all packs: ${ALL_TOOL_PACKS.join(", ")}`,
+      `disk ctf tools: ${diskCtfTools.length}`,
+      `exported ctf tools: ${exportedCtfTools.length}`,
+      `ctf-fast visible tools: ${fastVisible.length}`,
       "",
       "counts:",
     ]
@@ -63,10 +83,29 @@ export default tool({
     }
     if (args.toolName) {
       const name = args.toolName.replace(/\.(ts|js)$/, "")
+      const diagnosis = diagnoseToolVisibility({
+        summary,
+        toolName: name,
+        agentSurface: "ctf-fast",
+      })
       lines.push("", `tool ${name} → pack ${packForTool(name)}`)
       lines.push(
         `registered this session: ${enabled.has(packForTool(name)) ? "yes" : "no (enable pack + restart)"}`,
       )
+      lines.push(`exported in plugin registry: ${exportedNames.includes(name) ? "yes" : "no"}`)
+      lines.push(`visible on ctf-fast: ${fastVisible.includes(name) ? "yes" : "no"}`)
+      lines.push(`diagnosis: ${diagnosis.category}`)
+      for (const reason of diagnosis.reasons) lines.push(`  because: ${reason}`)
+      lines.push(`  next_action: ${diagnosis.nextAction}`)
+    }
+    if (missingFromRegistry.length) {
+      lines.push("", `missing from exported registry (${missingFromRegistry.length}): ${missingFromRegistry.join(", ")}`)
+    }
+    if (filteredByPack.length) {
+      lines.push("", `filtered by pack (${filteredByPack.length}): ${filteredByPack.join(", ")}`)
+    }
+    if (filteredByFastSurface.length) {
+      lines.push("", `filtered by ctf-fast surface (${filteredByFastSurface.length}): ${filteredByFastSurface.join(", ")}`)
     }
     lines.push(
       "",

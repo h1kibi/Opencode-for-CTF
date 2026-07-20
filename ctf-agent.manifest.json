@@ -3,10 +3,10 @@
   "description": "CTF agent operating profile. Default user entry is /ctf (auto-route). Primary CTF agents: ctf-fast and ctf-expert only. researcher remains for knowledge-base maintenance.",
   "default_entrypoints": [
     "/ctf",
-    "/ctf-help",
+    "/help",
     "/ctf-fast",
     "/ctf-expert",
-    "/ctf-resume"
+    "/resume"
   ],
   "compatibility_entrypoints": [
     "/ctf-solve"

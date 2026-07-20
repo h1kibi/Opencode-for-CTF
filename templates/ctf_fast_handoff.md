@@ -1,6 +1,6 @@
 # CTF Fast Handoff
 
-Use this when `ctf-fast` or `ctf-pwn-fast` stops and needs a rigorous continuation package.
+Use this when `ctf-fast` stops and needs an expert continuation package.
 
 ## FAST_HANDOFF
 - Target:

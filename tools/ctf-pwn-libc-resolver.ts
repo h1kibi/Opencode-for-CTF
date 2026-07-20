@@ -2,6 +2,13 @@ import { tool } from "@opencode-ai/plugin"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { safeExec } from "./lib/exec-utils.ts"
+import {
+  binshOffsetHex,
+  parseMinor,
+  parseOneGadgetDetailed,
+  parseVersion,
+  symbolOffsetHex,
+} from "./lib/pwn-libc-core.ts"
 
 function resolveInsideWorkspace(contextDir: string, input: string) {
   const base = path.resolve(contextDir)
@@ -11,58 +18,6 @@ function resolveInsideWorkspace(contextDir: string, input: string) {
     throw new Error(`path must stay inside the current workspace: ${input}`)
   }
   return target
-}
-
-function parseVersion(text: string) {
-  const m = text.match(/glibc\s*2\.(\d+)|glibc 2\.(\d+)|gnu c library.*stable release version\s*2\.(\d+)/i)
-  if (!m) return "unknown"
-  const minor = Number(m[1] || m[2] || m[3])
-  return `2.${minor}`
-}
-
-function parseMinor(version: string) {
-  const m = version.match(/^2\.(\d+)$/)
-  return m ? Number(m[1]) : -1
-}
-
-function escapeRegExp(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-}
-
-function symbolOffset(lines: string[], name: string) {
-  const re = new RegExp(`\\b${escapeRegExp(name)}\\b`)
-  for (const line of lines) {
-    if (re.test(line)) {
-      const m = line.match(/\b([0-9a-f]{6,16})\b/i)
-      if (m) return `0x${m[1]}`
-    }
-  }
-  return "unknown"
-}
-
-function binshOffset(buf: Buffer) {
-  const needle = Buffer.from("/bin/sh\0", "latin1")
-  const idx = buf.indexOf(needle)
-  return idx >= 0 ? `0x${idx.toString(16)}` : "unknown"
-}
-
-function parseOneGadget(text: string) {
-  const lines = text.split(/\r?\n/)
-  const out: string[] = []
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim()
-    if (!/^0x[0-9a-f]+/i.test(line) && !/^[0-9a-f]{6,}/i.test(line)) continue
-    const addr = line.startsWith("0x") ? line.split(/\s+/)[0] : `0x${line.split(/\s+/)[0]}`
-    const constraints: string[] = []
-    for (let j = i + 1; j < Math.min(lines.length, i + 8); j++) {
-      const c = lines[j].trim()
-      if (/^0x[0-9a-f]+/i.test(c) || /^[0-9a-f]{6,}/i.test(c)) break
-      if (/\[|\]|==|writable|rsp|rsi|rdx|rax|constraint/i.test(c)) constraints.push(c)
-    }
-    out.push(`${addr}${constraints.length ? ` constraints: ${constraints.slice(0, 3).join(" ; ")}` : ""}`)
-    if (out.length >= 8) break
-  }
-  return out
 }
 
 export default tool({
@@ -89,19 +44,19 @@ export default tool({
     const lines = `${readelfOut}\n${nmOut}`.split(/\r?\n/)
 
     const symbols = {
-      system: symbolOffset(lines, "system"),
-      puts: symbolOffset(lines, "puts"),
-      read: symbolOffset(lines, "read"),
-      write: symbolOffset(lines, "write"),
-      open: symbolOffset(lines, "open"),
-      openat: symbolOffset(lines, "openat"),
-      environ: symbolOffset(lines, "environ"),
-      __libc_start_main: symbolOffset(lines, "__libc_start_main"),
-      __free_hook: symbolOffset(lines, "__free_hook"),
-      __malloc_hook: symbolOffset(lines, "__malloc_hook"),
-      setcontext: symbolOffset(lines, "setcontext"),
-      mprotect: symbolOffset(lines, "mprotect"),
-      execve: symbolOffset(lines, "execve"),
+      system: symbolOffsetHex(lines, "system"),
+      puts: symbolOffsetHex(lines, "puts"),
+      read: symbolOffsetHex(lines, "read"),
+      write: symbolOffsetHex(lines, "write"),
+      open: symbolOffsetHex(lines, "open"),
+      openat: symbolOffsetHex(lines, "openat"),
+      environ: symbolOffsetHex(lines, "environ"),
+      __libc_start_main: symbolOffsetHex(lines, "__libc_start_main"),
+      __free_hook: symbolOffsetHex(lines, "__free_hook"),
+      __malloc_hook: symbolOffsetHex(lines, "__malloc_hook"),
+      setcontext: symbolOffsetHex(lines, "setcontext"),
+      mprotect: symbolOffsetHex(lines, "mprotect"),
+      execve: symbolOffsetHex(lines, "execve"),
     }
 
     const featureHints = [
@@ -113,7 +68,7 @@ export default tool({
     ]
 
     const routeHints = [
-      symbols.system !== "unknown" && binshOffset(raw) !== "unknown" ? "ret2libc_system_binsh_candidate" : "",
+      symbols.system !== "unknown" && binshOffsetHex(raw) !== "unknown" ? "ret2libc_system_binsh_candidate" : "",
       symbols.__free_hook !== "unknown" && minor > -1 && minor < 34
         ? "free_hook_overwrite_candidate_if_write_primitive_exists"
         : "",
@@ -127,13 +82,13 @@ export default tool({
       minor >= 34 ? "do_not_default_to_malloc_free_hook_targets" : "",
     ].filter(Boolean)
 
-    const oneGadgets = parseOneGadget(oneGadgetOut)
+    const oneGadgets = parseOneGadgetDetailed(oneGadgetOut)
 
     return [
       "pwn_libc_resolver:",
       `libc: ${libc}`,
       `glibc_version: ${version}`,
-      `bin_sh_offset: ${binshOffset(raw)}`,
+      `bin_sh_offset: ${binshOffsetHex(raw)}`,
       "symbol_offsets:",
       ...Object.entries(symbols).map(([k, v]) => `- ${k}: ${v}`),
       "one_gadget_hints:",

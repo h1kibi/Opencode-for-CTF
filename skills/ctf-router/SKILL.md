@@ -18,7 +18,7 @@ Use this skill before solving a new CTF challenge. The goal is fast classificati
 | --- | --- |
 | `fast` / `/ctf-fast` | Strong single-category signals, simple one-hop |
 | `expert` / `/ctf-expert` | Source-rich, multi-artifact, ambiguous, or hard |
-| `resume` / `/ctf-resume` | Existing `work/ctf-evidence/<slug>/` branch |
+| `resume` / `/resume` | Existing `work/ctf-evidence/<slug>/` branch |
 
 ## Scope
 

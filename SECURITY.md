@@ -68,3 +68,4 @@ All tools in this plugin must follow these security principles:
 3. **Environment isolation** — Docker containers should be ephemeral. Use pinned base images with no network access when safe.
 4. **Deny by default** — Agent permissions start with allow-listed commands; unknown commands are denied or require user approval.
 5. **MCP off by default** — Installer profiles may stage MCP stubs, but they remain disabled until reviewed and enabled by the user.
+6. **External specialist launchers** — Machine-specific MCP backends (for example Wireshark, IDA, Packet Tracer) should be referenced through explicit env-backed launchers rather than bundled repo-local executables.

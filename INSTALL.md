@@ -49,6 +49,7 @@ node scripts/cli.mjs status --strict
 4. Creates backups before overwriting managed files
 5. Writes a SHA-256 **manifest** so later upgrades/uninstalls skip files you edited after install
 6. Sets `default_agent` to `ctf-fast` when missing
+7. Stages only portable runtime assets; machine-specific MCP launchers stay external and env-driven
 
 ### Default config locations
 
@@ -78,11 +79,13 @@ npm run ctf:install -- --profile full   # adds more disabled MCP stubs (github, 
 **Important:** profile MCP entries remain **disabled**. Review command, paths, credentials, and data flow before enabling any MCP.
 
 The installer does **not** copy reference MCP definitions that hard-code machine-specific absolute paths.
+Specialist MCPs such as Wireshark / Packet Tracer / IDA integrations are expected to be provisioned externally and referenced through environment-backed launcher paths.
+Current recommended browser backend is Playwright MCP; the Wireshark slot is intended for WireMCP-style launchers.
 
 ### After install
 
 1. Restart OpenCode completely
-2. Run `/ctf-help`
+2. Run `/help`
 3. Solve with `/ctf ./challenge`
 
 ## Install with an LLM coding agent
@@ -201,7 +204,7 @@ The default published / installed surface is intentionally slim:
 | Current pattern index `ljagiello-ctf-skills.cards.v9.json` | Intermediate card dumps `cards.json` / `cards.v2`–`v8` |
 | `java-web` + `pwn-curated` indexes, lessons, pwn/rev knowledge | Pattern-card build/smoke scripts |
 | Built-in `skills/`, agents, commands, plugin bundle | `skills-external/` (opt-in) |
-| Minimal MCP server sources used by profiles | `benchmarks/`, `retros/`, `patches/` |
+| Runtime docs / env helpers | `benchmarks/`, `retros/`, `patches/`, machine-specific MCP server sources |
 
 Managed install applies the same knowledge filter even on a full source checkout, so intermediate cards are not copied into `~/.config/opencode`.
 

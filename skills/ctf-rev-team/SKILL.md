@@ -1,6 +1,6 @@
 ---
 name: ctf-rev-team
-description: Use inside ctf-rigorous for complex reverse engineering challenges that need orthogonal team fanout, public evidence memory, local knowledge recall, and shortest-closure control.
+description: Use inside ctf-expert for complex reverse engineering challenges that need orthogonal team fanout, public evidence memory, local knowledge recall, and shortest-closure control.
 compatibility: opencode
 ---
 
@@ -8,9 +8,9 @@ compatibility: opencode
 
 ## Purpose
 
-Use this skill when `ctf-rigorous` is the lead for a complex reverse engineering challenge and the bottleneck is branch selection, evidence bandwidth, or competing solver routes rather than a single obvious checker.
+Use this skill when `ctf-expert` is the lead for a complex reverse engineering challenge and the bottleneck is branch selection, evidence bandwidth, or competing solver routes rather than a single obvious checker.
 
-Team Mode expands early evidence bandwidth; it must not expand speculation. `ctf-rigorous` remains the lead, owns public memory, merges results, ranks top-3 routes, selects exactly one next probe, and performs final verification.
+Team Mode expands early evidence bandwidth; it must not expand speculation. `ctf-expert` remains the lead, owns public memory, merges results, ranks top-3 routes, selects exactly one next probe, and performs final verification.
 
 ## Trigger Gate
 

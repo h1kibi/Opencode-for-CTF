@@ -8,7 +8,7 @@ This is the development roadmap for Opencode-for-CTF. It reflects current priori
 - [x] **Python dependency declaration** — Added `requirements.txt` and `requirements-docs.txt` for CTF toolchain
 - [x] **Published-files completeness** — Added `benchmarks/`, `retros/`, `patches/`, `third_party/` to package manifest
 - [x] **Config sanitization** — Removed all hardcoded absolute paths from `opencode.jsonc`, `.env.example`, agent files
-- [x] **Default entry convergence** — `/ctf` is the single default user path; L0/L1 command surface documented via `/ctf-help`
+- [x] **Default entry convergence** — `/ctf` is the single default user path; reduced public command surface documented via `/help`
 - [x] **Category router** — Pure `decideRoute()` in `ctf-core` + `ctf-route-plan` tool; hooks inject solve-mode hints
 - [x] **Plugin user config** — `opencode-for-ctf.jsonc` with `disabled_hooks`, hashline/continuation/team toggles
 - [x] **Naming debt** — `ctf-expert` / `/ctf-solve` marked compatibility-only; primary agents are `ctf-fast` + `ctf-expert`
@@ -54,7 +54,7 @@ This is the development roadmap for Opencode-for-CTF. It reflects current priori
 - [x] Core plugin architecture (hooks, events, state management)
 - [x] Primary agents `ctf-fast` / `ctf-expert` with compatibility `ctf-expert`
 - [x] 148 tool definitions covering all CTF categories
-- [x] Commands with L0 default surface (`/ctf`, `/ctf-help`, …)
+- [x] Commands with reduced public surface (`/ctf`, `/help`, …)
 - [x] 61 skills with solve state machines
 - [x] Evidence board and decision state machine
 - [x] Category routing library (`ctf-core` router)

@@ -22,6 +22,7 @@ const checks: Check[] = [
   { group: "rev", name: "jadx", command: "jadx", args: ["--version"] },
   { group: "forensics", name: "tshark", command: "tshark", args: ["--version"] },
   { group: "forensics", name: "exiftool", command: "exiftool", args: ["-ver"] },
+  { group: "forensics", name: "ida-pro-mcp", command: "ida-pro-mcp", args: ["--help"] },
   { group: "crypto", name: "openssl", command: "openssl", args: ["version"] },
   { group: "crypto", name: "sage", command: "sage", args: ["--version"] },
 ]
@@ -55,3 +56,5 @@ for (const group of order) {
 }
 
 console.log("\nUse missing tools only when the selected challenge path requires them.")
+console.log(`WireMCP launcher: ${process.env.WIREMCP_LAUNCHER ? "configured" : "not configured (set WIREMCP_LAUNCHER for wireshark-mcp)"}`)
+console.log("IDA MCP backend: install mrexodia/ida-pro-mcp so `ida-pro-mcp --stdio` is available for the ida-pro slot.")

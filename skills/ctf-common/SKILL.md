@@ -121,7 +121,7 @@ If the branch is likely to pause, switch owner, or survive interruption, prefer 
 
 ## Restart Artifact Priority
 
-When resuming or handing control between `ctf-fast`, `ctf-pwn-fast`, `ctf-rigorous`, or category specialists, prefer structured restart artifacts over broad note rereads.
+When resuming or handing control between `ctf-fast`, `ctf-expert`, or category specialists, prefer structured restart artifacts over broad note rereads.
 
 Preferred human-readable restart order under `work/ctf-evidence/<challenge-slug>/`:
 

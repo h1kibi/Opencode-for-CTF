@@ -89,10 +89,6 @@ for (const forbidden of ["skills-external", "benchmarks", "retros", "patches"]) 
 }
 
 for (const required of [
-  "mcp-servers/wireshark-mcp/server.js",
-  "mcp-servers/wireshark-mcp/package.json",
-  "mcp-servers/packettracer-gui-mcp/server.py",
-  "mcp-servers/packettracer-gui-mcp/requirements.txt",
   "runtime/README.md",
   "runtime/win-env",
   "runtime/wsl-env",
@@ -102,9 +98,9 @@ for (const required of [
 
 if (!packageJson.dependencies?.["jsonc-parser"]) errors.push("jsonc-parser must be a runtime dependency")
 if (!packageJson.dependencies?.["@modelcontextprotocol/sdk"]) {
-  errors.push("@modelcontextprotocol/sdk must be a runtime dependency for bundled local MCP servers")
+  errors.push("@modelcontextprotocol/sdk must be a runtime dependency for MCP lifecycle support")
 }
-if (!packageJson.dependencies?.zod) errors.push("zod must be a runtime dependency for bundled local MCP servers")
+if (!packageJson.dependencies?.zod) errors.push("zod must be a runtime dependency for MCP lifecycle support")
 
 const engine = packageJson.engines?.node
 if (typeof engine !== "string" || !engine.includes("22.20")) {

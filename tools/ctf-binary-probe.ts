@@ -173,6 +173,17 @@ function parseMitigations(
   return { arch, bits, nx, pie, canary, relro, stripped, staticLinked, interpreter, glibc, cetIbt, seccomp }
 }
 
+function pwnFastSignals(combined: string, symbolHits: string[], interestingStrings: string[]) {
+  const visible = `${symbolHits.join("\n")}\n${interestingStrings.join("\n")}`
+  return {
+    has_win_symbol: /\b(win|print_flag|give_shell|backdoor)\b/i.test(visible),
+    has_system_plt: /\bsystem(?:@|\b|@@)/i.test(combined),
+    has_binsh_string: /\/bin\/(?:ba)?sh/i.test(visible),
+    uses_alarm: /\balarm(?:@|\b|@@)/i.test(combined),
+    stdin_stdout_buffering_hints: grepLines(combined, /setvbuf|fflush|stdin|stdout|stderr|buffer/i, 12),
+  }
+}
+
 function routeSeeds(
   m: ReturnType<typeof parseMitigations>,
   combined: string,
@@ -353,6 +364,7 @@ export default tool({
     const hasVmDispatcher =
       /opcode|handler|dispatch|jump table|\btable\b|op_load|op_store|op_bounds|run_vm|bytecode/.test(combined)
     const mitigations = parseMitigations(fileOut, checksecOut, readelfHeader, lddOut, combinedRaw)
+    const fastSignals = pwnFastSignals(combinedRaw, symbolHits, interestingStrings)
     const packer = packerSignals(sample, strings, fileOut, readelfHeader, readelfNotes)
     const seeds = routeSeeds(mitigations, combined, symbolHits, interestingStrings)
     const runtime = detectLanguageRuntime(fileOut, strings)
@@ -496,6 +508,15 @@ export default tool({
       `go_execution_plan: ${goPlan.summary}`,
       "go_execution_plan_steps:",
       ...(goPlan.steps.length ? goPlan.steps.map((s) => `- ${s.tool} ${s.target} (${s.note})`) : ["- none"]),
+      "pwn_fast_signals:",
+      `- has_win_symbol: ${fastSignals.has_win_symbol ? "yes" : "no"}`,
+      `- has_system_plt: ${fastSignals.has_system_plt ? "yes" : "no"}`,
+      `- has_binsh_string: ${fastSignals.has_binsh_string ? "yes" : "no"}`,
+      `- uses_alarm: ${fastSignals.uses_alarm ? "yes" : "no"}`,
+      "stdin_stdout_buffering_hints:",
+      ...(fastSignals.stdin_stdout_buffering_hints.length
+        ? fastSignals.stdin_stdout_buffering_hints.map((x) => `- ${x}`)
+        : ["- none"]),
       "strategy_seeds:",
       ...seeds.map((x) => `- ${x}`),
       "file:",
@@ -519,6 +540,9 @@ export default tool({
       ...(trustedTextFlagHits.length ? trustedTextFlagHits.map((x) => `- ${x}`) : ["- none"]),
       "recommended_next:",
       ...recommendations.slice(0, 6).map((x) => `- ${x}`),
+      `recommended_next_action: ${seeds[0] || recommendations[0] || "run ctf-pwn-probe for route selection"}`,
+      `fallback_action: ${probeBackend === "degraded" ? "fix missing host tools or switch to Docker/WSL substrate" : "if no fast primitive appears, collect one crash/leak/protocol oracle before widening routes"}`,
+      `stop_if: ${hasVmDispatcher || /heap_candidate/.test(seeds.join("\n")) ? "custom VM/heap complexity dominates; ESCALATE: ctf-expert" : "no new crash/leak/control evidence after 2-3 focused probes"}`,
       `relative_hint: use ./${base} for local execution from ${cwd}`,
     ].join("\n")
   },

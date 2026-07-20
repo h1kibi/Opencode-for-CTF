@@ -24,6 +24,7 @@ $ARGUMENTS
 
 ## Mandatory workflow
 
+0. Recognize the startup environment before route work: identify OS / shell / substrate first. If the host is Kali, remember its built-in tool environment is likely available. If the host is Windows / PowerShell, keep command syntax PowerShell-safe and prefer script-first handling for complex requests.
 1. Load skill `ctf-expert`.
 2. `ctf-evidence-board command=init ...` → creates **Evidence.md**.
 3. **① Recon** — concurrent workers (team dispatch); collect with `add-fact` / `add-clue`.
@@ -36,6 +37,7 @@ $ARGUMENTS
 
 ## Dynamic MCP
 
+- On Windows PowerShell, prefer `curl.exe` when literal curl semantics matter; escape `&`, quotes, and `$()` deliberately; for complex HTTP requests, prefer a small script over dense one-line escaping.
 - Subagents: `ctf-dynamic-mcp-advisor action=request`
 - You: `ctf-mcp-control action=list-pending` then `approve` / `deny`
 - Approve only when a current route clearly needs that heavy MCP

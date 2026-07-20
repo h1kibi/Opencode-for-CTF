@@ -31,6 +31,17 @@ function detectShell(text: string) {
   return /\buid=\d+\(|\bgid=\d+\(|\$\s*$|#\s*$|\bwhoami\b|\bid\b|\b\/bin\/sh\b|\b\/bin\/bash\b/i.test(text)
 }
 
+function detectInteractionMode(text: string, exitCode: number | string, timedOut: boolean) {
+  const lower = text.toLowerCase()
+  if (detectShell(text)) return "shell-like"
+  if (/choice|select|menu|add|edit|delete|show|\[1\]|\(1\)|1\)/i.test(text)) return "menu"
+  if (/enter|input|name|password|payload|size|length|: $|> $/i.test(text)) return "prompt-response"
+  if (/echo|you said|received/i.test(lower)) return "echo-service"
+  if (timedOut) return "blocks-for-input"
+  if (String(exitCode) === "0") return "single-shot"
+  return "unknown"
+}
+
 function detectCrash(text: string, exitCode: number | string) {
   return (
     /segmentation fault|sigsegv|core dumped|illegal instruction|sigill|sigabrt|abort|bus error|sigbus|traceback \(most recent call last\)/i.test(
@@ -231,6 +242,7 @@ export default tool({
     const scriptRanOk = exitCode === 0 && !timedOut
     const flagDetected = flags.length > 0
     const localSuccess = flagDetected || (shellDetected && !crash && !timedOut)
+    const interactionMode = detectInteractionMode(output, exitCode, timedOut)
     const envRemote = extraEnv.REMOTE === "1"
     const remoteSuccess = envRemote ? localSuccess : "untested"
     const summary = {
@@ -255,6 +267,18 @@ export default tool({
       shell_detected: shellDetected,
       crash,
       timeout: timedOut,
+      interaction_mode: interactionMode,
+      recommended_next_action: flagDetected
+        ? "flag-like output found; capture the reproducible command and stop"
+        : shellDetected
+          ? "confirm shell control with a harmless command or direct flag read"
+          : crash
+            ? "treat this as a failed exploit unless the flag was already captured; inspect offset/runtime before changing route"
+            : timedOut
+              ? "classify prompt/menu behavior and provide the expected input rather than rerunning blind"
+              : "use output shape to choose the next one-variable exploit edit",
+      fallback_action: "if local and remote behavior diverge, run ctf-pwn-remote-check with the same payload shape",
+      stop_if: "runner repeatedly times out or crashes without new oracle evidence; ESCALATE: ctf-expert if runtime/protocol effects dominate",
       exit_code: exitCode,
       flags_found: flags,
       payload_capture_path: payloadCapturePath,
@@ -278,6 +302,10 @@ export default tool({
       `- shell_detected: ${shellDetected}`,
       `- crash: ${crash}`,
       `- timeout: ${timedOut}`,
+      `- interaction_mode: ${interactionMode}`,
+      `- recommended_next_action: ${summary.recommended_next_action}`,
+      `- fallback_action: ${summary.fallback_action}`,
+      `- stop_if: ${summary.stop_if}`,
       `- exit_code: ${exitCode}`,
       `- flags_found: ${flags.length ? flags.join(" | ") : "none"}`,
       `- payload_capture_path: ${payloadCapturePath}`,

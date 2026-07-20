@@ -30,7 +30,7 @@ describe("ctf-adapter-opencode", () => {
 
   it("recognizes L0 commands", () => {
     expect(isL0Command("/ctf")).toBe(true)
-    expect(isL0Command("ctf-help")).toBe(true)
+    expect(isL0Command("help")).toBe(true)
     expect(isL0Command("/ctf-pwn-heap-menu-map")).toBe(false)
   })
 

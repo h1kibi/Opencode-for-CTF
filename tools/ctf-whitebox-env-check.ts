@@ -1,20 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
-import { safeExec } from "./lib/exec-utils.ts"
+import { runEnvChecks, summarizeEnvChecks, type EnvCheckItem } from "./lib/env-check-core.ts"
 
-type Check = {
-  name: string
-  command: string
-  args: string[]
-  required: boolean
-  category: string
-  purpose: string
-  fallback: string
-  hint: string
-}
-
-function firstLine(s: string) {
-  return (s.split(/\r?\n/).find(Boolean) || "<no output>").slice(0, 220)
-}
+type Check = EnvCheckItem
 
 function checksFor(profile: string): Check[] {
   const basic: Check[] = [
@@ -219,23 +206,17 @@ export default tool({
   async execute(args) {
     const profile = (args.profile || "basic").toLowerCase() === "full" ? "full" : "basic"
     const selected = checksFor(profile)
-    const results = []
-    for (const c of selected) {
-      const r = await safeExec(c.command, c.args, undefined, 6000)
-      results.push({ ...c, ok: r.ok, version: firstLine(r.output) })
-    }
-    const required = results.filter((x) => x.required)
-    const missingRequired = required.filter((x) => !x.ok)
-    const missingOptional = results.filter((x) => !x.required && !x.ok)
+    const results = await runEnvChecks(selected, 6000)
+    const baseSummary = summarizeEnvChecks(results)
     const presentByCategory = [...new Set(results.filter((x) => x.ok).map((x) => x.category))].sort()
     const summary = {
       profile,
-      ready: missingRequired.length === 0,
-      required_ok: required.filter((x) => x.ok).length,
-      required_total: required.length,
+      ready: baseSummary.ready,
+      required_ok: baseSummary.required_ok,
+      required_total: baseSummary.required_total,
       present_categories: presentByCategory,
-      required_missing: missingRequired.map((x) => x.name),
-      optional_missing: missingOptional.map((x) => x.name),
+      required_missing: baseSummary.required_missing,
+      optional_missing: baseSummary.optional_missing,
       results,
     }
     if (args.jsonOnly) return JSON.stringify(summary, null, 2)
