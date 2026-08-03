@@ -126,7 +126,7 @@ def read_pdf(path: Path, page_start: Optional[int], page_end: Optional[int]) -> 
     try:
         import pypdf
     except Exception as e:
-        fail(f"Missing dependency for PDF: pypdf. Install requirements-docs.txt. Detail: {e}")
+        fail(f"Missing dependency for PDF: pypdf. Install pypdf. Detail: {e}")
 
     reader = pypdf.PdfReader(str(path))
     total = len(reader.pages)

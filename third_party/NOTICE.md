@@ -21,4 +21,4 @@ JavaScript dependencies and optional MCP servers retain the licenses declared by
 
 ## Reporting an attribution issue
 
-If a third-party attribution, copyright notice, or license copy is missing or inaccurate, please open a GitHub issue or use the private contact described in `SECURITY.md` when public disclosure is inappropriate.
+If a third-party attribution, copyright notice, or license copy is missing or inaccurate, please open a GitHub issue.

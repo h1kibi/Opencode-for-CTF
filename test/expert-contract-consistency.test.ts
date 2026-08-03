@@ -11,7 +11,6 @@ const ctfCommandPath = resolve("commands", "ctf.md")
 const routeRuntimePath = resolve("src", "route-runtime.ts")
 const manifestPath = resolve("ctf-agent.manifest.json")
 const readmePath = resolve("README.md")
-const readmeEnPath = resolve("README_EN.md")
 
 function read(file: string) {
   return readFileSync(file, "utf8")
@@ -100,14 +99,13 @@ describe("expert contract consistency", () => {
       support_primary_agents: string[]
     }
     const readme = read(readmePath)
-    const readmeEn = read(readmeEnPath)
 
     expect(manifest.default_entrypoints).toContain("/ctf")
     expect(manifest.default_entrypoints).toContain("/ctf-expert")
     expect(manifest.primary_agents).toEqual(["ctf-fast", "ctf-expert"])
     expect(manifest.support_primary_agents).toContain("researcher")
 
-    for (const text of [readme, readmeEn]) {
+    for (const text of [readme]) {
       expect(text).toMatch(/ctf-fast/i)
       expect(text).toMatch(/ctf-expert/i)
       expect(text).toMatch(/researcher/i)

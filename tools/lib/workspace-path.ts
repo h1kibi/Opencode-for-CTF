@@ -7,9 +7,8 @@ import path from "node:path"
  *
  * The check is conservative: symlinks that stay INSIDE the workspace are
  * allowed; the returned path stays lexical (no behavior change for callers).
- * See docs/PLUGIN-EVALUATION-AND-IMPROVEMENT-PLAN.md §4.12 — the old check
- * was purely lexical (`path.resolve` + relative), which symlink/junction
- * traversal could bypass.
+ * The old check was purely lexical (`path.resolve` + relative), which
+ * symlink/junction traversal could bypass.
  */
 function assertNoSymlinkEscape(base: string, target: string, input: string): void {
   let realBase: string

@@ -2,7 +2,7 @@ import { tool } from "@opencode-ai/plugin"
 import { verifyCandidateFlag } from "../../src/flag-oracle.ts"
 
 /**
- * Executable ECDSA attack family (see docs/PLUGIN-EVALUATION-AND-IMPROVEMENT-PLAN.md §4.13).
+ * Executable ECDSA attack family.
  *
  * Implemented attacks (pure mod-n arithmetic, no curve math needed):
  *   - nonce reuse: two signatures (r,s,m) with the SAME k recover

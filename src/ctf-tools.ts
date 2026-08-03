@@ -106,7 +106,7 @@ export async function listToolNames(root?: string): Promise<string[]> {
 /**
  * Structured tool-load report — makes import failures, missing critical
  * tools, and external runtime dependencies visible at startup instead of a
- * silent green. See docs/PLUGIN-EVALUATION-AND-IMPROVEMENT-PLAN.md §4.3.
+ * silent green.
  */
 export type ToolLoadFailure = {
   name: string

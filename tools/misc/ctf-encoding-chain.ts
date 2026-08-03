@@ -3,7 +3,7 @@ import { verifyCandidateFlag } from "../../src/flag-oracle.ts"
 import { DEFAULT_FLAG_PATTERN } from "../lib/flag-utils.ts"
 
 /**
- * Misc: auto-detect and unroll encoding chains (see docs/PLUGIN-EVALUATION-AND-IMPROVEMENT-PLAN.md §4.13).
+ * Misc: auto-detect and unroll encoding chains.
  *
  * Given a blob like `ZmxhZ3tiYXNlNjR9` the tool tries every decoder in order,
  * keeps only decodings that round-trip (re-encode(decoded) === input), and

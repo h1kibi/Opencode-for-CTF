@@ -2,7 +2,7 @@ import { tool } from "@opencode-ai/plugin"
 import { verifyCandidateFlag } from "../../src/flag-oracle.ts"
 
 /**
- * Executable RSA attack family (see docs/PLUGIN-EVALUATION-AND-IMPROVEMENT-PLAN.md §4.13).
+ * Executable RSA attack family.
  *
  * Unlike ctf-rsa-probe (which only inventories parameters), this tool runs
  * actual attacks and returns recovered factors / private exponents /

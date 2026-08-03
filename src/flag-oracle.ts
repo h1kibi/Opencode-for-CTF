@@ -2,7 +2,7 @@
  * Flag verification primitives — single entry point for turning "flag-like
  * output" into a verifiable claim.
  *
- * Design rules (see docs/PLUGIN-EVALUATION-AND-IMPROVEMENT-PLAN.md §4.2):
+ * Design rules:
  * - `shellDetected`, `flagDetected` and other output heuristics are EVIDENCE,
  *   never success by themselves.
  * - Only an independent oracle (exact expected flag, exact hash, or an

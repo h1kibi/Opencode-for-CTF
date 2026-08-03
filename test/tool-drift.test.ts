@@ -6,7 +6,7 @@ import { FAST_TOOL_ALLOWLIST, SUBAGENT_LIGHT_TOOLS } from "../src/tool-packs.js"
 import { toolMetadata } from "../src/tool-metadata.js"
 
 /**
- * Tool registry drift checks (docs/PLUGIN-EVALUATION-AND-IMPROVEMENT-PLAN.md §4.8):
+ * Tool registry drift checks:
  * allowlists, subagent surfaces, and the agent manifest must reference only
  * tools that actually exist on disk — a dangling name means the agent is told
  * about a tool that never registers.

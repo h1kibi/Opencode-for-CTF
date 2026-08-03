@@ -1,7 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
 
 /**
- * Executable PRNG attack family (see docs/PLUGIN-EVALUATION-AND-IMPROVEMENT-PLAN.md §4.13).
+ * Executable PRNG attack family.
  *
  *   lcg      — recover (a, c, m) of a linear congruential generator from
  *              >= 4 consecutive outputs; m is recovered via the standard

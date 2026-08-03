@@ -1,7 +1,7 @@
 {
   "name": "opencode-for-ctf",
-  "version": "0.1.1",
-  "description": "CTF agent plugin for opencode 閳?multi-agent orchestration, evidence-based solving, PWN/Web/Rev/Crypto/Forensics tools, knowledge base, and runtime hooks.",
+  "version": "0.1.2",
+  "description": "OpenCode CTF agent plugin: agents, commands, skills, tools, local RAG, and MCP orchestration for authorized CTF solving.",
   "license": "MIT",
   "homepage": "https://github.com/h1kibi/Opencode-for-CTF#readme",
   "keywords": [
@@ -84,11 +84,7 @@
     "scripts/build-retros-index.mjs",
     "scripts/setup.mjs",
     "README.md",
-    "README_EN.md",
-    "INSTALL.md",
-    "SECURITY.md",
     "LICENSE",
-    "CHANGELOG.md",
     ".env.example",
     "opencode-for-ctf.example.jsonc"
   ],

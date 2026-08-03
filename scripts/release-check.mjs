@@ -83,11 +83,7 @@ if (packageJson.version !== lockJson.version || packageJson.version !== lockJson
 
 for (const file of [
   "README.md",
-  "README_EN.md",
-  "INSTALL.md",
-  "SECURITY.md",
   "LICENSE",
-  "CHANGELOG.md",
   "opencode-for-ctf.example.jsonc",
   "third_party/NOTICE.md",
   "scripts/install.mjs",
@@ -128,9 +124,8 @@ for (const required of [
   "templates",
   "dist/plugin",
   "scripts/lib",
-  "INSTALL.md",
   "LICENSE",
-  "SECURITY.md",
+  "README.md",
   "third_party",
   // Slim RAG knowledge allowlist (do not list bare "rag" or "rag/knowledge").
   "rag/knowledge/lessons",

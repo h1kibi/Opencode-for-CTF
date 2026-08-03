@@ -31,7 +31,7 @@ pdfminer.six>=20231228
 pefile>=2023.2.7
 
 # Document extraction (used by doc-read tool, optional)
-# See requirements-docs.txt for document-specific dependencies.
+# Optional: pypdf for PDF text extraction in document tooling.
 
 # Notes:
 # - SageMath should usually be installed separately from the official distribution.

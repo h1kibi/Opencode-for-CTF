@@ -41,7 +41,7 @@ describe("public command surface", () => {
   })
 
   it("docs do not advertise retired help alias", () => {
-    for (const file of ["README.md", "README_EN.md", "INSTALL.md", "AGENTS.md"]) {
+    for (const file of ["README.md"]) {
       expect(readFileSync(join(root, file), "utf8")).not.toContain("/ctf-help")
     }
   })
