@@ -1,0 +1,17 @@
+rules:
+  - id: deser
+    name: Insecure Deserialization
+    description: Detect unsafe deserialization of user-controlled data
+    languages: [java, python, php, javascript, typescript]
+    severity: critical
+    sinks:
+      - ObjectInputStream.readObject, readObject, readUnshared
+      - pickle.loads, pickle.load, cPickle.loads, marshal.load
+      - unserialize, session_decode, PHP unserialization
+      - JSON.parse, JSON.deserialize (with reviver)
+    source_patterns:
+      - request, input, args, param, body, cookie, data, token
+    sanitizer_hints:
+      - validate_input, type_check, allowlist_class, resolveClass
+      - jsondecode (safe), json.loads (when dict only)
+    ctf_relevance: high

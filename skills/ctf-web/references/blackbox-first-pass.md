@@ -14,7 +14,8 @@ Build an application model before exploit probes:
 ## Default sequence
 
 ```text
-ctf-web-blackbox-map mode=light
+ctf-web-analyze
+  -> if route/state model is still weak: ctf-web-blackbox-map mode=light
   -> if SPA/bot/DOM/API uncertainty: ctf-web-runtime-map
   -> if endpoint is promising: ctf-web-diff-probe
   -> if two accounts/object IDs exist: ctf-web-authz-matrix

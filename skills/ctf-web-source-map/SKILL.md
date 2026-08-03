@@ -6,6 +6,30 @@ compatibility: opencode
 
 # CTF Web Source Map
 
+## Stop Conditions
+
+Stop when the signal is falsified, the stated budget is exhausted, the action would exceed scope/risk, or the result is sufficient for handoff. Do not continue with payload variants without a new discriminator.
+
+## Dispatch / Handoff
+
+Return reachable route/input/sink evidence to `ctf-web` and the selected vulnerability skill; escalate only when another category owns the decisive behavior.
+
+## First Safe Action
+
+Verify source provenance and identify one reachable route/input/sink path before broad code reading.
+
+## Required Inputs
+
+Require the current Web phase, candidate/surface, relevant evidence, target constraints, and an explicit attempt or mutation budget before probing.
+
+## Do Not Load When
+
+Do not load without a matching observed signal, and do not use this focused skill to replace the `ctf-web` phase controller or global route ranking.
+
+## Load When
+
+Load when source, bytecode, a JAR/ZIP, or deployment configuration is available and route-to-sink mapping is needed.
+
 ## Purpose
 
 When source code is provided, analyze it before any black-box probing. Map every route to its inputs, sinks, auth requirements, and potential primitives. Identify the framework, dependencies, and dangerous patterns.

@@ -96,11 +96,12 @@ export function formatHardRouteHandoff(
   } else if (primary === "ctf-expert" || decision.mode === "expert") {
     lines.push(
       "1. Behave as **ctf-expert**. Load skill `ctf-expert` first, then: " + decision.skills.join(", "),
-      "2. `ctf-evidence-board command=init` (Evidence.md) if not resuming.",
-      "3. Phase loop: recon (concurrent) → set-routes (exactly 3) → verify → flag direct return.",
+      "2. `ctf-evidence-board command=init category=<direction> challengeName=<name-if-known> target=<target>` before solving; it creates `work/ctf-evidence/<direction-name|direction-MMDDHHmmss>/Evidence.md` + structured state files.",
+      "3. Phase loop: recon (concurrent) → evidence cross-check → lessons → retros → knowledge recall → set-routes (exactly 3) → verify → flag direct return.",
       "4. Route states: untested | blocked | dead | live — blocked ≠ dead.",
       "5. Heavy MCP: workers request via ctf-dynamic-mcp-advisor; you approve via ctf-mcp-control.",
-      "6. Do not stay in ctf-fast workflow. Do not skip Evidence.md.",
+      "6. Do not stay in ctf-fast workflow. Do not skip Evidence.md or the Phase 2 lessons/retros/knowledge recall pass.",
+      "7. Flag → return immediately and stop active exploitation; mention manual `researcher` post-solve maintenance with the evidence path, but do not dispatch or await it.",
     )
   } else {
     lines.push(
@@ -109,8 +110,9 @@ export function formatHardRouteHandoff(
       decision.category
         ? `3. Prefer category angle: **${decision.category}** (still on fast tools; no Team Mode).`
         : "3. Cheap triage then shortest path to flag.",
-      "4. If 6–8 meaningful actions fail or challenge is source-rich/multi-service/heap/kernel → output `ESCALATE: ctf-expert` with clue summary.",
-      "5. Flag → return directly and stop. No Evidence.md ceremony.",
+      "4. Initialize a lightweight evidence case before active solving: `ctf-evidence-board command=init category=<direction> challengeName=<name-if-known> target=<target>`. This creates `work/ctf-evidence/<direction-name|direction-MMDDHHmmss>/` for notes/handoff; do not use Team Mode or heavy Evidence ceremony.",
+      "5. If 6–8 meaningful actions fail or challenge is source-rich/multi-service/heap/kernel → output `ESCALATE: ctf-expert` with clue summary.",
+      "6. Flag → return directly and stop.",
     )
   }
 

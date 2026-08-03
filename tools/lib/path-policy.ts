@@ -14,10 +14,12 @@
 import { realpath } from "node:fs/promises"
 import path from "node:path"
 
-export type ToolContext = {
-  directory: string
-  worktree?: string
-}
+export type ToolContext =
+  | {
+      directory?: string
+      worktree?: string
+    }
+  | undefined
 
 // ---------------------------------------------------------------------------
 // Sensitive path detection
@@ -106,7 +108,8 @@ export async function resolveAllowedPath(
   context: ToolContext,
   options?: { allowSensitive?: boolean },
 ): Promise<string> {
-  const requested = path.resolve(context.directory, input)
+  const directory = context?.directory ?? context?.worktree ?? process.cwd()
+  const requested = path.resolve(directory, input)
   let target: string
   try {
     target = await realpath(requested)
@@ -116,9 +119,7 @@ export async function resolveAllowedPath(
     target = requested
   }
 
-  const roots = Array.from(
-    new Set([context.directory, context.worktree, ...getConfiguredRoots()].filter(Boolean) as string[]),
-  )
+  const roots = Array.from(new Set([directory, context?.worktree, ...getConfiguredRoots()].filter(Boolean) as string[]))
   const resolvedRoots = await Promise.all(
     roots.map(async (root) => {
       try {

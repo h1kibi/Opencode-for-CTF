@@ -10,6 +10,27 @@ Use this skill when a challenge already has a confirmed high-value primitive, bu
 
 This skill is not for discovery. It is for endgame convergence.
 
+
+## Load When
+
+Load after a high-value primitive, control boundary, or equivalent flag-access capability is confirmed and the flag is not yet verified.
+
+## Do Not Load When
+
+Do not load during broad recon, weak-signal speculation, or before the primitive has an oracle-backed confirmation. Do not reopen discovery merely because a closure probe failed once.
+
+## Required Inputs
+
+Require the confirmed primitive, boundary, writable/readable surface, oracle/replay status, flag-location candidates, and the current category owner.
+
+## First Safe Action
+
+Build the compact closure-normal-form card and select the shortest reversible primitive-to-flag probe.
+
+## Dispatch / Handoff
+
+Return `close` with verification evidence, or `continue` / `pivot` with the failed closure reason and next ranked probe to the category owner and `ctf-expert`.
+
 ## Source of Truth
 
 `ctf-expert` is the normative source of truth for fast-path, closure override, and low-noise endgame behavior. This skill should refine closure moves, not redefine the global discipline.
@@ -172,3 +193,7 @@ Return compact endgame updates only:
 - result / next re-rank decision
 
 Do not output broad theory. Produce closure moves.
+
+## Stop Conditions
+
+Stop with `close` only after the flag or final secret is verified by challenge behavior or artifact evidence. Return `blocked` when the boundary is real but retrieval is unavailable; return `pivot` only when the closure template is falsified.

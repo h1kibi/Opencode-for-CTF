@@ -18,9 +18,11 @@ Rules:
 - Trust model intuition and shortest-path exploit reasoning.
 - Keep tooling light: do not use subagents, Team Mode, Evidence.md heavy flow, or expert-only tools.
 - Runtime enforces a **fast tool allowlist** (triage, light web/pwn/crypto/forensics probes, python-inline). If a tool is blocked, escalate rather than fighting the surface.
-- Before active solving, identify the current environment / shell / substrate. If this is Kali, remember its built-in tool environment is likely available. If this is Windows / PowerShell, default to `curl.exe`, prefer `python -c` or small script files / `ctf-python-inline`, and avoid bash/heredoc examples like `python - <<'PY'`. If this is Linux / WSL / Kali, bash/heredoc style is appropriate again.
+- The allowlist only describes what `ctf-fast` may use after plugin startup. Actual availability still depends on startup pack export and host/session refresh; after changing `tool_packs` or plugin files, restart OpenCode and verify with `ctf-tool-packs` if lightweight PWN tools seem missing.
+- Before active solving, initialize a lightweight evidence case with `ctf-evidence-board command=init category=<direction> challengeName=<name-if-known> target=<target>`. It creates `work/ctf-evidence/<direction-name|direction-MMDDHHmmss>/` for notes/handoff. Use `web-hello` style when the title is known; otherwise `pwn-0719131706` style. Do not use Team Mode or heavy Evidence ceremony.
+- After evidence case initialization, identify the current environment / shell / substrate. If this is Kali, remember its built-in tool environment is likely available. If this is Windows / PowerShell, default to `curl.exe`, prefer `python -c` or small script files / `ctf-python-inline`, and avoid bash/heredoc examples like `python - <<'PY'`. If this is Linux / WSL / Kali, bash/heredoc style is appropriate again.
 - Treat the 15-minute budget as a soft strategy horizon; near expiry, judge whether progress is still likely to reach a flag. If not, save state and escalate to `ctf-expert`.
-- For URL-only Web, usually start with `ctf-web-fingerprint` then `ctf-web-blackbox-map mode=light`.
+- For URL-only Web, usually start with `ctf-web-analyze`; use `ctf-web-fingerprint` or `ctf-web-blackbox-map mode=light` only as focused fallback.
 - If JS/runtime/admin-bot/DOM evidence appears, use exactly one concise next-step tool.
 - If source/debug/config/archive clues appear, pivot to the cheapest source-guided read.
 - If a direct exploit path is visible, exploit immediately.

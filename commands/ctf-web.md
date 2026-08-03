@@ -1,6 +1,7 @@
 ---
 description: Start a structured Web CTF solve
 agent: ctf-web
+subtask: false
 ---
 
 Use `ctf-common`, `ctf-terminal`, and `ctf-web` skills.
@@ -11,7 +12,7 @@ Start every Web challenge by entering the solve state machine: recon → attack-
 
 ### Phase dispatch:
 
-- recon: `ctf-web-recon` + `ctf-web-source-map` (if source available).
+- recon: `ctf-web-analyze` + `ctf-web-source-map` (if source available).
 - attack-queue: `ctf-web-attack-queue`.
 - focused-probe: vulnerability-specific skill (see below).
 - primitive-lock: `ctf-web-primitive-lock`.

@@ -1,41 +1,42 @@
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 
-const checks: Array<{ file: string; needles: string[] }> = [
+type Check = {
+  file: string
+  needles: string[]
+}
+
+const checks: Check[] = [
   {
     file: "agents/ctf-web.md",
-    needles: [
-      "ctf-web-fingerprint",
-      "ctf-web-blackbox-map mode=light",
-      "ctf-web-runtime-map",
-      "ctf-web-authz-matrix",
-      "ctf-web-template-check",
-      "web-closure-matrix.md",
-      "work/ctf-evidence",
-    ],
+    needles: ["ctf-web-fingerprint", "ctf-web-blackbox-map mode=light", "ctf-web-runtime-map", "work/ctf-evidence"],
   },
   {
-    file: "skills/ctf-web/SKILL.md",
+    file: "commands/ctf-web.md",
     needles: [
-      "Keep this skill thin.",
-      "references/REFERENCE_INDEX.md",
-      "ctf-web-recon",
+      "ctf-web-analyze",
+      "ctf-web-source-map",
       "ctf-web-attack-queue",
       "ctf-web-primitive-lock",
       "ctf-web-control-plane",
       "ctf-web-exploit-chain",
-      "references/web-closure-matrix.md",
-      "references/flag-recovery.md",
+      "High-Risk Action Plan",
     ],
   },
   {
+    file: "commands/help.md",
+    needles: ["/ctf", "/help", "/ctf-web", "Historical compatibility aliases"],
+  },
+  {
+    file: "commands/ctf-expert.md",
+    needles: ["ctf-evidence-board", "ctf-team-dispatch", "ctf-mcp-control"],
+  },
+  {
+    file: "skills/ctf-web/SKILL.md",
+    needles: ["references/REFERENCE_INDEX.md", "ctf-web-recon", "ctf-web-attack-queue", "ctf-web-primitive-lock"],
+  },
+  {
     file: "skills/ctf-web/references/REFERENCE_INDEX.md",
-    needles: [
-      "# Web Reference Index",
-      "## Recon / Mapping",
-      "## Differential / Parser / State",
-      "## Closure / Endgame",
-      "## Maintenance Rule",
-    ],
+    needles: ["# Web Reference Index", "## Recon / Mapping", "## Closure / Endgame", "## Maintenance Rule"],
   },
   {
     file: "skills/ctf-web/references/web-closure-matrix.md",
@@ -44,68 +45,55 @@ const checks: Array<{ file: string; needles: string[] }> = [
       "First safe probe",
       "Downgrade trigger",
       "source leak",
-      "DB read / SQLi",
       "upload / file write",
     ],
   },
   {
-    file: "commands/ctf-web.md",
-    needles: [
-      "recon → attack-queue → focused-probe → primitive-lock → control-plane → final-chain → retro",
-      "ctf-web-recon",
-      "ctf-web-attack-queue",
-      "ctf-web-primitive-lock",
-      "ctf-web-control-plane",
-      "ctf-web-exploit-chain",
-      "ctf-web-stability-guard",
-      "Primitive Ledger",
-      "High-Risk Action Plan",
-    ],
+    file: "tools/web/ctf-web-blackbox-map.ts",
+    needles: ["mode", "api_candidates", "attack_queue_seed"],
   },
   {
-    file: "commands/ctf-web-benchmark.md",
-    needles: [
-      "Run Web CTF regression benchmarks",
-      "Recon Map",
-      "Attack Queue",
-      "ctf-web-file-write",
-      "node scripts/ctf-benchmark.ts web <target>",
-      "node scripts/ctf-benchmark.ts pwn <target>",
-    ],
+    file: "tools/web/ctf-web-recon-pack.ts",
+    needles: ["ctf-web-blackbox-map", "next_tool", "decision_contract"],
   },
   {
-    file: "commands/ctf-close.md",
-    needles: ["work/ctf-evidence", "closure.json", "final-verification.txt"],
+    file: "tools/core/ctf-evidence-board.ts",
+    needles: ["Evidence.md", "set-routes", "case.json"],
   },
   {
-    file: "commands/ctf-final.md",
-    needles: ["work/ctf-evidence", "solve-output.txt", "final-verification.txt"],
+    file: "scripts/ctf-benchmark.ts",
+    needles: ["web", "check-web-benchmarks.ts"],
   },
   {
-    file: "commands/ctf-resume.md",
-    needles: ["templates/ctf_handoff.md", "templates/ctf_evidence_snapshot.md"],
+    file: "scripts/check-web-benchmarks.ts",
+    needles: ["recon before exploit", "attack queue ranked", "file-write routed to ctf-web-file-write"],
+  },
+  {
+    file: "commands/resume.md",
+    needles: ["templates/ctf_resume_packet.md", "ctf_fast_handoff.md", "ctf_handoff.md", "ctf_evidence_snapshot.md"],
   },
   {
     file: "skills/ctf-common/SKILL.md",
     needles: ["work/ctf-evidence/<challenge-slug>/", "templates/ctf_plan.md", "templates/ctf_handoff.md"],
   },
-  {
-    file: "docs/CTF_COMMAND_LAYERS.md",
-    needles: [
-      "## Entry Commands",
-      "## State / Control Commands",
-      "## Closure / Final Commands",
-      "## Soft Deprecation Policy",
-    ],
-  },
 ]
+
+const retiredPaths = new Set(["commands/ctf-web-benchmark.md", "commands/ctf-close.md", "commands/ctf-final.md"])
 
 const failures: string[] = []
 for (const check of checks) {
+  if (!existsSync(check.file)) {
+    failures.push(`${check.file} missing file`)
+    continue
+  }
   const text = readFileSync(check.file, "utf8")
   for (const needle of check.needles) {
     if (!text.includes(needle)) failures.push(`${check.file} missing ${needle}`)
   }
+}
+
+for (const retired of retiredPaths) {
+  if (existsSync(retired)) failures.push(`${retired} should stay retired from the public slash surface`)
 }
 
 if (failures.length) {

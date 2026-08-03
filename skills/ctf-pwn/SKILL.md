@@ -12,6 +12,27 @@ Use this skill for binary exploitation. It structures triage, crash reproduction
 
 ## Contract
 
+
+## Load When
+
+Load when an ELF/PE/native service, memory-corruption primitive, shellcode, ROP, heap, format-string, or syscall signal is present.
+
+## Do Not Load When
+
+Do not load for a pure algorithmic checker, static non-executable artifact, or protocol puzzle unless native exploitation becomes evidenced.
+
+## Required Inputs
+
+Require the binary/service, architecture, protections, libc/loader or container context, input surface, and current crash/primitive evidence.
+
+## First Safe Action
+
+Check the prepared lab or challenge container, fingerprint the binary, and reproduce one bounded baseline interaction before exploit construction.
+
+## Dispatch / Handoff
+
+Dispatch to the smallest matching PWN reference/leaf skill. Return a confirmed primitive and substrate facts to `ctf-closure-gate`, or pivot with the failed discriminator.
+
 - Start reference navigation from `references/REFERENCE_INDEX.md` when multiple PWN subfamilies are plausible.
 - Always combine this with `ctf-terminal` for real-output command discipline.
 - Prefer the smallest matching route template or reference instead of expanding doctrine inline.
@@ -49,19 +70,35 @@ Collect:
 - Architecture, protections, input protocol, normal behavior, and flag format.
 - Whether ASLR, PIE, NX, canary, RELRO, seccomp, or sandboxing matters.
 
+## Docker Lab Stability Doctrine
+
+For every fresh PWN branch, Docker/runtime substrate selection is mandatory early evidence:
+
+1. Check the prepared environment before runtime-sensitive tests: run `ctf-env-check category=pwn` and, when tool health is uncertain, `ctf-pwn-check-env` with `basic` or `full`.
+2. Inventory challenge runtime artifacts: Dockerfile/compose, libc, loader, architecture, seccomp/sandbox hints, remote host/port, and provided run script.
+3. Prefer challenge Docker/compose when present and runnable. Otherwise select one prepared pwnlab image matching the target: default `pwnlab:general-ubuntu22.04`, older/newer Ubuntu or Debian for libc alignment, Alpine for musl, multiarch images for non-native arch, heavy only for symbolic/emulation/fuzzing needs.
+4. Record a substrate lock before exploit iteration: active image/service, `/work` mount, command runner, why this substrate matches the target, and what condition would unlock it.
+5. Keep crash probes, gdb, pwntools scripts, libc/ld experiments, heap grooming, seccomp/ORW, and local closure tests inside the locked Docker lab. Do not bounce between host, WSL, and Docker because of shell quoting or a missing convenience command.
+6. Switch to host only for cheap read-only triage that is already available there, or when Docker lacks a required host-only device/GUI/hardware feature. Switch to remote only after local/container proof or when the challenge is genuinely remote-only.
+7. Before any substrate switch, write: `Switching substrate because: <current substrate blocker>; <new substrate evidence/goal>`.
+
 ## Workflow
 
-1. Triage with `file`, `checksec`, `strings`, `readelf`, and source review if available.
-   - On Windows for Linux ELF targets, if host ELF tooling is incomplete, prefer `ctf-binary-probe` container fallback output over host `<failed: ENOENT>` results.
-2. Run the binary locally and document normal protocol.
-3. Reproduce a crash with controlled input.
-4. Determine offset and control primitive.
-5. Identify leak primitive if ASLR/PIE/libc resolution is needed.
-6. Choose one exploitation route and dispatch to the matching reference before deepening.
+1. Check Docker lab readiness and lock the runtime substrate before exploit iteration.
+   - Run `ctf-env-check category=pwn` / `ctf-pwn-check-env` unless fresh equivalent evidence exists.
+   - Prefer challenge Docker/compose, otherwise the closest prepared pwnlab image.
+   - Record the selected image/service, `/work` mount, and unlock condition.
+2. Triage with `file`, `checksec`, `strings`, `readelf`, and source review if available.
+   - On Windows for Linux ELF targets, if host ELF tooling is incomplete, prefer `ctf-pwn-analyze` / delegated `ctf-binary-probe` container fallback output over host `<failed: ENOENT>` results.
+3. Run the binary locally inside the locked Docker lab and document normal protocol.
+4. Reproduce a crash with controlled input inside the locked lab.
+5. Determine offset and control primitive.
+6. Identify leak primitive if ASLR/PIE/libc resolution is needed.
+7. Choose one exploitation route and dispatch to the matching reference before deepening.
    - If a standard closure family is already visible, compress first: exploit normal form -> canonical closure family -> minimum solve sketch.
-7. Script interaction with pwntools; avoid fragile one-off shell pipes.
-8. Test locally under the same Docker/libc conditions when possible.
-9. Only then adapt to remote host/port.
+8. Script interaction with pwntools; avoid fragile one-off shell pipes.
+9. Test locally under the same Docker/libc conditions when possible.
+10. Only then adapt to remote host/port.
 
 Windows/Linux-substrate note:
 
@@ -139,8 +176,11 @@ When speed matters, start from the smallest matching route template instead of h
 - `templates/pwn_fast_srop.py`
 - `templates/pwn_fast_stack_pivot.py`
 
-If the solve becomes branchy, keep the heavy doctrine in references and let `ctf-rigorous` / `ctf-pwn` agent prompts own phase tracking and closure pressure.
+If the solve becomes branchy, keep the heavy doctrine in references and let `ctf-expert` own route control while the `ctf-pwn` agent owns PWN-specific phase tracking and closure pressure.
 
+## Flag Handling
+
+Use `ctf-common/references/flag-identification-rules.md` for every recovered string. Keep `untrusted_hint`, `flag_candidate`, and `oracle-verified` separate. Strict `prefix{payload}` candidates are not final success by themselves; bare MD5/SHA-256 values require explicit flag-file or flag-helper context. Preserve `source`, `origin`, and `context`, and write `agent_flag.txt` only after an independent exact/file/service oracle verifies the value.
 ## Stop Conditions
 
 Stop or ask when required binaries/libc are missing, remote service is unavailable, exploit reliability is too low to verify, or an operation would attack out-of-scope infrastructure.

@@ -1,3 +1,4 @@
+// Manual QA utility — not part of CI or npm run check. Run with: npx tsx scripts/check-rev-android-readiness.ts
 import { existsSync, readFileSync } from "fs"
 import { join } from "path"
 

@@ -1,10 +1,38 @@
 ---
 name: ctf-web-patterns
-description: Use for authorized Web CTF challenges when confirmed recon signals need matching against known CTF exploit patterns, bypass families, historical challenge techniques, parser discrepancies, framework quirks, CVE-shaped playbooks, or language-specific web exploitation notes. Use after recon and attack-queue, not before initial mapping.
+description: Use for authorized Web CTF challenges when confirmed recon signals need matching against known exploit patterns, bypass families, parser discrepancies, framework quirks, CVE-shaped playbooks, or language-specific notes.
 compatibility: opencode
 ---
 
 # CTF Web Patterns
+
+## Stop Conditions
+
+Stop when the signal is falsified, the stated budget is exhausted, the action would exceed scope/risk, or the result is sufficient for handoff. Do not continue with payload variants without a new discriminator.
+
+## Output Contract
+
+Return a compact result containing confirmed facts, unresolved uncertainty, attempted discriminator, status (`continue`, `pivot`, `blocked`, `dead`, or `close`), and exactly one next action.
+
+## Dispatch / Handoff
+
+Return matched signals and one falsifiable discriminator to `ctf-web-attack-queue`; recall may modify ranking but cannot establish a primitive.
+
+## First Safe Action
+
+Extract at least two concrete case signals and query the smallest matching pattern/reference set.
+
+## Required Inputs
+
+Require the current Web phase, candidate/surface, relevant evidence, target constraints, and an explicit attempt or mutation budget before probing.
+
+## Do Not Load When
+
+Do not load without a matching observed signal, and do not use this focused skill to replace the `ctf-web` phase controller or global route ranking.
+
+## Load When
+
+Load after recon and attack-queue identify a concrete signal whose technique or bypass family is still uncertain.
 
 ## Purpose
 

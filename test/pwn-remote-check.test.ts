@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 
-const MOD_PATH = "../tools/ctf-pwn-remote-fingerprint.ts"
+const MOD_PATH = "../tools/pwn/ctf-pwn-remote-fingerprint.ts"
 
 describe("ctf-pwn-remote-check contract", () => {
   it("returns unified fast-lane decision fields", async () => {
@@ -8,8 +8,26 @@ describe("ctf-pwn-remote-check contract", () => {
     const execUtils = await import("../tools/lib/exec-utils.ts")
     const spy = vi.spyOn(execUtils, "safeExecWithStreams").mockResolvedValue({
       stdout: [
-        JSON.stringify({ name: "baseline", banner: "Welcome\n", expect_data: "", body: "READY\n", status: "ok", error: "", send_size: 0, flags: [] }),
-        JSON.stringify({ name: "mutant", banner: "Welcome\n", expect_data: "", body: "READY2\n", status: "ok", error: "", send_size: 4, flags: [] }),
+        JSON.stringify({
+          name: "baseline",
+          banner: "Welcome\n",
+          expect_data: "",
+          body: "READY\n",
+          status: "ok",
+          error: "",
+          send_size: 0,
+          flags: [],
+        }),
+        JSON.stringify({
+          name: "mutant",
+          banner: "Welcome\n",
+          expect_data: "",
+          body: "READY2\n",
+          status: "ok",
+          error: "",
+          send_size: 4,
+          flags: [],
+        }),
       ].join("\n"),
       stderr: "",
       ok: true,

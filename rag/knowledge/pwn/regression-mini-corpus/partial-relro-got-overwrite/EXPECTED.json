@@ -1,0 +1,23 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "partial-relro-got-overwrite",
+  "sample_type": "c-source",
+  "expected_primitive": "pwn.primitive.partial_relro_got_overwrite",
+  "expected_tags": {
+    "control": [
+      "arbitrary_write"
+    ],
+    "mitigation": [
+      "partial_relro"
+    ],
+    "closure": [
+      "got_hijack"
+    ]
+  },
+  "minimal_probe_shape": "exact GOT entry overwrite then trigger later call",
+  "confirm_oracle": "later call invokes replacement target",
+  "falsify_oracle": "GOT read-only or no later call",
+  "anti_pattern_to_avoid": [
+    "got_page_pollution"
+  ]
+}

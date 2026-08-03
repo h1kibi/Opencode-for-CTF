@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 import { AGENT_MCP_DEFAULTS } from "../src/agent-mcp-profiles.js"
-import { CTF_FAMILIES, FAMILY_CAPABILITY_CONTRACTS, getFamilyCapabilityContract } from "../src/family-capability-contracts.js"
+import {
+  CTF_FAMILIES,
+  FAMILY_CAPABILITY_CONTRACTS,
+  getFamilyCapabilityContract,
+} from "../src/family-capability-contracts.js"
 import { MCP_SERVER_REGISTRY } from "../src/mcp-server-registry.js"
 import { ALL_TOOL_PACKS } from "../src/tool-packs.js"
 

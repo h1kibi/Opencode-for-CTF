@@ -16,8 +16,30 @@ Use only on provided CTF/lab crypto material or explicitly authorized services.
 
 ## Contract
 
+
+## Load When
+
+Load when cryptographic parameters, ciphertexts, signatures, hashes, randomness, or an oracle are central to the challenge.
+
+## Do Not Load When
+
+Do not load for a protocol/client bug whose cryptography is incidental, or when the decisive behavior is binary/runtime validation owned by `ctf-rev`.
+
+## Required Inputs
+
+Require the primitive, complete parameters/transcript, encodings, oracle behavior, bounds, and the expected verification condition.
+
+## First Safe Action
+
+Run `ctf-crypto-analyze`, normalize all values and encodings, and write one falsifiable mathematical weakness before coding.
+
+## Dispatch / Handoff
+
+Dispatch to the smallest primitive reference. Return a deterministic solver/forgery and verification evidence, or pivot to `ctf-misc`, `ctf-rev`, or `ctf-forensics` with the reason.
+
 - Load `references/REFERENCE_INDEX.md` first when the primitive is unclear.
-- For RSA challenges, load `references/rsa.md` and prefer `ctf-rsa-probe` before writing attacks.
+- For partial nonces, short-error, subset-sum, weak-noise, or transcript-binding clues, load `references/lattice-and-zkp.md` only after bounding the instance and preserving the native verifier.
+- Run `ctf-crypto-analyze` for parameter inventory and primitive routing; for RSA challenges, load `references/rsa.md` and use direct `ctf-rsa-probe` only as a focused fallback.
 - Keep `notes.md` small, explicit, and reversible-first.
 - Pivot quickly to misc, rev, or forensics when the challenge is only crypto-adjacent.
 
@@ -31,13 +53,14 @@ Collect:
 
 ## Workflow
 
-1. Identify the primitive and security assumption.
-2. Normalize encodings and parse all numeric parameters.
-3. Check common weaknesses: small RSA exponent, shared primes, bad nonce, reused keystream, biased randomness, padding oracle, length extension, invalid curves, weak curves, insecure mode, or protocol composition error.
-4. Write the math hypothesis in `notes.md` before coding.
-5. Test on a small sample or self-generated toy instance when possible.
-6. Implement deterministic recovery in Python first; use Sage for algebra, lattices, number fields, or elliptic curves.
-7. Verify plaintext, key, or forged value against the challenge constraints.
+1. Run `ctf-crypto-analyze` on challenge parameters, source snippets, transcripts, or provided text files unless fresh equivalent inventory exists.
+2. Identify the primitive and security assumption.
+3. Normalize encodings and parse all numeric parameters.
+4. Check common weaknesses: small RSA exponent, shared primes, bad nonce, reused keystream, biased randomness, padding oracle, length extension, invalid curves, weak curves, insecure mode, or protocol composition error.
+5. Write the math hypothesis in `notes.md` before coding.
+6. Test on a small sample or self-generated toy instance when possible.
+7. Implement deterministic recovery in Python first; use Sage for algebra, lattices, number fields, or elliptic curves. For lattice/HNP work, record dimension, scaling, reduction settings, candidate residuals, and why cheaper attacks were eliminated.
+8. Verify plaintext, key, or forged value against the challenge constraints.
 
 ## Primitive Decision Tree
 
@@ -82,6 +105,9 @@ Crypto solutions require:
 
 Produce `solve.py` or `solve.sage` with all parameters embedded or loaded from challenge files. The solver should print the recovered flag or final secret.
 
+## Flag Handling
+
+Use `ctf-common/references/flag-identification-rules.md` for every recovered string. Keep `untrusted_hint`, `flag_candidate`, and `oracle-verified` separate. Strict `prefix{payload}` candidates are not final success by themselves; bare MD5/SHA-256 values require explicit flag-file or flag-helper context. Preserve `source`, `origin`, and `context`, and write `agent_flag.txt` only after an independent exact/file/service oracle verifies the value.
 ## Stop Conditions
 
 Stop or ask when the only path is unbounded brute force, the oracle is unavailable, parameters are missing, or the conclusion depends on guessing the flag.

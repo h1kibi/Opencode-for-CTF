@@ -14,6 +14,6 @@ Use this index after recon and attack-queue.
 | admin bot/headless/browser-only behavior | client-side-patterns.md | XSS/CSP/DOM/XS-Leak | runtime identification first |
 | Host/X-Forwarded/cache/proxy headers | parser-proxy-patterns.md | proxy/cache/Host header | one header-diff probe |
 | PHP-specific syntax/source | language-patterns.md | PHP wrappers/type juggling/deser | source/sink map first |
-| Java/Spring/Tomcat/Shiro/MyBatis/JSP | language-patterns.md | Java web patterns | run ctf-java-map first |
+| Java/Spring/Tomcat/Shiro/MyBatis/JSP | language-patterns.md | Java web patterns | run ctf-java-analyze first |
 | Node/Express/Next/EJS/Pug | language-patterns.md | prototype/Node template/sandbox | package.json/source map first |
 | version banner or named product | cve-shaped-patterns.md | CVE-shaped playbook | verify version and reachability first |

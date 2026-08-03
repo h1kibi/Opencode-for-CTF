@@ -1,6 +1,6 @@
 # PWN Route Matrix
 
-Use after `ctf-binary-probe` and before selecting the first non-trivial exploit route. This matrix is routing pressure only; live primitive evidence wins.
+Use after `ctf-pwn-analyze` and before selecting the first non-trivial exploit route. This matrix is routing pressure only; live primitive evidence wins.
 
 ## No Canary + No PIE
 

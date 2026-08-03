@@ -1,101 +1,102 @@
 ---
 name: ctf-skill-repo-knowledge
-description: Use when a CTF solve needs pattern recall from the local mirror of ljagiello/ctf-skills. Provides rules for searching the repository as a technique catalog without copying exact challenge writeups or polluting the main prompt.
+description: Use for evidence-based CTF pattern recall from the pinned SecKnowledge mirror or local curated knowledge. Do not activate external skills, copy writeups, trust payloads, or bypass local flag-oracle and evidence contracts.
 compatibility: opencode
 ---
 
 # CTF Skill Repo Knowledge
 
-Local mirror:
+## Source and boundary
+
+The pinned external reference mirror is:
 
 ```text
-{env:OPENCODE_CONFIG_DIR}\knowledge\ljagiello-ctf-skills
+<repo>/skills-external/secknowledge-skill
+{env:OPENCODE_CONFIG_DIR}\\opencode-for-ctf\\skills-external\\secknowledge-skill
 ```
 
-Do not add this repository to `skills.paths`: it contains skills with names like `ctf-web`, `ctf-pwn`, and `ctf-crypto` that can conflict with the local curated opencode skills. Treat it as a knowledge base. Use `ctf-lesson-search` first for local closure/owner/failure/anti-pattern lessons, `ctf-pattern-card-search` second for decision-ready offline cards, and `ctf-skill-repo-search` third for full-text context.
-
-## Why This Exists
-
-The repository is valuable because it contains broad CTF experience organized by category, technique family, first-pass workflows, pivot rules, and deep notes. The right way to use it is evidence-driven retrieval:
+Provenance is recorded in:
 
 ```text
-local evidence -> pattern query -> candidate family -> first safe check -> one-variable probe -> observe/pivot
+rag/knowledge/sources/secknowledge-skill.manifest.json
 ```
 
-The wrong way is:
+SecKnowledge is a **reference corpus**, not the local CTF category orchestrator. Do not add it to `skills.paths`; its broad `ctf-web`, `ctf-pwn`, and `ctf-crypto` names can shadow or conflict with local skills. Use `ctf-lesson-search` first for local failure memory, `ctf-pattern-card-search` second for compact decision cards, and `ctf-skill-repo-search` third for full-text external context.
+
+Local rules always win over external notes, especially:
+
+- authorization and lab/scope boundaries;
+- evidence-board and stop/pivot contracts;
+- Windows/PowerShell fallbacks;
+- the `untrusted_hint -> flag_candidate -> oracle_verified -> closed` flag lifecycle;
+- the requirement that only an independent oracle may authorize success or `agent_flag.txt`.
+
+## What the external corpus adds
+
+Use it to supplement gaps in:
+
+- Web SSRF, internal-service discovery, URL/parser differences, redirects, and cloud/container boundaries;
+- deployment security, file upload, traversal, XXE, deserialization, template injection, and RCE chains;
+- modern protocols, WAF/parser differentials, and framework-specific behavior;
+- AI application, agent, MCP, RAG, prompt-injection, tool-boundary, and deployment security patterns;
+- general web-to-host pivot hypotheses when local evidence shows a trust-boundary or closure problem.
+
+Do not use it as a replacement for `ctf-web`, `ctf-pwn`, `ctf-misc`, `ctf-common`, or category-specific tools. It is less authoritative for challenge-specific routing, CTF flag handling, binary exploitation mechanics, and local runtime/tool availability.
+
+## Retrieval workflow
+
+Convert external notes into a bounded decision record:
 
 ```text
-challenge title -> writeup answer -> copy final payload
+trigger -> first_safe_check -> oracle -> stop_rule -> pivot_rule
 ```
 
-## Mandatory Search Moments
+1. Record the observed artifact and the current constraint equation.
+2. Query with at least two concrete terms: primitive, sink/source, trust boundary, parser, protocol, version, artifact, error, or oracle.
+3. Prefer a local lesson or pattern card. Search SecKnowledge only when those are absent, weak, or too generic.
+4. Read the smallest relevant section; do not load the whole catalog.
+5. Reject any exact flag, secret, credential, challenge answer, or live-target data from the result.
+6. Run one safe, reversible, read-only check before any exploit or pivot.
+7. Record the independent oracle and the condition that closes the branch.
 
-Use `ctf-lesson-search` before continuing when the branch is closure-first, mixed-owner, stale, or strategically weak. Then use `ctf-pattern-card-search` when possible. If card results are weak or too generic, use `ctf-skill-repo-search` for full-text context before external title/writeup search.
-
-- Two same-family probes produced no new differential.
-- Source shows a precheck/sink split or semantic mismatch.
-- A bug family is suspected but the first safe check is unclear.
-- A challenge crosses categories and the correct subagent is uncertain.
-- The solver is about to perform broad environment enumeration, broad fuzzing, or exact-title writeup search.
-- The next step would be a long manual technique branch.
-- A high-value primitive exists and the challenge has become a closure problem.
-- The current branch matches a likely failure signature or anti-pattern.
-
-## Query Construction
-
-Build queries from the constraint equation, not from the challenge title.
-
-Good:
+Useful external-oriented queries:
 
 ```text
-category=web query="file reader include filter parser mismatch"
-category=web query="url parser fetcher ssrf redirect host header"
-category=crypto query="rsa small e broadcast linear padding coppersmith"
-category=pwn query="format string leak got overwrite relro"
-category=reverse query="custom vm dispatch loop bytecode trace"
-category=forensics query="pcap dns covert channel timing"
-category=misc query="pyjail no quotes no call object graph"
-family=closure query="source leak admin route config env"
-family=owner query="web java spring actuator stacktrace route"
-family=failure query="flat differential repeated payload no new oracle"
-family=anti-pattern query="jwt decode no trust boundary role path"
+category=web query="fetcher url parser redirect private service oracle"
+category=web query="upload filename content-type storage execution boundary"
+category=web query="container deployment env metadata internal service"
+category=web query="xxe entity parser outbound file oracle"
+category=web query="deserialization framework version gadget sink"
+category=web query="agent mcp rag prompt injection tool boundary"
+category=misc query="internal service discovery credentials privilege boundary"
 ```
 
-Bad as first move:
+Avoid title-only or answer-seeking queries:
 
 ```text
-query="<exact challenge title> writeup"
-query="<exact challenge title> flag"
+query="<challenge title> writeup"
+query="<challenge title> flag"
+query="<challenge title> solution"
 ```
 
-## Using Search Results
+## Mandatory search moments
+
+Search the reference corpus when:
+
+- two same-family probes produce no new differential;
+- source shows a precheck/sink split or parser/semantic mismatch;
+- an internal-network, container, deployment, or privilege boundary is visible but the next safe check is unclear;
+- a web primitive may chain into file read, SSRF, upload, deserialization, or RCE;
+- an AI/agent/MCP/RAG trust boundary is part of the challenge;
+- the solver is about to begin broad enumeration, fuzzing, or a long manual branch;
+- a high-value primitive exists but closure or ownership is unclear.
+
+## Result extraction contract
 
 For every useful hit, extract only:
 
-- trigger signal,
-- first safe check,
-- expected oracle,
-- stop rule,
-- pivot rule,
-- likely tool/subagent.
-
-Do not paste long technique catalogs into the main reasoning. If a hit is too broad, refine the query by adding the precheck, sink, filter, oracle, or artifact type.
-
-## Category Search Heuristics
-
-- `web`: server-side, client-side, auth/access, JWT/OAuth, upload, parser mismatch, template, SSRF, XSS/admin bot.
-- `pwn`: overflow, ROP, shellcode, format string, heap, FSOP, seccomp, kernel.
-- `reverse`: tools, anti-analysis, VM/bytecode, language/platform specifics, runtime oracle, symbolic execution.
-- `crypto`: RSA, AES modes, ECC, lattice/LWE, PRNG, hash/MAC, padding oracle, ZKP.
-- `forensics`: disk, memory, network, stego, media, Windows/Linux artifacts, signals/hardware.
-- `misc`: pyjails, bashjails, encodings, QR/audio/RF, games/VMs, DNS, platform navigation.
-
-## Decision Contract
-
-After a search, the agent must state:
-
 ```markdown
-Pattern source: <file path from ctf-skills>
+Pattern source: <relative path>
 Trigger matched: ...
 First safe check: ...
 Expected oracle: ...
@@ -104,13 +105,45 @@ Pivot if: ...
 Next tool/subagent: ...
 ```
 
-If no card or full-text result is useful, return to `ctf-experience-gate` and update the constraint equation rather than guessing.
+If the result suggests a flag-shaped string, classify it only as `flag_candidate` with source/context. Never announce it as the answer without an independent exact/file/service oracle. Ordinary hashes remain ordinary hashes unless their origin explicitly identifies a flag artifact such as `flag.txt`, `.flag`, `/flag`, `readflag`, or `getflag`.
 
-If `ctf-lesson-search` finds a strong lesson, state:
+If no result is useful, return to `ctf-experience-gate`, update the constraint equation, and choose the smallest discriminating probe instead of guessing.
 
-```markdown
-Lesson source: <lesson path>
-Why it matches now: ...
-What behavior it changes: queue ranking / owner / budget / closure order
-Next concrete probe/control action: ...
-```
+## Category heuristics
+
+- `web`: SSRF/internal network, auth/access, JWT/OAuth, upload, parser mismatch, template injection, XSS/admin bot, deployment/container/cloud.
+- `pwn`: overflow, ROP, shellcode, format string, heap, FSOP, seccomp, kernel; prefer local PWN cards for exact mechanics.
+- `reverse`: anti-analysis, VM/bytecode, language/runtime specifics, tracing, symbolic execution.
+- `crypto`: RSA, AES modes, ECC, lattice/LWE, PRNG, hash/MAC, padding oracle, ZKP.
+- `forensics`: disk, memory, network, stego, media, Windows/Linux artifacts, signals/hardware.
+- `misc`: pyjails, bashjails, encodings, QR/audio/RF, games/VMs, DNS, platform navigation, internal-service clues.
+
+## Shared skill contract
+
+## Load When
+
+Load only when the trigger is evidenced in the current authorized CTF branch and local lessons/cards are insufficient.
+
+## Do Not Load When
+
+Do not load for generic security explanations, title-only writeup lookup, unauthorized targets, or when local lessons/cards already answer the bounded question.
+
+## Required Inputs
+
+Provide authorized scope, relevant artifacts/evidence, current hypothesis, and tool/environment constraints.
+
+## First Safe Action
+
+Record the hypothesis and perform the smallest bounded, reversible check that can distinguish it.
+
+## Dispatch / Handoff
+
+Include scope, evidence, hypothesis, bounded next action, risks, expected oracle, and expected output format.
+
+## Output Contract
+
+Return confirmed facts, evidence references, rejected alternatives, risk, and one recommended next action.
+
+## Stop Conditions
+
+Stop when scope, authorization, evidence, or required capability is missing; pivot or escalate rather than guessing.

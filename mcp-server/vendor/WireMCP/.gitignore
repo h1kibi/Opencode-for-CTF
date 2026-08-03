@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+.pcap
+*.cap
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# PCAP files (usually large and contain sensitive data)
+*.pcap
+*.pcapng
+captures/
+
+# Operating System
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+build/
+out/
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/

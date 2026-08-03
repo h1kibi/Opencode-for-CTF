@@ -6,6 +6,30 @@ compatibility: opencode
 
 # CTF Web Retro
 
+## Stop Conditions
+
+Stop when the signal is falsified, the stated budget is exhausted, the action would exceed scope/risk, or the result is sufficient for handoff. Do not continue with payload variants without a new discriminator.
+
+## Dispatch / Handoff
+
+Return a compact lesson and proposed rule change to `ctf-common` / the owning skill; do not patch another skill silently.
+
+## First Safe Action
+
+Read the final evidence packet and failed-path ledger before proposing any lesson or skill change.
+
+## Required Inputs
+
+Require the current Web phase, candidate/surface, relevant evidence, target constraints, and an explicit attempt or mutation budget before probing.
+
+## Do Not Load When
+
+Do not load without a matching observed signal, and do not use this focused skill to replace the `ctf-web` phase controller or global route ranking.
+
+## Load When
+
+Load after a Web challenge is solved, abandoned, or timeboxed for lesson extraction.
+
 ## Purpose
 
 After solving or timing out on a Web CTF challenge, analyze what worked, what failed, where the agent was slow or stuck, and generate actionable lessons. This skill closes the feedback loop to improve future solves.
@@ -61,9 +85,14 @@ Do not directly modify core skill files. Proposals are suggestions for the opera
 
 ## Pattern Library Update
 
-When a solve or failure reveals a reusable Web CTF technique, propose a pattern entry under:
+When a solve or failure reveals a reusable Web CTF technique, propose a pattern entry under one of the existing `skills/ctf-web-patterns/references/` files:
 
-`skills/ctf-web-patterns/references/<category>.md`
+- `auth-patterns.md`
+- `client-side-patterns.md`
+- `cve-shaped-patterns.md`
+- `language-patterns.md`
+- `parser-proxy-patterns.md`
+- `server-side-patterns.md`
 
 Do not copy long writeups. Write a compact pattern card:
 

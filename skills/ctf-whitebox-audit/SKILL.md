@@ -34,13 +34,20 @@ Maintain this mentally or in `notes.md` / `.ctf-whitebox-handoff.json` for non-t
 
 ```json
 {
-  "scope": {"root": "", "target_files": [], "excluded": []},
-  "stack": {"languages": [], "frameworks": [], "runtime": "", "dependency_files": []},
-  "entrypoints": [{"route_or_file": "", "handler": "", "method": "", "line": 0}],
-  "auth_boundaries": [{"route_or_file": "", "guard": "", "role_condition": "", "bypass_suspicion": ""}],
-  "sources": [{"name": "", "kind": "query|body|path|cookie|header|file|env|config|db", "file": "", "line": 0}],
-  "sinks": [{"kind": "command|file|sql|template|ssrf|redirect|deser|xml|crypto|upload|archive", "api": "", "file": "", "line": 0}],
-  "sanitizers": [{"name": "", "file": "", "line": 0, "coverage": ""}],
+  "scope": { "root": "", "target_files": [], "excluded": [] },
+  "stack": { "languages": [], "frameworks": [], "runtime": "", "dependency_files": [] },
+  "entrypoints": [{ "route_or_file": "", "handler": "", "method": "", "line": 0 }],
+  "auth_boundaries": [{ "route_or_file": "", "guard": "", "role_condition": "", "bypass_suspicion": "" }],
+  "sources": [{ "name": "", "kind": "query|body|path|cookie|header|file|env|config|db", "file": "", "line": 0 }],
+  "sinks": [
+    {
+      "kind": "command|file|sql|template|ssrf|redirect|deser|xml|crypto|upload|archive",
+      "api": "",
+      "file": "",
+      "line": 0
+    }
+  ],
+  "sanitizers": [{ "name": "", "file": "", "line": 0, "coverage": "" }],
   "candidate_findings": [],
   "candidate_chains": [],
   "verified_facts": [],
@@ -62,11 +69,11 @@ Maintain this mentally or in `notes.md` / `.ctf-whitebox-handoff.json` for non-t
 
 Classify findings with this gate:
 
-| Verdict | Minimum evidence |
-|---|---|
-| `confirmed` | Real file/symbol/line + controlled input or reachable config + sink/condition + static slice or runtime/harness oracle. |
-| `likely` | Real file/symbol/line + plausible source-to-sink, but missing runtime/harness proof or one reachability condition. |
-| `uncertain` | Suspicious pattern exists, but controllability, route reachability, sanitizer bypass, or output oracle is unclear. |
+| Verdict          | Minimum evidence                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `confirmed`      | Real file/symbol/line + controlled input or reachable config + sink/condition + static slice or runtime/harness oracle.                    |
+| `likely`         | Real file/symbol/line + plausible source-to-sink, but missing runtime/harness proof or one reachability condition.                         |
+| `uncertain`      | Suspicious pattern exists, but controllability, route reachability, sanitizer bypass, or output oracle is unclear.                         |
 | `false_positive` | File missing, snippet mismatch, input not controllable, sanitizer fully covers sink, auth path unreachable, dependency/config gate absent. |
 
 Never upgrade a knowledge-base example, pattern-card hit, or scanner line to `confirmed` until it passes this gate.
@@ -86,7 +93,7 @@ Harness output contract:
 ```json
 {
   "finding_id": "",
-  "target": {"file": "", "symbol": "", "line": 0, "language": ""},
+  "target": { "file": "", "symbol": "", "line": 0, "language": "" },
   "mock_plan": [],
   "payloads_tested": [],
   "success_oracle": "",
@@ -144,9 +151,9 @@ Use tools in this order unless the challenge format strongly says otherwise:
    - Inspect `pom.xml`, `build.gradle`, `package.json`, lockfiles, `requirements.txt`, `go.mod`, `composer.json`, `Gemfile`, Dockerfiles, `application.*`, `.properties`, `web.xml`.
    - Prefer version-gated CTF patterns over generic CVE lists.
 5. Produce a compact exploit queue:
-    - Top 3 hypotheses with value/confidence/infoGain/cost/risk/stateDamage/stability.
-    - One-variable probe contract for each high-value hypothesis.
-    - Stop broad scanning once a high-value primitive is confirmed.
+   - Top 3 hypotheses with value/confidence/infoGain/cost/risk/stateDamage/stability.
+   - One-variable probe contract for each high-value hypothesis.
+   - Stop broad scanning once a high-value primitive is confirmed.
 6. Run the evidence gate and, when needed, local harness verification before calling a finding confirmed.
 7. Convert confirmed findings to primitive-to-chain closure tasks; do not keep collecting unrelated SAST findings after a direct flag path emerges.
 
@@ -154,18 +161,18 @@ Use tools in this order unless the challenge format strongly says otherwise:
 
 Do not loop on a missing external CLI. Use these fallbacks immediately:
 
-| Missing Tool | Fallback |
-|---|---|
-| `rg` | Use built-in `grep`, `glob`, source-map tools, or a small language script. |
-| `fd` | Use `glob`, `find`, or source-map inventory. |
-| `jq` | Use Python `json` snippets or direct manifest reads. |
-| `yq` | Use direct YAML reads, `grep`, or Python YAML if already available. |
-| `semgrep` | Use `rg` + `ast-grep` + manual source slices with the same sink families. |
-| `codeql` | Use Semgrep/manual dataflow; only install/escalate if cross-function ambiguity blocks progress. |
-| `gitleaks` | Use redacted `rg` patterns for `secret`, `token`, `key`, `password`; never print full secrets. |
-| `trivy` | Parse manifests and use `osv-scanner` or manual CTF version gates. |
-| `osv-scanner` | Use `trivy fs` or manual dependency version review. |
-| `jadx`/CFR | Use `javap`, `ctf-java-bytecode-hints`, and selective class constants first. |
+| Missing Tool  | Fallback                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| `rg`          | Use built-in `grep`, `glob`, source-map tools, or a small language script.                      |
+| `fd`          | Use `glob`, `find`, or source-map inventory.                                                    |
+| `jq`          | Use Python `json` snippets or direct manifest reads.                                            |
+| `yq`          | Use direct YAML reads, `grep`, or Python YAML if already available.                             |
+| `semgrep`     | Use `rg` + `ast-grep` + manual source slices with the same sink families.                       |
+| `codeql`      | Use Semgrep/manual dataflow; only install/escalate if cross-function ambiguity blocks progress. |
+| `gitleaks`    | Use redacted `rg` patterns for `secret`, `token`, `key`, `password`; never print full secrets.  |
+| `trivy`       | Parse manifests and use `osv-scanner` or manual CTF version gates.                              |
+| `osv-scanner` | Use `trivy fs` or manual dependency version review.                                             |
+| `jadx`/CFR    | Use `javap`, `ctf-java-bytecode-hints`, and selective class constants first.                    |
 
 ## CTF-focused Semgrep Families
 
@@ -231,38 +238,75 @@ Append or maintain in `notes.md`:
 # White-box Audit Map
 
 ## Stack
+
 - Artifact:
 - Language/framework:
 - Entrypoint/runtime:
 - Dependency files:
 
 ## Route/Input/Sink/Auth Map
+
 | Route/File | Input | Auth/Guard | Sink | Constraint | Candidate Primitive |
-|---|---|---|---|---|---|
+| ---------- | ----- | ---------- | ---- | ---------- | ------------------- |
 
 ## Dependency/Config Findings
+
 | File | Signal | Version/Value | CTF Relevance | First Safe Check |
-|---|---|---|---|---|
+| ---- | ------ | ------------- | ------------- | ---------------- |
 
 ## Scanner Evidence
+
 | Tool | Scope | Finding | Evidence | Follow-up |
-|---|---|---|---|---|
+| ---- | ----- | ------- | -------- | --------- |
 
 ## Hypothesis Queue
-| ID | Hypothesis | Confirm | Falsify | Next Probe |
-|---|---|---|---|---|
+
+| ID  | Hypothesis | Confirm | Falsify | Next Probe |
+| --- | ---------- | ------- | ------- | ---------- |
 
 ## Evidence Gate
+
 | Finding | File/Symbol/Line Verified | Controllability | Sink/Condition | Oracle/Harness | Verdict | False-positive Checks |
-|---|---|---|---|---|---|---|
+| ------- | ------------------------- | --------------- | -------------- | -------------- | ------- | --------------------- |
 
 ## Local Harness / Verification
+
 | Finding | Mock Plan | Payload Families | Success Oracle | Observed Signal | Verdict | Chain Implication |
-|---|---|---|---|---|---|---|
+| ------- | --------- | ---------------- | -------------- | --------------- | ------- | ----------------- |
 
 ## Primitive-to-Chain Ledger
+
 | Primitive | Evidence | Next Closure Step | Blocker | Bypass/Pivot |
-|---|---|---|---|---|
+| --------- | -------- | ----------------- | ------- | ------------ |
 ```
 
 Keep the output exploit-oriented and compact. Do not dump full SAST reports into the final answer.
+
+## Shared Skill Contract
+
+## Load When
+
+Load when this skill's trigger conditions are evidenced in the current authorized CTF branch.
+
+## Do Not Load When
+
+Do not load when the trigger is absent, the branch is out of scope, or a simpler in-scope workflow answers the question.
+
+## Required Inputs
+
+Provide the authorized scope, relevant artifacts/evidence, current hypothesis, and any required tool or environment constraints.
+
+## First Safe Action
+
+Record the current hypothesis and perform the smallest read-only, bounded, reversible check that can distinguish it.
+
+## Dispatch / Handoff
+
+Hand off with scope, evidence, hypothesis, bounded next action, risks, and the expected output format.
+
+## Flag Handling
+
+Use `ctf-common/references/flag-identification-rules.md` for every recovered string. Keep `untrusted_hint`, `flag_candidate`, and `oracle-verified` separate. Strict `prefix{payload}` candidates are not final success by themselves; bare MD5/SHA-256 values require explicit flag-file or flag-helper context. Preserve `source`, `origin`, and `context`, and write `agent_flag.txt` only after an independent exact/file/service oracle verifies the value.
+## Stop Conditions
+
+Stop when scope, authorization, evidence, or required capability is missing; pivot or escalate rather than guessing.

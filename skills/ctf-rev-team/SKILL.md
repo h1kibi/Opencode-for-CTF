@@ -33,7 +33,7 @@ Do not enter Team Mode for plaintext flags, one-function checkers, obvious XOR/b
 Default team size is 2-3 members; hard maximum is 4 unless attachments are fully independent.
 
 - Static/checker analyst: file type, arch, sections, strings/imports, success/failure xrefs, checker boundary, constants/tables, IDA/ReVa/slice evidence.
-- Runtime/unpack/emulation analyst: packer, self-decrypt, live dump marker/range, anti-debug/anti-VM, Unicorn/Qiling/Capstone/replay feasibility.
+- Runtime/unpack/emulation analyst: packer, self-decrypt, live dump marker/range, Windows memory PE (`ctf-pe-unpack`/`ctf-runtime-dump`/`ctf-rev-pe-recovery`), anti-debug/anti-VM, Unicorn/Qiling/Capstone/replay feasibility.
 - Knowledge analyst: `ctf-pattern-card-search category="reverse"`, `ctf-skill-repo-search category="reverse"`, `ctf-lesson-search`, anti-patterns, first probe pressure.
 - Oracle/verifier reviewer: overtrusted assumptions, semantic mismatch, duplicated work, route demotion, shortest closure candidate.
 
@@ -116,3 +116,33 @@ A more complex route may be promoted only when the shorter route is falsified, t
 - Stop team fanout after two rounds with no new confirmed facts, high-value signals, falsified routes, or closure candidates.
 - Prefer public memory updates over long narration.
 - Prefer the shortest verified solver path over complete reverse-engineering coverage.
+
+## Shared Skill Contract
+
+## Load When
+
+Load when this skill's trigger conditions are evidenced in the current authorized CTF branch.
+
+## Do Not Load When
+
+Do not load when the trigger is absent, the branch is out of scope, or a simpler in-scope workflow answers the question.
+
+## Required Inputs
+
+Provide the authorized scope, relevant artifacts/evidence, current hypothesis, and any required tool or environment constraints.
+
+## First Safe Action
+
+Record the current hypothesis and perform the smallest read-only, bounded, reversible check that can distinguish it.
+
+## Dispatch / Handoff
+
+Hand off with scope, evidence, hypothesis, bounded next action, risks, and the expected output format.
+
+## Output Contract
+
+Return concise confirmed facts, evidence references, rejected alternatives, risk, and one recommended next action.
+
+## Stop Conditions
+
+Stop when scope, authorization, evidence, or required capability is missing; pivot or escalate rather than guessing.

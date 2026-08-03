@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from "fs"
-import { resolve, join } from "path"
+import { dirname, resolve, join } from "path"
 
 export type EvidenceKind = "route" | "primitive" | "closure" | "hypotheses" | "signal-memory" | "inventory"
 
@@ -23,12 +23,46 @@ export const STRUCTURED_STATE_FILES = [
   "inventory.md",
 ] as const
 
+const FALLBACK_TEMPLATES: Record<string, string> = {
+  "route.json": '{\n  "routes": [],\n  "last_updated": null\n}\n',
+  "primitive.json": '{\n  "primitive": null,\n  "last_updated": null\n}\n',
+  "closure.json": '{\n  "status": "open",\n  "last_updated": null\n}\n',
+  "hypotheses.json": '{\n  "hypotheses": [],\n  "last_updated": null\n}\n',
+  "signal-memory.yaml": "signals: []\nlast_updated: null\n",
+  "inventory.md": "# Inventory\n\n- target: \n- files: \n\n",
+  "resume.md":
+    "# CTF Resume Block\n\nTarget:\nFlag format:\nCategory:\nConfirmed facts:\nBlocked paths:\nTop hypotheses:\nCurrent primitive:\nLast probe:\nNext probe:\nCandidate flag:\nFiles:\n",
+  "handoff.md": "# CTF Handoff\n\n## Summary\n\n## Evidence\n\n## Next Steps\n",
+  "fast-handoff.md": "# CTF Fast Handoff\n\n## Fast Findings\n\n## Escalation Reason\n\n## Next Probe\n",
+  "snapshot.md": "# CTF Evidence Snapshot\n\n## Facts\n\n## Routes\n\n## Open Questions\n",
+}
+
 export function ensureDir(path: string) {
   if (!existsSync(path)) mkdirSync(path, { recursive: true })
 }
 
+export function getEvidenceRoot(root: string) {
+  return resolve(root, "work", "ctf-evidence")
+}
+
 export function getEvidenceDir(root: string, slug: string) {
-  return resolve(root, "work", "ctf-evidence", slug)
+  return resolve(getEvidenceRoot(root), slug)
+}
+
+export function getCurrentEvidenceSlugPath(root: string) {
+  return join(getEvidenceRoot(root), ".current")
+}
+
+export function readCurrentEvidenceSlug(root: string) {
+  const file = getCurrentEvidenceSlugPath(root)
+  if (!existsSync(file)) return null
+  const slug = readFileSync(file, "utf8").trim()
+  return slug || null
+}
+
+export function writeCurrentEvidenceSlug(root: string, slug: string) {
+  ensureDir(getEvidenceRoot(root))
+  writeFileSync(getCurrentEvidenceSlugPath(root), `${slug}\n`)
 }
 
 export function getTemplatePath(root: string, filename: string) {
@@ -39,12 +73,39 @@ export function getTargetPath(root: string, slug: string, filename: string) {
   return join(getEvidenceDir(root, slug), filename)
 }
 
-export function ensureFileFromTemplate(target: string, template: string) {
-  if (!existsSync(target)) copyFileSync(template, target)
+export function slugifyEvidencePart(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80)
+}
+
+export function formatEvidenceTimestamp(date = new Date()) {
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${pad(date.getMonth() + 1)}${pad(date.getDate())}${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
+}
+
+export function buildEvidenceSlug(category: string, challengeName?: string, date = new Date()) {
+  const categoryPart = slugifyEvidencePart(category) || "misc"
+  const namePart = challengeName ? slugifyEvidencePart(challengeName) : ""
+  if (!namePart) return `${categoryPart}-${formatEvidenceTimestamp(date)}`
+  if (namePart === categoryPart || namePart.startsWith(`${categoryPart}-`)) return namePart
+  return `${categoryPart}-${namePart}`
+}
+
+export function ensureFileFromTemplate(target: string, template: string, fallback = "") {
+  if (existsSync(target)) return
+  ensureDir(dirname(target))
+  if (existsSync(template)) copyFileSync(template, target)
+  else writeFileSync(target, fallback)
 }
 
 export function bootstrapEvidenceDir(root: string, slug: string) {
-  const outDir = getEvidenceDir(root, slug)
+  const safeSlug = slugifyEvidencePart(slug)
+  if (!safeSlug) throw new Error("evidence slug is empty after normalization")
+  const outDir = getEvidenceDir(root, safeSlug)
   ensureDir(outDir)
 
   const pairs: Array<[string, string]> = [
@@ -61,7 +122,11 @@ export function bootstrapEvidenceDir(root: string, slug: string) {
   ]
 
   for (const [templateName, filename] of pairs) {
-    ensureFileFromTemplate(getTargetPath(root, slug, filename), getTemplatePath(root, templateName))
+    ensureFileFromTemplate(
+      getTargetPath(root, safeSlug, filename),
+      getTemplatePath(root, templateName),
+      FALLBACK_TEMPLATES[filename] ?? "",
+    )
   }
 
   return outDir

@@ -22,7 +22,7 @@ Use this after a failed or partially failed PWN attempt. Keep it short and reusa
 - shortest closure path:
 
 ## fast_mode_patch
-- should `ctf-pwn-fast` have solved this? yes | no | maybe
+- should `ctf-fast` PWN lane have solved this? yes | no | maybe
 - new fast rule:
 - new handoff trigger:
 - template to improve:

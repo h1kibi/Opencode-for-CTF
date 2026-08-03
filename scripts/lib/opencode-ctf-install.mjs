@@ -7,117 +7,20 @@ import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { applyEdits, modify, parse } from "jsonc-parser"
 import { isKnowledgeInstallIncluded } from "./publish-assets.mjs"
+import {
+  INSTALLER_PROFILES,
+  JSON_FORMATTING,
+  MCP_DEFAULTS,
+  PROFILE_MCP,
+  SAFE_BASH_RULES,
+  managedAssetMappings,
+} from "./install-defaults.mjs"
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
 
 const ignoredCopyDirs = new Set(["node_modules", ".git", "dist", "build", ".next", "state"])
-const jsonFormatting = { insertSpaces: true, tabSize: 2, eol: "\n" }
-const profiles = new Set(["safe", "web", "full"])
-
-const SAFE_BASH_RULES = {
-  "*": "ask",
-  "file *": "allow",
-  "strings *": "allow",
-  "xxd *": "allow",
-  "readelf *": "allow",
-  "objdump *": "allow",
-  "checksec *": "allow",
-  "docker ps*": "allow",
-  "docker logs*": "allow",
-  "python *": "ask",
-  "python3 *": "ask",
-  "node *": "ask",
-  "rm -rf *": "deny",
-  "ssh *": "deny",
-  "scp *": "deny",
-  "rm *": "deny",
-  "del *": "deny",
-  "rmdir *": "deny",
-  "Remove-Item *": "deny",
-  "powershell Remove-Item *": "deny",
-  "pwsh Remove-Item *": "deny",
-}
-
-const PROFILE_MCP = {
-  safe: [],
-  web: ["browser", "markitdown", "context7"],
-  // Definitions with repository- or machine-specific absolute paths are never copied.
-  full: ["browser", "markitdown", "context7", "github", "ReVa", "wireshark-mcp", "cyberchef-mcp", "ctfd-mcp", "seckb", "cvekb"],
-}
-
-const MCP_DEFAULTS = {
-  browser: {
-    type: "local",
-    command: ["npx", "-y", "@playwright/mcp@latest"],
-  },
-  markitdown: {
-    type: "local",
-    command: ["npx", "-y", "mcp-markdownify-server"],
-  },
-  context7: {
-    type: "remote",
-    url: "https://mcp.context7.com/mcp",
-  },
-  github: {
-    type: "remote",
-    url: "https://api.githubcopilot.com/mcp/",
-    headers: {
-      Authorization: "Bearer {env:GITHUB_PAT}",
-      "X-MCP-Readonly": "true",
-    },
-  },
-  ReVa: {
-    type: "local",
-    command: ["mcp-reva"],
-    timeout: 120000,
-  },
-  "wireshark-mcp": {
-    type: "local",
-    command: ["python", "{env:WIREMCP_LAUNCHER}", "--stdio"],
-  },
-  "cyberchef-mcp": {
-    type: "local",
-    command: ["npx", "-y", "cyberchef-mcp"],
-  },
-  "ctfd-mcp": {
-    type: "local",
-    command: ["npx", "-y", "ctfd-mcp"],
-  },
-  seckb: {
-    type: "local",
-    command: ["{env:SECKB_PYTHON}", "{env:SECKB_MCP_SERVER}"],
-    environment: {
-      SECKB_ROOT: "{env:SECKB_ROOT}",
-      SECKB_CONFIG: "{env:SECKB_CONFIG}",
-    },
-  },
-  cvekb: {
-    type: "local",
-    command: ["{env:SECKB_PYTHON}", "{env:CVEKB_MCP_SERVER}"],
-    environment: { CVEKB_ROOT: "{env:CVEKB_ROOT}" },
-  },
-}
-
-function managedAssetMappings() {
-  const mappings = [
-    { source: "agents", target: "agents" },
-    { source: "commands", target: "commands" },
-    { source: "skills", target: path.join("opencode-for-ctf", "skills") },
-    { source: "rules", target: path.join("opencode-for-ctf", "rules") },
-    { source: "templates", target: path.join("opencode-for-ctf", "templates") },
-    { source: "knowledge", target: path.join("opencode-for-ctf", "knowledge") },
-    { source: "lessons", target: path.join("opencode-for-ctf", "lessons") },
-    { source: "runtime", target: path.join("opencode-for-ctf", "runtime") },
-    { source: path.join("dist", "plugin"), target: path.join("opencode-for-ctf", "plugin") },
-  ]
-  if (process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS === "1") {
-    mappings.push({
-      source: path.join("skills-external", "ctf-skills"),
-      target: path.join("opencode-for-ctf", "skills-external", "ctf-skills"),
-    })
-  }
-  return mappings
-}
+const jsonFormatting = JSON_FORMATTING
+const profiles = INSTALLER_PROFILES
 
 export async function projectVersion() {
   return JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8")).version
@@ -125,7 +28,10 @@ export async function projectVersion() {
 
 export async function ensurePluginBuild({ force = false } = {}) {
   const bundled = path.join(repoRoot, "dist", "plugin", "index.js")
+  const hasSource = existsSync(path.join(repoRoot, "src", "plugin.ts")) && existsSync(path.join(repoRoot, "tools"))
   if (!force && existsSync(bundled)) return bundled
+  if (!hasSource && existsSync(bundled)) return bundled
+  if (!hasSource) throw new Error("Bundled OpenCode for CTF plugin is missing and source files are not available.")
   const result = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "build-plugin.mjs")], {
     cwd: repoRoot,
     stdio: "inherit",
@@ -146,6 +52,10 @@ export function manifestPath(configDir = opencodeConfigDir()) {
   return path.join(configDir, "opencode-for-ctf.manifest.json")
 }
 
+export function pluginHealthPath(configDir = opencodeConfigDir()) {
+  return path.join(configDir, "opencode-for-ctf.plugin-health.json")
+}
+
 export function configPath(configDir = opencodeConfigDir()) {
   const jsonc = path.join(configDir, "opencode.jsonc")
   const json = path.join(configDir, "opencode.json")
@@ -154,18 +64,105 @@ export function configPath(configDir = opencodeConfigDir()) {
   return jsonc
 }
 
+function winTool(...segments) {
+  if (process.platform !== "win32") return undefined
+  return path.join("C:\\Tools", ...segments)
+}
+
+function localCommand(command, args = [], options = {}) {
+  if (!command) return undefined
+  return { command, args, ...options }
+}
+
+function localPath(command) {
+  if (!command) return undefined
+  return { command, args: [], pathOnly: true }
+}
+
+function pythonScript(script, args = []) {
+  if (!script || !existsSync(script)) return undefined
+  return { command: "python", args: [script, ...args] }
+}
+
+function localCommandFallbacks(command) {
+  const candidates = {
+    nuclei: [localPath(winTool("nuclei", "nuclei.exe"))],
+    ffuf: [localCommand(winTool("ffuf", "ffuf.exe"), ["-V"])],
+    feroxbuster: [localCommand(winTool("feroxbuster", "feroxbuster.exe"), ["--version"])],
+    dirsearch: [pythonScript(winTool("dirsearch", "dirsearch.py"), ["--version"])],
+    sqlmap: [pythonScript(winTool("sqlmap", "sqlmap.py"), ["--version"])],
+    nmap: [localCommand(winTool("nmap", "nmap.exe"), ["--version"])],
+    jadx: [localCommand(winTool("Jadx", "jadx.exe"), ["--version"])],
+    r2: [
+      localCommand(winTool("radare2", "radare2-6.1.4-w64", "bin", "r2.bat"), ["-v"], { shell: true }),
+      localCommand(winTool("radare2", "radare2-6.1.4-w64", "bin", "radare2.exe"), ["-v"]),
+    ],
+    radare2: [
+      localCommand(winTool("radare2", "radare2-6.1.4-w64", "bin", "r2.bat"), ["-v"], { shell: true }),
+      localCommand(winTool("radare2", "radare2-6.1.4-w64", "bin", "radare2.exe"), ["-v"]),
+    ],
+    exiftool: [localCommand(winTool("exiftool", "exiftool.exe"), ["-ver"])],
+    hashcat: [localCommand(winTool("hashcat-7.1.2", "hashcat.exe"), ["--version"])],
+  }
+  return (candidates[command] ?? []).filter(Boolean)
+}
+
+function managedBuiltSourceOverride(sourceRoot, rel = "") {
+  const root = String(sourceRoot).replace(/\\/g, "/")
+  const child = String(rel).replace(/\\/g, "/")
+  if (root === "mcp-server" && child === "vendor/WireMCP/index.js") {
+    return path.join(repoRoot, "dist", "wiremcp", "index.js")
+  }
+  return null
+}
+
 export function installedPluginFile(configDir) {
   return path.join(configDir, "opencode-for-ctf", "plugin", "index.js")
 }
 
-export function installedSkillDirs(configDir) {
-  const dirs = [path.join(configDir, "opencode-for-ctf", "skills")]
-  const external = path.join(configDir, "opencode-for-ctf", "skills-external", "ctf-skills")
-  if (existsSync(external)) dirs.push(external)
-  return dirs
+export async function probeRuntimeModule(entryFile, options = {}) {
+  const expectedExports = Array.isArray(options.expectedExports) ? options.expectedExports : []
+  if (!existsSync(entryFile)) {
+    return { ok: false, error: `missing file: ${entryFile}`, exportNames: [] }
+  }
+
+  try {
+    const moduleUrl = pathToFileURL(entryFile)
+    moduleUrl.searchParams.set("ctf_probe", `${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`)
+    const loaded = await import(moduleUrl.href)
+    const exportNames = Object.keys(loaded).sort()
+    const missingExports = expectedExports.filter((name) => !(name in loaded))
+    if (missingExports.length) {
+      return {
+        ok: false,
+        error: `loaded module but missing expected exports: ${missingExports.join(", ")}`,
+        exportNames,
+      }
+    }
+    return { ok: true, exportNames }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+      exportNames: [],
+    }
+  }
 }
 
-export function profileFromArgs(args, fallback = "safe") {
+export async function probeInstalledPluginRuntime(configDir = opencodeConfigDir()) {
+  return probeRuntimeModule(installedPluginFile(configDir), {
+    expectedExports: ["default", "server"],
+  })
+}
+
+export function installedSkillDirs(configDir) {
+  // External SecKnowledge is a reference corpus, not an active skill path.
+  // Keeping it out of skills.paths prevents broad trigger/shadowing conflicts;
+  // ctf-skill-repo-search loads it explicitly when evidence warrants recall.
+  return [path.join(configDir, "opencode-for-ctf", "skills")]
+}
+
+export function profileFromArgs(args, fallback = "full") {
   const inline = args.find((arg) => arg.startsWith("--profile="))?.slice("--profile=".length)
   const index = args.indexOf("--profile")
   const following = index >= 0 ? args[index + 1] : undefined
@@ -179,7 +176,19 @@ export function commandExists(command, args = ["--version"]) {
     stdio: "ignore",
     shell: process.platform === "win32",
   })
-  return result.status === 0
+  if (result.status === 0) return true
+  for (const candidate of localCommandFallbacks(command)) {
+    if (candidate.pathOnly) {
+      if (existsSync(candidate.command)) return true
+      continue
+    }
+    const localResult = spawnSync(candidate.command, candidate.args, {
+      stdio: "ignore",
+      shell: candidate.shell ?? (process.platform === "win32" && /\.(bat|cmd)$/i.test(candidate.command)),
+    })
+    if (localResult.status === 0) return true
+  }
+  return false
 }
 
 export async function readJsonc(file) {
@@ -191,6 +200,29 @@ export async function readJsonc(file) {
     throw new Error(`Invalid JSONC in ${file} (parse error ${errors[0].error} at offset ${errors[0].offset})`)
   }
   return value ?? {}
+}
+
+export async function writePluginHealthReport(configDir = opencodeConfigDir(), report = {}) {
+  const payload = {
+    schemaVersion: 1,
+    writtenAt: new Date().toISOString(),
+    ...report,
+  }
+  await writeJsonAtomic(pluginHealthPath(configDir), payload)
+  return pluginHealthPath(configDir)
+}
+
+export async function tryWritePluginHealthReport(configDir = opencodeConfigDir(), report = {}) {
+  try {
+    return await writePluginHealthReport(configDir, report)
+  } catch (error) {
+    console.warn(
+      `[plugin-health] failed to write ${pluginHealthPath(configDir)}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    )
+    return null
+  }
 }
 
 function sameValue(left, right) {
@@ -225,12 +257,42 @@ async function updateJsonc(file, operations) {
   }
 }
 
-function disabledMcp(value) {
+function expandManagedRoot(value, configDir) {
+  if (typeof value === "string") {
+    return value.replaceAll("{managed_root}", path.join(configDir, "opencode-for-ctf").replace(/\\/g, "/"))
+  }
+  if (Array.isArray(value)) return value.map((entry) => expandManagedRoot(entry, configDir))
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, expandManagedRoot(entry, configDir)]))
+  }
+  return value
+}
+
+function disabledMcp(value, configDir) {
   const cloned = structuredClone(value)
-  delete cloned.environment?.GHIDRA_INSTALL_DIR
-  if (cloned.environment && Object.keys(cloned.environment).length === 0) delete cloned.environment
-  cloned.enabled = false
-  return cloned
+  const expanded = expandManagedRoot(cloned, configDir)
+  delete expanded.environment?.GHIDRA_INSTALL_DIR
+  if (expanded.environment && Object.keys(expanded.environment).length === 0) delete expanded.environment
+  expanded.enabled = false
+  return expanded
+}
+
+async function exportedPluginToolNames() {
+  await ensurePluginBuild()
+  const toolsDir = path.join(repoRoot, "dist", "plugin", "tools")
+  const entries = await readdir(toolsDir, { withFileTypes: true })
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".js"))
+    .map((entry) => entry.name.slice(0, -3))
+    .filter(
+      (name) =>
+        name.startsWith("ctf-") ||
+        name.startsWith("archive-") ||
+        name.startsWith("seckb_") ||
+        name.startsWith("cvekb_") ||
+        name.startsWith("anysearch_"),
+    )
+    .sort()
 }
 
 export async function buildConfigOperations(config, profile, configDir, previousOperations = []) {
@@ -280,6 +342,22 @@ export async function buildConfigOperations(config, profile, configDir, previous
     })
   }
 
+  function removeManagedArrayValues(parts, managedValues) {
+    const previous = previousByPath.get(JSON.stringify(parts))
+    const currentValue = getAtPath(config, parts)
+    if (previous && !sameValue(currentValue, previous.value)) return
+    const current = Array.isArray(currentValue) ? currentValue : []
+    const next = current.filter((entry) => !managedValues.some((value) => sameValue(entry, value)))
+    if (sameValue(current, next) && !previous) return
+    operations.push({
+      path: parts,
+      value: next.length ? next : undefined,
+      previousExists: previous?.previousExists ?? hasOwnAtPath(config, parts),
+      previousValue: previous?.previousValue ?? currentValue,
+      parentExisted: previous?.parentExisted ?? (parts.length < 2 || hasOwnAtPath(config, parts.slice(0, -1))),
+    })
+  }
+
   addIfMissing(["$schema"], "https://opencode.ai/config.json")
   addIfMissing(["share"], "disabled")
   addIfMissing(["tool_output"], { max_lines: 500, max_bytes: 30000 })
@@ -288,7 +366,7 @@ export async function buildConfigOperations(config, profile, configDir, previous
 
   for (const name of PROFILE_MCP[profile]) {
     const value = MCP_DEFAULTS[name]
-    if (value) addIfMissing(["mcp", name], disabledMcp(value))
+    if (value) addIfMissing(["mcp", name], disabledMcp(value, configDir))
   }
 
   const pluginSpec = pathToFileURL(installedPluginFile(configDir)).href
@@ -296,9 +374,24 @@ export async function buildConfigOperations(config, profile, configDir, previous
   addManagedArray(["skills", "paths"], installedSkillDirs(configDir))
   addIfMissing(["default_agent"], "ctf-fast")
 
+  const currentTools = getAtPath(config, ["tools"])
+  const nextTools =
+    currentTools && typeof currentTools === "object" && !Array.isArray(currentTools) ? { ...currentTools } : {}
+  for (const name of await exportedPluginToolNames()) nextTools[name] = true
+  if (!sameValue(currentTools, nextTools)) {
+    operations.push({
+      path: ["tools"],
+      value: nextTools,
+      previousExists: hasOwnAtPath(config, ["tools"]),
+      previousValue: currentTools,
+      parentExisted: true,
+    })
+  }
+
   const managedInstructions = [
     path.join(configDir, "opencode-for-ctf", "rules", "zh-rules.md"),
     path.join(configDir, "opencode-for-ctf", "rules", "en-solve-rules.md"),
+    path.join(configDir, "opencode-for-ctf", "rules", "agent-equipment.md"),
   ].filter((file) => existsSync(path.join(repoRoot, "rules", path.basename(file))))
   addManagedArray(["instructions"], managedInstructions)
 
@@ -402,11 +495,43 @@ export async function managedFileHash(file) {
 
 function shouldCopyManagedRelative(mappingSource, rel) {
   // Slim knowledge: skip intermediate pattern-card history and generator scripts.
-  // Source checkouts may still contain v2–v8 for rebuild; install must not re-bloat.
-  if (mappingSource === "knowledge" || mappingSource.replace(/\\/g, "/") === "knowledge") {
+  // Source checkouts may still contain v2-v8 for rebuild; install must not re-bloat.
+  const source = mappingSource.replace(/\\/g, "/")
+  const posixRel = rel.replace(/\\/g, "/")
+  if (source === "knowledge") {
     return isKnowledgeInstallIncluded(rel)
   }
+  if (source === "rag") {
+    if (posixRel === "knowledge" || posixRel.startsWith("knowledge/")) {
+      return isKnowledgeInstallIncluded(posixRel.slice("knowledge/".length))
+    }
+    if (posixRel === "lessons" || posixRel.startsWith("lessons/")) return true
+    return false
+  }
   return true
+}
+
+function isPluginBundleTarget(relative) {
+  return relative.replace(/\\/g, "/").startsWith("opencode-for-ctf/plugin/")
+}
+
+async function copyManagedSourceFile(from, to) {
+  try {
+    await copyFile(from, to)
+    return
+  } catch (error) {
+    const resolvedFrom = path.resolve(from)
+    const rebuildableRoots = [path.join(repoRoot, "dist", "plugin"), path.join(repoRoot, "dist", "wiremcp")]
+    if (
+      error?.code !== "ENOENT" ||
+      !rebuildableRoots.some((root) => resolvedFrom.startsWith(`${root}${path.sep}`) || resolvedFrom === root)
+    ) {
+      throw error
+    }
+  }
+
+  await ensurePluginBuild({ force: true })
+  await copyFile(from, to)
 }
 
 export async function writePluginRuntimeMetadata(configDir = opencodeConfigDir()) {
@@ -419,7 +544,7 @@ export async function writePluginRuntimeMetadata(configDir = opencodeConfigDir()
     main: "./plugin/index.js",
     opencode: {
       type: "plugin-runtime-bundle",
-      note: "Managed installed runtime bundle. Host should load plugin/index.js directly without resolving source-checkout dependencies.",
+      note: "Managed installed runtime bundle. Host should load plugin/index.js directly without resolving source-checkout dependencies or external package installs.",
     },
   }
   await writeJsonAtomic(pluginPackageJson, metadata)
@@ -431,12 +556,14 @@ export async function copyManagedFiles(configDir = opencodeConfigDir()) {
   const copied = []
   const backups = []
   try {
-    for (const mapping of managedAssetMappings()) {
+    const includeExternalSkills = process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS === "1"
+    for (const mapping of managedAssetMappings(includeExternalSkills)) {
       const source = path.join(repoRoot, mapping.source)
       if (!existsSync(source)) continue
       for (const rel of await listFiles(source)) {
         if (!shouldCopyManagedRelative(mapping.source, rel)) continue
-        const from = rel ? path.join(source, rel) : source
+        const override = managedBuiltSourceOverride(mapping.source, rel)
+        const from = override ?? (rel ? path.join(source, rel) : source)
         const targetRel = rel ? path.join(mapping.target, rel) : mapping.target
         const to = await safeManagedTarget(configDir, targetRel)
         await mkdir(path.dirname(to), { recursive: true })
@@ -444,7 +571,7 @@ export async function copyManagedFiles(configDir = opencodeConfigDir()) {
         if (backup) backups.push({ file: to, backup })
         const entry = { path: targetRel }
         copied.push(entry)
-        await copyFile(from, to)
+        await copyManagedSourceFile(from, to)
         entry.sha256 = await managedFileHash(to)
       }
     }
@@ -453,6 +580,10 @@ export async function copyManagedFiles(configDir = opencodeConfigDir()) {
       path: path.relative(configDir, pluginPackageJson),
       sha256: await managedFileHash(pluginPackageJson),
     })
+    const runtimeProbe = await probeInstalledPluginRuntime(configDir)
+    if (!runtimeProbe.ok) {
+      throw new Error(`Managed plugin runtime failed to import after install: ${runtimeProbe.error}`)
+    }
   } catch (error) {
     await removeManagedFiles(configDir, { copied, backups })
     throw error
@@ -477,12 +608,13 @@ export async function upgradeManagedFiles(configDir, previousManifest) {
   const sourceTargets = new Set()
 
   try {
-    for (const mapping of managedAssetMappings()) {
+    for (const mapping of managedAssetMappings(process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS === "1")) {
       const source = path.join(repoRoot, mapping.source)
       if (!existsSync(source)) continue
       for (const rel of await listFiles(source)) {
         if (!shouldCopyManagedRelative(mapping.source, rel)) continue
-        const from = rel ? path.join(source, rel) : source
+        const override = managedBuiltSourceOverride(mapping.source, rel)
+        const from = override ?? (rel ? path.join(source, rel) : source)
         const targetRel = rel ? path.join(mapping.target, rel) : mapping.target
         sourceTargets.add(targetRel)
         const to = await safeManagedTarget(configDir, targetRel)
@@ -492,7 +624,12 @@ export async function upgradeManagedFiles(configDir, previousManifest) {
           preserved.push(targetRel)
           continue
         }
-        if (previous?.sha256 && existsSync(to) && (await managedFileHash(to)) !== previous.sha256) {
+        if (
+          previous?.sha256 &&
+          existsSync(to) &&
+          (await managedFileHash(to)) !== previous.sha256 &&
+          !isPluginBundleTarget(targetRel)
+        ) {
           copied.push(previous)
           preserved.push(targetRel)
           continue
@@ -505,7 +642,7 @@ export async function upgradeManagedFiles(configDir, previousManifest) {
           if (snapshot) persistentBackups.add(path.resolve(snapshot))
         }
         await mkdir(path.dirname(to), { recursive: true })
-        await copyFile(from, to)
+        await copyManagedSourceFile(from, to)
         copied.push({ path: targetRel, sha256: await managedFileHash(to) })
       }
     }

@@ -23,11 +23,11 @@ After install and restarting OpenCode, most users only need:
 - **Single default entry** — `/ctf` auto-routes; force `/ctf-fast` / `/ctf-expert` when needed
 - **Two primary agents** — `ctf-fast` (lightweight) and `ctf-expert` (evidence-driven)
 - **Full category coverage** — Web / Pwn / Rev / Crypto / Forensics / Misc
-- **140+ tools** — file analysis, web probing, binary debugging, crypto, forensics
-- **56+ skills** — reusable methodology packs
+- **160+ tools** — file analysis, web probing, binary debugging, crypto, forensics
+- **60+ skills** — reusable methodology packs
 - **Layered commands** — tiny L0 surface; advanced micro-commands stay available
 - **Evidence-driven** — `ctf-expert` tracks known facts via **Evidence.md**
-- **Production Team Mode** — 2–8 isolated workers with collect / cancel / recover
+- **Beta Team Mode** — 2–8 isolated workers with collect / cancel / recover
 - **Path security** — workspace bounds, `CTF_ALLOWED_ROOTS`, sensitive-path rejection
 - **Configurable hooks** — optional `opencode-for-ctf.jsonc`
 - **Tool packs** — defaults omit rare packs (android/godot)
@@ -35,11 +35,11 @@ After install and restarting OpenCode, most users only need:
 
 ## Requirements
 
-| Item | Requirement |
-| --- | --- |
-| Node.js | `>= 22.20.0` |
-| OpenCode | Recent build with plugins / agents / skills |
-| OS | Windows / Linux / macOS (some pwn/rev tooling needs WSL or Docker) |
+| Item     | Requirement                                                        |
+| -------- | ------------------------------------------------------------------ |
+| Node.js  | `>= 22.20.0`                                                       |
+| OpenCode | Recent build with plugins / agents / skills                        |
+| OS       | Windows / Linux / macOS (some pwn/rev tooling needs WSL or Docker) |
 
 ## Quick start
 
@@ -59,12 +59,17 @@ npm run ctf:status -- --strict
 The installer:
 
 1. Builds the self-contained plugin bundle (`dist/plugin`)
-2. Copies agents / commands / skills / rules / templates / knowledge / lessons + plugin into the OpenCode config directory
-3. Merges paths into existing JSONC with minimal edits (comments preserved)
-4. Writes a SHA-256 manifest so upgrades/uninstalls do not clobber later user edits
-5. Keeps specialist MCP launchers external so machine-specific paths are never baked into the managed install
+2. Installs `agents/` and `commands/` at the OpenCode config root so `/ctf`, `/help`, `ctf-fast`, `ctf-expert`, and category subagents are visible after restart
+3. Installs built-in `skills/`, rules, templates, RAG/knowledge, portable MCP backends such as WireMCP, and the plugin bundle under `opencode-for-ctf/`
+4. Merges paths into existing JSONC with minimal edits (comments preserved), including:
+   - `plugin[]` pointing at the managed plugin bundle
+   - `skills.paths[]` publishing the built-in CTF skill directory
+   - `instructions[]` loading CTF rules and agent equipment rules
+   - profile MCP stubs, disabled by default and ready for explicit activation
+5. Writes a SHA-256 manifest so upgrades/uninstalls do not clobber later user edits
+6. Keeps specialist MCP launchers external so machine-specific paths are never baked into the managed install
 
-Default profile is **`safe`** (no immediately enabled MCP). Restart OpenCode, then:
+Default profile is **`full`**: it registers all supported CTF MCP stubs with `enabled:false`. They still require explicit activation or `ctf-expert` approval before use. Restart OpenCode, then:
 
 ```text
 /help
@@ -75,7 +80,7 @@ Default profile is **`safe`** (no immediately enabled MCP). Restart OpenCode, th
 
 Paste this prompt into OpenCode, Claude Code, or another coding agent:
 
-> Clone `https://github.com/h1kibi/Opencode-for-CTF.git`, read `README_EN.md`, `INSTALL.md`, and `SECURITY.md`, verify Node.js is `>=22.20.0`, then run `npm install`, `npm run check`, `npm run ctf:install`, and `npm run ctf:status -- --strict`. Use the default `safe` profile. Do not enable any MCP server and do not replace my provider/model configuration. If installation or validation fails, stop and report the exact error; do not delete or overwrite configuration files I have modified.
+> Clone `https://github.com/h1kibi/Opencode-for-CTF.git`, read `README_EN.md`, `INSTALL.md`, and `SECURITY.md`, verify Node.js is `>=22.20.0`, then run `npm install`, `npm run check`, `npm run ctf:install`, and `npm run ctf:status -- --strict`. Use the default `full` profile, which registers MCP stubs disabled by default. Do not enable any MCP server and do not replace my provider/model configuration. If installation or validation fails, stop and report the exact error; do not delete or overwrite configuration files I have modified.
 
 ### 3. npm / CLI (after registry publish)
 
@@ -123,13 +128,13 @@ Copy [`opencode-for-ctf.example.jsonc`](./opencode-for-ctf.example.jsonc) to:
 - project root: `opencode-for-ctf.jsonc`, or
 - OpenCode config dir: `~/.config/opencode/opencode-for-ctf.jsonc`
 
-| Field | Purpose |
-| --- | --- |
-| `default_mode` | `/ctf` intensity: `auto` \| `fast` \| `expert` |
-| `disabled_hooks` | Disable individual runtime hooks |
-| `hashline` / `continuation` / `team_mode` | Feature toggles |
-| `tool_packs` / `expert_tool_packs` | Packs registered at startup |
-| `external_skills` | Include external skill paths |
+| Field                                     | Purpose                                        |
+| ----------------------------------------- | ---------------------------------------------- |
+| `default_mode`                            | `/ctf` intensity: `auto` \| `fast` \| `expert` |
+| `disabled_hooks`                          | Disable individual runtime hooks               |
+| `hashline` / `continuation` / `team_mode` | Feature toggles                                |
+| `tool_packs` / `expert_tool_packs`        | Packs registered at startup                    |
+| `external_skills`                         | Include external skill paths                   |
 
 ### Workspace config
 
@@ -137,18 +142,27 @@ See [`CTF_WORKSPACE_OPENCODE_TEMPLATE.jsonc`](./CTF_WORKSPACE_OPENCODE_TEMPLATE.
 
 ### Environment variables
 
-| Variable | Purpose |
-| --- | --- |
-| `DEEPSEEK_API_KEY` | DeepSeek API key |
-| `GITHUB_PAT` | GitHub personal access token (read-only is enough) |
-| `GHIDRA_INSTALL_DIR` | Ghidra install directory |
-| `WIREMCP_LAUNCHER` | WireMCP launcher path for the default Wireshark MCP slot |
-| `JINA_API_KEY` / `BRAVE_API_KEY` … | Search / scrape MCP providers |
-| `CTF_ALLOWED_ROOTS` | Extra file roots (`;` on Windows, `:` on Unix) |
-| `CTF_ALLOWED_HOSTS` | Extra hosts for web probes |
-| `OPENCODE_CTF_TOOL_PACKS` | Override packs, e.g. `all` or `core,web,pwn` |
-| `OPENCODE_CONFIG_DIR` | Override OpenCode config directory |
-| `OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS=1` | Copy external ctf-skills on install (large) |
+| Variable                                 | Purpose                                            |
+| ---------------------------------------- | -------------------------------------------------- |
+| `DEEPSEEK_API_KEY`                       | DeepSeek API key                                   |
+| `GITHUB_PAT`                             | GitHub personal access token (read-only is enough) |
+| `GHIDRA_INSTALL_DIR`                     | Ghidra install directory                           |
+| `JADX_MCP_COMMAND` / `JADX_HOME`         | JADX MCP launch command / JADX home                |
+| `GDB_MCP_COMMAND`                        | GDB MCP launch command                             |
+| `MYSQL_MCP_COMMAND`                      | MySQL MCP launch command                           |
+| `MYSQL_HOST` / `MYSQL_PORT`              | MySQL MCP target address                           |
+| `MYSQL_USER` / `MYSQL_PASSWORD`          | MySQL MCP credentials                              |
+| `MYSQL_DATABASE`                         | MySQL MCP default database                         |
+| `X64DBG_MCP_COMMAND` / `X64DBG_PATH`     | x64dbg MCP launch command / x64dbg path            |
+| `SSH_MCP_COMMAND`                        | SSH MCP launch command                             |
+| `SSH_MCP_HOST` / `SSH_MCP_PORT`          | SSH MCP target address                             |
+| `SSH_MCP_USER` / `SSH_MCP_KEY`           | SSH MCP credentials                                |
+| `JINA_API_KEY` / `BRAVE_API_KEY` …       | Search / scrape MCP providers                      |
+| `CTF_ALLOWED_ROOTS`                      | Extra file roots (`;` on Windows, `:` on Unix)     |
+| `CTF_ALLOWED_HOSTS`                      | Extra hosts for web probes                         |
+| `OPENCODE_CTF_TOOL_PACKS`                | Override packs, e.g. `all` or `core,web,pwn`       |
+| `OPENCODE_CONFIG_DIR`                    | Override OpenCode config directory                 |
+| `OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS=1` | Copy external SecKnowledge reference skill on install (large)        |
 
 Full template: [`.env.example`](./.env.example). **Never commit real secrets.**
 
@@ -157,24 +171,42 @@ Full template: [`.env.example`](./.env.example). **Never commit real secrets.**
 The current recommended backend mix is:
 
 - `browser` → `@playwright/mcp`
-- `wireshark-mcp` → WireMCP via external `WIREMCP_LAUNCHER`
-- `ida-pro` → `mrexodia/ida-pro-mcp` (expects `ida-pro-mcp --stdio` on PATH)
-- `cyberchef-mcp` → default command `npx -y cyberchef-mcp`
-- `ctfd-mcp` → configurable, but disabled by default
+- `wireshark-mcp` → bundled WireMCP copied into the managed install directory
+- `ida-pro` → `mrexodia/ida-pro-mcp` (expects `ida-pro-mcp` on PATH; stdio is the default transport)
+- `jadx-mcp` → external command wrapper via `JADX_MCP_COMMAND`
+- `gdb-mcp` → external command wrapper via `GDB_MCP_COMMAND`
+- `mysql-mcp` → external command wrapper via `MYSQL_MCP_COMMAND` plus `MYSQL_*`
+- `x64dbg-mcp` → external command wrapper via `X64DBG_MCP_COMMAND`
+- `ssh-mcp` → external command wrapper via `SSH_MCP_COMMAND` plus `SSH_MCP_*`
+- `cyberchef-mcp` → external command wrapper via `CYBERCHEF_MCP_COMMAND` (no official npm package; bring your own backend)
+- `ctfd-mcp` → `npx -y ctfd-mcp-server`, disabled by default
 
 Default family enablement:
 
 - `ctf-web` / `ctf-scout` / `ctf-expert`: `browser`
-- `ctf-rev`: `ReVa`
-- `ctf-forensics`: `wireshark-mcp` + `cyberchef-mcp`
+- `ctf-web`: requestable `jadx-mcp` / `mysql-mcp` / `ssh-mcp`
+- `ctf-pwn`: requestable `gdb-mcp` / `ida-pro` / `ssh-mcp`
+- `ctf-rev`: `ReVa`, requestable `ida-pro` / `jadx-mcp` / `gdb-mcp` / `x64dbg-mcp` / `ssh-mcp`
+- `ctf-forensics`: `wireshark-mcp` + `cyberchef-mcp`, requestable `mysql-mcp` / `ssh-mcp`
 - `ctf-crypto`: `cyberchef-mcp`
-- `ctf-misc`: `wireshark-mcp` + `cyberchef-mcp`
+- `ctf-misc`: `wireshark-mcp` + `cyberchef-mcp`, requestable `mysql-mcp` / `ssh-mcp`
+- `ctf-aisec`: AI-security specialist for LLM agents, prompt injection, adversarial ML, model artifacts, RAG/tool boundaries, and unsafe serialization
 
-Higher-cost capabilities such as `ida-pro`, `flutter-aot`, `ctfd-mcp`, and `anysearch` remain on-demand.
+Higher-cost capabilities such as `ida-pro`, `jadx-mcp`, `gdb-mcp`, `mysql-mcp`, `x64dbg-mcp`, `ssh-mcp`, `flutter-aot`, `ctfd-mcp`, and `anysearch` remain on-demand.
 
 ### External skills
 
-`npm install` does **not** network-fetch skills. The default npm package also omits `skills-external/` and intermediate pattern-card dumps (runtime keeps the `v9` index only). For a local `ljagiello/ctf-skills` snapshot from a source checkout:
+Runtime availability has three separate gates:
+
+1. skill files exist on disk,
+2. the host publishes those directories through `skills.paths` (managed install registers the built-in CTF skill path),
+3. the active session/subagent actually receives that published catalog.
+
+Agent permission declarations only allow use of skills that are already published; they do **not** publish skills by themselves. If subagents report only generic built-in tools or no skills, inspect both plugin runtime diagnostics and host skill-path registration.
+
+`external_skills` in `opencode-for-ctf.jsonc` is a plugin-side expectation/diagnostic switch. When it is `false`, the plugin may still detect skill folders locally while warning that no external skill catalog should be expected at runtime.
+
+`npm install` does **not** network-fetch skills. The default npm package also omits `skills-external/` and intermediate pattern-card dumps (runtime keeps the `v9` index only). For a local reference-only `Pa55w0rd/secknowledge-skill` snapshot from a source checkout:
 
 ```bash
 npm run fetch-skills
@@ -193,14 +225,13 @@ Replace paths with absolute paths on your machine (run `npm run build:plugin` fi
   "plugin": ["file:/absolute/path/to/Opencode-for-CTF/dist/plugin/index.js"],
   "default_agent": "ctf-fast",
   "skills": {
-    "paths": [
-      "/absolute/path/to/Opencode-for-CTF/skills"
-    ]
+    "paths": ["/absolute/path/to/Opencode-for-CTF/skills"],
   },
   "instructions": [
     "/absolute/path/to/Opencode-for-CTF/rules/zh-rules.md",
-    "/absolute/path/to/Opencode-for-CTF/rules/en-solve-rules.md"
-  ]
+    "/absolute/path/to/Opencode-for-CTF/rules/en-solve-rules.md",
+    "/absolute/path/to/Opencode-for-CTF/rules/agent-equipment.md",
+  ],
 }
 ```
 
@@ -210,29 +241,29 @@ Legacy `npm run setup` (generates `opencode.json` from `.env`) remains for compa
 
 ## Agents
 
-| Agent | Type | Purpose |
-| --- | --- | --- |
-| `ctf-fast` | **Primary** | Lightweight, intuition-first solving |
-| `ctf-expert` | **Primary** | Evidence-driven recon → plan → verify → iterate |
-| `researcher` | Support primary | Local knowledge-base maintenance (not a CTF solve lane) |
-| Category specialists | Subagents | `ctf-web`, `ctf-pwn`, `ctf-rev`, `ctf-crypto`, `ctf-forensics` |
-| Support | Subagents | `ctf-scout`, `ctf-librarian`, `ctf-oracle` |
+| Agent                | Type            | Purpose                                                                                                               |
+| -------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `ctf-fast`           | **Primary**     | Lightweight, intuition-first solving                                                                                  |
+| `ctf-expert`         | **Primary**     | Evidence-driven recon → plan → verify → iterate                                                                       |
+| `researcher`         | Support primary | Manual post-solve reflection, lessons/retros, and local `rag/knowledge` RAG import/maintenance (not a CTF solve lane) |
+| Category specialists | Subagents       | `ctf-web`, `ctf-pwn`, `ctf-rev`, `ctf-crypto`, `ctf-forensics`, `ctf-misc`, `ctf-aisec`                    |
+| Support              | Subagents       | `ctf-scout`, `ctf-librarian`, `ctf-oracle`                                                                            |
 
 ### Selection guide
 
-| Scenario | Entry |
-| --- | --- |
-| Default / unclear category | `/ctf` |
-| Quick / simple challenges | `/ctf-fast` |
+| Scenario                              | Entry         |
+| ------------------------------------- | ------------- |
+| Default / unclear category            | `/ctf`        |
+| Quick / simple challenges             | `/ctf-fast`   |
 | Complex reverse / binary exploitation | `/ctf-expert` |
-| Multi-step web chains | `/ctf-expert` |
-| Stuck after several attempts | `/ctf-expert` |
+| Multi-step web chains                 | `/ctf-expert` |
+| Stuck after several attempts          | `/ctf-expert` |
 
 ## Usage
 
 ```text
 /ctf ./challenge
-/ctf-help
+/help
 /ctf-fast ./challenge
 /ctf-expert ./challenge
 /ctf-web http://127.0.0.1:8000
@@ -242,7 +273,7 @@ Legacy `npm run setup` (generates `opencode.json` from `.env`) remains for compa
 /ctf-forensics ./artifact.pcap
 ```
 
-> `/ctf-solve` is a historical command alias only. Prefer `/ctf`; primary agents are only `ctf-fast` and `ctf-expert`.
+> Historical micro-commands are no longer installed as slash commands. Use `/ctf`, `/ctf-expert`, tools, and skills for advanced flows.
 
 ### ctf-expert workflow
 
@@ -263,7 +294,7 @@ graph TD
 
 ### Team Mode
 
-Only `ctf-expert` may control concurrent Team Mode (`ctf-team-dispatch`, status/collect/cancel/close/recover). Workers return evidence only; they should not write `notes.md`, `.ctf-state.json`, `.ctf-team.json`, or `agent_flag.txt`.
+Only `ctf-expert` may control concurrent Team Mode (`ctf-team-dispatch`, status/collect/cancel/close/recover/adopt). `ctf-team-adopt` is an explicit, runID-scoped takeover for a deleted parent; it fails closed while the old parent exists, any worker is active, or cancellation is uncertain. Workers return evidence only; they should not write `notes.md`, `.ctf-state.json`, `.ctf-team.json`, or `agent_flag.txt`.
 
 ## Repository layout
 
@@ -280,7 +311,7 @@ Opencode-for-CTF/
 ├── packages/
 ├── scripts/
 ├── rules/
-├── knowledge/
+├── rag/
 ├── docker/
 ├── runtime/
 └── test/

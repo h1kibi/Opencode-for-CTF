@@ -1,18 +1,26 @@
-import { afterEach, describe, expect, it } from "vitest"
-import RuntimePlugin, {
+﻿import { afterEach, describe, expect, it } from "vitest"
+import RuntimePlugin, * as PluginEntry from "../src/plugin.js"
+import {
+  clearActivatedDefaults,
+  diagnoseToolVisibility,
   propString,
   propStringNullable,
   skillToAgent,
-  clearActivatedDefaults,
-  trimActivatedDefaults,
   summarizeRuntimeToolRegistry,
-  diagnoseToolVisibility,
-} from "../src/plugin.js"
+  trimActivatedDefaults,
+} from "../src/plugin-support.js"
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 const cleanup = () => clearActivatedDefaults("nonexistent-session")
+
+describe("OpenCode plugin entry exports", () => {
+  it("exposes only the actual plugin entry points", () => {
+    expect(Object.keys(PluginEntry).sort()).toEqual(["default", "server"])
+    expect(PluginEntry.server).toBe(RuntimePlugin)
+  })
+})
 
 afterEach(() => {
   cleanup()
@@ -100,6 +108,11 @@ describe("skillToAgent", () => {
     expect(skillToAgent("ctf-misc-bashjail")).toBe("ctf-misc")
   })
 
+  it("maps ctf-aisec-* to ctf-aisec", () => {
+    expect(skillToAgent("ctf-aisec-prompt-injection")).toBe("ctf-aisec")
+    expect(skillToAgent("ctf-aisec")).toBe("ctf-aisec")
+  })
+
   it("returns undefined for ctf-common and ctf-terminal", () => {
     expect(skillToAgent("ctf-common")).toBe("ctf-common")
   })
@@ -170,31 +183,48 @@ describe("runtime tool registry summary", () => {
   it("summarizes exported and fast-visible tools", () => {
     const summary = summarizeRuntimeToolRegistry({
       configPath: null,
-      enabledPacks: ["core", "web"],
+      enabledPacks: ["core", "web", "pwn"],
       teamModeEnabled: true,
+      externalSkillsEnabled: true,
+      skillFilesPresent: true,
+      expectedSkillNames: ["ctf-expert", "ctf-web"],
       tools: {
         "ctf-route-plan": { execute() {} },
         "ctf-web-probe": { execute() {} },
         "ctf-python-inline": { execute() {} },
+        "ctf-pwn-check-env": { execute() {} },
+        "ctf-pwn-runner": { execute() {} },
         "ctf-evidence-board": { execute() {} },
         "ctf-team-dispatch": { execute() {} },
       },
     })
-    expect(summary.exportedToolCount).toBe(5)
+    expect(summary.exportedToolCount).toBe(7)
     expect(summary.ctfToolNames).toContain("ctf-web-probe")
     expect(summary.fastVisibleToolNames).toContain("ctf-web-probe")
-    expect(summary.fastVisibleToolNames).not.toContain("ctf-evidence-board")
+    expect(summary.fastVisibleToolNames).toContain("ctf-pwn-check-env")
+    expect(summary.fastVisibleToolNames).toContain("ctf-pwn-runner")
+    expect(summary.fastVisibleToolNames).toContain("ctf-evidence-board")
+    expect(summary.fastVisibleToolNames).not.toContain("ctf-team-dispatch")
+    expect(summary.expertVisibleToolNames).toContain("ctf-team-dispatch")
     expect(summary.teamToolNames).toContain("ctf-team-dispatch")
+    expect(summary.externalSkillsEnabled).toBe(true)
+    expect(summary.skillFilesPresent).toBe(true)
+    expect(summary.expectedSkillNames).toContain("ctf-expert")
   })
 
   it("classifies pack and fast-surface visibility failures", () => {
     const summary = summarizeRuntimeToolRegistry({
       configPath: null,
-      enabledPacks: ["core", "web"],
+      enabledPacks: ["core", "web", "pwn"],
       teamModeEnabled: false,
+      externalSkillsEnabled: false,
+      skillFilesPresent: true,
+      expectedSkillNames: ["ctf-expert"],
       tools: {
         "ctf-route-plan": { execute() {} },
         "ctf-web-probe": { execute() {} },
+        "ctf-pwn-check-env": { execute() {} },
+        "ctf-pwn-runner": { execute() {} },
         "ctf-evidence-board": { execute() {} },
       },
     })
@@ -206,16 +236,31 @@ describe("runtime tool registry summary", () => {
     })
     expect(visible.category).toBe("visible_in_plugin_registry")
 
-    const fastBlocked = diagnoseToolVisibility({
+    const evidenceVisible = diagnoseToolVisibility({
       summary,
       toolName: "ctf-evidence-board",
       agentSurface: "ctf-fast",
     })
-    expect(fastBlocked.category).toBe("fast_surface_blocked")
+    expect(evidenceVisible.category).toBe("visible_in_plugin_registry")
+
+    const pwnVisible = diagnoseToolVisibility({
+      summary,
+      toolName: "ctf-pwn-runner",
+      agentSurface: "ctf-fast",
+    })
+    expect(pwnVisible.category).toBe("visible_in_plugin_registry")
+
+    const hostInvisible = diagnoseToolVisibility({
+      summary,
+      toolName: "ctf-pwn-runner",
+      agentSurface: "ctf-fast",
+      hostSchemaVisible: false,
+    })
+    expect(hostInvisible.category).toBe("likely_host_schema_not_injected")
 
     const packDisabled = diagnoseToolVisibility({
       summary,
-      toolName: "ctf-pwn-runner",
+      toolName: "ctf-pwn-heap-overlap-mapper",
       agentSurface: "ctf-fast",
     })
     expect(packDisabled.category).toBe("pack_not_enabled")
@@ -225,6 +270,15 @@ describe("runtime tool registry summary", () => {
 describe("RuntimePlugin startup export", () => {
   it("exports representative ctf tools from plugin startup", async () => {
     const dir = mkdtempSync(join(tmpdir(), "ctf-plugin-startup-"))
+    // Pin the default pack set explicitly so an ambient opencode-for-ctf.jsonc
+    // (e.g. ~/.config/opencode/opencode-for-ctf.jsonc with expert_tool_packs)
+    // cannot leak pwn-heavy/web-heavy tools into this hermetic startup test.
+    writeFileSync(
+      join(dir, "opencode-for-ctf.jsonc"),
+      JSON.stringify({
+        tool_packs: ["core", "web", "pwn", "rev", "crypto", "forensics", "misc"],
+      }),
+    )
     const client = {
       mcp: {
         add: async () => undefined,
@@ -244,7 +298,27 @@ describe("RuntimePlugin startup export", () => {
     const tools = (plugin as { tool?: Record<string, unknown> }).tool ?? {}
     expect(tools["ctf-route-plan"]).toBeDefined()
     expect(tools["ctf-web-probe"]).toBeDefined()
+    expect(tools["ctf-binary-probe"]).toBeDefined()
+    expect(tools["ctf-pwn-check-env"]).toBeDefined()
+    expect(tools["ctf-pwn-runner"]).toBeDefined()
+    expect(tools["ctf-pwn-offset"]).toBeDefined()
+    expect(tools["ctf-pwn-remote-fingerprint"]).toBeDefined()
+    expect(tools["ctf-pwn-remote-check"]).toBeUndefined()
     expect(tools["ctf-python-inline"]).toBeDefined()
+    const summary = summarizeRuntimeToolRegistry({
+      configPath: null,
+      enabledPacks: ["core", "web", "pwn", "rev", "crypto", "forensics", "misc", "java"],
+      teamModeEnabled: false,
+      tools,
+    })
+    expect(summary.exportedToolNames).toContain("ctf-pwn-runner")
+    expect(summary.fastVisibleToolNames).toContain("ctf-binary-probe")
+    expect(summary.fastVisibleToolNames).toContain("ctf-pwn-check-env")
+    expect(summary.fastVisibleToolNames).toContain("ctf-pwn-runner")
+    expect(summary.fastVisibleToolNames).toContain("ctf-pwn-offset")
+    expect(summary.fastVisibleToolNames).toContain("ctf-pwn-remote-fingerprint")
+    expect(summary.fastVisibleToolNames).not.toContain("ctf-pwn-remote-check")
+    expect(summary.fastVisibleToolNames).toContain("ctf-python-inline")
   }, 60_000)
 
   it("unions startup packs with expert packs when exporting tools", async () => {
@@ -255,7 +329,7 @@ describe("RuntimePlugin startup export", () => {
       join(root, "opencode-for-ctf.jsonc"),
       JSON.stringify({
         tool_packs: ["core"],
-        expert_tool_packs: ["web"],
+        expert_tool_packs: ["web", "pwn"],
         team_mode: { enabled: false },
       }),
     )
@@ -278,6 +352,8 @@ describe("RuntimePlugin startup export", () => {
     const tools = (plugin as { tool?: Record<string, unknown> }).tool ?? {}
     expect(tools["ctf-route-plan"]).toBeDefined()
     expect(tools["ctf-web-probe"]).toBeDefined()
-    expect(tools["ctf-pwn-runner"]).toBeUndefined()
+    expect(tools["ctf-pwn-runner"]).toBeDefined()
+    expect(tools["ctf-pwn-check-env"]).toBeDefined()
+    expect(tools["ctf-binary-probe"]).toBeDefined()
   }, 60_000)
 })

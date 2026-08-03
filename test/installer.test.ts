@@ -14,8 +14,11 @@ const {
   buildConfigOperations,
   configPath,
   copyManagedFiles,
+  installedSkillDirs,
+  probeInstalledPluginRuntime,
   readJsonc,
   removeManagedFiles,
+  profileFromArgs,
   revertConfigOperations,
   upgradeManagedFiles,
 } = installerModule
@@ -33,7 +36,7 @@ afterEach(async () => {
   await Promise.all(temporaryDirs.splice(0).map((directory) => rm(directory, { recursive: true, force: true })))
 })
 
-describe("managed installer", () => {
+describe.sequential("managed installer", () => {
   it("maps the new assets, preserves JSONC comments, and restores prior files", async () => {
     const configDir = await temporaryDir("ctf-installer-")
     const file = configPath(configDir)
@@ -45,7 +48,8 @@ describe("managed installer", () => {
       `{
   // user comment must survive
   "$schema": "https://opencode.ai/config.json",
-  "agent": { "user-agent": { "mode": "primary" } }
+  "agent": { "user-agent": { "mode": "primary" } },
+  "tools": { "user-tool": false }
 }\n`,
     )
 
@@ -57,17 +61,42 @@ describe("managed installer", () => {
     expect(await readFile(file, "utf8")).toContain("user comment must survive")
     expect(installed.agent["user-agent"].mode).toBe("primary")
     expect(installed.plugin.some((entry: string) => entry.includes("opencode-for-ctf/plugin/index.js"))).toBe(true)
-    expect(installed.skills.paths).toContain(path.join(configDir, "opencode-for-ctf", "skills"))
+    expect(installed.instructions).toContain(path.join(configDir, "opencode-for-ctf", "rules", "agent-equipment.md"))
+    expect(installed.skills?.paths ?? []).toContain(path.join(configDir, "opencode-for-ctf", "skills"))
+    expect(installed.tools["user-tool"]).toBe(false)
+    expect(installed.tools["ctf-route-plan"]).toBe(true)
+    expect(installed.tools["ctf-web-analyze"]).toBe(true)
+    expect(installed.tools["ctf-python-inline"]).toBe(true)
     expect(existsSync(path.join(configDir, "agents", "ctf-expert.md"))).toBe(true)
     expect(existsSync(path.join(configDir, "commands", "ctf.md"))).toBe(true)
+    expect(existsSync(path.join(configDir, "commands", "help.md"))).toBe(true)
+    expect(existsSync(path.join(configDir, "commands", "ctf-help.md"))).toBe(false)
+    expect(existsSync(path.join(configDir, "commands", "resume.md"))).toBe(true)
+    expect(existsSync(path.join(configDir, "commands", "ctf-resume.md"))).toBe(false)
+    expect(resources.copied.some((entry: { path: string }) => entry.path === path.join("commands", "help.md"))).toBe(
+      true,
+    )
+    expect(
+      resources.copied.some((entry: { path: string }) => entry.path === path.join("commands", "ctf-help.md")),
+    ).toBe(false)
+    expect(resources.copied.some((entry: { path: string }) => entry.path === path.join("commands", "resume.md"))).toBe(
+      true,
+    )
+    expect(
+      resources.copied.some((entry: { path: string }) => entry.path === path.join("commands", "ctf-resume.md")),
+    ).toBe(false)
     expect(existsSync(path.join(configDir, "opencode-for-ctf", "skills"))).toBe(true)
     expect(existsSync(path.join(configDir, "opencode-for-ctf", "plugin", "index.js"))).toBe(true)
+    const managedWireMcpEntry = path.join(configDir, "opencode-for-ctf", "mcp-server", "vendor", "WireMCP", "index.js")
+    expect(existsSync(managedWireMcpEntry)).toBe(true)
+    expect(await readFile(managedWireMcpEntry, "utf8")).not.toMatch(/require\((['"])axios\1\)/)
     expect(existsSync(path.join(configDir, "opencode-for-ctf", "package.json"))).toBe(true)
     const pluginMetadata = JSON.parse(
       await readFile(path.join(configDir, "opencode-for-ctf", "package.json"), "utf8"),
     ) as { main?: string; opencode?: { type?: string } }
     expect(pluginMetadata.main).toBe("./plugin/index.js")
     expect(pluginMetadata.opencode?.type).toBe("plugin-runtime-bundle")
+    await expect(probeInstalledPluginRuntime(configDir)).resolves.toMatchObject({ ok: true })
     expect(existsSync(path.join(configDir, "opencode-for-ctf", "mcp-servers"))).toBe(false)
     expect(existsSync(path.join(configDir, "opencode-for-ctf", "runtime", "win-env", "setup_build_path.ps1"))).toBe(
       true,
@@ -78,7 +107,8 @@ describe("managed installer", () => {
     await revertConfigOperations(file, operations)
     expect(await readFile(path.join(configDir, "commands", "ctf.md"), "utf8")).toBe(priorCommand)
     expect((await readJsonc(file)).agent["user-agent"].mode).toBe("primary")
-  }, 30_000)
+    expect((await readJsonc(file)).tools).toEqual({ "user-tool": false })
+  }, 60_000)
 
   it("removes parent objects created by config installation", async () => {
     const configDir = await temporaryDir("ctf-config-rollback-")
@@ -104,9 +134,27 @@ describe("managed installer", () => {
     expect(valueAt(full, ["mcp", "ReVa"])?.enabled).toBe(false)
     expect(valueAt(full, ["mcp", "ReVa"])?.environment).toBeUndefined()
     expect(valueAt(full, ["mcp", "wireshark-mcp"])?.enabled).toBe(false)
+    expect(valueAt(full, ["mcp", "wireshark-mcp"])?.command).toEqual([
+      "node",
+      path.join(configDir, "opencode-for-ctf", "mcp-server", "vendor", "WireMCP", "index.js").replace(/\\/g, "/"),
+    ])
     expect(valueAt(full, ["mcp", "cyberchef-mcp"])?.enabled).toBe(false)
     expect(valueAt(full, ["mcp", "ctfd-mcp"])?.enabled).toBe(false)
-    expect(valueAt(full, ["mcp", "ida-pro"])).toBeUndefined()
+    expect(valueAt(full, ["mcp", "cyberchef-mcp"])?.command).toEqual(["{env:CYBERCHEF_MCP_COMMAND}"])
+    expect(valueAt(full, ["mcp", "ctfd-mcp"])?.command).toEqual(["npx", "-y", "ctfd-mcp-server"])
+    expect(valueAt(full, ["mcp", "ida-pro"])?.command).toEqual(["ida-pro-mcp"])
+    for (const name of ["ida-pro", "jadx-mcp", "gdb-mcp", "mysql-mcp", "x64dbg-mcp", "ssh-mcp"]) {
+      expect(valueAt(full, ["mcp", name])?.enabled).toBe(false)
+    }
+    expect(valueAt(full, ["mcp", "jadx-mcp"])?.command).toEqual(["{env:JADX_MCP_COMMAND}"])
+    expect(valueAt(full, ["mcp", "gdb-mcp"])?.command).toEqual(["{env:GDB_MCP_COMMAND}"])
+    expect(valueAt(full, ["mcp", "mysql-mcp"])?.command).toEqual(["{env:MYSQL_MCP_COMMAND}"])
+    expect(valueAt(full, ["mcp", "x64dbg-mcp"])?.command).toEqual(["{env:X64DBG_MCP_COMMAND}"])
+    expect(valueAt(full, ["mcp", "ssh-mcp"])?.command).toEqual(["{env:SSH_MCP_COMMAND}"])
+  })
+
+  it("defaults managed installation to the full disabled-MCP profile", () => {
+    expect(profileFromArgs([])).toBe("full")
   })
 
   it("refuses managed files through a symlinked target directory", async () => {
@@ -126,7 +174,31 @@ describe("managed installer", () => {
     expect(result.preserved).toContain(path.join("commands", "ctf.md"))
     expect(await readFile(modified, "utf8")).toBe("user customization\n")
     await result.commit()
-  }, 30_000)
+  }, 60_000)
+
+  it("refreshes modified plugin bundle files during upgrade", async () => {
+    const configDir = await temporaryDir("ctf-installer-plugin-refresh-")
+    const initial = await copyManagedFiles(configDir)
+    const bundleEntry = initial.copied.find((entry: { path: string }) =>
+      String(entry.path).replace(/\\/g, "/").startsWith("opencode-for-ctf/plugin/chunks/"),
+    )
+    expect(bundleEntry).toBeDefined()
+    const target = path.join(configDir, bundleEntry!.path)
+    const original = await readFile(target, "utf8")
+    await writeFile(target, "user modification inside generated bundle\n")
+
+    const result = await upgradeManagedFiles(configDir, initial)
+    expect(result.preserved).not.toContain(bundleEntry!.path)
+    expect(await readFile(target, "utf8")).toBe(original)
+    await result.commit()
+  }, 60_000)
+
+  it("keeps the external reference corpus out of active skill paths", async () => {
+    const configDir = await temporaryDir("ctf-installer-skill-paths-")
+    const paths = installedSkillDirs(configDir).map((entry: string) => entry.replace(/\\/g, "/"))
+    expect(paths).toEqual([`${configDir.replace(/\\/g, "/")}/opencode-for-ctf/skills`])
+    expect(paths.join(" ")).not.toContain("skills-external/secknowledge-skill")
+  })
 
   it("only installs external skills when explicitly requested", async () => {
     const configDir = await temporaryDir("ctf-installer-external-")
@@ -138,21 +210,34 @@ describe("managed installer", () => {
 
     process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS = "1"
     const withExternal = await copyManagedFiles(configDir)
-    const externalSourceExists = existsSync(path.resolve("skills-external", "ctf-skills"))
+    const externalSourceExists = existsSync(path.resolve("skills-external", "secknowledge-skill"))
     expect(
-      withExternal.copied.some((entry: { path: string }) => entry.path.includes(`skills-external${path.sep}`)),
+      withExternal.copied.some((entry: { path: string }) =>
+        entry.path.includes(path.join("skills-external", "secknowledge-skill") + path.sep),
+      ),
     ).toBe(externalSourceExists)
   }, 60_000)
 
   it("installs slim knowledge without intermediate pattern-card history", async () => {
     const configDir = await temporaryDir("ctf-installer-slim-knowledge-")
     const resources = await copyManagedFiles(configDir)
-    const patternDir = path.join(configDir, "opencode-for-ctf", "knowledge", "pattern-cards")
+    const patternDir = path.join(configDir, "opencode-for-ctf", "rag", "knowledge", "pattern-cards")
     expect(existsSync(path.join(patternDir, "ljagiello-ctf-skills.cards.v9.json"))).toBe(true)
     expect(existsSync(path.join(patternDir, "synonyms.json"))).toBe(true)
     expect(existsSync(path.join(patternDir, "pwn-curated.cards.v1.json"))).toBe(true)
+    expect(existsSync(path.join(patternDir, "des-ctf", "des-ctf.cards.v1.json"))).toBe(true)
+    expect(
+      existsSync(path.join(configDir, "opencode-for-ctf", "rag", "knowledge", "retros", "retros.index.json")),
+    ).toBe(true)
+    expect(
+      existsSync(
+        path.join(configDir, "opencode-for-ctf", "rag", "knowledge", "sources", "des-ctf-knowledge.manifest.json"),
+      ),
+    ).toBe(true)
     expect(existsSync(path.join(patternDir, "ljagiello-ctf-skills.cards.v8.json"))).toBe(false)
     expect(existsSync(path.join(patternDir, "ljagiello-ctf-skills.cards.json"))).toBe(false)
+    expect(existsSync(path.join(configDir, "opencode-for-ctf", "rag", "knowledge", "imported"))).toBe(false)
+    expect(existsSync(path.join(configDir, "opencode-for-ctf", "rag", "Des-CTF-Knowledge"))).toBe(false)
     expect(existsSync(path.join(patternDir, "curation-candidates.json"))).toBe(false)
     expect(
       resources.copied.some((entry: { path: string }) =>
@@ -177,17 +262,36 @@ describe("managed installer", () => {
     const install = run("install.mjs")
     expect(install.status, install.stderr).toBe(0)
     expect(existsSync(path.join(configDir, "opencode-for-ctf.manifest.json"))).toBe(true)
+    const healthFile = path.join(configDir, "opencode-for-ctf.plugin-health.json")
+    expect(existsSync(healthFile)).toBe(true)
+    expect(JSON.parse(await readFile(healthFile, "utf8"))).toMatchObject({
+      source: "install",
+      state: "installed",
+      pluginImportOk: true,
+    })
 
     const status = run("status.mjs", ["--json", "--strict"])
     expect(status.status, status.stderr).toBe(0)
     expect(JSON.parse(status.stdout)).toMatchObject({
       state: "installed",
+      profile: "full",
       pluginRegistered: true,
+      skillPathsRegistered: true,
+      mcpStubsRegistered: true,
       pluginDiagnostic: {
         installedPluginPresent: true,
+        pluginImportOk: true,
         sourcePluginRisk: false,
       },
     })
+    expect(JSON.parse(await readFile(healthFile, "utf8"))).toMatchObject({
+      source: "status",
+      state: "installed",
+      pluginRegistered: true,
+    })
+
+    const installedConfig = await readJsonc(file)
+    expect(installedConfig.skills?.paths ?? []).toContain(path.join(configDir, "opencode-for-ctf", "skills"))
 
     const upgrade = run("upgrade.mjs")
     expect(upgrade.status, upgrade.stderr).toBe(0)

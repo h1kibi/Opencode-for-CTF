@@ -26,14 +26,14 @@ $ARGUMENTS
 
 0. Recognize the startup environment before route work: identify OS / shell / substrate first. If the host is Kali, remember its built-in tool environment is likely available. If the host is Windows / PowerShell, keep command syntax PowerShell-safe and prefer script-first handling for complex requests.
 1. Load skill `ctf-expert`.
-2. `ctf-evidence-board command=init ...` → creates **Evidence.md**.
+2. `ctf-evidence-board command=init category=<direction> challengeName=<name-if-known> target=<target> ...` → creates `work/ctf-evidence/<direction-name|direction-MMDDHHmmss>/Evidence.md` plus structured state files. Folder names must be `web-hello` style when the title is known, otherwise `pwn-0719131706` style.
 3. **① Recon** — concurrent workers (team dispatch); collect with `add-fact` / `add-clue`.
-4. **② Analysis** — `set-routes` with **exactly 3** routes (`untested`).
+4. **② Analysis** — before `set-routes`, run the mandatory order: evidence/machine-state cross-check → `ctf-lesson-search` (plus modifier plan when strong) → `ctf-retro-search` → `ctf-pattern-card-search` and selected-card hypothesis conversion. Use full-text knowledge only as fallback; then set **exactly 3** routes (`untested`).
 5. **③ Verify** — independent routes concurrent (≤3); dependent chains serial.
    - Update states: `set-route-state routeId=R1 routeState=blocked|dead|live`
    - **blocked ≠ dead** (WAF/obstacles may mean correct path)
-6. **④ Success** — return flag **directly** and stop (no mandatory flag file).
-7. **⑤ Failure** — `next-round` → new 3 routes from accumulated evidence → back to ②.
+6. **④ Success** — return flag **directly** and stop active exploitation (no mandatory flag file). Mention that the user may manually invoke `researcher` with the evidence-case path; do not dispatch or await researcher.
+7. **⑤ Failure** — re-read all evidence, run the same Phase ② local-recall order, then `next-round` / new exactly-three route set as justified.
 
 ## Dynamic MCP
 
@@ -58,10 +58,11 @@ The following hard-required tools must be registered in the process tool registr
 
 | Category | Tools |
 |----------|-------|
-| Team runtime | `ctf-team-dispatch`, `ctf-team-status`, `ctf-team-collect`, `ctf-team-cancel`, `ctf-team-cancel-route`, `ctf-team-close`, `ctf-team-recover` |
+| Team runtime | `ctf-team-dispatch`, `ctf-team-status`, `ctf-team-collect`, `ctf-team-cancel`, `ctf-team-cancel-route`, `ctf-team-close`, `ctf-team-recover`, `ctf-team-adopt` |
 | Core workflow | `ctf-evidence-board`, `ctf-mcp-control`, `ctf-decompose-task` |
 
-Support tools are helpful but non-blocking: `ctf-team-mode`, `ctf-handoff`, `ctf-tool-packs`.
+Support tools are helpful but non-blocking outside Phase ②: `ctf-team-mode`, `ctf-handoff`, `ctf-tool-packs`.
+Phase ② local recall requires `ctf-lesson-search`, `ctf-retro-search`, `ctf-pattern-card-search`, and `ctf-pattern-to-hypothesis`; `ctf-lesson-modifier-plan` and `ctf-skill-repo-search` are conditional helpers.
 If a support tool is unavailable, continue the Expert contract directly with the hard-required tools.
 
 If hard-required tools are missing, restart OpenCode after setting `team_mode.enabled=true`

@@ -1,7 +1,8 @@
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { randomUUID } from "node:crypto"
-import { atomicUpdateJsonFile, loadJsonFile, nowIso } from "./state-store.ts"
+import { withFileLock } from "./file-lock.ts"
+import { atomicUpdateJsonFile, loadJsonFile, nowIso, saveJsonFile } from "./state-store.ts"
 
 export const CASE_SCHEMA_VERSION = 1
 
@@ -52,7 +53,11 @@ export type CaseEvent = {
 }
 
 export function caseDirectory(worktree: string, caseId: string): string {
-  const safe = caseId.trim().replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-|-$/g, "") || "case"
+  const safe =
+    caseId
+      .trim()
+      .replace(/[^A-Za-z0-9._-]+/g, "-")
+      .replace(/^-|-$/g, "") || "case"
   return path.resolve(worktree, "work", "ctf-evidence", safe)
 }
 
@@ -112,23 +117,34 @@ export async function appendCaseEvent(
   data: Record<string, unknown> = {},
 ): Promise<CaseEvent> {
   const directory = caseDirectory(worktree, caseId)
+  const eventsFile = caseEventsFile(worktree, caseId)
   await mkdir(directory, { recursive: true })
   const event: CaseEvent = { eventId: `evt-${randomUUID().slice(0, 12)}`, type, at: nowIso(), caseId, data }
-  await appendFile(caseEventsFile(worktree, caseId), `${JSON.stringify(event)}\n`, "utf8")
+  await withFileLock(eventsFile, async (lease) => {
+    // JSONL append is a state mutation too: serialize it across processes and
+    // refuse to append if this process lost the lease while it was suspended.
+    await lease.assertOwned()
+    await appendFile(eventsFile, `${JSON.stringify(event)}\n`, "utf8")
+    await lease.assertOwned()
+  })
   return event
 }
 
 export async function listCaseEvents(worktree: string, caseId: string): Promise<CaseEvent[]> {
-  try {
-    const raw = await readFile(caseEventsFile(worktree, caseId), "utf8")
-    return raw
-      .split(/\r?\n/)
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as CaseEvent)
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return []
-    throw error
-  }
+  const eventsFile = caseEventsFile(worktree, caseId)
+  return withFileLock(eventsFile, async (lease) => {
+    try {
+      const raw = await readFile(eventsFile, "utf8")
+      await lease.assertOwned()
+      return raw
+        .split(/\r?\n/)
+        .filter(Boolean)
+        .map((line) => JSON.parse(line) as CaseEvent)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return []
+      throw error
+    }
+  })
 }
 
 export type LegacyCaseInput = {
@@ -140,40 +156,41 @@ export type LegacyCaseInput = {
 
 export async function migrateLegacyCase(input: LegacyCaseInput): Promise<{ state: CaseState; migrated: boolean }> {
   const file = caseStateFile(input.worktree, input.caseId)
-  try {
-    const existing = JSON.parse(await readFile(file, "utf8")) as CaseState
-    return { state: validateCase(existing), migrated: false }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      if (error instanceof SyntaxError) throw error
-      throw error
-    }
-  }
-
-  const state = emptyCase(input.caseId)
-  let migrated = false
-  const files = input.legacyStateFiles ?? []
-  for (const legacyFile of files) {
+  return withFileLock(file, async (lease) => {
     try {
-      const parsed = JSON.parse(await readFile(legacyFile, "utf8")) as Record<string, unknown>
-      if (typeof parsed.category === "string") state.family = parsed.category
-      if (typeof parsed.target === "string") state.target = parsed.target
-      if (typeof parsed.flagFormat === "string") state.flagFormat = parsed.flagFormat
-      migrated = true
+      const existing = JSON.parse(await readFile(file, "utf8")) as CaseState
+      return { state: validateCase(existing), migrated: false }
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        if (error instanceof SyntaxError) throw error
+        throw error
+      }
     }
-  }
-  if (input.legacyNotes?.trim()) {
-    state.openQuestions.push("Review migrated notes.md content and convert claims into verified facts.")
-    migrated = true
-  }
-  if (!migrated) return { state, migrated: false }
 
-  await mkdir(path.dirname(file), { recursive: true })
-  const temp = `${file}.migration-${process.pid}-${randomUUID()}`
-  await writeFile(temp, `${JSON.stringify(state, null, 2)}\n`, "utf8")
-  await rename(temp, file)
-  await appendCaseEvent(input.worktree, input.caseId, "case.migrated", { sourceFiles: files })
-  return { state, migrated: true }
+    const state = emptyCase(input.caseId)
+    let migrated = false
+    const files = input.legacyStateFiles ?? []
+    for (const legacyFile of files) {
+      try {
+        const parsed = JSON.parse(await readFile(legacyFile, "utf8")) as Record<string, unknown>
+        if (typeof parsed.category === "string") state.family = parsed.category
+        if (typeof parsed.target === "string") state.target = parsed.target
+        if (typeof parsed.flagFormat === "string") state.flagFormat = parsed.flagFormat
+        migrated = true
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
+      }
+    }
+    if (input.legacyNotes?.trim()) {
+      state.openQuestions.push("Review migrated notes.md content and convert claims into verified facts.")
+      migrated = true
+    }
+    if (!migrated) return { state, migrated: false }
+
+    await lease.assertOwned()
+    await saveJsonFile(file, state)
+    await lease.assertOwned()
+    await appendCaseEvent(input.worktree, input.caseId, "case.migrated", { sourceFiles: files })
+    return { state, migrated: true }
+  })
 }

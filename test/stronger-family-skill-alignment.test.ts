@@ -26,4 +26,12 @@ describe("stronger family skill alignment", () => {
   it("rev reference index exists", () => {
     expect(existsSync(join(root, "skills", "ctf-rev", "references", "REFERENCE_INDEX.md"))).toBe(true)
   })
+
+  it("does not point PWN escalation at retired agent names", () => {
+    const pwnText = readFileSync(join(root, "skills", "ctf-pwn", "SKILL.md"), "utf8")
+
+    expect(pwnText).not.toContain("ctf-rigorous")
+    expect(pwnText).toContain("ctf-expert")
+    expect(pwnText).toContain("ctf-pwn")
+  })
 })

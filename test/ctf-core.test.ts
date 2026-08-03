@@ -83,8 +83,23 @@ describe("decideRoute", () => {
     expect(d.category).toBe("pwn")
   })
 
+  it("marks pure route readiness unknown until runtime probes run", () => {
+    expect(decideRoute({ text: "simple xor", mode: "expert" }).readiness).toBe("unknown")
+  })
+
+  it("adds specialist packs as overlays for expert routes", () => {
+    const android = decideRoute({ text: "Android APK with classes.dex and jadx", mode: "expert" })
+    expect(android.toolPacks).toContain("android")
+    expect(android.reasons).toContain("android overlay")
+
+    const java = decideRoute({ text: "Spring Java deserialization challenge.jar", mode: "expert" })
+    expect(java.toolPacks).toContain("java")
+
+    const godot = decideRoute({ text: "Godot PCK reverse engineering", mode: "expert" })
+    expect(godot.toolPacks).toContain("godot")
+  })
+
   it("exposes a small L0 command surface", () => {
-    expect(COMMAND_SURFACE.L0.some((c) => c.command === "/ctf")).toBe(true)
-    expect(COMMAND_SURFACE.L0.length).toBeLessThanOrEqual(8)
+    expect(COMMAND_SURFACE.L0.map((c) => c.command)).toEqual(["/ctf", "/help", "/ctf-fast", "/ctf-expert", "/resume"])
   })
 })

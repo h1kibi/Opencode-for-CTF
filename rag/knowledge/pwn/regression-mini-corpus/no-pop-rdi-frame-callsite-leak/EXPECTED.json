@@ -1,0 +1,25 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "no-pop-rdi-frame-callsite-leak",
+  "sample_type": "c-source",
+  "expected_primitive": "FRAME_INDEXED_CALLSITE_LEAK",
+  "expected_tags": {
+    "control": [
+      "saved_rbp"
+    ],
+    "leak": [
+      "got"
+    ],
+    "callsite": [
+      "rbp_relative_arg",
+      "original_callsite",
+      "puts"
+    ]
+  },
+  "minimal_probe_shape": "reuse original puts/printf callsite instead of requiring pop rdi",
+  "confirm_oracle": "target bytes printed via original callsite",
+  "falsify_oracle": "original callsite cannot be reentered or argument not frame-derived",
+  "anti_pattern_to_avoid": [
+    "missing_gadget_over_blocking_callsite"
+  ]
+}

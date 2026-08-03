@@ -16,6 +16,13 @@ Use when entropy, section names, import scarcity, runtime code writes, or unpack
 4. Dump post-unpack code or hook final compare before deep static analysis.
 5. Continue with normal checker slicing on dumped/unpacked code.
 
+## Windows PE Memory Path
+
+- If `upx -d` reports `NotPackedException` because section names were changed, do not keep fighting the packer stub.
+- Run `ctf-pe-unpack target=<pe> launch=true` (or `ctf-runtime-dump` for an already-running process) to dump and rebuild the in-memory PE.
+- After the dump, run `ctf-memstr` on the dump directory and `ctf-rev-pe-recovery` on the rebuilt PE.
+- For Windows-specific memory dump, PE rebuild, `.pdata` function seeds, and cdb/x64dbg automation, load `windows-packed-pe-rebuild.md`.
+
 ## Unpack Ledger
 
 | Stage | Address | Event | Dump Candidate | Evidence |

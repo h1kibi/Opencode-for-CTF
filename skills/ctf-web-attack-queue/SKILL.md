@@ -6,6 +6,30 @@ compatibility: opencode
 
 # CTF Web Attack Queue
 
+## Stop Conditions
+
+Stop when the signal is falsified, the stated budget is exhausted, the action would exceed scope/risk, or the result is sufficient for handoff. Do not continue with payload variants without a new discriminator.
+
+## Dispatch / Handoff
+
+Return one bounded candidate to `ctf-web` and the selected focused skill; re-rank after the probe result instead of continuing silently.
+
+## First Safe Action
+
+Read the recon map, deduplicate candidates, and score them before sending any focused probe.
+
+## Required Inputs
+
+Require the current Web phase, candidate/surface, relevant evidence, target constraints, and an explicit attempt or mutation budget before probing.
+
+## Do Not Load When
+
+Do not load without a matching observed signal, and do not use this focused skill to replace the `ctf-web` phase controller or global route ranking.
+
+## Load When
+
+Load after Web recon produces a surface map and at least one candidate attack direction.
+
 ## Purpose
 
 After recon provides a surface map, score each candidate attack path and choose the highest-value, lowest-cost, lowest-risk direction first. Do not pursue the first visible vulnerability just because it appeared first.

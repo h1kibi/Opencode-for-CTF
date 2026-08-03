@@ -16,7 +16,9 @@ describe("benchmark fixture corpus", () => {
   })
 
   it("seed fixtures follow the expected behavior template", () => {
-    const seeds = benchmarkFamilies.map((entry) => join(root, "benchmarks", entry.family, entry.name, "expected_behavior.md"))
+    const seeds = benchmarkFamilies.map((entry) =>
+      join(root, "benchmarks", entry.family, entry.name, "expected_behavior.md"),
+    )
     for (const file of seeds) {
       const body = readFileSync(file, "utf8")
       expect(body).toContain("## Goal")

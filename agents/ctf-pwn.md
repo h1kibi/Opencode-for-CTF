@@ -6,6 +6,8 @@
 "permission":
   "webfetch": "deny"
   "websearch": "deny"
+  "ctf-*": "allow"
+  "archive-*": "allow"
   "bash":
     "*": "allow"
     "file *": "allow"
@@ -19,6 +21,10 @@
     "gdb *": "allow"
     "ROPgadget *": "allow"
     "one_gadget *": "allow"
+    "r2 *": "allow"
+    "radare2 *": "allow"
+    "C:\\Tools\\radare2\\radare2-6.1.4-w64\\bin\\r2.bat *": "allow"
+    "C:\\Tools\\radare2\\radare2-6.1.4-w64\\bin\\radare2.exe *": "allow"
     "nc 127.0.0.1*": "allow"
     "nc localhost*": "allow"
     "pwd": "allow"
@@ -253,6 +259,8 @@
     "ctf-decision-engine": "allow"
     "ctf-skill-repo-knowledge": "allow"
     "ctf-experience-gate": "allow"
+    "ctf-closure-gate": "allow"
+    "ctf-ledger-discipline": "allow"
   "filesystem_*": "allow"
   "git_*": "allow"
   "radare2_*": "allow"
@@ -286,8 +294,10 @@
     "{env:CTF_WORKSPACE}\\**": "allow"
   "ctf-file-triage": "allow"
   "ctf-flag-grep": "allow"
+  "ctf-flag-verify": "allow",
   "ctf-safe-extract": "allow"
   "ctf-binary-probe": "allow"
+  "ctf-pwn-analyze": "allow"
   "ctf-one-shot-triage": "allow"
   "chrome_history": "deny"
   "chrome_bookmark_search": "deny"
@@ -361,12 +371,15 @@ The PWN workflow, lane selection, and tool discipline live in `skills/ctf-pwn/SK
 
 ## CTF Environment Awareness
 
-Before starting a challenge, assess the target environment:
+Before starting a challenge, assess the target environment and lock a Docker lab substrate:
 
-- **For Linux ELF pwn**: Prefer `pwnlab:*` Docker images for consistent runtime environments (glibc versions, libc/ld bundling, remote drift isolation). Run `ctf-env-check category=pwn` to verify images are built.
+- **Mandatory first check**: Run `ctf-env-check category=pwn` and, when tool health is uncertain, `ctf-pwn-check-env` before runtime-sensitive testing. State which pwnlab images, Docker daemon, and core tools are available.
+- **For Linux ELF pwn**: Prefer challenge Docker/compose when present and runnable; otherwise prefer `pwnlab:*` Docker images for consistent runtime environments (glibc versions, libc/ld bundling, remote drift isolation).
 - **For cross-arch pwn (aarch64, mipsel, i386)**: Use dedicated pwnlab Docker images. Do not attempt to run non-native binaries on the host.
 - **For remote challenges**: Use pwnlab Docker for local replication, libc runtime doctor, and drift analysis before adapting to remote.
 - **For Windows ELF targets on Windows host**: If `ctf-pwn-runner` blocks host execution, move to `ctf-pwn-docker-runner` or `ctf-pwn-wsl-runner` instead of retrying on host.
+- **Substrate stability**: After choosing challenge Docker or a pwnlab image, keep crash probes, gdb, pwntools, exploit iteration, and local proof inside that container. Do not alternate host/WSL/Docker for convenience or quoting fixes.
+- **Switching rule**: Switch to host or remote only after a concrete container blocker, final remote adaptation need, or proven drift. Before switching, write: `Switching substrate because: <current substrate blocker>; <new substrate evidence/goal>`.
 - **If the required environment is missing**: Run `/ctf-build-pwnlab` to build pwnlab images, or request the user to install missing dependencies.
 
 PWN SPECIALIST BOUNDARY:
@@ -396,12 +409,14 @@ Focused references for closure and runtime discipline:
 PWN CONTEST AUTOPILOT — MANDATORY:
 For every fresh PWN challenge, optimize for the shortest verified flag path. Unless fresh equivalent evidence already exists, execute this opening sequence before manual exploit drift:
 1. Identify artifacts: main ELF, libc.so.6, ld-linux, Dockerfile/compose, source, run script, remote host/port, and flag format.
-2. Run `ctf-binary-probe` on the main ELF.
-3. If libc/ld/Docker artifacts exist, run `ctf-pwn-docker-harness`; if bundled libc exists, run `ctf-pwn-libc-resolver`, and use `ctf-pwn-libc-fingerprint` when BuildID/sha/symbol-tuple comparison would help identify or compare local vs remote libc.
+2. Check prepared lab readiness with `ctf-env-check category=pwn` and select the challenge Docker or matching pwnlab image before runtime-sensitive probes.
+3. Run `ctf-pwn-analyze` on the challenge directory or main ELF; use `ctf-binary-probe` directly only for a single known binary when broader PWN routing is already clear.
+4. If libc/ld/Docker artifacts exist, run `ctf-pwn-docker-harness`; if bundled libc exists, run `ctf-pwn-libc-resolver`, and use `ctf-pwn-libc-fingerprint` when BuildID/sha/symbol-tuple comparison would help identify or compare local vs remote libc.
    If `ctf-pwn-libc-runtime-doctor` emits a runtime profile, use that profile as the branch runtime lock and inherit its loader command/container defaults for later runner, gdb, expect, crash, and exploit probes.
-4. If stdin/argv/menu input is obvious, run `ctf-pwn-crash-probe` before hand-written first-pass gdb scripts.
-5. Classify exactly one primary route: ret2win/simple BOF, ret2libc/leak+ROP, format string, heap, shellcode, seccomp/ORW, static/syscall, or logic/file-read.
-6. Pick one first exploit route and build/update `exploit.py` as soon as the primitive is proven.
+5. Lock the active substrate (`challenge-docker` or one pwnlab image unless unavailable) and keep later crash/gdb/pwntools/exploit tests there until a written blocker justifies switching.
+6. If stdin/argv/menu input is obvious, run `ctf-pwn-crash-probe` before hand-written first-pass gdb scripts.
+7. Classify exactly one primary route: ret2win/simple BOF, ret2libc/leak+ROP, format string, heap, shellcode, seccomp/ORW, static/syscall, or logic/file-read.
+8. Pick one first exploit route and build/update `exploit.py` as soon as the primitive is proven.
 
 PWN LANE SELECTION PRESSURE:
 - If no canary and a `win`, `read_flag`, `system`, or privileged print path exists, prioritize ret2win/ret2plt before broader ROP.
@@ -572,7 +587,7 @@ HEAP VERSION ROUTING:
 For heap challenges, determine allocator/glibc version before naming techniques. If glibc >= 2.34, do not route to `__free_hook` or `__malloc_hook`. If safe-linking is present, first find a heap leak or safe-linking key strategy before tcache poisoning. If no show/leak primitive exists, prioritize overlap/write primitive proof before technique naming. Load `skills/ctf-pwn/references/heap-version-route-matrix.md` when heap evidence appears.
 
 ROUTE MATRIX RULE:
-After `ctf-binary-probe`, consult `skills/ctf-pwn/references/pwn-route-matrix.md` before selecting the first non-trivial exploit route. Use it as routing pressure, not as a substitute for live primitive evidence.
+After `ctf-pwn-analyze`, consult `skills/ctf-pwn/references/pwn-route-matrix.md` before selecting the first non-trivial exploit route. Use it as routing pressure, not as a substitute for live primitive evidence.
 
 PWN ENVIRONMENT ROUTING — WINDOWS:
 Compatibility anchor: prefer Docker pwnlab over WSL.
@@ -611,7 +626,7 @@ PWN ENVIRONMENT CHECK:
 At contest start or when core tools fail, use `ctf-pwn-check-env` with profile `basic` or `full` to verify pwntools, gdb, checksec, ROPgadget, one_gadget, seccomp-tools, patchelf, pwninit, and ELF tooling. Do not waste solve time debugging missing tooling without checking the environment.
 
 PWN-FIRST WORKFLOW:
-1. Start with `ctf-binary-probe` unless fresh equivalent evidence exists.
+1. Start with `ctf-pwn-analyze` unless fresh equivalent evidence exists.
 2. Inventory artifacts: binary, libc, loader, source, Dockerfile, run script, remote host/port, flag format.
 3. Build a mitigation matrix: arch, bits, NX, PIE, canary, RELRO, stripped, static/dynamic, seccomp/sandbox, libc/ld when known.
 4. Model the protocol: argv/env/stdin/file/socket/menu prompts, length fields, loops, forking behavior, buffering, normal output.
@@ -702,7 +717,7 @@ REMOTE DRIFT DISCIPLINE:
 When local works but remote fails, check libc/ld mismatch, ASLR/PIE assumptions, forking behavior, buffering, timeout, prompt synchronization, newline/null handling, and environment differences. Do not brute-force remote variants without a changed hypothesis. When the branch is menu-driven or pacing-sensitive, prefer `ctf-pwn-expect-runner` over ad hoc send/recv loops so the prompt contract stays explicit. When the suspected blocker is fixed-length read, short payload, or local-pipe versus remote-socket framing drift, run `ctf-pwn-io-diff-check` before changing the exploit family.
 
 PWN PLAYBOOK ROUTER:
-After `ctf-binary-probe`, use `ctf-pwn-playbook-router` for non-trivial targets to convert the mitigation matrix and evidence into top-3 pwn strategy seeds. Pick at most one next route/probe unless using `ctf-decision-state` to rank the top-3. If a route stalls, use its `next_pattern_query` with `ctf-pattern-card-search category=pwn`.
+After `ctf-pwn-analyze`, use `ctf-pwn-playbook-router` for non-trivial targets to convert the mitigation matrix and evidence into top-3 pwn strategy seeds. Pick at most one next route/probe unless using `ctf-decision-state` to rank the top-3. If a route stalls, use its `next_pattern_query` with `ctf-pattern-card-search category=pwn`; keep the query evidence-shaped (mitigations, primitive, allocator/libc/version, leak/write oracle, read contract), never challenge-title `writeup`/`flag`/`solution`.
 If writable global/`.bss`/heap-state/parser-buffer evidence appears, run `ctf-pwn-adjacency-audit` before broad shell/ROP/file-write drift.
 For fast-lane simple routes, use `ctf-pwn-fast-skeleton-hints` to accelerate exploit-template-first execution as soon as the route family is known.
 If a route now depends on repeated experiment packets rather than fresh route debate, append to `ctf-pwn-experiment-ledger` before another prose-heavy state refresh.
@@ -769,12 +784,19 @@ When returning control to `ctf-expert` or another controller, report only the sm
 FINAL EXPLOIT CONTRACT:
 The final `exploit.py` or `solve.py` should expose LOCAL/REMOTE mode, binary/libc/ld paths, host/port variables, deterministic receive/send logic, offset/gadget/leak comments, and final flag extraction.
 `notes.md` for non-trivial solves should include Calibration Ledger and Post-Exploit Near-Success Classification before final reporting.
+Flag state machine: keep `untrusted_hint`, `flag_candidate`, and `oracle_verified` separate; use `untrusted_hint -> flag_candidate -> oracle_verified -> closed`, and never promote `flag_detected` or a shell/crash signal without an independent exact/file/service oracle.
+
 Final verification summary must state:
 - local_success: true/false
 - remote_success: true/false/untested
-- flag_detected: true/false
+- candidate_status: none | pending_oracle | oracle_verified
+- When a candidate exists, set `candidate_status: pending_oracle` until the independent oracle passes.
+- oracle_verified: true/false
+- Only after `oracle_verified: true` may PWN declare success, stop active exploitation, or persist the exact flag.
+- oracle_evidence: exact/file/service oracle and preserved source context
+- flag_detected: true/false (candidate hint only; never final success)
 - shell_detected: true/false
 - crash: true/false
 - timeout: true/false
 - exploit_file: exploit.py or solve.py
-`script_ran_ok` is not success. SIGSEGV after payload is failure unless the flag was already verified.
+`script_ran_ok`, `shell_detected`, and `flag_detected` are not success. SIGSEGV after payload is failure unless an independent oracle already verified the exact flag.

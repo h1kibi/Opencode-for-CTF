@@ -1,0 +1,20 @@
+const fs = require('fs')
+const path = require('path')
+const base = 'C:/Users/Administrator/.config/opencode/knowledge/pattern-cards'
+const input = path.join(base, 'ljagiello-ctf-skills.cards.v5.json')
+const output = path.join(base, 'ljagiello-ctf-skills.cards.v6.json')
+function text(c){return `${c.category} ${c.kind} ${c.title} ${c.trigger} ${c.first_safe_check} ${c.oracle} ${c.source_file} ${(c.keywords||[]).join(' ')}`.toLowerCase()}
+const rules={
+ web:[['server-parser-sink',/template|ssti|render|include|lfi|path|wrapper|parser|mismatch|file|get_contents|directory traversal/],['url-fetcher',/ssrf|url|webhook|callback|fetch|redirect|gopher|metadata|host/],['authz-state',/idor|tenant|role|owner|object|workflow|state|csrf|permission/],['client-runtime',/xss|dom|csp|postmessage|bot|browser|storage|script/],['upload-storage',/upload|file write|archive|polyglot|multipart|filename/],['auth-token',/jwt|jws|jwe|oauth|saml|cookie|session|kid|jku|alg|bearer/]],
+ pwn:[['format-string',/format|string|printf|%p|%n|got/],['heap',/heap|uaf|tcache|fastbin|unsorted|fsop|allocator|double.free/],['rop-shellcode',/rop|ret2|srop|shellcode|syscall|one_gadget|stack pivot/],['kernel-sandbox',/kernel|seccomp|sandbox|modprobe|core_pattern|krop/]],
+ crypto:[['rsa',/rsa|modulus|prime|coppersmith|wiener|fermat|broadcast|common modulus|dp|dq/],['symmetric-mode',/aes|cbc|ecb|gcm|padding|nonce|iv|bitflip|oracle|ctr|ofb/],['prng',/prng|lcg|mt19937|lfsr|seed|xorshift|random|rand/],['ecc',/ecc|ecdsa|curve|subgroup|invalid curve|ed25519/],['lattice',/lattice|lll|bkz|hnp|lwe|coppersmith|cvp|knapsack/],['hash-mac',/hash|mac|hmac|crc|length extension|collision/]],
+ reverse:[['custom-vm',/vm|bytecode|opcode|dispatch|interpreter|emulator/],['anti-analysis',/anti|debug|packer|timing|ptrace|self.modifying|opaque|frida/],['language-platform',/android|apk|wasm|go|rust|python|java|\.net|swift|kotlin|language|platform/],['validation-slice',/validation|check|compare|constant|transform|z3|solver|license|flag/]],
+ forensics:[['network',/pcap|tcp|dns|http|packet|stream|wireshark|tshark|covert|timing/],['disk-memory',/disk|memory|volatility|registry|docker|deleted|filesystem|mft|vmdk|image.dd/],['stego-media',/stego|image|audio|spectrogram|qr|barcode|video|lsb|bitplane|palette|metadata/],['artifact-triage',/archive|extract|binwalk|strings|magic|trailing|embedded|metadata/]],
+ misc:[['jail',/pyjail|bashjail|sandbox|restricted|builtins|object graph|no quotes|mro/],['encoding',/encoding|base64|base32|hex|rot|xor|unicode|qr|morse|multi.layer/],['constraint-game-vm',/game|vm|z3|constraint|solver|dp|search|oracle|state/],['protocol-signal',/dns|rf|sdr|signal|uart|modulation|iq|protocol/]]
+}
+function classify(c){const t=text(c); const cat=rules[c.category]||[]; const scores=[]; for(const [name,re] of cat){let s=0; if(re.test(t))s+=3; if((c.subfamily||'')===name)s+=3; if((c.probe_template||'').toLowerCase().includes(name.split('-')[0]))s+=1; scores.push([name,s])} scores.sort((a,b)=>b[1]-a[1]); const matched=scores.filter(x=>x[1]>0); const labels=matched.length?matched.map(x=>x[0]):[(c.subfamily||`${c.category}-general`)]; const primary=labels[0]; const total=matched.reduce((a,b)=>a+b[1],0)||1; const confidence=Math.max(0.35, Math.min(0.98, (matched[0]?.[1]||1)/total + (c.curated?0.12:0) + (c.distilled?0.08:0))); return {labels:Array.from(new Set(labels)).slice(0,4), primary, confidence:Number(confidence.toFixed(2))}}
+const idx=JSON.parse(fs.readFileSync(input,'utf8'))
+const cards=idx.cards.map(c=>{const m=classify(c); return {...c, primary_subfamily:m.primary, subfamilies:m.labels, subfamily_confidence:m.confidence, index_version:6, rank_boost:(c.rank_boost||0)+Math.round(m.confidence*6)}})
+const meta={...idx.meta, version:6, generated_at:new Date().toISOString(), cards:cards.length, multi_label_cards:cards.filter(c=>(c.subfamilies||[]).length>1).length, v6_features:['primary_subfamily','subfamilies','subfamily_confidence','multi_label_classification']}
+fs.writeFileSync(output,JSON.stringify({meta,cards},null,2))
+console.log('v6_cards='+cards.length); console.log('multi_label='+meta.multi_label_cards); console.log('out='+output)

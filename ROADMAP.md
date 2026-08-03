@@ -11,7 +11,7 @@ This is the development roadmap for Opencode-for-CTF. It reflects current priori
 - [x] **Default entry convergence** — `/ctf` is the single default user path; reduced public command surface documented via `/help`
 - [x] **Category router** — Pure `decideRoute()` in `ctf-core` + `ctf-route-plan` tool; hooks inject solve-mode hints
 - [x] **Plugin user config** — `opencode-for-ctf.jsonc` with `disabled_hooks`, hashline/continuation/team toggles
-- [x] **Naming debt** — `ctf-expert` / `/ctf-solve` marked compatibility-only; primary agents are `ctf-fast` + `ctf-expert`
+- [x] **Naming debt** — historical compatibility commands removed from installed slash-command surface; primary agents are `ctf-fast` + `ctf-expert`
 - [x] **Adapter package** — `ctf-adapter-opencode` now re-exports router + OpenCode product constants (no empty stub)
 - [x] **CI release gate** — Build plugin before `release:check`; package files include INSTALL/LICENSE/SECURITY
 - [x] **Slim pack Phase A** — Drop intermediate pattern cards / skills-external from default npm+install; pack content probe in `release-check`

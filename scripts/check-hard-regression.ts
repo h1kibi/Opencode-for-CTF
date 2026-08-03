@@ -1,3 +1,4 @@
+// Manual QA utility — not part of CI or npm run check. Run with: npx tsx scripts/check-hard-regression.ts
 import { existsSync, readFileSync, readdirSync, statSync } from "fs"
 import { join, resolve } from "path"
 

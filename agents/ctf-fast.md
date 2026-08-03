@@ -30,15 +30,22 @@
     "go install *": "ask"
     "choco install *": "ask"
     "scoop install *": "ask"
+    "nuclei *": "ask"
+    "C:\\Tools\\nuclei\\nuclei.exe *": "ask"
     "ffuf *": "ask"
+    "C:\\Tools\\ffuf\\ffuf.exe *": "ask"
     "gobuster *": "ask"
     "feroxbuster *": "ask"
+    "C:\\Tools\\feroxbuster\\feroxbuster.exe *": "ask"
     "wfuzz *": "ask"
     "dirsearch *": "ask"
+    "python C:\\Tools\\dirsearch\\dirsearch.py *": "ask"
     "sqlmap *": "ask"
+    "python C:\\Tools\\sqlmap\\sqlmap.py *": "ask"
     "hydra *": "ask"
     "ncrack *": "ask"
     "nmap *": "ask"
+    "C:\\Tools\\nmap\\nmap.exe *": "ask"
     "docker compose up*": "ask"
     "docker compose build*": "ask"
     "curl *|sh*": "deny"
@@ -94,13 +101,14 @@
 
 ## 工具环境（硬约束）
 
-运行时只允许轻量工具白名单（插件会拦截其余 `ctf-*`）：
+运行时只允许轻量工具白名单（插件会拦截其余 `ctf-*`）。**注意：这里描述的是 fast surface 允许调用的工具，不等于当前会话一定已经导出这些工具；工具仍取决于启动时启用的 packs，并且改完 pack / 插件配置后需要重启 OpenCode。可用 `/ctf-tool-packs` 检查当前导出与 `ctf-fast` 可见性。**
 
-- 路由/分诊：`ctf-route-plan`, `ctf-file-triage`, `ctf-one-shot-triage`, `ctf-binary-probe`, `ctf-flag-grep`
+- 路由/分诊：`ctf-route-plan`, `ctf-file-triage`, `ctf-one-shot-triage`, `ctf-flag-grep`
 - 解压/读档：`archive-safe-extract`, `ctf-safe-extract`, `doc-read`, `image-file-info`
-- Web 轻量：`ctf-web-fingerprint`, `ctf-web-blackbox-map`, `ctf-web-probe`
-- Pwn 轻量：`ctf-pwn-runner`, `ctf-pwn-check-env`
-- Crypto/取证轻量：`ctf-rsa-probe`, `ctf-pcap-probe`, `ctf-stego-probe`, `ctf-image-open`
+- Web 轻量：`ctf-web-analyze`, `ctf-web-fingerprint`, `ctf-web-blackbox-map`, `ctf-web-probe`
+- Pwn 轻量：`ctf-pwn-analyze`, `ctf-pwn-runner`, `ctf-pwn-check-env`, `ctf-pwn-fast-skeleton-hints`, `ctf-pwn-offset`, `ctf-pwn-probe`, `ctf-pwn-libc-hint`
+- Rev/Crypto/取证/Misc 入口：`ctf-rev-analyze`, `ctf-crypto-analyze`, `ctf-forensics-analyze`, `ctf-misc-analyze`
+- 已分类后的 focused fallback：`ctf-binary-probe`, `ctf-rsa-probe`, `ctf-pcap-probe`, `ctf-stego-probe`, `ctf-image-open`
 - 脚本：`ctf-python-inline`, `ctf-ensure-dir`
 - MCP 查询：`ctf-dynamic-mcp-advisor`（仅 check/list；不要依赖 heavy MCP）
 
@@ -128,6 +136,17 @@
 - 确定 flag 格式和提交方式
 - 检查已有工具是否足够
 
+### PWN / REV Docker Lab 稳定规则
+
+当快速路由判断题目是 PWN 或 REV 时，不要把宿主机、WSL、Docker、远端混着试：
+
+1. 先做预备环境 check：PWN 用 `ctf-env-check category=pwn` / `ctf-pwn-check-env`；REV 用 `ctf-env-check category=rev`。
+2. 识别题目环境：Dockerfile/compose、libc/loader、架构、运行脚本、远端 host/port、是否需要 Android/GUI/硬件。
+3. 优先选择 challenge Docker；没有则选择准备好的 pwnlab/revlab 镜像。
+4. 一旦选择，就在该 Docker lab 中固定运行 crash/调试/脚本/验证，不要因为 PowerShell/WSL/容器之间的引号差异来回切换。
+5. 只有在拿到本地容器成果、遇到明确容器 blocker、或需要最终 remote adaptation 时，才切到宿主机或远端。
+6. 切换前必须写一句：`Switching substrate because: <当前 lab blocker>; <新环境验证目标>`。
+
 ### 直觉解题
 - 根据题目类型直接选择最可能的解题路径
 - 优先尝试最简单、最直接的方案
@@ -150,7 +169,7 @@
 | 类型 | 快速策略 |
 |------|---------|
 | **Web** | curl 查看响应 → 检查常见端点 → 尝试简单注入/绕过 |
-| **PWN** | checksec → 运行看行为 → 尝试 ret2win/简单溢出 |
+| **PWN** | checksec → 运行看行为 → `ctf-pwn-fast-skeleton-hints` 选 ret2win/ret2libc/format/orw/heap-menu 最短模板 → 本地 proof |
 | **Reverse** | strings → file → 运行看输出 → 简单 patch/调试 |
 | **Crypto** | 识别算法 → 尝试已知攻击 → 写 Python 解 |
 | **Forensics** | file → binwalk → strings → 提取隐藏内容 |
@@ -199,3 +218,31 @@
 - 需要 Team Mode / Evidence.md / heavy MCP
 - 题目 source-rich 或分类不清且快路径无解
 - 需要安装大量工具或长时间分析
+
+### Windows REV fast path (packed / memory-rebuilt PE)
+
+For Windows PE challenges with packed sections, memory-only code, or an interactive stdin checker:
+
+1. Run `ctf-env-check category=rev` first. If it reports `cli:ida-license` as invalid, do not retry IDA; use the fallback path immediately.
+2. Run `ctf-pe-unpack target=<pe> launch=true` when the on-disk PE is a stub or packed. It detects UPX/VMProtect/Themida-style section/entropy signals, dumps the running image, and rebuilds an analyzable PE.
+3. Run `ctf-runtime-dump processName=<name>` (or `pid=<pid>`) directly when the target is already running and you only need the memory image.
+4. If ReVa/Ghidra still recover too few functions from a pure memory rebuild, run `ctf-pe-hybrid-rebuild original=<pe> memoryImage=<runtime-module-bin>` to keep original imports/resources and replace executable sections from the dump.
+5. Run `ctf-memstr target=<dump-dir-or-bin>` for ASCII/UTF-16 strings from the dumped memory before decompilation.
+6. Run `ctf-rev-pe-recovery target=<rebuilt-or-hybrid-pe> linear=true` to seed x64 functions from `.pdata` (or prologue fallback) and produce bounded `objdump` chunks instead of one full linear disassembly.
+7. For interactive checker automation, use `ctf-windows-expect-runner` for stdin/file input and timeout kill. Use `ctf-windows-debug-helper debugger=cdb run=true` when cdb/WinDbg exists. x64dbg remains GUI-only here; the helper generates an x64dbg script, but does not promise headless stdin automation.
+
+Fast-lane fallback order for Windows REV:
+
+- Licensed IDA > rebuilt PE in IDA > rebuilt PE in Ghidra/ReVa.
+- If IDA license is invalid or unverified, go to Ghidra/ReVa/objdump without spending time on IDA.
+- If `.pdata` exists, use `ctf-rev-pe-recovery` before a full Ghidra auto-analysis pass.
+- Do not make `radare2 -A` the primary analyzer for a rebuilt or packed PE; its function discovery is unreliable there. Use `.pdata` seeds and bounded `objdump`/Ghidra instead.
+- If WSL/Kali is used for `upx` or Linux-only tools, prefer `ctf-pwn-wsl-runner` so PowerShell/WSL quoting and UTF-16 output are handled by the wrapper.
+
+## Flag reporting contract
+
+Use the shared strict flag extractor and `skills/ctf-common/references/flag-identification-rules.md`. A default candidate must match the 3–80 prefix / 10–80 safe-payload rule or be a UUID-shaped flag; bare MD5/SHA-256 requires explicit flag-file/readflag context. Treat every hit as candidate evidence until an independent oracle verifies it, preserve source context, and never report short samples or generic hashes as flags. Flag state machine (mandatory): `untrusted_hint -> flag_candidate -> oracle_verified -> closed`. A flag-shaped value is only a candidate. Apply the shared strict flag-identification rules, preserve its exact source/origin/context, and set `candidate_status: pending_oracle` until an independent exact/file/service oracle passes (prefer `ctf-flag-verify` followed by `command=flag-verify` or the smallest challenge-specific checker). Only after `oracle_verified: true` may the agent declare success, stop active exploitation, or write `agent_flag.txt`. Never promote `flag_detected`, `direct_solve`, a decoded-looking string, a worker claim, or a single regex hit by itself.
+
+### 分类后路由兼容性
+
+Rev/Crypto/取证/Misc 入口保持 facade-first；优先使用已分类后的 focused fallback，再执行直接探针。已分类后的 focused fallback 使用 `ctf-rev-analyze`, `ctf-crypto-analyze`, `ctf-forensics-analyze`, `ctf-misc-analyze`。

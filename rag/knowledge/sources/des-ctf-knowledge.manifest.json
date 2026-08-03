@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "source_id": "des-ctf-knowledge",
+  "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+  "source_commit": "unknown",
+  "local_mirror": "rag/Des-CTF-Knowledge",
+  "local_mirror_committed": false,
+  "compilation_license": "MIT",
+  "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+  "import_policy": "Complete local mirror; only attributed compact derivatives are committed or published.",
+  "source_summary": {
+    "files": 1408,
+    "bytes": 38429860,
+    "extension_counts": {
+      ".md": 1207,
+      "[none]": 5,
+      ".pdf": 3,
+      ".py": 121,
+      ".txt": 18,
+      ".jpg": 2,
+      ".dat": 1,
+      ".yml": 1,
+      ".js": 8,
+      ".enc": 1,
+      ".dic": 1,
+      ".png": 40
+    }
+  },
+  "selected_index_sources": [
+    {
+      "path": "AI-SEARCH-INDEX.md",
+      "sha256": "debf19dc2111494a7d1162dd6cd31c56899811a15c072d4cc680a1303ff667fb",
+      "bytes": 15787
+    },
+    {
+      "path": "JWT.idx.md",
+      "sha256": "143f99f6a257b7a58dd67d5facc2863cce360bd707a9e5e322a2302def353996",
+      "bytes": 742
+    },
+    {
+      "path": "PAYLOAD-CHEATSHEET.md",
+      "sha256": "1bb8d8c9cfbe056b6a209588d3d80668838adab04668b7011fd505ee3d31038c",
+      "bytes": 18936
+    },
+    {
+      "path": "PHP反序列化漏洞总结.idx.md",
+      "sha256": "64447db313b18bdc217e0f93c4e0edbd20451c3afd7a7ec4f9c70953d9a474fc",
+      "bytes": 1074
+    },
+    {
+      "path": "SQL.idx.md",
+      "sha256": "b41215392842a18791b18996a04f6db0947f3219fca0ef8ed97e554e757a314e",
+      "bytes": 691
+    },
+    {
+      "path": "SSRF漏洞.idx.md",
+      "sha256": "ed405ba19fda5b540c9a3733224cf6cfe0c58e693e01bc5b13e9987cb107472a",
+      "bytes": 813
+    },
+    {
+      "path": "php代码审计.idx.md",
+      "sha256": "de0c2d357655f35aec41079ae31de8445457b59e67c46efa2622572f56b8622b",
+      "bytes": 1334
+    },
+    {
+      "path": "压缩包总结.idx.md",
+      "sha256": "a049e08da4387461de0f4465200321509f61b11656b2baf2a329d504f7ca2b97",
+      "bytes": 823
+    },
+    {
+      "path": "命令执行.idx.md",
+      "sha256": "1edc7a94cd3904f8e96114321a9f6c42023102af88820e8df841a2cdccbffd4e",
+      "bytes": 790
+    },
+    {
+      "path": "图片隐写.idx.md",
+      "sha256": "43a5a32f4334e11169eb037f15159bff5fd48fe8265ec1c61fb5d3fdce5a868a",
+      "bytes": 1068
+    },
+    {
+      "path": "文件上传漏洞.idx.md",
+      "sha256": "2d65f019c8e514a996c428794af5a8e4cd20d68305a566a1ce1eb454b8182bab",
+      "bytes": 818
+    },
+    {
+      "path": "文件包含.idx.md",
+      "sha256": "95709eb8f77d0bdeb1a3343984b42db7dd0153dd6bbb2ba4f20e19ab5d06f63c",
+      "bytes": 905
+    }
+  ],
+  "excluded_from_committed_assets": [
+    "CTF大赛WP集合/articles/**",
+    "CTF常用脚本及工具/**",
+    "raw scripts and binaries",
+    "exact flags and secrets"
+  ],
+  "generated_assets": [
+    "rag/knowledge/pattern-cards/des-ctf/des-ctf.cards.v1.json"
+  ],
+  "generated_card_count": 45
+}

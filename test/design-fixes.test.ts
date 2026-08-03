@@ -19,13 +19,15 @@ describe("problem fixes integration", () => {
     expect(toolAllowedForAgent("ctf-evidence-board", effective)).toBe(true)
     expect(toolAllowedForAgent("ctf-team-dispatch", effective)).toBe(true)
     clearSessionSurface(sid)
-    expect(toolAllowedForAgent("ctf-evidence-board", "ctf-fast")).toBe(false)
+    expect(toolAllowedForAgent("ctf-evidence-board", "ctf-fast")).toBe(true)
+    expect(toolAllowedForAgent("ctf-team-dispatch", "ctf-fast")).toBe(false)
   })
 
-  it("2. fast allowlist is strict; handoff is on allowlist for lane switch", () => {
+  it("2. fast allowlist is strict; handoff and evidence init are on allowlist", () => {
     expect(FAST_TOOL_ALLOWLIST.has("ctf-handoff")).toBe(true)
-    expect(FAST_TOOL_ALLOWLIST.has("ctf-evidence-board")).toBe(false)
+    expect(FAST_TOOL_ALLOWLIST.has("ctf-evidence-board")).toBe(true)
     expect(FAST_TOOL_ALLOWLIST.has("ctf-route-plan")).toBe(true)
+    expect(FAST_TOOL_ALLOWLIST.has("ctf-team-dispatch")).toBe(false)
   })
 
   it("3/4. team route ids are documented constants via session surface independence", () => {

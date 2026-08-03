@@ -7,7 +7,7 @@ import {
   removeFileIfExists,
   atomicUpdateJsonFile,
 } from "../src/state-store.js"
-import { mkdtempSync, writeFileSync, existsSync, readFileSync } from "node:fs"
+import { mkdtempSync, writeFileSync, existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 
@@ -64,10 +64,17 @@ describe("loadJsonFile", () => {
     expect(result).toEqual([])
   })
 
-  it("throws for invalid JSON instead of silently resetting state", async () => {
+  it("quarantines invalid JSON and falls back instead of throwing", async () => {
+    // Regression: a corrupt state file used to throw out of session hooks
+    // (chat.message etc.), killing the whole message/session. It must now
+    // return the fallback and quarantine the damaged file for forensics.
     const file = tmpFile("invalid")
     writeFileSync(file, "not-json", "utf-8")
-    await expect(loadJsonFile(file, { ok: false })).rejects.toThrow(SyntaxError)
+    const result = await loadJsonFile(file, { ok: false })
+    expect(result).toEqual({ ok: false })
+    expect(existsSync(file)).toBe(false)
+    const quarantine = readdirSync(join(file, "..")).filter((name) => name.includes(".corrupt-"))
+    expect(quarantine.length).toBe(1)
   })
 
   it("parses valid JSON", async () => {

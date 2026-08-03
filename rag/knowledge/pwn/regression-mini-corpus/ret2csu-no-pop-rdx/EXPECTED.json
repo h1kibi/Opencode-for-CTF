@@ -1,0 +1,20 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "ret2csu-no-pop-rdx",
+  "sample_type": "c-source",
+  "expected_primitive": "pwn.primitive.ret2csu_arg_control",
+  "expected_tags": {
+    "control": [
+      "saved_rip"
+    ],
+    "closure": [
+      "ret2libc"
+    ]
+  },
+  "minimal_probe_shape": "use CSU pop/call pair to control rdi/rsi/rdx",
+  "confirm_oracle": "benign controlled call receives expected args",
+  "falsify_oracle": "CSU pair absent or loop setup invalid",
+  "anti_pattern_to_avoid": [
+    "missing_pop_rdx_route_abandonment"
+  ]
+}

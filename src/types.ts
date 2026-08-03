@@ -79,11 +79,29 @@ export type ContinuationInterruptMarker = {
   interruptedAt: string
 }
 
+/**
+ * Lease lifecycle for a named MCP server:
+ *   pending       — recorded for this session, server not owned by us yet
+ *   connecting    — we hold the claim and are performing the external connect
+ *   connected     — server usable by this session (we may or may not own it)
+ *   disconnecting — we are performing the external disconnect
+ *   unknown       — external state could not be confirmed (compensation queue)
+ * `connected` (boolean) stays in sync for legacy readers.
+ */
+export type SkillMcpLeaseStatus = "pending" | "connecting" | "connected" | "disconnecting" | "unknown"
+
 export type SkillMcpLease = {
   skillName: string
   sessionID: string
   serverName: string
+  /** Legacy boolean — kept in sync with `status` for older readers. */
   connected: boolean
+  /** Lifecycle state; absent on legacy leases (infer from `connected`). */
+  status?: SkillMcpLeaseStatus
+  /** ISO timestamp when the current status was entered (stale takeover window). */
+  transitionAt?: string
+  /** Per-attempt fencing token; only the holder may finalize the transition. */
+  ownerToken?: string
   disconnectWhenIdle?: boolean
   config: Record<string, unknown>
   createdAt: string
@@ -140,9 +158,22 @@ export type AgentMcpRequest = {
   updatedAt: string
 }
 
+export type AgentMcpActivationIssue = {
+  id: string
+  agent: string
+  sessionID: string
+  serverName: string
+  phase: "agent_default" | "skill" | "request"
+  code: string
+  message: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type AgentMcpState = {
   version: number
   activeProfiles: Array<{ agent: string; sessionID: string; serverNames: string[] }>
   requests: AgentMcpRequest[]
+  activationIssues?: AgentMcpActivationIssue[]
   updatedAt: string
 }

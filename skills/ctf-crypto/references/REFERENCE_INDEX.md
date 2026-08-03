@@ -28,6 +28,14 @@ Use this file as the top-level trigger map for `skills/ctf-crypto/references/`. 
 - LCG / MT / time seed / low entropy seed
   - `prng-state-recovery.md`
 
+## Lattice / HNP / ZKP
+
+- partial nonce, hidden-number, short-error, subset-sum, or weak LWE-shaped instances
+  - `lattice-and-zkp.md`
+
+- Fiat-Shamir transcript binding, commitment reuse, challenge or response consistency
+  - `lattice-and-zkp.md`
+
 ## Classical / Encodings / Layered Transforms
 
 - XOR / substitution / transposition / base encodings / compression stacks
@@ -35,7 +43,8 @@ Use this file as the top-level trigger map for `skills/ctf-crypto/references/`. 
 
 ## Trigger Rules
 
-- If the branch is RSA-shaped, start with `rsa.md` and `ctf-rsa-probe`.
+- Start with `ctf-crypto-analyze` for primitive routing; if the branch is RSA-shaped, use `rsa.md` and direct `ctf-rsa-probe` only for a narrower rerun.
+- Load `lattice-and-zkp.md` only after recording dimensions, bounds, noise/leak assumptions, and the native verifier; do not equate the word “lattice” with an exploitable instance.
 - If a challenge is clearly parameter- or oracle-driven, build a parameter inventory before coding.
 - If the first attack path fails, pivot to the nearest reversible/family-specific fallback before brute force.
 - If the problem is not crypto-shaped after normalization, hand off to misc/rev/forensics as evidence dictates.

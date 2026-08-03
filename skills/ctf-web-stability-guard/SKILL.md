@@ -6,6 +6,30 @@ compatibility: opencode
 
 # CTF Web Stability Guard
 
+## Stop Conditions
+
+Stop when the signal is falsified, the stated budget is exhausted, the action would exceed scope/risk, or the result is sufficient for handoff. Do not continue with payload variants without a new discriminator.
+
+## Dispatch / Handoff
+
+Return allow/deny, risk class, canary, rollback, and stop condition to the calling Web skill before execution.
+
+## First Safe Action
+
+Classify the proposed action by mutation, concurrency, bot, and rollback risk before allowing it.
+
+## Required Inputs
+
+Require the current Web phase, candidate/surface, relevant evidence, target constraints, and an explicit attempt or mutation budget before probing.
+
+## Do Not Load When
+
+Do not load without a matching observed signal, and do not use this focused skill to replace the `ctf-web` phase controller or global route ranking.
+
+## Load When
+
+Load before any state-changing, destructive, high-concurrency, bot-triggering, or overwrite action.
+
 ## Purpose
 
 Prevent the agent from crashing, deadlocking, corrupting, or destabilizing the challenge instance during exploitation. Every state-changing action must pass through this gate.

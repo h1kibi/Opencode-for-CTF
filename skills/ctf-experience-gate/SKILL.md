@@ -1,10 +1,31 @@
 ---
 name: ctf-experience-gate
-description: Use for CTF decision-layer experience gating before deep exploitation, especially when evidence is present but the solver is drifting, over-enumerating, searching for writeups, or failing to convert source/black-box observations into a primitive. Builds constraint equations, pattern recall, pivot budgets, and common chain-shape hypotheses across Web, pwn, rev, crypto, forensics, and misc.
+description: Use for CTF decision-layer experience gating when evidence exists but the solver is drifting, over-enumerating, searching for writeups, or failing to convert observations into a primitive.
 compatibility: opencode
 ---
 
 # CTF Experience Gate
+
+
+## Load When
+
+Load before using recalled patterns, lessons, benchmark knowledge, or a speed-lane shortcut to influence the current route.
+
+## Do Not Load When
+
+Do not use recall to replace live evidence, to invent a flag path, or to bypass the current category's first safe probe and evidence gate.
+
+## Required Inputs
+
+Require the current phase, at least two concrete case signals, known constraints, failed paths, and the retrieval source or tool that produced any lesson/pattern hit.
+
+## First Safe Action
+
+Separate confirmed facts from candidate analogies, then apply recall only as a ranking modifier with an explicit verification probe.
+
+## Dispatch / Handoff
+
+Return modified route scores and the discriminator that would falsify the recalled pattern to `ctf-decision-engine` and the active category owner.
 
 This skill is not a payload catalog. It is a decision-layer gate that converts observations into constraints, primitives, or pivots. Use it when a challenge is medium/hard, source or strong black-box evidence exists, or the solver is tempted to keep exploring without a new differential.
 
@@ -265,89 +286,9 @@ Hard rules:
 - If the branch is stale or noisy, first check a matching `failure-*.md` or `anti-pattern-*.md` lesson before authoring another same-family probe.
 - Lessons should change behavior: queue ranking, budget, owner selection, or closure order. If a lesson does not change any of those, do not cite it as if it were evidence.
 
-## CTF Web Instinct Layered Decision Gate
+## Web Instinct and Closure Gate
 
-CTF Web solving should prioritize likely challenge-intended, low-cost, high-yield paths over realistic-but-long exploit chains. Do not let confirmed but low-yield phenomena dominate the main line.
-
-Layered priority order:
-
-1. Challenge clues: credentials, page hints, unusual names, comments, masks, filenames, challenge text.
-2. Low-cost high-yield source/data surfaces: `.git/HEAD`, `.git/index`, `.phps`, `~`, `.bak`, `.swp`, `.zip`, backup archives, debug/source/history leaks.
-3. Source-guided sink audit: SQL sinks, file read/write sinks, include/require, unserialize, eval/template/code execution, config/secret reads.
-4. Classic teaching-vulnerability mapping from code structure and dangerous functions.
-5. Phenomenon-only Web bugs such as XSS, CRLF, open redirect, reflection, or weak parser differential only if they are close to flag/source/database or unlock a stronger primitive.
-
-Source Availability Priority Gate:
-
-- If the target looks like an old PHP site, BUU/NSS/common training platform, simple page with many interaction points, traditional directory/static resource layout, acquired login state, or artificial CTF app rather than real business, put source acquisition in the top two hypotheses.
-- If source acquisition cost is lower than continuing black-box chain building, check source surfaces before deep exploit chaining: `.git/HEAD`, `.git/index`, `.phps`, `~`, `.bak`, `.swp`, `.zip`, backup/source archives, and recoverable git history.
-- Do not spend a long branch on CRLF/XSS/parser phenomena while a cheap source-leak check remains untested.
-
-Primitive Value Gate:
-
-- High-value primitives: arbitrary file read, source leak, SQLi with data read, deserialization/POP, file write, SSRF to internal/source, command/code execution, config/secret read.
-- Medium-value primitives: stored XSS, CRLF, open redirect, reflection, weak parser differential, header injection, UI-only state difference.
-- A medium-value primitive must show a two-step route to flag/source/database/privileged state before it becomes the main line. Otherwise downgrade it after at most two no-progress probes.
-
-Classic Function Mapping:
-
-- `addslashes` / legacy mysql escaping -> wide-byte SQL injection or encoding/collation bypass.
-- `include`, `require`, `readfile`, `file_get_contents` -> LFI, wrappers, path normalization, precheck/sink consumer mismatch.
-- `file_put_contents` / upload move -> file-write chain, wrapper/filter adapter, include/webroot/session/.user.ini trigger.
-- `unserialize` -> POP chain and magic-method sink mapping.
-- `preg_replace /e`, `eval`, `assert`, template render with user input -> code execution/template injection.
-- `header("Location: ...$input")` -> CRLF/open redirect, but keep below source/SQL/file-chain unless it reaches flag path quickly.
-- Raw HTML output -> XSS/reflection, but require a clear admin-bot/secret/flag route before main-line commitment.
-
-Black-Box Difference Correction:
-
-Before promoting a response/page difference to the main line, answer:
-
-1. Is it execution evidence or only reflected/data-display evidence?
-2. Is it on a read path or write path?
-3. Can it directly yield data echo, state change, permission change, file/source/database read, or stronger primitive?
-
-Only-reflection evidence must not occupy the main line for long. If two same-family probes do not move closer to source/database/file/flag, downgrade and pivot.
-
-Budget Stop-Loss:
-
-- Two same-family probes without a new differential -> downgrade that branch.
-- If 10-15 minutes or one focused mini-loop does not move closer to source/database/file/flag, force pivot.
-- If an untested cheap high-yield branch exists, do not continue deepening a complex medium-value chain.
-
-## Challenge Clue Priority Gate
-
-Do not let generic black-box methodology override strong challenge-provided clues. If the page, title, source comment, robots, error text, placeholder, sample credential, visible username/password shape, masked string, unusual filename, parameter name, or challenge description gives a distinctive clue, treat it as a high-priority primitive candidate.
-
-Hard rules:
-
-- Before broad mechanism hunting, write a Clue Ledger: exact clue string, where it appears, possible role, implied structure, controlled inputs it relates to, and cheapest confirmation oracle.
-- Exhaust a small, bounded clue-first budget before generic branches: usually 3-6 targeted variants, or 1-2 pattern-card/hypothesis conversions if the clue maps to a known family.
-- For credential-shaped clues, do not stop after the literal value fails. Interpret masks and repetition as structure hints: prefix/suffix, fixed padding, username-derived password, leetspeak/date/common suffix, hidden length, wildcard/star placeholders, or normalization/case hints.
-- A strong visible clue outranks generic black-box differentials unless clue-first probes are falsified or the clue is confirmed decoy/noise.
-- After clue-first budget fails, explicitly record why the clue is exhausted before moving to login differential, source extension probing, content-type confusion, or unrelated route discovery.
-
-## Primitive Composition Gate
-
-When source, SSRF, LFI, debug leak, decompile output, or route tracing reveals a concrete primitive or sink, stop broad recon and try to close the exploit chain from existing pieces first.
-
-Hard rules:
-
-- Sink-first closure: once a sink/gadget is known, write a Primitive Ledger before looking for new routes/parameters: controlled data, controlled path/name, transform/prefix/suffix, trigger, execution context, oracle, and blockers.
-- Composition before discovery: do not search for hidden routes, extra parameters, more protocols, or internal enumeration until the top two chain-closure probes for the existing primitive have failed or been falsified.
-- Pattern recall by sink: immediately query local pattern cards using the concrete sink/function/class/protocol names, not only the broad bug family. Examples: `file_put_contents php filter write base64 prefix`, `file_get_contents include data scheme parser mismatch`, `__toString hasaki file_put_contents php unserialize`.
-- Chain shape thinking: convert primitive -> required capability -> adapter pattern. Examples: file write -> executable write via wrapper/filter; precheck read + include sink -> parser differential; SSRF source read -> source-guided gadget closure; upload write -> include/render/static serve; deserialization gadget -> sink adapter.
-- New-surface budget: after a strong primitive is found, at most one cheap new-surface check is allowed before chain closure. More discovery requires evidence that the primitive is unreachable, untriggerable, or non-composable.
-- If a known sink maps to a curated pattern card, the next step must be `ctf-pattern-to-hypothesis` or a one-variable probe from that card.
-
-## PHP Chain-Closure Patterns
-
-High-value PHP patterns to recall before more recon:
-
-- `file_put_contents` with controlled path/content: prioritize write adapters such as `php://filter/write=convert.base64-decode/resource=...`, path-to-webroot/include target, `.user.ini`/auto_prepend when applicable, phar/session/upload pivots when reachable. If a fixed PHP prefix/suffix pollutes content, test base64 decoder tolerance or alignment padding before abandoning the write sink.
-- PHP unserialize gadget ending in file write: `__toString`, destructor, magic method, or method-call gadget plus `file_put_contents` should be modeled as controlled write first, then transformed into execution/read primitive using wrappers or reachable include/static path.
-- `file_get_contents($x)` precheck followed by `include($x)` sink: prioritize protocol/parser semantic mismatch. Do not treat one `data://` failure as falsifying all `data:` behavior. Test exact scheme syntax differences such as `data:,harmless/path` versus `data://...`, wrapper normalization, and whether the precheck and include consume different resources.
-- If SSRF already gave source or local-only PHP files, consider SSRF solved as a source acquisition/access primitive. Do not keep enumerating SSRF protocols unless source-guided chain closure fails.
+For Web branches where source acquisition, clue-first probing, medium-value phenomena, or PHP closure patterns compete, read `references/web-instinct-and-closure.md` and apply only the subsection matching current evidence.
 
 ## Core Principle
 
@@ -384,7 +325,7 @@ If this table is empty, return to recon. If it is filled, stop generic explorati
 
 ## Experience Pattern Recall
 
-Pattern recall must happen before direct writeup search when stuck. Use offline pattern cards first via `ctf-pattern-card-search`; prefer v6 cards whose `subfamilies` overlap current evidence and whose `primary_subfamily`, `subfamily_confidence`, `precondition_signals`, and `probe_template` fit the constraint equation; convert the chosen card with `ctf-pattern-to-hypothesis`; if cards are weak or too generic, fall back to the local `ljagiello/ctf-skills` mirror through `ctf-skill-repo-search` for full-text context. After the card-backed hypothesis is confirmed, falsified, misleading, weak, or leads to a flag, record `ctf-pattern-feedback`. Feedback is consumed by the v4/v5/v6 card index builders to promote useful cards and demote weak/misleading cards.
+Pattern recall must happen before direct writeup search when stuck. Use offline pattern cards first via `ctf-pattern-card-search`; prefer v6 cards whose `subfamilies` overlap current evidence and whose `primary_subfamily`, `subfamily_confidence`, `precondition_signals`, and `probe_template` fit the constraint equation; convert the chosen card with `ctf-pattern-to-hypothesis`; if cards are weak or too generic, fall back to the the local SecKnowledge reference mirror through `ctf-skill-repo-search` for full-text context. After the card-backed hypothesis is confirmed, falsified, misleading, weak, or leads to a flag, record `ctf-pattern-feedback`. Feedback is consumed by the v4/v5/v6 card index builders to promote useful cards and demote weak/misleading cards.
 
 Good pattern query shape:
 
@@ -467,108 +408,9 @@ Use these to rank candidates, not as fixed recipes:
 - Binary leak -> base address/canary -> control primitive -> win/flag function or shell.
 - Forensics metadata/strings/archive -> embedded object -> transform/decode -> flag.
 
-## Cross-Category Evidence Router
+## Cross-Category Router and Pattern Map
 
-Use this router before spawning subagents or diving into a single category. It is inspired by the multi-skill organization of public CTF skill repositories: each category has first questions, resource families, pivot rules, and common primitive shapes.
-
-| Evidence | Prefer | First primitive to prove | Pivot if |
-|---|---|---|---|
-| HTTP routes, JS, cookies, templates, APIs, browser bot | Web | read/bypass/forge/render/execute one controlled effect | source shows crypto/math/binary/forensics as real blocker |
-| Native binary, crash, checksec, libc, heap, ROP, kernel | Pwn | leak, write, control RIP/function pointer, syscall, win path | behavior not understood -> reverse first |
-| Obfuscated binary, APK, WASM, bytecode, VM, anti-debug | Reverse | recover validation logic, constants, state machine, transform | bug understood and exploit remains -> pwn; algorithm is crypto -> crypto |
-| RSA/AES/ECC/lattice/PRNG/hash/signature/math oracle | Crypto | recover key/plaintext/nonce/seed or forge one token | artifact extraction or implementation reversing is blocker |
-| PCAP, disk image, memory dump, image/audio/PDF/archive/stego | Forensics | extract artifact, stream, hidden layer, credential, or flag fragment | recovered app/binary/crypto becomes blocker |
-| Jail, encoding stack, esolang, game, VM puzzle, DNS/RF oddity | Misc | escape, decode layer, solve constraints, recover protocol state | becomes web/pwn/rev/crypto/forensics dominated |
-
-## Category First Questions
-
-### Web
-
-- Where is the flag likely to be: browser, API, file, DB, internal service, admin state?
-- What boundary is trusted: header, cookie, route, object ID, parser, template, file path, upload metadata, callback URL?
-- Are multiple parsers disagreeing: proxy/app, URL/fetcher, sanitizer/browser, checker/sink, content-type/body parser?
-- What is the smallest primitive: read one file, forge one token, call one endpoint, trigger one bot visit?
-
-### Pwn
-
-- Do we understand the binary behavior, or should reverse run first?
-- What protections matter: PIE, NX, RELRO, canary, seccomp, ASLR, libc version?
-- What primitive exists: leak, overflow, format string, UAF, OOB, arbitrary read/write, syscall, win function?
-- What is the shortest stable chain: ret2win, ret2libc, ROP/SROP, heap poisoning, FSOP, kernel privesc?
-
-### Reverse
-
-- What is the validation target: flag string, license, protocol, VM bytecode, game state, cryptographic transform?
-- Is static analysis enough, or is a runtime oracle faster?
-- Are there anti-analysis mechanisms: packing, ptrace, timing, signals, self-modifying code, VMProtect/Themida-like behavior?
-- Can constants/transforms be extracted into a solver instead of fully decompiling everything?
-
-### Crypto
-
-- What are the public parameters, oracle access, and flag encoding?
-- Is this textbook misuse, weak parameters, nonce/seed reuse, padding/oracle, lattice/Coppersmith, or custom algebra?
-- Can known prefix/format reduce the problem?
-- Is the fastest path direct math, Sage/Python modeling, z3/LLL, or protocol interaction?
-
-### Forensics
-
-- What artifact type is real: archive, disk, memory, pcap, image, audio, PDF, logs, registry, Docker layer?
-- Is the flag direct, fragmented, encoded, hidden in metadata, carved, or recovered via timeline?
-- What layer should be peeled first, and what evidence proves progress?
-- If a recovered artifact is another challenge type, pivot quickly.
-
-### Misc
-
-- Is it encoding, jail, constraint puzzle, protocol oddity, game/VM, DNS/RF, or platform navigation?
-- What is the oracle: length, comparison, timeout, error, score, server state, decoded layer?
-- Can the task be modeled with z3, dynamic programming, graph search, symbolic execution, or automated interaction?
-- Stop manual guessing when a solver/oracle model exists.
-
-## Fast Pattern Map
-
-Use this as a local pattern recall layer before external search.
-
-### Web patterns
-
-- Parser mismatch, template/file read, SSRF, command execution, XML/XXE, upload/write, deserialization -> server-side pattern family.
-- XSS, CSP, admin bot, DOM, postMessage, browser normalization, cache poisoning -> client-side pattern family.
-- JWT, cookie signing, OAuth/OIDC, SAML, IDOR, hidden admin, role/tenant confusion -> auth/access pattern family.
-- Source/config leak -> secret recovery -> token/session forgery is often faster than payload brute force.
-
-### Pwn patterns
-
-- Crash with easy control -> ret2win/ret2libc before exotic ROP.
-- Format string -> leak first, then write primitive; avoid blind overwrite before offset/oracle.
-- Heap/UAF/OOB -> identify allocator/libc/tcache/fastbin/unsorted primitive before one_gadget hunting.
-- Seccomp/kernel/sandbox -> enumerate allowed syscalls/objects before generic shellcode.
-
-### Reverse patterns
-
-- Strings/constants/imports first; then validation slice; then dynamic oracle if static is noisy.
-- Custom VM -> identify instruction format, dispatch loop, state registers, and trace one sample.
-- Anti-debug/packing -> bypass/dump/trace minimal region, not full unpack unless needed.
-- Transform validation -> lift to Python/z3; do not decompile unrelated UI/framework code.
-
-### Crypto patterns
-
-- RSA -> check small factors, shared primes, small e, common modulus, close primes, leaked dp/dq/phi, broadcast, Coppersmith.
-- Symmetric -> mode misuse, IV/nonce reuse, padding oracle, ECB/cut-paste, CBC bitflip, GCM nonce reuse.
-- PRNG -> seed/time, LCG/MT/LFSR state recovery, partial outputs, known plaintext.
-- Lattice/ECC/ZKP -> identify dimension, leakage type, subgroup/order, reused nonce, invalid curve, setup trust.
-
-### Forensics patterns
-
-- File/archive -> magic bytes, embedded files, trailing data, safe extraction, flag grep.
-- PCAP -> HTTP/DNS/TCP streams, credentials, uploaded/downloaded files, timing/covert channels.
-- Disk/memory -> process list, filescan, registry/logs, deleted files, browser artifacts, Docker layers.
-- Media/stego -> metadata, bitplanes, palettes, frames, audio spectrogram, QR/barcode, overlay/trailing data.
-
-### Misc patterns
-
-- Encoding stack -> identify charset/alphabet/entropy/magic bytes; automate layered decode.
-- Pyjail/bashjail -> enumerate allowed syntax/builtins, oracle, object graph, environment, no-call/no-quote bypass families.
-- Game/VM/constraint -> model state transitions; use z3/DP/search rather than manual play.
-- CTF platform/navigation -> use API/state carefully; separate platform hints from challenge artifacts.
+When category ownership, first questions, or fast pattern recall is unclear, read `references/category-router-and-pattern-map.md` before spawning subagents or diving into a single category.
 
 ## Knowledge Use Policy
 
@@ -598,3 +440,7 @@ Next one-variable test: ...
 Pivot/kill rule: ...
 External search allowed? no | pattern-only | title-writeup-after-stuck
 ```
+
+## Stop Conditions
+
+Stop recall when it cannot produce a case-specific discriminator, when the evidence contradicts the analogy, or when retrieval is unavailable. Return to live evidence and keep the route unchanged unless the discriminator changes its score.

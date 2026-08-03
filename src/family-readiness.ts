@@ -100,16 +100,24 @@ export function summarizeStartupEnvironment(
 
   const guidance: string[] = []
   if (substrate === "kali") {
-    guidance.push("Detected Kali Linux — remember Kali's built-in security tooling is likely available, so prefer native system tools before inventing workarounds.")
+    guidance.push(
+      "Detected Kali Linux — remember Kali's built-in security tooling is likely available, so prefer native system tools before inventing workarounds.",
+    )
   }
   if (os === "windows" || shell === "powershell") {
-    guidance.push("Detected Windows/PowerShell — for fast probing, default to PowerShell-safe syntax, use `curl.exe` when literal curl semantics matter, avoid bash/heredoc examples like `python - <<'PY'`, use `python -c` for trivial snippets, and prefer `ctf-python-inline` or small script files when quoting, redirection, loops, or multi-line HTTP payloads would make one-liners fragile.")
+    guidance.push(
+      "Detected Windows/PowerShell — for fast probing, default to PowerShell-safe syntax, use `curl.exe` when literal curl semantics matter, avoid bash/heredoc examples like `python - <<'PY'`, use `python -c` for trivial snippets, and prefer `ctf-python-inline` or small script files when quoting, redirection, loops, or multi-line HTTP payloads would make one-liners fragile.",
+    )
   }
   if (wslProbe?.ok) {
-    guidance.push("Detected a Linux environment launched via WSL — keep Linux-heavy probes inside that Linux environment and use Linux-native bash/heredoc patterns there instead of assembling them in PowerShell first.")
+    guidance.push(
+      "Detected a Linux environment launched via WSL — keep Linux-heavy probes inside that Linux environment and use Linux-native bash/heredoc patterns there instead of assembling them in PowerShell first.",
+    )
   }
   if (!guidance.length && substrate === "native-linux") {
-    guidance.push("Detected native Linux — use the host's native CLI/toolchain directly when it matches the challenge workflow; bash-native pipelines, shell loops, heredocs, and inline `python - <<'PY'` snippets are appropriate here.")
+    guidance.push(
+      "Detected native Linux — use the host's native CLI/toolchain directly when it matches the challenge workflow; bash-native pipelines, shell loops, heredocs, and inline `python - <<'PY'` snippets are appropriate here.",
+    )
   }
 
   return { os, shell, substrate, guidance }
@@ -119,14 +127,15 @@ export function formatStartupEnvironmentSummary(
   environmentProbes?: Record<string, EnvironmentProbeResult>,
 ): string | undefined {
   const summary = summarizeStartupEnvironment(environmentProbes)
-  if (!summary.guidance.length && summary.os === "unknown" && summary.shell === "unknown" && summary.substrate === "unknown") {
+  if (
+    !summary.guidance.length &&
+    summary.os === "unknown" &&
+    summary.shell === "unknown" &&
+    summary.substrate === "unknown"
+  ) {
     return undefined
   }
-  const parts = [
-    `os=${summary.os}`,
-    `shell=${summary.shell}`,
-    `substrate=${summary.substrate}`,
-  ]
+  const parts = [`os=${summary.os}`, `shell=${summary.shell}`, `substrate=${summary.substrate}`]
   const lines = [`Startup environment: ${parts.join(", ")}`]
   for (const note of summary.guidance) lines.push(`- ${note}`)
   return lines.join("\n")
@@ -134,9 +143,7 @@ export function formatStartupEnvironmentSummary(
 
 export function evaluateFamilyReadiness(input: FamilyReadinessInput): FamilyReadinessReport {
   const contract = FAMILY_CAPABILITY_CONTRACTS[input.family]
-  const registered = new Set(
-    [...input.registeredTools].map((name) => name.replace(/\.(ts|js)$/, "")).filter(Boolean),
-  )
+  const registered = new Set([...input.registeredTools].map((name) => name.replace(/\.(ts|js)$/, "")).filter(Boolean))
   const packs = new Set(input.enabledToolPacks.filter(isToolPackId))
   const checks = baselineChecks(contract)
 
@@ -184,8 +191,12 @@ export function evaluateFamilyReadiness(input: FamilyReadinessInput): FamilyRead
       id: `mcp-default:${serverId}`,
       ok,
       required: true,
-      detail: ok ? `${serverId} included in ${familyAgentName(input.family)} defaults` : `${serverId} missing from agent defaults`,
-      remediation: ok ? undefined : `Align ${familyAgentName(input.family)} MCP defaults with the family capability contract.`,
+      detail: ok
+        ? `${serverId} included in ${familyAgentName(input.family)} defaults`
+        : `${serverId} missing from agent defaults`,
+      remediation: ok
+        ? undefined
+        : `Align ${familyAgentName(input.family)} MCP defaults with the family capability contract.`,
     })
   }
 
@@ -197,7 +208,9 @@ export function evaluateFamilyReadiness(input: FamilyReadinessInput): FamilyRead
       ok,
       required: false,
       detail: ok ? `${serverId} available for request/approval` : `${serverId} missing from MCP registry`,
-      remediation: ok ? undefined : `Register ${serverId} in MCP_SERVER_REGISTRY or remove it from the family contract.`,
+      remediation: ok
+        ? undefined
+        : `Register ${serverId} in MCP_SERVER_REGISTRY or remove it from the family contract.`,
     })
   }
 
@@ -220,11 +233,7 @@ export function evaluateFamilyReadiness(input: FamilyReadinessInput): FamilyRead
 
   const hardFailures = checks.filter((check) => check.required && !check.ok)
   const softFailures = checks.filter((check) => !check.required && !check.ok)
-  const status: FamilyCapabilityStatus = hardFailures.length
-    ? "blocked"
-    : softFailures.length
-      ? "degraded"
-      : "ready"
+  const status: FamilyCapabilityStatus = hardFailures.length ? "blocked" : softFailures.length ? "degraded" : "ready"
 
   return {
     family: input.family,

@@ -88,7 +88,7 @@ describe("family readiness", () => {
 
   it("surfaces MCP backend remediation for forensics", () => {
     const checks = FAMILY_CAPABILITY_CONTRACTS.forensics.readinessChecks
-    expect(checks.find((check) => check.id === "mcp:wireshark")?.remediation).toContain("WIREMCP_LAUNCHER")
+    expect(checks.find((check) => check.id === "mcp:wireshark")?.remediation).toContain("managed WireMCP")
     expect(checks.find((check) => check.id === "mcp:cyberchef")?.detail).toContain("cyberchef-mcp")
   })
 

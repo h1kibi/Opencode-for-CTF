@@ -14,13 +14,52 @@ This skill is the Web challenge controller and phase dispatcher. It enforces the
 
 ## Contract
 
+The orchestrator returns phase state, not exploit success:
+
+```yaml
+phase: recon | attack-queue | focused-probe | primitive-lock | control-plane | final-chain | retro
+status: continue | pivot | blocked | dead | close
+owner: ctf-web | <focused-skill>
+strongest_signal: <one evidence-backed sentence>
+next_action: <one bounded action>
+flag_status: absent | candidate | oracle-verified
+oracle_verified: false | true
+```
+
+A flag-shaped string from source, HTTP, browser, or command output is only a
+candidate. Keep `oracle_verified: false` until an independent exact/file/hash
+oracle accepts the value; never treat `flag_candidates`, `flag_detected`, or
+`direct_solve` from a scanner as final closure.
+
+## Load When
+
+Load when routing identifies a Web-shaped challenge or when a live Web surface becomes the dominant evidence path.
+
+## Do Not Load When
+
+Do not load for a static artifact with no HTTP/client boundary, and do not let a Web leaf skill replace this phase controller.
+
+## Required Inputs
+
+Require the target/source inventory, current Web phase, route/input/auth map, and the latest evidence snapshot or route plan.
+
+## First Safe Action
+
+Run the Web analysis facade and establish a read-only recon map before selecting a focused vulnerability skill.
+
+## Dispatch / Handoff
+
+Dispatch only after the phase gate: recon -> attack queue -> focused probe -> primitive lock -> control plane -> final chain. Pivot to another category only with explicit evidence.
+
 - Start reference navigation from `references/REFERENCE_INDEX.md` when multiple Web subfamilies or phases compete.
 - Keep this skill thin: own phase discipline, route selection, and skill dispatch only.
 - Keep `notes.md` centered on the current phase, current primitive candidate, and next smallest safe check.
 - Pivot early when the dominant evidence is really pwn/rev/crypto/forensics/misc shaped.
 
-## Scope
+## Post-foothold closure contract
 
+When a Web primitive reaches a file, service, host, or internal boundary, load `../ctf-common/references/flag-candidate-oracle.md`. Use `ctf-flag-verify` to distinguish a strict candidate from an oracle-verified value, then record success with `ctf-evidence-board command=flag-verify`. A reachable `/flag`, root UID, HTTP 200, or readable deployment secret is not flag proof by itself.
+## Scope
 Use only for authorized CTF, lab, benchmark, or local web services. Avoid aggressive brute force and broad scanning unless the challenge explicitly requires it.
 
 ## Inputs
@@ -45,7 +84,7 @@ Next required action:
 
 ### Phase: recon
 
-- Load `ctf-web-recon`.
+- Run `ctf-web-analyze` first; `ctf-web-recon` remains for compatibility.
 - If source is available, also load `ctf-web-source-map`.
 - Perform read-only reconnaissance: map routes, inputs, auth boundaries, framework fingerprint, debug/admin/upload/editor surfaces, and bot behavior.
 - Output a Recon Map with candidate attack directions.
@@ -127,14 +166,7 @@ Use references to keep this controller compact:
 - Build the shortest stable chain.
 - Before any destructive or high-risk action, consult `ctf-web-stability-guard`.
 - Write `solve.py` or `solve.js`.
-- Verify the flag and write `agent_flag.txt`.
-
-### Phase: retro
-
-- Load `ctf-web-retro`.
-- Analyze what worked and what failed.
-- Generate lessons learned.
-- Produce skill patch proposals if needed.
+- Run `ctf-evidence-board` with `command=flag-verify`, or another independent challenge oracle; only then write `agent_flag.txt`.
 
 ### Phase: retro
 
@@ -153,11 +185,11 @@ Use references to keep this controller compact:
 
 ## Skill Dispatch
 
-### Core Flow Skills (P0)
+### Core Flow Entries (P0)
 
-| Phase | Primary Skill |
+| Phase | Primary Skill / Tool |
 |---|---|
-| recon | `ctf-web-recon` |
+| recon | `ctf-web-analyze` / `ctf-web-recon` |
 | attack-queue | `ctf-web-attack-queue` |
 | primitive-lock | `ctf-web-primitive-lock` |
 | control-plane | `ctf-web-control-plane` |
@@ -192,8 +224,17 @@ Route to these when focused-probe selects a specific bug class:
 | Order/payment/coupon/points/workflow state | `ctf-web-logic` |
 | One-time token, limit, inventory, repeated action, concurrency clue | `ctf-web-race` |
 | Cache headers, CDN/proxy, cache key behavior | `ctf-web-cache` |
+| Request smuggling, TE.CL/CL.TE, desync, duplicate framing, proxy/backend disagreement | `ctf-web-request-smuggling` |
 | Mongo/Elastic/JSON operator query behavior | `ctf-web-nosql` |
+| OAuth/OIDC/SAML, redirect/state/nonce, IdP or auth-code trust boundary | `ctf-web-oauth` |
+| Node.js `__proto__`, prototype chain, merge/query parser pollution | `ctf-web-prototype-pollution` |
+| WebSocket, Socket.IO, SSE, rooms/channels, realtime JSON messages | `ctf-web-websocket` |
+| Docker/Kubernetes/metadata, object storage, CI/deployment or cloud exposure | `ctf-web-cloud` |
 | Confirmed signal needs historical CTF pattern matching, bypass family recall, parser discrepancy recall, or CVE-shaped technique lookup | `ctf-web-patterns` |
+| Host/service enumeration, port discovery, or exposed service inventory | `ctf-web-host-enum` |
+| Internal network, SSRF-to-internal, or service pivot | `ctf-web-internal-recon` |
+| Lateral movement, trust-boundary pivot, or cross-service traversal | `ctf-web-lateral-movement` |
+| Post-exploitation privilege escalation or local escalation clue | `ctf-web-privesc` |
 
 ## Tool Discipline
 
@@ -259,3 +300,23 @@ The solver must produce or retrieve the verified flag without manual browser ste
 ## Stop Conditions
 
 Ask or stop when the target is outside authorized scope, requires real third-party interaction, needs credentials not provided, or repeated probes are causing no new observations.
+
+## Post-Foothold Closure Gate
+
+When a server-side primitive is confirmed, do not jump directly to recursive flag search. Dispatch in this order:
+
+1. `ctf-web-host-enum` for identity, platform, process, service, namespace, mount, and application-root facts.
+2. `ctf-web-internal-recon` for one named internal asset or service; keep reachability, protocol, authentication, authorization, and closure separate.
+3. `ctf-web-cloud` when the boundary is Docker/Kubernetes/metadata/object-storage/CI/deployment.
+4. `ctf-web-privesc` for one evidenced local permission or execution boundary.
+5. `ctf-web-lateral-movement` for one validated credential/token and named second service.
+6. `ctf-web-exploit-chain` only after the control path is reproducible; then run `ctf-evidence-board command=flag-verify`.
+
+Load these references on demand:
+
+- minimal application secret collection -> `references/foothold-secrets-minimization.md`
+- internal protocol/authz distinction -> `references/internal-protocol-validation-matrix.md`
+- IIS/AppPool/Windows token boundary -> `references/windows-iis-token-boundary.md`
+- Docker/Kubernetes/cloud boundary -> `references/container-k8s-cloud-boundary.md`
+
+A flag-shaped value remains `candidate` until the independent oracle accepts the exact value. Never infer closure from a scanner's `flag_detected`, a readable file, a root-in-container identity, or a successful network handshake.

@@ -12,8 +12,42 @@ Use this skill to recover validation logic, secrets, encodings, algorithms, or f
 
 ## Contract
 
+
+## Skill Layer Contract
+
+
+## Load When
+
+Load when an executable, APK, DEX/JVM/WASM/Python bytecode artifact, checker, obfuscation layer, or runtime validation path is the dominant evidence.
+
+## Do Not Load When
+
+Do not use REV as a generic binary/artifact bucket when the decisive weakness is Web, PWN, Crypto, Forensics, or Misc protocol behavior.
+
+## Required Inputs
+
+Require the artifact and provenance, format/architecture/runtime, checker or transform evidence, available lab/tool capabilities, and current evidence state.
+
+## First Safe Action
+
+Run the narrow REV analyzer/fingerprint path, preserve the selected runtime substrate, and record one concrete validation discriminator before broad decompilation.
+### Firmware / Intel HEX convergence rule
+
+When the artifact is Intel HEX or AVR firmware, do not begin with repeated full-image disassembly. First write one bounded workspace-local parser that validates record checksums, reconstructs address gaps, and reports the non-empty spans. Then search for repeated output/helper-call instruction motifs and recover the smallest emitted symbol stream (bits, nibbles, bytes, or timing units). Try only evidence-backed stride, polarity, and bit-order variants, score printable/flag-shaped outputs, and independently re-run the winning transform in `solve.py`. If a verified candidate appears, immediately write the exact flag plus a newline to `agent_flag.txt` and stop; do not continue exploratory probes.
+
+## Dispatch / Handoff
+
+Dispatch to the smallest format/runtime/packing reference. Return a verified transform/checker constraint or a falsified route to `ctf-decision-engine`; enter `ctf-closure-gate` only after an oracle-backed primitive or final validation path exists.
+
+This orchestrator owns REV phase dispatch and runtime evidence. Follow the shared layer/hand-off rules in `skills/SKILL_CONTRACT.md`; keep packed/runtime-specific procedures in the smallest matching reference.
+
 - Load `references/REFERENCE_INDEX.md` first when multiple reverse subfamilies compete.
+- If architecture, loader, ABI, runtime, or native-versus-replay substrate is unclear, load `references/runtime-platform-triage.md` before selecting tools.
 - Use `ctf-terminal` for command, debugger, emulator, Frida, or adb interactions.
+- Runtime evidence is two-way: every observation artifact reference must resolve to one intact artifact, and every non-planned artifact should be linked by an observation or evidence reference; use `inspect-provenance` to audit this without making planned artifacts fatal.
+- Artifact records carry a generation. For artifact-backed observations, preserve `artifact_generations` and `artifact_sha256s`; same-path replacement or content drift must invalidate the old observation rather than silently reusing it.
+- For replay semantics, prefer `registers_sha256`, `memory_sha256`, and `trace_sha256` in native/replay/comparison observations; strict comparison checks these fields for agreement.
+- Import runtime doctor output with `record-runtime-fingerprint` and use `verify-runtime-fingerprint` to compare it with the session substrate. These commands never execute the target; `verified` means supplied metadata is internally consistent, not that a challenge was run.
 - Prefer the smallest artifact-specific reference before broad decompilation.
 - Keep `notes.md` centered on the current bottleneck, extracted checker path, and next discriminator.
 
@@ -36,6 +70,8 @@ For isolated checker emulation, runtime-bound native code, or targeted function 
 For anti-debug, anti-VM, timing checks, ptrace, IsDebuggerPresent, or Frida detection, load `references/anti-debug-anti-vm.md`.
 
 For packed, self-modifying, or runtime-unpacked binaries, load `references/packed-unpack-trace.md`.
+
+For Windows PE files that are packed, memory-rebuilt, entry-outside-.text, or blocked by an invalid IDA license, load `references/windows-packed-pe-rebuild.md`.
 
 For `.pyc`, PyInstaller, marshal, or Python bytecode artifacts, load `references/python-pyc-pyinstaller.md`.
 
@@ -63,10 +99,34 @@ Collect:
 - For APKs: manifest, activities, services, assets, native libraries, dynamic loaders, and network endpoints.
 - Expected input and flag format.
 
+## Docker Lab Stability Doctrine
+
+For native REV work, treat the prepared Docker lab as the default runtime substrate once artifact shape confirms it is useful:
+
+1. Check readiness first with `ctf-env-check category=rev`; record Docker daemon status, `revlab:ubuntu22.04` image availability, cross-arch/qemu needs, Android/emulator needs, and host-only constraints.
+2. Inventory target runtime artifacts: Dockerfile/compose, architecture, packing/runtime dependencies, network behavior, interpreter/VM requirements, and whether the artifact is native, APK/mobile, managed, WASM, or static-only.
+3. Prefer challenge Docker/compose when present and runnable. Otherwise choose `revlab:ubuntu22.04` for native ELF/PE reversing, cross-arch emulation, network/artifact tools, unpacking, angr/qiling/unicorn, and scripted solver verification.
+4. Lock the chosen substrate (`challenge-docker`, `revlab-docker`, `host`, `android-emulator`, `remote-only`) before dynamic testing or long tool runs. Record image/service, `/work` mount, why it matches the target, and the unlock condition.
+5. Keep runtime traces, unpacking, emulation, dynamic checker probes, solver verification, and repeated tool invocations inside the locked container. Do not alternate host/WSL/Docker because one shell command or quote form failed.
+6. Switch to host only for GUI-heavy IDA/Ghidra workflows, hardware/device/emulator requirements, or cheap static reads already available there. Switch to remote only for final service-specific validation or proven local/remote drift.
+7. Before any substrate switch, write: `Switching substrate because: <current substrate blocker>; <new substrate evidence/goal>`.
+
 ## Workflow
 
-1. Triage with file type, strings, imports, sections, entropy, and packing indicators.
-   - For APKs, run `ctf-apk-triage` before full JADX. Route from its summary to Java checker, native JNI, assets decode, packed/dynamic loader, or runtime confirmation.
+1. Check Docker lab readiness and lock the runtime substrate before dynamic/runtime-sensitive work.
+   - Run `ctf-env-check category=rev` unless fresh equivalent evidence exists.
+   - Prefer challenge Docker/compose, otherwise `revlab:ubuntu22.04` for native/cross-arch/tool-heavy work.
+   - Record the selected image/service, `/work` mount, and unlock condition.
+2. Triage with file type, strings, imports, sections, entropy, and packing indicators.
+   - For native ELF/PE artifacts, run `ctf-rev-analyze` first. Use direct `ctf-binary-probe`, `ctf-elf-slice`, or `ctf-rev-pe-slice` only when the facade output needs a narrower fallback.
+   - ctf-rev-analyze also fingerprints Mach-O, DEX/classes*.dex, JVM class, WASM, and Python bytecode. Follow its capability and
+     extToolHint; these routes intentionally report an external or optional-pack fallback instead of running the native ELF/PE probe.
+   - ctf-rev-closure-ladder is in the base
+     ev pack. Run it after concrete checker/transform/VM/runtime evidence; preserve its closure ledger and only sync an existing decision state when an oracle-backed probe is available.
+   - ctf-rev-live-memory-dump, ctf-rev-unicorn-helper, and ctf-rev-unicorn-replay-builder are
+     ev-heavy generators. They produce a controlled dump plan, helper, or replay skeleton and do not execute unknown targets or establish final correctness.
+   - For live dump target arguments, use rgvJson as a JSON string array. Legacy whitespace rgv is compatibility-only; never use eval or shell interpolation for untrusted arguments.
+   - For APKs, run `ctf-android-analyze` before full JADX. Route from its summary to Java checker, native JNI, assets decode, packed/dynamic loader, or runtime confirmation.
    - If an APK has arm64-only native libraries or the expected device profile matters, run `ctf-android-runtime-doctor` before trusting emulator dynamic results.
    - If packed/native APK evidence mentions `extract.dat`, code_item patching, classloader swaps, `libshell.so`, decompiler failures, or `libndk_translation`, run `ctf-android-packed-closure-helper` to pick the shortest next probe.
    - If patch records target `classes.dex` offsets, run `ctf-dex-patch-map` to map offsets to class/method code_item owners before broad JADX/apktool browsing.
@@ -74,7 +134,7 @@ Collect:
    - If APK native/JNI signals appear, run `ctf-android-native-triage` before broad Java reading.
    - Use `ctf-jadx-targeted-slice` for focused Java/Kotlin snippets; reserve full JADX output for route-gated follow-up.
    - Flutter/Dart AOT signals (libapp.so + libflutter.so present, Dart snapshot header, Flutter engine strings): run `flutter_aot_triage` first, then `flutter_aot_recover`. Do not attempt manual libapp.so reverse engineering with IDA/Ghidra alone.
-2. Run strong-signal routing before algorithm guessing:
+3. Run strong-signal routing before algorithm guessing:
    - exception/unwind-heavy behavior, suspicious register staging not consumed in normal `.text`, or hints like `patch` / `frame` / `unwind` / `debug` -> inspect `.eh_frame`, `.debug_frame`, `.gcc_except_table`, `DW_CFA_val_expression`, and `DW_OP_*` before declaring the checker absent.
    - `clflush` + `rdtsc/rdtscp`, `mfence/lfence`, `prefetch`, or repeated timing-threshold checks -> enter `MICROARCH_CIRCUIT` and load `references/microarch-generated-circuit.md`.
    - large repeated helper functions with bit extraction/cache-line indexing -> enter `GENERATED_CIRCUIT` and load `references/microarch-generated-circuit.md`.
@@ -85,17 +145,19 @@ Collect:
    - .NET/IL/Unity managed metadata -> load `references/dotnet-il-rev.md` before reading GUI/framework boilerplate.
    - Go/Rust runtime-heavy binary -> load `references/go-rust-binary-rev.md` and filter runtime noise via strings/xrefs.
    - packed/self-modifying/runtime-unpacked clues -> load `references/packed-unpack-trace.md` before long static review.
+   - Windows PE with renamed packer sections, memory-only code, invalid IDA license, or a rebuilt image with too few functions -> load `references/windows-packed-pe-rebuild.md` before broad decompilation.
    - anti-debug/anti-VM/timing/pseudo-environment barriers -> load `references/anti-debug-anti-vm.md` and separate bypass from checker semantics.
    - crypto constants, S-boxes, block rounds, hash tables, or TEA/AES/RC4/SM4 clues -> load `references/crypto-constants-recognition.md` for one focused primitive recognition pass.
    - known success/failure addresses plus branch-heavy bounded input -> consider `references/angr-symbolic-exec.md`.
    - isolated checker function with hard runtime dependencies -> consider `references/unicorn-qiling-emulation.md`.
-3. Locate entry points and validation paths.
-4. Find comparisons, transforms, constants, encoders, crypto loops, and error messages.
-5. Rename important functions and variables in notes or decompiler when possible.
-6. Extract logic into `solve.py` rather than patching blindly.
-7. Use dynamic analysis only to confirm static hypotheses or handle anti-analysis/VM/hardware-runtime barriers.
-8. For mobile, inspect Java/Kotlin, native libraries, assets, reflection, dynamic loading, and network behavior.
-9. Verify recovered input or flag against the program/app when possible.
+4. If platform or runtime identity remains uncertain, load `references/runtime-platform-triage.md` and lock the toolchain before deep analysis.
+5. Locate entry points and validation paths.
+5. Find comparisons, transforms, constants, encoders, crypto loops, and error messages.
+6. Rename important functions and variables in notes or decompiler when possible.
+7. Extract logic into `solve.py` rather than patching blindly.
+8. Use dynamic analysis only to confirm static hypotheses or handle anti-analysis/VM/hardware-runtime barriers.
+9. For mobile, inspect Java/Kotlin, native libraries, assets, reflection, dynamic loading, and network behavior.
+10. Verify recovered input or flag against the program/app when possible.
 
 Pick the first branch supported by artifact evidence. If a branch fails, record why before switching.
 
@@ -110,7 +172,8 @@ Pick the first branch supported by artifact evidence. If a branch fails, record 
 
 For easy/medium reverse challenges or the first 8-12 minutes of a fresh artifact, prioritize the shortest validation path:
 
-1. Run `ctf-binary-probe` or artifact-specific triage once unless fresh equivalent evidence already exists.
+1. Run `ctf-rev-analyze` or artifact-specific triage once unless fresh equivalent evidence already exists.
+   - If the route depends on external tooling or an optional pack, run `ctf-rev-capability-check family=<family>` first; use its `status`, `blocking`, `fallbacks`, and `recommended_path` rather than static availability assumptions.
 2. Search success/failure strings, flag fragments, usage text, input prompts, and suspicious constants.
 3. Use xrefs from success/failure strings to locate the nearest checker before broad decompilation.
 4. Extract input length checks, charset constraints, constants, byte arrays, lookup tables, and simple XOR/add/sub/rotate/base encodings.
@@ -173,7 +236,7 @@ Hard rules:
 Before a non-trivial branch, summarize the reversing equation:
 
 | Input Boundary | Check Function | Constants / Tables | Transform Chain | Comparison Oracle | Inversion Strategy | Verification |
-|---|---|---|---|---|---|---|
+| -------------- | -------------- | ------------------ | --------------- | ----------------- | ------------------ | ------------ |
 
 Use the table to force every probe to improve reachability, exact semantics, constraint extraction, inversion, or verification.
 
@@ -184,7 +247,7 @@ Use the table to force every probe to improve reachability, exact semantics, con
 - Treat decompiler output as a hypothesis until signedness, byte order, integer width, loop bounds, and truncation are verified.
 - For mobile, do not start Frida/adb work until static Java/Kotlin/native/assets evidence identifies a target method or runtime-only barrier.
 - For VM/obfuscation, identify dispatch, opcode table, handlers, and trace oracle before attempting full deobfuscation.
-- For hidden-semantics candidates, do not conclude “logic removed” until metadata/unwind/init-fini/TLS consumers are ruled out.
+- For hidden-semantics candidates, do not conclude 閳ユ笓ogic removed閳?until metadata/unwind/init-fini/TLS consumers are ruled out.
 
 ## Fallback Matrix
 
@@ -202,6 +265,7 @@ When a reverse probe stalls, load `references/rev-fallback-matrix.md` and choose
 - `unicorn-qiling-emulation.md`: isolated checker rehosting, runtime-bound native code, targeted compare/output hooks.
 - `anti-debug-anti-vm.md`: ptrace, IsDebuggerPresent, timing, CPUID, Frida detection, emulator checks.
 - `packed-unpack-trace.md`: packed/self-modifying/runtime-unpacked binaries, high entropy sections, tiny imports.
+- `windows-packed-pe-rebuild.md`: Windows PE runtime dump/rebuild, `.pdata` function recovery, memory strings, IDA license fallback, cdb/x64dbg automation.
 - `python-pyc-pyinstaller.md`: `.pyc`, PyInstaller, marshal blobs, Python bytecode validators.
 - `wasm-rev.md`: `.wasm`, WAT, WebAssembly exports/imports, linear-memory validation.
 - `android-jni-frida.md`: APK JNI/native bridge, reflection, dynamic loading, targeted Frida hooks.
@@ -224,13 +288,14 @@ Look for these in order:
 6. Lookup tables, constants, S-boxes, and encoded byte arrays.
 7. Encoders, decoders, compression, base conversion, and XOR loops.
 8. Anti-debug, anti-VM, timing, exception, or self-modifying code.
-8.5 Hidden semantic carriers in native binaries:
+   8.5 Hidden semantic carriers in native binaries:
    - `.eh_frame`, `.debug_frame`, `.gcc_except_table`
    - `DW_CFA_val_expression`, `DW_OP_*`
    - init/fini arrays
    - relocation-driven constants
    - loader/TLS-driven state
    - debug/unwind metadata when visible `.text` checker looks too weak
+     8.6 Windows PE with renamed packer sections or memory-only code: run `ctf-runtime-dump`/`ctf-pe-unpack`, then `ctf-memstr` and `ctf-rev-pe-recovery` before broad decompilation.
 9. License/key verification and serial generation logic.
 10. JNI/native calls, dynamic loading, reflection, and asset decryption in APKs.
 11. Managed/native runtime noise: Go `.gopclntab`, Rust panic/mangled symbols, .NET/IL metadata, Unity assemblies.
@@ -240,7 +305,7 @@ Look for these in order:
 
 ## Pattern Search Discipline
 
-For local pattern cards, query `ctf-pattern-card-search` with `category="reverse"` rather than `rev`. Use evidence-shaped terms such as `custom vm opcode dispatcher`, `angr find avoid`, `pyinstaller pyc marshal`, `wasm linear memory`, `android JNI RegisterNatives`, `dotnet IL resources`, `go gopclntab string xref`, `rust panic validation`, `crypto constants TEA AES`, `anti debug ptrace timing`, `packed runtime dump`, or `eh_frame dwarf unwind hidden consumer`. Convert a selected card with `ctf-pattern-to-hypothesis` before deepening the branch.
+For local pattern cards, query `ctf-pattern-card-search` with `category="reverse"` rather than `rev`. Use evidence-shaped terms such as `custom vm opcode dispatcher`, `angr find avoid`, `pyinstaller pyc marshal`, `wasm linear memory`, `android JNI RegisterNatives`, `dotnet IL resources`, `go gopclntab string xref`, `rust panic validation`, `crypto constants TEA AES`, `anti debug ptrace timing`, `packed runtime dump`, `windows memory dump pe rebuild`, `RUNTIME_FUNCTION pdata function recovery`, `ida license fallback`, or `eh_frame dwarf unwind hidden consumer`. Convert a selected card with `ctf-pattern-to-hypothesis` before deepening the branch.
 
 If static analysis stalls, use dynamic analysis to confirm one specific hypothesis at a time.
 
@@ -253,7 +318,12 @@ If static analysis stalls, use dynamic analysis to confirm one specific hypothes
 - For dynamic Android work, use the macro flow to collect device props, focused logcat, `run-as` listing, tombstone hints, and Frida attach suggestions instead of hand-assembling adb commands.
 - Page long generated artifacts with `ctf-artifact-page`; do not dump full JADX/apktool/native strings output into the transcript.
 - Use decompilers for structure and disassembly for exact semantics.
+- For Windows packed PE, run `ctf-pe-unpack`/`ctf-runtime-dump` to rebuild from memory before long static analysis; then use `ctf-memstr` for ASCII/UTF-16 strings and `ctf-rev-pe-recovery` for `.pdata` function seeds and batched linear disassembly.
+- When a pure memory rebuild gives poor ReVa/Ghidra function recovery, run `ctf-pe-hybrid-rebuild` to keep original imports/resources and replace runtime-unpacked executable sections.
+- For unstable Windows console checkers, use `ctf-windows-expect-runner` instead of Python `subprocess` for stdin/file input, timeout kill, and output capture.
+- If `ctf-env-check` reports an invalid IDA license, do not retry IDA; use the rebuilt PE in Ghidra/ReVa/objdump and `ctf-windows-debug-helper` for cdb/WinDbg automation.
 - Avoid running unknown binaries outside a controlled environment.
+- Treat generated live-dump and Unicorn files as reviewable artifacts: run them only inside the locked substrate, record the exact arch/mode and payload provenance, and validate a concrete input/output before trusting the replay.
 - Do not over-trust decompiler output; verify arithmetic, signedness, and pointer behavior.
 - If normal `.text` control flow does not explain visible register staging, exception routing, or title hints like `patch` / `frame`, inspect unwind/debug metadata before declaring the checker removed.
 - Record function names, addresses, constants, algorithm summaries, and hidden-semantic observations in `notes.md`.
@@ -283,6 +353,37 @@ Reverse conclusions require:
 
 Produce `solve.py` when practical. Include extracted constants and algorithm steps. Write `agent_flag.txt` only after verification.
 
+## Flag Handling
+
+Use `ctf-common/references/flag-identification-rules.md` for every recovered string. Keep `untrusted_hint`, `flag_candidate`, and `oracle-verified` separate. Strict `prefix{payload}` candidates are not final success by themselves; bare MD5/SHA-256 values require explicit flag-file or flag-helper context. Preserve `source`, `origin`, and `context`, and write `agent_flag.txt` only after an independent exact/file/service oracle verifies the value.
 ## Stop Conditions
 
 Ask or stop when execution requires unsafe privileges, malware-like behavior is suspected outside a sandbox, dynamic instrumentation needs a device/emulator not available, or packed code cannot be unpacked with available tools.
+
+## Unified Runtime Session
+
+For packed, self-modifying, runtime-generated, or isolated-checker branches, use one workspace-relative `rev_runtime_session.v1` session instead of scattering runtime facts across ad-hoc notes:
+
+```text
+ctf-rev-analyze
+  -> ctf-rev-capability-check
+  -> ctf-rev-runtime-session init
+  -> ctf-rev-live-memory-dump / ctf-rev-unicorn-replay-builder
+  -> ctf-rev-runtime-session record-marker / record-observation
+  -> ctf-rev-runtime-session inspect-artifacts
+  -> ctf-rev-runtime-session verify-history
+  -> ctf-rev-closure-ladder
+  -> ctf-rev-runtime-session set-oracle (link observation IDs)
+  -> ctf-rev-runtime-session set-stage through the runtime ladder
+  -> ctf-rev-runtime-session sync
+```
+
+- `ctf-rev-runtime-session` is a state/evidence manager; it never executes the target.
+- `verify-history` is read-only. New events carry a SHA-256 `event_hash` chained through `previous_hash`; `verified` means the chain matches the stored events, `invalid` means tampering/reordering is detected, and hashless legacy history is reported as `legacy` rather than upgraded silently.
+- `ctf-rev-live-memory-dump` and `ctf-rev-unicorn-replay-builder` generate reviewable helpers/artifacts only. Successful script generation or replay execution does not establish checker equivalence.
+- Keep `sessionPath` identical across tools and store artifact paths relative to the workspace. Record exact substrate, arch/mode, payload provenance, stable marker, compare/check PC when known, and the native-vs-replay oracle.
+- Use `record-observation` for imported runtime results; the session tool does not execute targets. Use `inspect-artifacts` to refresh size/SHA-256 and treat `stale`/`missing` as integrity failures requiring review; either state blocks promotion until repaired or re-recorded.
+- If `oracle.observation_ids` is supplied, every ID must resolve to a passing observation; failed/unresolved observations and unknown or stale/missing artifact references reject the oracle contract. Duplicate IDs are normalized away. A `comparison` observation may opt into `related_observation_ids`; when present, the links must resolve to native + replay observations with compatible input hashes, architectures, and modes. Record runtime metadata (substrate, arch/mode, tool/version, image digest, and a stable fingerprint) when available; session arch/mode drift is rejected. A legacy oracle without observation IDs remains readable for compatibility, but new runtime branches should link observations. Use `observationContract=strict` for new high-confidence branches; strict passing oracles must directly link passing `native`, `replay`, and `comparison` observations. `linked` validates IDs when supplied while retaining legacy omission behavior. A passing strict comparison must include at least one semantic result field and rejects conflicting input/payload/output digests, exit codes, or stop PCs across linked observations.
+- Stage changes should follow the runtime ladder; arbitrary jumps are rejected. The compatibility path permits a direct promotion only when a passing oracle is already present; do not treat helper generation as capture or replay.
+- Promotion to `oracle_verified` or `closed` is intentionally rejected until `oracle.status=pass`, non-empty independent evidence, and the linked observation context are recorded.
+- Sync to decision state/evidence board only after checking that the projection remains `in_progress` when no oracle exists; do not turn a generated plan into a confirmed finding.

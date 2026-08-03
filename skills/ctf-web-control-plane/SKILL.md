@@ -6,6 +6,30 @@ compatibility: opencode
 
 # CTF Web Control Plane
 
+## Stop Conditions
+
+Stop when the signal is falsified, the stated budget is exhausted, the action would exceed scope/risk, or the result is sufficient for handoff. Do not continue with payload variants without a new discriminator.
+
+## Dispatch / Handoff
+
+Return the selected stable channel to `ctf-web-exploit-chain` or `ctf-closure-gate`; pivot only when the boundary is falsified.
+
+## First Safe Action
+
+Summarize the confirmed primitive, boundary, and available channels, then choose the least stateful output path.
+
+## Required Inputs
+
+Require the current Web phase, candidate/surface, relevant evidence, target constraints, and an explicit attempt or mutation budget before probing.
+
+## Do Not Load When
+
+Do not load without a matching observed signal, and do not use this focused skill to replace the `ctf-web` phase controller or global route ranking.
+
+## Load When
+
+Load after primitive-lock when the next problem is stable feedback, output, or flag access.
+
 ## Purpose
 
 When any strong primitive is confirmed, select a stable control plane before final exploitation. The control plane is the channel through which you observe output, exfiltrate data, or receive feedback from the target.

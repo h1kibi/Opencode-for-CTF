@@ -9,9 +9,11 @@ import {
   manifestPath,
   opencodeConfigDir,
   profileFromArgs,
+  probeInstalledPluginRuntime,
   projectVersion,
   readJsonc,
   revertConfigOperations,
+  tryWritePluginHealthReport,
   upgradeManagedFiles,
   writeJsonAtomic,
 } from "./lib/opencode-ctf-install.mjs"
@@ -27,7 +29,7 @@ if (previousManifest.externalSkills && process.env.OPENCODE_CTF_INCLUDE_EXTERNAL
   process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS = "1"
 }
 const version = await projectVersion()
-const profile = profileFromArgs(process.argv.slice(2), previousManifest.profile ?? "safe")
+const profile = profileFromArgs(process.argv.slice(2), previousManifest.profile ?? "full")
 const file = previousManifest.config ?? configPath(configDir)
 const config = await readJsonc(file)
 const configBackup = await backupFile(file)
@@ -40,7 +42,9 @@ try {
   const mergedOperations = [...(previousManifest.configOperations ?? [])]
   for (const operation of configOperations) {
     const index = mergedOperations.findIndex((entry) => JSON.stringify(entry.path) === JSON.stringify(operation.path))
-    if (index >= 0) mergedOperations[index] = operation
+    if (operation.value === undefined && operation.previousExists === false) {
+      if (index >= 0) mergedOperations.splice(index, 1)
+    } else if (index >= 0) mergedOperations[index] = operation
     else mergedOperations.push(operation)
   }
   await writeJsonAtomic(manifestFile, {
@@ -59,6 +63,18 @@ try {
   })
   await resources.commit()
   if (configBackup) await rm(configBackup, { force: true })
+  const runtimeProbe = await probeInstalledPluginRuntime(configDir)
+  await tryWritePluginHealthReport(configDir, {
+    source: "upgrade",
+    state: "upgraded",
+    profile,
+    config: file,
+    manifest: manifestFile,
+    previousVersion: previousManifest.version ?? "unknown",
+    currentVersion: version,
+    pluginImportOk: runtimeProbe.ok,
+    pluginImportError: runtimeProbe.ok ? null : runtimeProbe.error,
+  })
 } catch (error) {
   try {
     if (resources?.rollback) await resources.rollback()
@@ -69,6 +85,16 @@ try {
       await revertConfigOperations(file, configOperations)
     }
     await writeJsonAtomic(manifestFile, previousManifest)
+    await tryWritePluginHealthReport(configDir, {
+      source: "upgrade",
+      state: "failed",
+      profile,
+      config: file,
+      manifest: manifestFile,
+      error: error instanceof Error ? error.message : String(error),
+      previousVersion: previousManifest.version ?? "unknown",
+      currentVersion: version,
+    })
   } catch (rollbackError) {
     throw new AggregateError([error, rollbackError], "Upgrade failed and rollback was incomplete.")
   }

@@ -1,6 +1,6 @@
 ---
 name: ctf-rev-oob-discipline
-description: Use for REV challenges where the binary or runtime exhibits out-of-band behavior — self-decryption, asset download, callback to attacker server, license server check, network-fetched bytecode, runtime patch download, or telemetry beaconing. Provides receive-only vs response-serving infrastructure distinction, capability gating, and stop rules specific to reverse engineering contexts.
+description: Use for REV challenges with out-of-band behavior such as self-decryption, asset download, callbacks, license checks, network-fetched bytecode, runtime patches, or telemetry.
 compatibility: opencode
 ---
 
@@ -22,26 +22,26 @@ Use this skill when a REV challenge involves any of the following, even before e
 
 ## REV-Specific OOB Capability Matrix
 
-| OOB Capability | What it provides | What REV uses it for |
-|---|---|---|
-| **observation-only** | Capture outbound traffic to know what binary requests | Identify protocol, key endpoints, payload format |
-| **response-serving** | Reply with attacker-controlled bytes | Inject custom payload to control execution flow |
-| **MITM-capable** | Intercept and modify in-flight bytes | Modify bytecode/key responses to bypass checker |
-| **DNS-controlled** | Reply to DNS queries with crafted A/TXT records | Inject keys/bytecode via DNS exfil channels |
-| **offline-replay** | Replay captured pcap as fake remote | Reproduce remote session locally for repeated reversing |
+| OOB Capability       | What it provides                                      | What REV uses it for                                    |
+| -------------------- | ----------------------------------------------------- | ------------------------------------------------------- |
+| **observation-only** | Capture outbound traffic to know what binary requests | Identify protocol, key endpoints, payload format        |
+| **response-serving** | Reply with attacker-controlled bytes                  | Inject custom payload to control execution flow         |
+| **MITM-capable**     | Intercept and modify in-flight bytes                  | Modify bytecode/key responses to bypass checker         |
+| **DNS-controlled**   | Reply to DNS queries with crafted A/TXT records       | Inject keys/bytecode via DNS exfil channels             |
+| **offline-replay**   | Replay captured pcap as fake remote                   | Reproduce remote session locally for repeated reversing |
 
 ## Capability Gating
 
 Before committing to a route that depends on OOB:
 
-| Route | Required Capability | If Missing |
-|---|---|---|
-| Static reverse with pcap only | observation-only | OK |
-| Reproduce remote session locally | offline-replay (pcap) + binary | OK if pcap is complete |
-| Inject custom bytecode/payload | response-serving HTTP | Ask user for VPS/listener; do not fake locally without user approval |
-| Modify bytecode response in-flight | MITM-capable (host loopback OK) | Use revlab container's `tcpdump`/`tshark` + `socat` to MITM |
-| DNS-based C2 reverse | DNS-controlled | Ask user for OOB DNS or use `dnschef` locally |
-| License server bypass | response-serving HTTP/TLS + cert | Ask user; or use static patch instead (rank 9 in closure ladder) |
+| Route                              | Required Capability              | If Missing                                                           |
+| ---------------------------------- | -------------------------------- | -------------------------------------------------------------------- |
+| Static reverse with pcap only      | observation-only                 | OK                                                                   |
+| Reproduce remote session locally   | offline-replay (pcap) + binary   | OK if pcap is complete                                               |
+| Inject custom bytecode/payload     | response-serving HTTP            | Ask user for VPS/listener; do not fake locally without user approval |
+| Modify bytecode response in-flight | MITM-capable (host loopback OK)  | Use revlab container's `tcpdump`/`tshark` + `socat` to MITM          |
+| DNS-based C2 reverse               | DNS-controlled                   | Ask user for OOB DNS or use `dnschef` locally                        |
+| License server bypass              | response-serving HTTP/TLS + cert | Ask user; or use static patch instead (rank 9 in closure ladder)     |
 
 ## Triage Decision Tree
 
@@ -93,13 +93,13 @@ If the binary downloads assets from a CDN:
 
 If the binary checks a license/auth server:
 
-| Strategy | When to Use |
-|---|---|
-| **Patch the check** (rank 9) | Check returns boolean; flag is local | 
-| **Replay captured response** | Check is read-only; response is deterministic |
-| **Spoof response** | Check returns key/data needed for flag computation |
-| **Bypass with hosts file** | Server hostname known; redirect to localhost |
-| **MITM with mitmproxy** | TLS-based; need to inject custom cert |
+| Strategy                     | When to Use                                        |
+| ---------------------------- | -------------------------------------------------- |
+| **Patch the check** (rank 9) | Check returns boolean; flag is local               |
+| **Replay captured response** | Check is read-only; response is deterministic      |
+| **Spoof response**           | Check returns key/data needed for flag computation |
+| **Bypass with hosts file**   | Server hostname known; redirect to localhost       |
+| **MITM with mitmproxy**      | TLS-based; need to inject custom cert              |
 
 For CTF contexts, **patch first** — license servers are usually not part of the intended challenge.
 
@@ -108,7 +108,7 @@ For CTF contexts, **patch first** — license servers are usually not part of th
 APK fetches DEX/JNI/asset from network:
 
 ```text
-1. ctf-apk-triage to find network endpoints in manifest/strings
+1. ctf-android-analyze to find network endpoints in manifest/strings
 2. ctf-android-runtime-doctor to confirm runtime equivalence
 3. Run app in container/emulator with proxy (mitmproxy on :8080)
 4. Capture downloaded payload
@@ -146,15 +146,15 @@ Once OOB capability is established and payload is captured:
 
 ## Receive-Only vs Response-Serving (REV Context)
 
-| Need | Receive-Only Sufficient? | Response-Serving Required? |
-|---|---|---|
-| Identify protocol from binary | ✅ | ❌ |
-| Extract embedded payload from pcap | ✅ | ❌ |
-| Replay captured session locally | ✅ | ❌ |
-| Inject custom bytecode | ❌ | ✅ |
-| Bypass license server with crafted response | ❌ | ✅ |
-| MITM TLS with custom cert | ❌ | ✅ |
-| Decrypt streaming protocol that depends on input | ❌ | ✅ |
+| Need                                             | Receive-Only Sufficient? | Response-Serving Required? |
+| ------------------------------------------------ | ------------------------ | -------------------------- |
+| Identify protocol from binary                    | ✅                       | ❌                         |
+| Extract embedded payload from pcap               | ✅                       | ❌                         |
+| Replay captured session locally                  | ✅                       | ❌                         |
+| Inject custom bytecode                           | ❌                       | ✅                         |
+| Bypass license server with crafted response      | ❌                       | ✅                         |
+| MITM TLS with custom cert                        | ❌                       | ✅                         |
+| Decrypt streaming protocol that depends on input | ❌                       | ✅                         |
 
 ## Companion Tools
 
@@ -169,3 +169,33 @@ Once OOB capability is established and payload is captured:
 - `skills/ctf-oob-discipline` (original web/crypto OOB)
 - `knowledge/rev/closure/rev-closure-ladder.md`
 - `commands/ctf-rev-network.md` (one-shot workflow)
+
+## Load When
+
+Load when a reverse-engineering branch depends on network callbacks, downloaded code/data, license checks, runtime patch delivery, or another evidenced OOB dependency.
+
+## Do Not Load When
+
+Do not load for ordinary offline static/dynamic reversing, local self-decryption, or analysis that has no external communication dependency.
+
+## Required Inputs
+
+- Authorized challenge scope and binary/app boundary.
+- Observed network/OOB behavior and the required capability class.
+- Available capture, replay, response-serving, DNS, or MITM infrastructure.
+
+## First Safe Action
+
+Classify the dependency as observation-only, replayable, response-serving, MITM, or DNS-controlled, then prefer capture/replay or a local stub before live infrastructure.
+
+## Dispatch / Handoff
+
+Hand off with the capability matrix result, observed endpoints/protocols, artifact provenance, and the fallback or escalation gate.
+
+## Stop Conditions
+
+Stop before live response-serving or MITM activity when authorization or infrastructure is missing; pivot to offline extraction, replay, or a static patch.
+
+## Output Contract
+
+Return the OOB capability classification, evidence-backed route, required resources, safe fallback, and the next bounded observation or replay action.

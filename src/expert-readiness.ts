@@ -14,13 +14,10 @@ export const EXPERT_TEAM_RUNTIME_TOOLS = [
   "ctf-team-cancel-route",
   "ctf-team-close",
   "ctf-team-recover",
+  "ctf-team-adopt",
 ] as const
 
-export const EXPERT_CORE_WORKFLOW_TOOLS = [
-  "ctf-evidence-board",
-  "ctf-mcp-control",
-  "ctf-decompose-task",
-] as const
+export const EXPERT_CORE_WORKFLOW_TOOLS = ["ctf-evidence-board", "ctf-mcp-control", "ctf-decompose-task"] as const
 
 export const EXPERT_SUPPORT_TOOLS = ["ctf-team-mode", "ctf-handoff", "ctf-tool-packs"] as const
 
@@ -28,16 +25,10 @@ export const EXPERT_SUPPORT_TOOLS = ["ctf-team-mode", "ctf-handoff", "ctf-tool-p
 export const EXPERT_SOFT_DEPENDENCIES = ["ida", "jadx", "ghidra", "apktool", "frida"] as const
 
 /** Hard-required tools for /ctf-expert (team runtime + core workflow). */
-export const EXPERT_REQUIRED_TOOLS = [
-  ...EXPERT_TEAM_RUNTIME_TOOLS,
-  ...EXPERT_CORE_WORKFLOW_TOOLS,
-] as const
+export const EXPERT_REQUIRED_TOOLS = [...EXPERT_TEAM_RUNTIME_TOOLS, ...EXPERT_CORE_WORKFLOW_TOOLS] as const
 
 /** Full expert surface including helpful support tools. */
-export const EXPERT_ALL_CONTRACT_TOOLS = [
-  ...EXPERT_REQUIRED_TOOLS,
-  ...EXPERT_SUPPORT_TOOLS,
-] as const
+export const EXPERT_ALL_CONTRACT_TOOLS = [...EXPERT_REQUIRED_TOOLS, ...EXPERT_SUPPORT_TOOLS] as const
 
 export type ExpertReadinessCheck = {
   id: string
@@ -83,9 +74,7 @@ function uniqueSorted(values: Iterable<string>): string[] {
  * Pure: no filesystem / process I/O.
  */
 export function evaluateExpertReadiness(input: ExpertReadinessInput): ExpertReadinessReport {
-  const registered = new Set(
-    [...input.registeredTools].map((name) => name.replace(/\.(ts|js)$/, "")).filter(Boolean),
-  )
+  const registered = new Set([...input.registeredTools].map((name) => name.replace(/\.(ts|js)$/, "")).filter(Boolean))
   const toolPacks = input.toolPacks ?? []
   const expertToolPacks = input.expertToolPacks ?? []
   const configPath = input.configPath ?? undefined
@@ -130,7 +119,7 @@ export function evaluateExpertReadiness(input: ExpertReadinessInput): ExpertRead
       detail: ok ? `${name} registered` : `${name} missing (support tool)`,
       remediation: ok
         ? undefined
-        : 'Support tool missing — usually fixed by loading default/core packs and restarting OpenCode.',
+        : "Support tool missing — usually fixed by loading default/core packs and restarting OpenCode.",
     })
   }
 
@@ -188,15 +177,9 @@ export function formatExpertReadinessFailure(
   const missing = uniqueSorted(report.missingTools)
   const supportMissing = uniqueSorted(report.missingSupportTools)
   const packs = report.toolPacks.length ? JSON.stringify(report.toolPacks) : "(defaults)"
-  const expertPacks = report.expertToolPacks.length
-    ? JSON.stringify(report.expertToolPacks)
-    : "(none)"
+  const expertPacks = report.expertToolPacks.length ? JSON.stringify(report.expertToolPacks) : "(none)"
 
-  const lines: string[] = [
-    "CTF Expert is configured but not active in this session.",
-    "",
-    "Missing required tools:",
-  ]
+  const lines: string[] = ["CTF Expert is configured but not active in this session.", "", "Missing required tools:"]
 
   if (missing.length) {
     for (const name of missing) lines.push(`- ${name}`)
@@ -254,7 +237,8 @@ export function extractResumeHints(text: string): Pick<ExpertRecoveryOptions, "h
   const expertHandoff = text.match(/(?:^|\s)((?:[A-Za-z]:)?[^\s"'`]*expert-handoff\.md)/i)?.[1]
   const handoff = expertHandoff ?? text.match(/(?:^|\s)((?:[A-Za-z]:)?[^\s"'`]*handoff\.md)/i)?.[1]
   const evidenceFile = text.match(/(?:^|\s)((?:[A-Za-z]:)?[^\s"'`]*Evidence\.md)/)?.[1]
-  const evidence = evidenceFile ?? text.match(/(?:^|\s)((?:[A-Za-z]:)?[^\s"'`]*work[\\/]+ctf-evidence[\\/]+[^\s"'`]+)/i)?.[1]
+  const evidence =
+    evidenceFile ?? text.match(/(?:^|\s)((?:[A-Za-z]:)?[^\s"'`]*work[\\/]+ctf-evidence[\\/]+[^\s"'`]+)/i)?.[1]
   return {
     handoffPath: handoff,
     evidencePath: evidence,

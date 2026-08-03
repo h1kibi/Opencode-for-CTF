@@ -1,61 +1,84 @@
-import { spawnSync } from "child_process"
+﻿import { existsSync } from "node:fs"
+import { getIdaMcpInstancesDir, inspectIdaMcpInstances } from "./lib/ida-mcp-discovery.ts"
+import { runToolChecksDetailed, TOOL_CHECKS } from "./lib/tool-checks.mjs"
 
-type Item = {
-  name: string
-  command: string
-  args: string[]
-}
+/**
+ * REV toolchain doctor.
+ * Check data lives in scripts/lib/tool-checks.mjs (rev/android groups); this
+ * wrapper selects the REV-relevant subset and applies the IDA env used by the
+ * IDA-based MCP backends. Run with: npm run doctor:rev
+ */
 
-const checks: Item[] = [
-  { name: "python", command: "python", args: ["--version"] },
-  { name: "file", command: "file", args: ["--version"] },
-  { name: "strings", command: "strings", args: ["--version"] },
-  { name: "objdump", command: "objdump", args: ["--version"] },
-  { name: "readelf", command: "readelf", args: ["--version"] },
-  { name: "nm", command: "nm", args: ["--version"] },
-  { name: "gdb", command: "gdb", args: ["--version"] },
-  { name: "apktool", command: "apktool", args: ["--version"] },
-  { name: "adb", command: "adb", args: ["version"] },
-  { name: "jadx", command: "jadx", args: ["--version"] },
-  { name: "aapt", command: "aapt", args: ["version"] },
-  { name: "aapt2", command: "aapt2", args: ["version"] },
-  { name: "apkanalyzer", command: "apkanalyzer", args: ["--help"] },
-  { name: "baksmali", command: "baksmali", args: ["--version"] },
-  { name: "apkid", command: "apkid", args: ["--version"] },
-  { name: "frida", command: "frida", args: ["--version"] },
-  { name: "frida-ps", command: "frida-ps", args: ["--version"] },
-  { name: "java", command: "java", args: ["-version"] },
-  { name: "javap", command: "javap", args: ["-version"] },
-  { name: "rizin", command: "rizin", args: ["-v"] },
-  { name: "rz-bin", command: "rz-bin", args: ["-v"] },
-  { name: "ghidraRun", command: "ghidraRun", args: [] },
-  { name: "analyzeHeadless", command: "analyzeHeadless", args: ["/?"] },
-  { name: "mcp-reva", command: "mcp-reva", args: ["--version"] },
-  { name: "ida-pro-mcp", command: "ida-pro-mcp", args: ["--help"] },
-  { name: "idalib-mcp", command: "idalib-mcp", args: ["--help"] },
+const REV_TOOL_NAMES = [
+  "python",
+  "file",
+  "strings",
+  "objdump",
+  "readelf",
+  "nm",
+  "gdb",
+  "apktool",
+  "adb",
+  "jadx",
+  "aapt",
+  "aapt2",
+  "apkanalyzer",
+  "baksmali",
+  "apkid",
+  "frida",
+  "frida-ps",
+  "java",
+  "javap",
+  "rizin",
+  "rz-bin",
+  "ghidraRun",
+  "analyzeHeadless",
+  "mcp-reva",
+  "ida-pro-mcp",
+  "idalib-mcp",
 ]
 
-function exists(check: Item): boolean {
-  const result = spawnSync(check.command, check.args, {
-    stdio: "ignore",
-    shell: process.platform === "win32",
-    env: {
-      ...process.env,
-      IDADIR: "C:\\Tools\\ida92\\portable",
-      IDA_PATH: "C:\\Tools\\ida92\\portable",
+const IDA_DIR_CANDIDATES = [process.env.IDADIR, "C:\\Tools\\IDA Professional 9.2", "C:\\Tools\\ida92\\portable"].filter(
+  (dir): dir is string => Boolean(dir),
+)
+const IDA_DIR = IDA_DIR_CANDIDATES.find((dir) => existsSync(`${dir}\\ida.exe`))
+const IDA_ENV: Record<string, string> = IDA_DIR ? { IDADIR: IDA_DIR, IDA_PATH: IDA_DIR } : {}
+
+async function main() {
+  const results = runToolChecksDetailed(
+    TOOL_CHECKS.filter((check) => REV_TOOL_NAMES.includes(check.name)),
+    {
+      env: IDA_ENV,
     },
-  })
-  return result.status === 0
+  )
+  const found = results.filter((r) => r.ok).map((r) => r.name)
+  const missing = results.filter((r) => !r.ok).map((r) => r.name)
+  const discoveryDir = getIdaMcpInstancesDir()
+  const instances = await inspectIdaMcpInstances({ directory: discoveryDir })
+  const liveInstances = instances.filter((instance) => instance.live)
+
+  console.log("# REV Doctor")
+  console.log(`found: ${found.length ? found.join(", ") : "none"}`)
+  console.log(`missing: ${missing.length ? missing.join(", ") : "none"}`)
+  console.log(`ida_dir: ${IDA_DIR ?? "not found"}`)
+  console.log(`ida_mcp_discovery: ${discoveryDir}`)
+  console.log(`ida_mcp_registered: ${instances.length}`)
+  console.log(`ida_mcp_live: ${liveInstances.length}`)
+  for (const instance of instances) {
+    const label = instance.backend ?? "unknown"
+    const endpoint = instance.host && instance.port ? `${instance.host}:${instance.port}` : "invalid endpoint"
+    const target = instance.binary ? ` binary=${instance.binary}` : ""
+    const status = instance.live ? "live" : `stale/unreachable (${instance.reason ?? "unknown"})`
+    console.log(`  - ${status}: ${label} pid=${instance.pid} ${endpoint}${target}`)
+  }
+
+  if (missing.length === 0 && liveInstances.length > 0) {
+    console.log("runtime: ready (toolchain installed and at least one live IDA MCP instance detected)")
+  } else if (missing.length === 0) {
+    console.log("runtime: installed (no live IDA MCP instance; start IDA, open a sample, then Edit -> Plugins -> MCP)")
+  } else {
+    console.log("runtime: incomplete (install/fix missing tools before relying on the full REV lane)")
+  }
 }
 
-const found: string[] = []
-const missing: string[] = []
-for (const check of checks) {
-  if (exists(check)) found.push(check.name)
-  else missing.push(check.name)
-}
-
-console.log("# REV Doctor")
-console.log(`found: ${found.length ? found.join(", ") : "none"}`)
-console.log(`missing: ${missing.length ? missing.join(", ") : "none"}`)
-console.log("ida_dir: C:\\Tools\\ida92\\portable")
+await main()

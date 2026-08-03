@@ -10,9 +10,9 @@
   // Recommended installation:
   //   npm run ctf:install
   //
-  // The installer safely adds the built plugin, agents, commands, skills, and
-  // rules to the user's OpenCode configuration. Optional MCP profiles remain
-  // disabled until explicitly reviewed and enabled.
+  // The installer safely adds the built plugin, agents, commands, rules, and
+  // managed skill paths to the user's OpenCode configuration. Optional MCP
+  // profiles remain disabled until explicitly reviewed and enabled.
 
   "share": "disabled",
 
@@ -26,6 +26,12 @@
   // Managed installation registers the built plugin path. Keep this empty in
   // the source checkout to avoid a machine-specific absolute path.
   "plugin": [],
+
+  "instructions": [
+    "./rules/zh-rules.md",
+    "./rules/en-solve-rules.md",
+    "./rules/agent-equipment.md"
+  ],
 
   "permission": {
     "bash": {

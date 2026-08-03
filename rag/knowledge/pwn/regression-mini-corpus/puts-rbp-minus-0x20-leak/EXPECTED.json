@@ -1,0 +1,25 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "puts-rbp-minus-0x20-leak",
+  "sample_type": "c-source",
+  "expected_primitive": "FRAME_INDEXED_CALLSITE_LEAK",
+  "expected_tags": {
+    "control": [
+      "saved_rbp"
+    ],
+    "leak": [
+      "got"
+    ],
+    "callsite": [
+      "rbp_relative_arg",
+      "original_callsite",
+      "puts"
+    ]
+  },
+  "minimal_probe_shape": "payload = b\"A\"*off_rbp + p64(got_target + k) + p64(puts_callsite)",
+  "confirm_oracle": "puts leaks selected target bytes",
+  "falsify_oracle": "puts callsite reached but target unreadable/not consumed",
+  "anti_pattern_to_avoid": [
+    "fake_stack_before_callsite"
+  ]
+}

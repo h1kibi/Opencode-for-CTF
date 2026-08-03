@@ -1,74 +1,31 @@
-import { spawnSync } from "child_process"
+import { runToolChecksDetailed, TOOL_CHECKS } from "./lib/tool-checks.mjs"
 
-type Check = {
-  name: string
-  command: string
-  args: string[]
-  required: boolean
-  note: string
-}
+/**
+ * Android REV toolchain doctor.
+ * Check data (required/optional + notes) lives in scripts/lib/tool-checks.mjs
+ * (android group); this wrapper formats the required/optional breakdown.
+ * Run with: npm run doctor:android-rev
+ */
 
-const checks: Check[] = [
-  { name: "java", command: "java", args: ["-version"], required: true, note: "required by jadx/apktool/baksmali" },
-  {
-    name: "aapt",
-    command: "aapt",
-    args: ["version"],
-    required: true,
-    note: "fast manifest/package/activity extraction",
-  },
-  { name: "aapt2", command: "aapt2", args: ["version"], required: false, note: "modern Android build-tools fallback" },
-  {
-    name: "apkanalyzer",
-    command: "apkanalyzer",
-    args: ["--help"],
-    required: true,
-    note: "official manifest/APK analysis",
-  },
-  { name: "adb", command: "adb", args: ["version"], required: true, note: "dynamic Android runtime bridge" },
-  { name: "jadx", command: "jadx", args: ["--version"], required: true, note: "Java/Kotlin decompiler" },
-  { name: "apktool", command: "apktool", args: ["--version"], required: true, note: "resource/smali decode fallback" },
-  {
-    name: "baksmali",
-    command: "baksmali",
-    args: ["--version"],
-    required: false,
-    note: "dex/smali focused disassembly",
-  },
-  {
-    name: "smali",
-    command: "smali",
-    args: ["--version"],
-    required: false,
-    note: "smali assembly when patching test copies",
-  },
-  { name: "apksigner", command: "apksigner", args: ["--version"], required: false, note: "signature/cert inspection" },
-  { name: "zipalign", command: "zipalign", args: [], required: false, note: "APK zip structure utility" },
-  { name: "apkid", command: "apkid", args: [], required: false, note: "packer/compiler hints" },
-  { name: "frida", command: "frida", args: ["--version"], required: false, note: "dynamic instrumentation" },
-  { name: "frida-ps", command: "frida-ps", args: ["--version"], required: false, note: "frida device process listing" },
+const ANDROID_TOOL_NAMES = [
+  "java",
+  "aapt",
+  "aapt2",
+  "apkanalyzer",
+  "adb",
+  "jadx",
+  "apktool",
+  "baksmali",
+  "smali",
+  "apksigner",
+  "zipalign",
+  "apkid",
+  "frida",
+  "frida-ps",
 ]
 
-function run(check: Check) {
-  const res = spawnSync(check.command, check.args, {
-    shell: process.platform === "win32",
-    encoding: "utf8",
-    timeout: 7000,
-  })
-  const preview = `${res.stdout || ""}${res.stderr || ""}`.split(/\r?\n/).slice(0, 2).join(" | ").trim()
-  const ok =
-    res.status === 0 ||
-    (check.name === "zipalign" && /Zip alignment utility|Usage: zipalign/i.test(preview)) ||
-    (check.name === "apkid" && /usage:\s+apkid/i.test(preview))
-  return {
-    ...check,
-    ok,
-    status: res.status,
-    preview,
-  }
-}
+const results = runToolChecksDetailed(TOOL_CHECKS.filter((check) => ANDROID_TOOL_NAMES.includes(check.name)))
 
-const results = checks.map(run)
 const found = results.filter((r) => r.ok)
 const missingRequired = results.filter((r) => !r.ok && r.required)
 const missingOptional = results.filter((r) => !r.ok && !r.required)
@@ -80,9 +37,10 @@ console.log(`missing_optional: ${missingOptional.map((r) => r.name).join(", ") |
 console.log("\n## details")
 for (const r of results) {
   console.log(
-    `- ${r.ok ? "ok" : r.required ? "MISSING" : "optional-missing"}: ${r.name} :: ${r.note}${r.preview ? ` :: ${r.preview}` : ""}`,
+    `- ${r.ok ? "ok" : r.required ? "MISSING" : "optional-missing"}: ${r.name} :: ${r.note ?? ""}${r.preview ? ` :: ${r.preview}` : ""}`,
   )
 }
+
 console.log("\n## recommended_path")
 if (missingRequired.length) {
   console.log(

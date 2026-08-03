@@ -77,3 +77,25 @@ Stop or ask when:
 - A command would scan or attack out-of-scope hosts.
 - An interactive process cannot be controlled with available tools.
 - Repeated command attempts produce no new information.
+
+## Shared Skill Contract
+
+## Load When
+
+Load when this skill's trigger conditions are evidenced in the current authorized CTF branch.
+
+## Do Not Load When
+
+Do not load when the trigger is absent, the branch is out of scope, or a simpler in-scope workflow answers the question.
+
+## Required Inputs
+
+Provide the authorized scope, relevant artifacts/evidence, current hypothesis, and any required tool or environment constraints.
+
+## First Safe Action
+
+Record the current hypothesis and perform the smallest read-only, bounded, reversible check that can distinguish it.
+
+## Dispatch / Handoff
+
+Hand off with scope, evidence, hypothesis, bounded next action, risks, and the expected output format.

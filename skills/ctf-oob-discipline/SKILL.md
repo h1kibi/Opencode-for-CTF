@@ -40,7 +40,7 @@ If the only evidence is timeout, hang, unchanged status/length, generic 404/403,
 For every OOB probe record:
 
 | Token | Hypothesis | Route/Input | Protocol | Expected Callback | Observed | Verdict | Next |
-|---|---|---|---|---|---|---|---|
+| ----- | ---------- | ----------- | -------- | ----------------- | -------- | ------- | ---- |
 
 Rules:
 
@@ -99,3 +99,29 @@ Return only:
 - Confirm/falsify oracle.
 - Fallback if resource is unavailable.
 - Decision-state update needed next.
+
+## Load When
+
+Load when a blind or out-of-band branch is evidenced and the branch needs callback confirmation or approved callback infrastructure.
+
+## Do Not Load When
+
+Do not load for ordinary in-band exploitation, local-only analysis, or speculative OOB probing without an evidence-backed hypothesis.
+
+## Required Inputs
+
+- Authorized challenge scope and target boundary.
+- OOB hypothesis, expected protocol, and a unique callback token.
+- Available callback infrastructure or an explicit safe fallback.
+
+## First Safe Action
+
+Write one hypothesis and one unique canary into the token ledger; prefer a local or in-band oracle before external infrastructure.
+
+## Dispatch / Handoff
+
+Hand off to the relevant category specialist with the token ledger row, protocol requirements, scope, and confirmation/kill rule.
+
+## Stop Conditions
+
+Stop after two one-variable probes without callback, writeback, or timing evidence, or immediately when scope, authorization, or infrastructure requirements are unclear.

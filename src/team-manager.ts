@@ -1,9 +1,30 @@
+/**
+ * Legacy team manager compatibility layer.
+ *
+ * This module preserves the older member/task/message-oriented team state API.
+ * The canonical Team Mode runtime now lives under `src/team/` and is exposed
+ * through `src/team-runtime.ts` as the run/job orchestration façade.
+ *
+ * Keep this layer only for compatibility with older call sites or migration
+ * helpers. New Team Mode behavior should be implemented against the run/job
+ * model rather than extending this file.
+ */
+
 import { teamStateFile } from "./paths.ts"
 import { atomicUpdateJsonFile, loadJsonFile, nowIso } from "./state-store.ts"
 import { withFileLock } from "./file-lock.ts"
 import type { TeamMember, TeamMessage, TeamState, TeamTask, TeamTaskStatus } from "./types.ts"
 import type { OpencodeClient } from "@opencode-ai/sdk"
 import { randomUUID } from "node:crypto"
+
+export type TeamRuntimeVisibility = {
+  surface?: "ctf-fast" | "ctf-expert"
+  pluginToolCount?: number
+  expectedSkills?: string[]
+  externalSkillsEnabled?: boolean
+  /** Full list of plugin-exported tool names to explicitly enable in child sessions. */
+  exportedToolNames?: string[]
+}
 
 function createEmptyState(teamId: string, leadSessionID: string, directory: string, challengeSlug?: string): TeamState {
   const now = nowIso()
@@ -134,6 +155,7 @@ export async function createMemberTask(args: {
   memberId: string
   title: string
   prompt: string
+  runtimeVisibility?: TeamRuntimeVisibility
 }) {
   // Step 1: Find the member and create a session (no lock needed — API call)
   const path = statePath(args.worktree, args.directory, args.teamId)
@@ -151,15 +173,54 @@ export async function createMemberTask(args: {
 
   if (!member.sessionID) throw new Error(`failed to create member session for ${member.name}`)
 
+  const runtimeLines = [
+    args.runtimeVisibility ? `Expected runtime surface: ${args.runtimeVisibility.surface ?? "ctf-fast"}` : "",
+    args.runtimeVisibility ? `Expected plugin-visible tools: ${args.runtimeVisibility.pluginToolCount ?? 0}` : "",
+    args.runtimeVisibility
+      ? `external_skills enabled: ${args.runtimeVisibility.externalSkillsEnabled ? "yes" : "no"}`
+      : "",
+    args.runtimeVisibility && args.runtimeVisibility.expectedSkills?.length
+      ? `Expected skills catalog entries: ${args.runtimeVisibility.expectedSkills.join(", ")}`
+      : args.runtimeVisibility
+        ? "Expected skills catalog entries: (none detected by plugin startup diagnostics)"
+        : "",
+  ].filter(Boolean)
+
+  // Build explicit tool-enablement map for plugin tools.
+  // The host may only inject built-in tools into subagent sessions by default;
+  // plugin tools (ctf-*, archive-*, seckb_*, cvekb_*, anysearch_*) need to be
+  // explicitly listed as `true` in the `tools` parameter.
+  const childTools: Record<string, boolean> = {}
+  const exported = args.runtimeVisibility?.exportedToolNames
+  if (exported && exported.length > 0) {
+    for (const name of exported) {
+      if (
+        name.startsWith("ctf-") ||
+        name.startsWith("archive-") ||
+        name.startsWith("seckb_") ||
+        name.startsWith("cvekb_") ||
+        name.startsWith("anysearch_")
+      ) {
+        childTools[name] = true
+      }
+    }
+  }
+  // Always disable destructive / re-entrant tools for subagents.
+  childTools["task"] = false
+  childTools["edit"] = false
+  childTools["write"] = false
+  childTools["apply_patch"] = false
+
   await args.client.session.promptAsync({
     path: { id: member.sessionID },
     query: { directory: args.directory },
     body: {
       agent: member.agent,
+      tools: Object.keys(childTools).length > 0 ? childTools : undefined,
       parts: [
         {
           type: "text",
-          text: args.prompt,
+          text: [runtimeLines.length ? runtimeLines.join("\n") : "", args.prompt].filter(Boolean).join("\n\n"),
         },
       ],
     },

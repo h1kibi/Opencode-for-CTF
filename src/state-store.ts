@@ -1,15 +1,31 @@
 import { copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { withFileLock } from "./file-lock.ts"
+import { withFileLock, type FileLockOptions } from "./file-lock.ts"
 
 export async function loadJsonFile<T>(file: string, fallback: T): Promise<T> {
+  let raw: string
   try {
-    const raw = await readFile(file, "utf8")
-    if (!raw.trim()) return fallback
-    return JSON.parse(raw) as T
+    raw = await readFile(file, "utf8")
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return fallback
     throw error
+  }
+  if (!raw.trim()) return fallback
+  try {
+    return JSON.parse(raw) as T
+  } catch (error) {
+    // Corrupt state files must never crash a session hook. Quarantine the
+    // damaged file (keep it for forensics) and fall back to defaults so
+    // callers rebuild state instead of killing the session.
+    console.warn(
+      `[plugin] loadJsonFile: corrupt JSON in ${file}, quarantining (${error instanceof Error ? error.message : String(error)})`,
+    )
+    try {
+      await rename(file, `${file}.corrupt-${Date.now()}`)
+    } catch {
+      await rm(file, { force: true })
+    }
+    return fallback
   }
 }
 
@@ -67,11 +83,23 @@ export async function atomicUpdateJsonFile<T>(
   file: string,
   fallback: T,
   mutator: (current: T) => T | Promise<T>,
+  lockOptions: FileLockOptions = {},
 ): Promise<T> {
-  return withFileLock(file, async () => {
-    const current = await loadJsonFile<T>(file, fallback)
-    const next = await mutator(current)
-    await saveJsonFile(file, next)
-    return next
-  })
+  return withFileLock(
+    file,
+    async (lease) => {
+      const current = await loadJsonFile<T>(file, fallback)
+      const next = await mutator(current)
+      // The mutator may suspend long enough for a stale lease to be taken
+      // over by another process. Never commit a value computed by a fenced
+      // owner.
+      await lease.assertOwned()
+      await saveJsonFile(file, next)
+      // Keep the post-commit fence as a diagnostic/safety boundary for
+      // callers that continue their transaction after this function returns.
+      await lease.assertOwned()
+      return next
+    },
+    lockOptions,
+  )
 }

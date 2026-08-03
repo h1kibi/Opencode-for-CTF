@@ -12,6 +12,36 @@ Use this skill at the start of any authorized CTF challenge. It provides the sol
 
 This skill adapts workflow ideas from PentestGPT-style task trees and D-CIPHER-style planner/executor loops without copying their prompts or granting broader attack scope.
 
+
+## Load When
+
+Load first for every authorized challenge, then keep it available as the shared safety and evidence contract. Do not load it as a substitute for a category orchestrator.
+
+## Do Not Load When
+
+Do not use this skill to choose a vulnerability payload, perform broad reconnaissance, or replace `ctf-router`, `ctf-lead`, or a category skill.
+
+## Required Inputs
+
+Require the authorization/scope statement, artifact inventory, service access method, constraints, and any existing evidence or resume state.
+
+## First Safe Action
+
+Confirm authorization and scope, inventory the supplied artifacts, and create or update the smallest restartable notes/evidence record before active probing.
+
+## Dispatch / Handoff
+
+Hand off classification to `ctf-router`; hand off category execution to the selected category orchestrator. Return to this skill for scope, evidence, reproducibility, or safety conflicts.
+
+## Ownership and State Precedence
+
+- `ctf-router` owns initial lane/category selection.
+- `ctf-lead` owns current phase and active owner.
+- `ctf-decision-engine` owns hypothesis/probe ranking.
+- `ctf-ledger-discipline` owns compact state refresh and resume hygiene.
+- `ctf-closure-gate` owns post-primitive convergence.
+- Live artifact evidence outranks recalled lessons, route scores, and intuition.
+
 ## Scope
 
 Allowed targets:
@@ -33,16 +63,19 @@ Collect these before acting:
 - Service access method: local binary, localhost web service, netcat service, Docker network, or static files only.
 - Constraints: timeouts, remote-only behavior, sandbox, no-network requirement, provided credentials, or required flag wrapping.
 
-## Workflow
+## Flag closure contract
 
+Load `references/flag-candidate-oracle.md` whenever any output looks flag-like. Keep the shared state machine `untrusted_hint -> flag_candidate -> oracle_verified -> closed`; use `ctf-flag-verify` before `ctf-evidence-board command=flag-verify`. Format matches and challenge-specific regexes only produce candidates. Bare hashes require explicit flag-file/readflag context. Never stop, report success, or write `agent_flag.txt` until `oracle_verified: true`.
+## Workflow
 1. Create or update `notes.md` with challenge summary, file inventory, assumptions, and next steps.
 2. Build a task tree with hypotheses and the cheapest safe experiment for each hypothesis.
 3. Execute one task at a time and record the result before choosing the next task.
 4. Parse observations into facts, uncertainties, and failed paths.
 5. Update the task tree after each meaningful command, HTTP response, debugger result, or file finding.
 6. Prefer local reproduction when source, Docker files, or binaries exist.
-7. Produce a reproducible solver or exploit script when practical.
-8. Verify the flag from challenge behavior or artifact evidence before finalizing.
+7. For PWN/REV-shaped work, check the prepared Docker lab environment before runtime-sensitive testing, select the matching challenge Docker or prepared lab image, and keep testing inside that chosen container until a concrete blocker justifies switching.
+8. Produce a reproducible solver or exploit script when practical.
+9. Verify the flag from challenge behavior or artifact evidence before finalizing.
 
 ## Reusable Templates
 
@@ -83,6 +116,17 @@ Before switching branches, write one sentence:
 `Switching because: <old branch failed due to X>; <new branch has stronger evidence Y>.`
 
 Do not branch-hop silently.
+
+## Docker Lab Stability for PWN/REV
+
+When a branch is PWN- or REV-shaped, treat runtime substrate choice as an early evidence item, not an incidental convenience:
+
+1. Check prepared lab readiness first (`ctf-env-check category=pwn` or `ctf-env-check category=rev`; PWN may also use `ctf-pwn-check-env`). Record available Docker daemon, built pwnlab/revlab images, challenge Dockerfile/compose, architecture, libc/loader, and mount path.
+2. Choose the best substrate once: challenge-provided Docker/compose when present and runnable; otherwise the closest prepared pwnlab/revlab image for the architecture/libc/tooling need.
+3. Lock the chosen substrate in the notes/checkpoint (`challenge-docker`, `pwnlab-docker`, `revlab-docker`, `host`, `remote-only`) with one sentence explaining why.
+4. Run runtime-sensitive probes, exploit/debug iterations, emulation, and validation inside that container. Do not alternate host/WSL/Docker just because quoting or one convenience command failed.
+5. Switch to host or remote only when there is a concrete blocker or new validation goal: Docker unavailable, required GUI/device/hardware feature missing, host-only artifact needed, final remote adaptation, or proven local/remote drift.
+6. Before switching, write: `Switching substrate because: <current substrate blocker>; <new substrate evidence/goal>`.
 
 ## Tool Discipline
 
@@ -173,6 +217,16 @@ Rules:
 - Do not store reusable live secrets, raw cookies, private keys, or challenge credentials in reusable lesson artifacts.
 - If local and remote behavior diverge, keep a compact local/remote transcript or summary before mutating the payload family.
 - If a pattern card materially influenced the branch, record feedback before final retro ends.
+
+## Flag Identification
+
+Use `references/flag-identification-rules.md` as the canonical default. In short:
+
+- Accept only strict `prefix{payload}` candidates by default: 3–80 character prefix, 10–80 safe payload characters, and no whitespace/newlines.
+- Accept UUID-shaped `flag{...}` values as high-confidence candidates.
+- Reject bare MD5/SHA-256 unless the same source context explicitly names a flag file/helper or reads `/flag`; generic hash context is insufficient.
+- A candidate is evidence, not success. Only an independent exact/file/hash oracle upgrades it to `oracle-verified`.
+- Preserve source/origin/context and never write `agent_flag.txt` from a regex hit, short sample, decoy, or unverified hash.
 
 ## Accuracy Rules
 

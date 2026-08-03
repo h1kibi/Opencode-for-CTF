@@ -1,0 +1,15 @@
+rules:
+  - id: ssti
+    name: Server-Side Template Injection
+    description: Detect user input reaching server-side template engines
+    languages: [python, javascript, typescript, java, php]
+    severity: high
+    sinks:
+      - render_template_string, render_to_string, Template, template
+      - .render, .parse, .compile, .from_string, .fromStream
+      - Smarty, Twig_Environment, Blade, Jinja2, Mako, Nunjucks
+    source_patterns:
+      - request, input, args, param, query, body, cookie, header, name, user
+    sanitizer_hints:
+      - autoescape, escape, safe, mark_safe, escape_filter
+    ctf_relevance: high

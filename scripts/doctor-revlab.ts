@@ -1,8 +1,8 @@
 ﻿import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 
-// 鑷:纭鎵€鏈夋柊澧炴枃浠?瀛楃涓?閽╁瓙閮藉凡钀藉湴
-// 涓嶅疄闄呮墽琛?docker build / pull (閭ｄ簺闇€瑕佺敤鎴锋巿鏉?
+// 自查:确认所有新增文件、字符、钩子都已落地
+// 不实际执行 docker build / pull (那些需要用户授权)
 
 const root = process.cwd()
 const checks: Array<{ name: string; ok: boolean; detail?: string }> = []
@@ -77,25 +77,25 @@ checkContains("docker/docker-compose.revlab.yml", "NET_ADMIN")
 checkContains("docker/docker-compose.revlab.yml", "NET_RAW")
 
 // Phase B
-checkFile("tools/ctf-pcap-carve.ts")
-checkContains("tools/ctf-pcap-carve.ts", "parsePcapIfPresent")
-checkContains("tools/ctf-pcap-carve.ts", "xorBytes")
-checkContains("tools/ctf-pcap-carve.ts", "rc4")
-checkContains("tools/ctf-pcap-carve.ts", "autoTryXorBytes")
+checkFile("tools/forensics/ctf-pcap-carve.ts")
+checkContains("tools/forensics/ctf-pcap-carve.ts", "parsePcapIfPresent")
+checkContains("tools/forensics/ctf-pcap-carve.ts", "xorBytes")
+checkContains("tools/forensics/ctf-pcap-carve.ts", "rc4")
+checkContains("tools/forensics/ctf-pcap-carve.ts", "autoTryXorBytes")
 
-checkFile("tools/ctf-go-pclntool.ts")
-checkContains("tools/ctf-go-pclntool.ts", "go tool nm")
-checkContains("tools/ctf-go-pclntool.ts", "go tool objdump")
-checkContains("tools/ctf-go-pclntool.ts", "revlab:ubuntu22.04")
-checkContains("tools/ctf-go-pclntool.ts", "rename_")
-checkContains("tools/ctf-go-pclntool.ts", "emitRenameScript")
-checkContains("tools/ctf-go-pclntool.ts", "ida")
+checkFile("tools/rev/ctf-go-pclntool.ts")
+checkContains("tools/rev/ctf-go-pclntool.ts", "go tool nm")
+checkContains("tools/rev/ctf-go-pclntool.ts", "go tool objdump")
+checkContains("tools/rev/ctf-go-pclntool.ts", "revlab:ubuntu22.04")
+checkContains("tools/rev/ctf-go-pclntool.ts", "rename_")
+checkContains("tools/rev/ctf-go-pclntool.ts", "emitRenameScript")
+checkContains("tools/rev/ctf-go-pclntool.ts", "ida")
 
 // Phase C
-checkContains("tools/ctf-pcap-probe.ts", "probe_backend")
-checkContains("tools/ctf-pcap-probe.ts", "revlab:ubuntu22.04")
-checkContains("tools/ctf-pcap-probe.ts", "dockerImageExists")
-checkContains("tools/ctf-pcap-probe.ts", "ctf-pcap-carve")
+checkContains("tools/forensics/ctf-pcap-probe.ts", "probe_backend")
+checkContains("tools/forensics/ctf-pcap-probe.ts", "revlab:ubuntu22.04")
+checkContains("tools/forensics/ctf-pcap-probe.ts", "dockerImageExists")
+checkContains("tools/forensics/ctf-pcap-probe.ts", "ctf-pcap-carve")
 
 // Phase D
 checkFile("scripts/build-revlab.ps1")
@@ -113,23 +113,23 @@ checkFile("commands/ctf-rev-network.md")
 checkContains("commands/ctf-rev-network.md", "rev-network-replay")
 checkContains("commands/ctf-rev-network.md", "revlab:ubuntu22.04")
 
-// Phase 鎵╁睍妫€鏌? REV knowledge / closure-ladder / oob-discipline / AES / mirror / permissions
-checkFile("knowledge/rev/elf-pe/elf-checker-slice.md")
-checkFile("knowledge/rev/elf-pe/pe-malware-rev-workflow.md")
-checkFile("knowledge/rev/vm-bytecode/vm-bytecode-workflow.md")
-checkFile("knowledge/rev/emulation/unicorn-qiling-workflow.md")
-checkFile("knowledge/rev/packed/packed-unpack-workflow.md")
-checkFile("knowledge/rev/anti-analysis/anti-debug-bypass-workflow.md")
-checkFile("knowledge/rev/closure/rev-closure-ladder.md")
-checkFile("tools/ctf-rev-closure-ladder.ts")
-checkContains("tools/ctf-rev-closure-ladder.ts", "REV_CLOSURE_LADDER")
-checkContains("tools/ctf-rev-closure-ladder.ts", "rankCandidates")
+// Phase 扩展检查: REV knowledge / closure-ladder / oob-discipline / AES / mirror / permissions
+checkFile("rag/knowledge/rev/elf-pe/elf-checker-slice.md")
+checkFile("rag/knowledge/rev/elf-pe/pe-malware-rev-workflow.md")
+checkFile("rag/knowledge/rev/vm-bytecode/vm-bytecode-workflow.md")
+checkFile("rag/knowledge/rev/emulation/unicorn-qiling-workflow.md")
+checkFile("rag/knowledge/rev/packed/packed-unpack-workflow.md")
+checkFile("rag/knowledge/rev/anti-analysis/anti-debug-bypass-workflow.md")
+checkFile("rag/knowledge/rev/closure/rev-closure-ladder.md")
+checkFile("tools/rev/ctf-rev-closure-ladder.ts")
+checkContains("tools/rev/ctf-rev-closure-ladder.ts", "REV_CLOSURE_LADDER")
+checkContains("tools/rev/ctf-rev-closure-ladder.ts", "rankCandidates")
 checkFile("skills/ctf-rev-oob-discipline/SKILL.md")
 checkContains("skills/ctf-rev-oob-discipline/SKILL.md", "receive-only")
 checkContains("skills/ctf-rev-oob-discipline/SKILL.md", "response-serving")
-checkContains("tools/ctf-pcap-carve.ts", "createDecipheriv")
-checkContains("tools/ctf-pcap-carve.ts", "aes_gcm")
-checkContains("tools/ctf-pcap-carve.ts", "chacha20_poly1305")
+checkContains("tools/forensics/ctf-pcap-carve.ts", "createDecipheriv")
+checkContains("tools/forensics/ctf-pcap-carve.ts", "aes_gcm")
+checkContains("tools/forensics/ctf-pcap-carve.ts", "chacha20_poly1305")
 checkContains("docker/Dockerfile.revlab-ubuntu22.04", "APT_MIRROR")
 checkContains("docker/Dockerfile.revlab-ubuntu22.04", "PIP_INDEX_URL")
 checkContains("docker/Dockerfile.revlab-ubuntu22.04", "GOPROXY")

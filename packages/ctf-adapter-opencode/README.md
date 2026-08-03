@@ -16,11 +16,7 @@ Thin OpenCode-facing surface for **opencode-for-ctf**.
 ## Usage
 
 ```ts
-import {
-  decideRoute,
-  DEFAULT_ENTRY_COMMAND,
-  PRIMARY_AGENTS,
-} from "../../packages/ctf-adapter-opencode/src/index.ts"
+import { decideRoute, DEFAULT_ENTRY_COMMAND, PRIMARY_AGENTS } from "../../packages/ctf-adapter-opencode/src/index.ts"
 
 const plan = decideRoute({ text: "http://127.0.0.1:8000 flask" })
 ```

@@ -173,7 +173,11 @@ export function summarizeTodos(todos: Todo[]) {
   }
 }
 
-export function buildFastBudgetHandoff(state: ContinuationState, summary: ReturnType<typeof summarizeTodos>, reason?: string) {
+export function buildFastBudgetHandoff(
+  state: ContinuationState,
+  summary: ReturnType<typeof summarizeTodos>,
+  reason?: string,
+) {
   const confirmedFacts: string[] = []
   const blockedPaths: string[] = []
   const topHypotheses: string[] = []
@@ -190,7 +194,8 @@ export function buildFastBudgetHandoff(state: ContinuationState, summary: Return
   if (state.fastBudgetStartedAt) confirmedFacts.push(`fast_budget_started_at: ${state.fastBudgetStartedAt}`)
   if (state.fastBudgetDeadlineAt) confirmedFacts.push(`fast_budget_deadline_at: ${state.fastBudgetDeadlineAt}`)
   if (state.fastBudgetSummary) confirmedFacts.push(`budget_summary: ${state.fastBudgetSummary}`)
-  if (summary.inProgress === 0 && summary.highOpen === 0) blockedPaths.push("fast-lane stalled / no active high-signal branch")
+  if (summary.inProgress === 0 && summary.highOpen === 0)
+    blockedPaths.push("fast-lane stalled / no active high-signal branch")
   topHypotheses.push(state.lastAgent === "ctf-fast" ? "fast lane exhausted; expert lane should continue" : "unknown")
 
   return [
@@ -232,7 +237,8 @@ export function evaluateFastBudget(
   if (!policy?.enabled) return { shouldEscalate: false, shouldPromptReview: false, status: "active" }
   if (state.mode !== "ctf") return { shouldEscalate: false, shouldPromptReview: false, status: "active" }
   if (state.lastAgent !== "ctf-fast") return { shouldEscalate: false, shouldPromptReview: false, status: "active" }
-  if (state.pausedByUser) return { shouldEscalate: false, shouldPromptReview: false, status: "blocked", reason: "paused_by_user" }
+  if (state.pausedByUser)
+    return { shouldEscalate: false, shouldPromptReview: false, status: "blocked", reason: "paused_by_user" }
   if (isFutureIso(state.suppressUntil)) {
     return {
       shouldEscalate: false,
@@ -295,7 +301,12 @@ export async function applyFastBudgetAction(args: {
       budget: { shouldEscalate: false, shouldPromptReview: false, status: "blocked", reason: suppression },
     }
   }
-  const summary = args.summary ?? summarizeTodos((await args.client.session.todo({ path: { id: args.sessionID }, query: { directory: args.directory } })).data ?? [])
+  const summary =
+    args.summary ??
+    summarizeTodos(
+      (await args.client.session.todo({ path: { id: args.sessionID }, query: { directory: args.directory } })).data ??
+        [],
+    )
   state.lastTodoSummary = `pending=${summary.pending},in_progress=${summary.inProgress},high_open=${summary.highOpen}`
   const budget = evaluateFastBudget(state, summary, args.policy)
   if (!budget.shouldEscalate && !budget.shouldPromptReview) {

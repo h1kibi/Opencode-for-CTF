@@ -1,4 +1,6 @@
+// Manual QA utility — not part of CI or npm run check. Run with: npx tsx scripts/check-config-hygiene.ts
 import { readFileSync } from "fs"
+import { fileURLToPath } from "url"
 import { resolve } from "path"
 
 type Finding = {
@@ -10,9 +12,15 @@ function countMatches(source: string, pattern: RegExp) {
   return [...source.matchAll(pattern)].length
 }
 
-function main() {
-  const configPath = resolve("opencode.jsonc")
-  const text = readFileSync(configPath, "utf8")
+export function isSourceCheckoutMinimalConfig(text: string): boolean {
+  return (
+    /Source-checkout configuration\./.test(text) &&
+    /"plugin"\s*:\s*\[\s*\]/.test(text) &&
+    /source checkout to avoid a machine-specific absolute path/.test(text)
+  )
+}
+
+export function auditConfigHygiene(text: string): Finding[] {
   const findings: Finding[] = []
 
   const aipieBlockMatch = text.match(/"aipie"\s*:\s*\{[\s\S]*?"models"\s*:\s*\{([\s\S]*?)\n\s*\}\s*\n\s*\}/)
@@ -27,7 +35,7 @@ function main() {
     }
   }
 
-  if (!/"default_agent"\s*:\s*"ctf-fast"/.test(text)) {
+  if (!isSourceCheckoutMinimalConfig(text) && !/"default_agent"\s*:\s*"ctf-fast"/.test(text)) {
     findings.push({
       severity: "WARN",
       message: "default_agent is not explicitly set to ctf-fast",
@@ -40,6 +48,21 @@ function main() {
       message: "rules/zh-rules.md is not present in instructions[]",
     })
   }
+
+  if (!/"instructions"\s*:\s*\[[\s\S]*?"\.\/rules\/agent-equipment\.md"/.test(text)) {
+    findings.push({
+      severity: "WARN",
+      message: "rules/agent-equipment.md is not present in instructions[]",
+    })
+  }
+
+  return findings
+}
+
+function main() {
+  const configPath = resolve("opencode.jsonc")
+  const text = readFileSync(configPath, "utf8")
+  const findings = auditConfigHygiene(text)
 
   console.log("# Config Hygiene Audit\n")
   console.log(`- file: ${configPath}`)
@@ -59,4 +82,6 @@ function main() {
   process.exit(failCount > 0 ? 1 : 0)
 }
 
-main()
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main()
+}

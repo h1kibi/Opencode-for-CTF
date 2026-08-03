@@ -27,19 +27,20 @@
 
   // Tool packs registered at plugin startup (restart OpenCode after changes).
   // This is the PROCESS registry (superset). ctf-fast is still filtered by allowlist.
-  // Default omits rare packs: android, godot.
+  // Default omits rare/heavy/maintenance packs: maintenance, pwn-heavy, web-heavy, rev-heavy, java, forensics-heavy, android, android-dynamic, godot.
   // Use ["all"] for true full expert environment, or list packs explicitly.
   // "tool_packs": ["core", "web", "pwn", "rev", "crypto", "forensics", "misc", "java"],
   // "tool_packs": ["all"],
   // Optional merge into registry for expert-heavy machines:
-  // "expert_tool_packs": ["android", "godot"],
+  // "expert_tool_packs": ["maintenance", "pwn-heavy", "web-heavy", "rev-heavy", "java", "forensics-heavy", "android", "android-dynamic", "godot"],
 
   // Recommended MCP backend notes:
   // - browser uses @playwright/mcp by default.
-  // - wireshark-mcp expects WIREMCP_LAUNCHER to point at WireMCP's server launcher.
-  // - ida-pro expects mrexodia/ida-pro-mcp installed as `ida-pro-mcp` on PATH.
-  // - cyberchef-mcp is defaulted only for crypto / forensics / misc agents.
-  // - ctfd-mcp is configurable but disabled by default.
+  // - wireshark-mcp uses the bundled WireMCP server copied by the managed installer.
+  // - ida-pro expects mrexodia/ida-pro-mcp installed as `ida-pro-mcp` on PATH (stdio is the default transport).
+  // - jadx-mcp / gdb-mcp / mysql-mcp / x64dbg-mcp / ssh-mcp use env-backed command wrappers.
+  // - cyberchef-mcp uses {env:CYBERCHEF_MCP_COMMAND}; there is no official npm package, so it is disabled by default.
+  // - ctfd-mcp uses `npx -y ctfd-mcp-server` and is disabled by default.
 
   // Example disabled MCP stubs for workspace-level opencode.jsonc:
   // "mcp": {
@@ -50,25 +51,65 @@
   //   },
   //   "wireshark-mcp": {
   //     "type": "local",
-  //     "command": ["python", "{env:WIREMCP_LAUNCHER}", "--stdio"],
+  //     "command": ["node", "/absolute/path/to/opencode-for-ctf/mcp-server/vendor/WireMCP/index.js"],
   //     "enabled": false
   //   },
   //   "ida-pro": {
   //     "type": "local",
-  //     "command": ["ida-pro-mcp", "--stdio"],
+  //     "command": ["ida-pro-mcp"],
+  //     "enabled": false
+  //   },
+  //   "jadx-mcp": {
+  //     "type": "local",
+  //     "command": ["{env:JADX_MCP_COMMAND}"],
+  //     "environment": { "JADX_HOME": "{env:JADX_HOME}" },
+  //     "enabled": false
+  //   },
+  //   "gdb-mcp": {
+  //     "type": "local",
+  //     "command": ["{env:GDB_MCP_COMMAND}"],
+  //     "enabled": false
+  //   },
+  //   "mysql-mcp": {
+  //     "type": "local",
+  //     "command": ["{env:MYSQL_MCP_COMMAND}"],
+  //     "environment": {
+  //       "MYSQL_HOST": "{env:MYSQL_HOST}",
+  //       "MYSQL_PORT": "{env:MYSQL_PORT}",
+  //       "MYSQL_USER": "{env:MYSQL_USER}",
+  //       "MYSQL_PASSWORD": "{env:MYSQL_PASSWORD}",
+  //       "MYSQL_DATABASE": "{env:MYSQL_DATABASE}"
+  //     },
+  //     "enabled": false
+  //   },
+  //   "x64dbg-mcp": {
+  //     "type": "local",
+  //     "command": ["{env:X64DBG_MCP_COMMAND}"],
+  //     "environment": { "X64DBG_PATH": "{env:X64DBG_PATH}" },
+  //     "enabled": false
+  //   },
+  //   "ssh-mcp": {
+  //     "type": "local",
+  //     "command": ["{env:SSH_MCP_COMMAND}"],
+  //     "environment": {
+  //       "SSH_MCP_HOST": "{env:SSH_MCP_HOST}",
+  //       "SSH_MCP_PORT": "{env:SSH_MCP_PORT}",
+  //       "SSH_MCP_USER": "{env:SSH_MCP_USER}",
+  //       "SSH_MCP_KEY": "{env:SSH_MCP_KEY}"
+  //     },
   //     "enabled": false
   //   },
   //   "cyberchef-mcp": {
   //     "type": "local",
-  //     "command": ["npx", "-y", "cyberchef-mcp"],
+  //     "command": ["{env:CYBERCHEF_MCP_COMMAND}"],
   //     "enabled": false
   //   },
   //   "ctfd-mcp": {
   //     "type": "local",
-  //     "command": ["npx", "-y", "ctfd-mcp"],
+  //     "command": ["npx", "-y", "ctfd-mcp-server"],
   //     "enabled": false
   //   }
   // },
 
-  "external_skills": false
+  "external_skills": true
 }

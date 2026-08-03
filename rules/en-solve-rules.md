@@ -3,6 +3,8 @@
 Reserved for CTF-only cross-category rules that should be loaded by CTF agents, not daily mode.
 Keep this file minimal; prefer specialized ctf-* skills/commands for category-specific guidance.
 
+For agent tool/MCP/environment equipment, follow `rules/agent-equipment.md`.
+
 ## Rule Ownership Boundary
 
 Use this file only for truly cross-category, always-on CTF rules that multiple agents should inherit directly.
@@ -84,3 +86,13 @@ Rule:
 - External DTD / staged XXE / second-phase fetch chains require **response-serving OOB**, not receive-only OOB.
 - Interactsh-style services are sufficient for callback confirmation and some exfil channels, but are **not** sufficient when the target must fetch attacker-defined DTD/body content unless a separate controllable HTTP server exists.
 - If the top branch requires response-serving OOB and none is available, ask the user for VPS/HTTP hosting/approved infrastructure early instead of continuing blind payload mutation.
+
+## Default Flag Identification
+
+Unless the challenge or user explicitly specifies another format, all agents must follow `skills/ctf-common/references/flag-identification-rules.md`:
+
+- Prefer `prefix{payload}` with a 3–10 character prefix and a 10–60 character safe payload; reject whitespace and multiline payloads.
+- UUID-shaped `flag{...}` is accepted as a high-confidence candidate.
+- Bare MD5/SHA-256 is rejected unless the evidence explicitly names or reads a flag source such as `flag.txt`, `.flag`, `/flag`, `readflag`, or `getflag`.
+- Regex output is only a candidate. Report success only after an independent exact, file, or hash oracle.
+- Never write `agent_flag.txt` from a short sample, decoy, generic hash, or unverified candidate.

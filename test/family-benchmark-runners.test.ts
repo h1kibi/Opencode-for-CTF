@@ -21,8 +21,13 @@ describe("family benchmark runners", () => {
 
   it("ctf-benchmark.ts advertises and routes all family modes", () => {
     const body = require("node:fs").readFileSync(join(root, "scripts", "ctf-benchmark.ts"), "utf8") as string
-    for (const mode of ["web", "pwn", "crypto", "rev", "forensics", "misc", "tooling"]) {
-      expect(body).toContain(`mode === \"${mode}\"`)
+    expect(body).toContain("FAMILY_RUNNERS")
+    for (const mode of ["web", "pwn", "crypto", "rev", "forensics", "misc"]) {
+      expect(body, `family ${mode} should route to its checker`).toContain(
+        `${mode}: { checker: "check-${mode}-benchmarks.ts"`,
+      )
     }
+    expect(body).toContain("verify-ctf-tooling.ts")
+    expect(body).toContain("benchmarks")
   })
 })

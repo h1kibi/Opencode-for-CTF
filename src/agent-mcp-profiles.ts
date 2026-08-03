@@ -6,7 +6,8 @@
  *            Every CTF subagent gets these unconditionally.
  *   medium — domain-specific tools matched to the agent's specialty.
  *            Activated as part of defaults.
- *   heavy  — not in defaults; subagent must request via ctf-expert.
+ *   heavy  — may be listed as a default candidate for the owning family,
+ *            but activateAgentDefaults skips it until it is explicitly requested.
  *
  * Default activation is additive: light + medium for the agent's profile.
  * Heavy servers are never activated by default.
@@ -16,7 +17,10 @@
 export const COMMON_LIGHT_MCPS = ["filesystem", "context7", "github", "markitdown"]
 
 /**
- * Per-agent default MCP sets (light + medium only).
+ * Per-agent default MCP candidate sets.
+ *
+ * Heavy entries in these lists are family-scoped requestable capabilities.
+ * Runtime default activation filters them out with "heavy, must request".
  * Keys are the agent names as they appear in the agent manifest.
  */
 export const AGENT_MCP_DEFAULTS: Record<string, string[]> = {
@@ -27,23 +31,26 @@ export const AGENT_MCP_DEFAULTS: Record<string, string[]> = {
   "ctf-expert": [...COMMON_LIGHT_MCPS, "browser"],
 
   // === Category subagents ===
-  /** Web exploitation — needs browser for live app inspection. */
-  "ctf-web": [...COMMON_LIGHT_MCPS, "browser"],
+  /** Web exploitation - browser can start by default; Java/DB/SSH MCPs are requestable. */
+  "ctf-web": [...COMMON_LIGHT_MCPS, "browser", "jadx-mcp", "mysql-mcp", "ssh-mcp"],
 
-  /** Binary exploitation — lightweight, no domain-specific MCP needed. */
-  "ctf-pwn": [...COMMON_LIGHT_MCPS],
+  /** Binary exploitation - debugger/IDA/SSH MCPs are requestable but not auto-started. */
+  "ctf-pwn": [...COMMON_LIGHT_MCPS, "gdb-mcp", "ida-pro", "ssh-mcp"],
 
-  /** Reverse engineering — Ghidra/ReVa for decompilation. */
-  "ctf-rev": [...COMMON_LIGHT_MCPS, "ReVa"],
+  /** Reverse engineering - ReVa starts when configured; heavyweight GUI/debugger MCPs are requestable. */
+  "ctf-rev": [...COMMON_LIGHT_MCPS, "ReVa", "ida-pro", "jadx-mcp", "gdb-mcp", "x64dbg-mcp", "ssh-mcp"],
 
   /** Cryptography — default CyberChef supports structured transform chains. */
   "ctf-crypto": [...COMMON_LIGHT_MCPS, "cyberchef-mcp"],
 
-  /** Forensics — WireMCP for pcap plus CyberChef for structured transforms. */
-  "ctf-forensics": [...COMMON_LIGHT_MCPS, "wireshark-mcp", "cyberchef-mcp"],
+  /** Forensics - WireMCP/CyberChef can start when configured; DB/SSH MCPs are requestable. */
+  "ctf-forensics": [...COMMON_LIGHT_MCPS, "wireshark-mcp", "cyberchef-mcp", "mysql-mcp", "ssh-mcp"],
 
-  /** Misc/jail/blockchain — open-ended, give Wireshark/CyberChef as medium helpers. */
-  "ctf-misc": [...COMMON_LIGHT_MCPS, "wireshark-mcp", "cyberchef-mcp"],
+  /** Misc/jail/blockchain - open-ended, with requestable DB/SSH heavy MCPs. */
+  "ctf-misc": [...COMMON_LIGHT_MCPS, "wireshark-mcp", "cyberchef-mcp", "mysql-mcp", "ssh-mcp"],
+
+  /** AI security - browser for wrapper inspection; heavy family tools remain requestable. */
+  "ctf-aisec": [...COMMON_LIGHT_MCPS, "browser"],
 
   // === Support subagents ===
   /** Info gathering scout — needs browser for OSINT. */

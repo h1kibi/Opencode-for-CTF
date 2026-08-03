@@ -53,6 +53,23 @@ describe("mergePluginConfig", () => {
     expect(cfg.disabled_hooks).not.toContain("not-a-hook")
   })
 
+  it("filters unknown tool pack names", () => {
+    const cfg = mergePluginConfig({
+      tool_packs: ["CORE", "web", "java-heavy", "not-a-pack"],
+      expert_tool_packs: ["android", "bogus", "all"],
+    })
+    expect(cfg.tool_packs).toEqual(["core", "web", "java"])
+    expect(cfg.expert_tool_packs).toEqual(["android", "all"])
+  })
+
+  it("does not expose Team safety gates as configurable disabled hooks", () => {
+    const cfg = mergePluginConfig({
+      disabled_hooks: ["worker_policy", "expert_policy", "tool_execute_before", "team_mode", "team_events"],
+    })
+    expect(cfg.disabled_hooks).toEqual(["team_events"])
+    expect(isHookEnabled(cfg, "team_events")).toBe(false)
+  })
+
   it("respects isHookEnabled", () => {
     const cfg = mergePluginConfig({ disabled_hooks: ["chat_params"] })
     expect(isHookEnabled(cfg, "chat_params")).toBe(false)
@@ -110,19 +127,17 @@ describe("loadPluginConfigWithPath", () => {
     expect(loaded.config.ctf_fast_budget.soft_minutes).toBe(30)
   })
 
-  it("falls through from malformed nearest config to a sibling candidate", async () => {
+  it("fails closed when the nearest config is malformed", async () => {
     const dir = makeTempDir("ctf-config-fallback-")
     writeFileSync(join(dir, "opencode-for-ctf.jsonc"), `{ "default_mode": "fast", `)
     writeFileSync(join(dir, "opencode-for-ctf.json"), `{ "default_mode": "expert" }`)
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
 
-    const loaded = await loadPluginConfigWithPath(dir)
-    expect(loaded.path).toBe(join(dir, "opencode-for-ctf.json"))
-    expect(loaded.config.default_mode).toBe("expert")
+    await expect(loadPluginConfigWithPath(dir)).rejects.toThrow(/Invalid opencode-for-ctf config/)
     expect(warn).toHaveBeenCalled()
   })
 
-  it("falls back to defaults when project and explicit config candidates are malformed", async () => {
+  it("fails closed instead of falling back to global config", async () => {
     const root = makeTempDir("ctf-config-defaults-")
     const dir = join(root, "nested", "project")
     writeFileSync(join(root, "opencode-for-ctf.jsonc"), `{ "default_mode": "fast", `)
@@ -130,8 +145,7 @@ describe("loadPluginConfigWithPath", () => {
     process.env.XDG_CONFIG_HOME = makeTempDir("ctf-config-xdg-")
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
 
-    const loaded = await loadPluginConfigWithPath(dir)
-    expect(loaded.config).toEqual(DEFAULT_PLUGIN_CONFIG)
+    await expect(loadPluginConfigWithPath(dir)).rejects.toThrow(/Invalid opencode-for-ctf config/)
     expect(warn).toHaveBeenCalled()
   })
 })

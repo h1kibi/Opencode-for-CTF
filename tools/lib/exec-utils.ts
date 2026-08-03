@@ -39,6 +39,14 @@ export type SafeExecStreamResult = {
   ok: boolean
 }
 
+/** Like SafeExecStreamResult, but preserves raw bytes for encoding detection. */
+export type SafeExecBufferStreamResult = {
+  stdout: Buffer
+  stderr: Buffer
+  exitCode: number | null
+  ok: boolean
+}
+
 // ---------------------------------------------------------------------------
 // Windows helper — resolves .cmd wrappers for ELF-analysis commands
 // ---------------------------------------------------------------------------
@@ -124,13 +132,17 @@ export async function safeExec(
 
   try {
     const resolved = shell ? cmd : await resolveExec(cmd)
-    const { stdout, stderr } = await execFile(resolved, args, {
+    const promise = execFile(resolved, args, {
       cwd,
       timeout: timeoutMs,
       maxBuffer,
       shell,
       env,
     })
+    // Close stdin immediately: probe commands must never block waiting for
+    // interactive input when stdin is an open pipe.
+    promise.child.stdin?.end()
+    const { stdout, stderr } = await promise
     const output = `${stdout}${stderr ? `\n[stderr]\n${stderr}` : ""}`.trim()
     return { output: output || "<no output>", ok: true, exitCode: 0 }
   } catch (err: unknown) {
@@ -175,13 +187,16 @@ export async function safeExecWithStreams(
 
   try {
     const resolved = shell ? cmd : await resolveExec(cmd)
-    const { stdout, stderr } = await execFile(resolved, args, {
+    const promise = execFile(resolved, args, {
       cwd,
       timeout: timeoutMs,
       maxBuffer,
       shell,
       env,
     })
+    // See safeExec: prevent children from blocking on interactive stdin.
+    promise.child.stdin?.end()
+    const { stdout, stderr } = await promise
     return { stdout, stderr, exitCode: 0, ok: true }
   } catch (err: unknown) {
     const e = err as {
@@ -197,6 +212,91 @@ export async function safeExecWithStreams(
       ok: false,
     }
   }
+}
+
+/**
+ * Execute a command and return raw stdout/stderr buffers.
+ *
+ * Use this when a Windows interop layer (notably `wsl.exe`) may emit UTF-16LE
+ * text that gets mangled by the default utf8 child_process decoding.
+ */
+export async function safeExecWithBufferStreams(
+  cmd: string,
+  args: string[],
+  options?: SafeExecOptions,
+): Promise<SafeExecBufferStreamResult> {
+  const cwd = options?.cwd ?? process.cwd()
+  const timeoutMs = options?.timeoutMs ?? 6000
+  const maxBuffer = options?.maxBuffer ?? 1024 * 1024
+  const shell = options?.shell ?? false
+  const env = options?.env
+
+  try {
+    const resolved = shell ? cmd : await resolveExec(cmd)
+    const promise = execFile(resolved, args, {
+      cwd,
+      timeout: timeoutMs,
+      maxBuffer,
+      shell,
+      env,
+      encoding: "buffer",
+    })
+    promise.child.stdin?.end()
+    const { stdout, stderr } = await promise
+    return {
+      stdout: stdout as Buffer,
+      stderr: stderr as Buffer,
+      exitCode: 0,
+      ok: true,
+    }
+  } catch (err: unknown) {
+    const e = err as {
+      stdout?: Buffer
+      stderr?: Buffer
+      message?: string
+      code?: string | number
+    }
+    return {
+      stdout: e.stdout ?? Buffer.alloc(0),
+      stderr: e.stderr ?? Buffer.from(e.message ?? "", "utf8"),
+      exitCode: typeof e.code === "number" ? e.code : null,
+      ok: false,
+    }
+  }
+}
+
+/**
+ * Decode process output that may be UTF-16LE (WSL interop) or UTF-8.
+ *
+ * A BOM wins immediately. Without a BOM, high NUL density at odd byte
+ * positions is treated as UTF-16LE; high density at even positions as
+ * UTF-16BE. Otherwise the buffer is decoded as UTF-8.
+ */
+export function decodeMaybeUtf16(buf: Buffer): string {
+  if (!buf.length) return ""
+  const sample = buf.subarray(0, Math.min(buf.length, 1024 * 1024))
+  if (sample.length >= 2) {
+    if (sample[0] === 0xff && sample[1] === 0xfe) return sample.subarray(2).toString("utf16le")
+    if (sample[0] === 0xfe && sample[1] === 0xff) return sample.subarray(2).swap16().toString("utf16le")
+  }
+
+  let evenNulls = 0
+  let oddNulls = 0
+  let evenTotal = 0
+  let oddTotal = 0
+  for (let i = 0; i + 1 < sample.length; i += 2) {
+    evenTotal++
+    oddTotal++
+    if (sample[i] === 0) evenNulls++
+    if (sample[i + 1] === 0) oddNulls++
+  }
+  if (oddTotal > 8 && oddNulls / oddTotal > 0.6 && evenNulls / evenTotal < 0.1) {
+    return sample.toString("utf16le")
+  }
+  if (evenTotal > 8 && evenNulls / evenTotal > 0.6 && oddNulls / oddTotal < 0.1) {
+    return sample.swap16().toString("utf16le")
+  }
+  return sample.toString("utf8")
 }
 
 // ---------------------------------------------------------------------------

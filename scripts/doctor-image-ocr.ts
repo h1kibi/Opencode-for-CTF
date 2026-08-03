@@ -1,85 +1,17 @@
-import { spawnSync } from "child_process"
-import { existsSync } from "fs"
+import { runToolChecksDetailed, TOOL_CHECKS } from "./lib/tool-checks.mjs"
 
-type Check = {
-  name: string
-  command: string
-  args: string[]
-  required: boolean
-  note: string
-}
+/**
+ * Image/OCR capability doctor.
+ * Check data (including Windows local fallbacks) lives in
+ * scripts/lib/tool-checks.mjs (ocr/android groups); this wrapper formats the
+ * capability summary consumed by ctf-image-open / ctf-media-open.
+ * Run with: npm run doctor:image-ocr
+ */
 
-const checks: Check[] = [
-  {
-    name: "python",
-    command: "python",
-    args: ["--version"],
-    required: true,
-    note: "required for doc-read helper and local OCR glue",
-  },
-  {
-    name: "py",
-    command: "py",
-    args: ["-3", "--version"],
-    required: false,
-    note: "Windows Python launcher fallback for inline snippets",
-  },
-  {
-    name: "tesseract",
-    command: "tesseract",
-    args: ["--version"],
-    required: false,
-    note: "OCR engine used by pytesseract in doc-read image OCR",
-  },
-  {
-    name: "magick",
-    command: "magick",
-    args: ["-version"],
-    required: false,
-    note: "ImageMagick for image preprocessing, resize, threshold, crop",
-  },
-  {
-    name: "zbarimg",
-    command: "zbarimg",
-    args: ["--version"],
-    required: false,
-    note: "barcode/QR detection for CTF image artifacts",
-  },
-  {
-    name: "apkanalyzer",
-    command: "apkanalyzer",
-    args: ["--help"],
-    required: true,
-    note: "fast packaged APK resource/manifest inspection",
-  },
-]
+const OCR_TOOL_NAMES = ["python", "py", "tesseract", "magick", "zbarimg", "apkanalyzer"]
 
-function run(check: Check) {
-  const directHints: Record<string, string[]> = {
-    tesseract: ["C:\\Program Files\\Tesseract-OCR\\tesseract.exe"],
-    magick: [
-      "C:\\Program Files\\ImageMagick-7.1.2-Q16\\magick.exe",
-      "C:\\Program Files\\ImageMagick-7.1.2-Q16-HDRI\\magick.exe",
-    ],
-    zbarimg: ["C:\\Program Files\\ZBar\\bin\\zbarimg.exe", "C:\\Tools\\zbar\\zbarimg.exe"],
-  }
+const results = runToolChecksDetailed(TOOL_CHECKS.filter((check) => OCR_TOOL_NAMES.includes(check.name)))
 
-  const res = spawnSync(check.command, check.args, {
-    shell: process.platform === "win32",
-    encoding: "utf8",
-    timeout: 7000,
-  })
-  const preview = `${res.stdout || ""}${res.stderr || ""}`.split(/\r?\n/).slice(0, 2).join(" | ").trim()
-  const hinted = (directHints[check.name] || []).find((candidate) => existsSync(candidate))
-  const ok = res.status === 0 || Boolean(hinted)
-  return {
-    ...check,
-    ok,
-    preview: hinted && !preview ? `found at ${hinted} (PATH refresh may be pending)` : preview,
-  }
-}
-
-const results = checks.map(run)
 const found = results.filter((r) => r.ok)
 const missingRequired = results.filter((r) => !r.ok && r.required)
 const missingOptional = results.filter((r) => !r.ok && !r.required)
@@ -96,7 +28,7 @@ console.log(`missing_optional: ${missingOptional.map((r) => r.name).join(", ") |
 console.log("\n## details")
 for (const r of results) {
   console.log(
-    `- ${r.ok ? "ok" : r.required ? "MISSING" : "optional-missing"}: ${r.name} :: ${r.note}${r.preview ? ` :: ${r.preview}` : ""}`,
+    `- ${r.ok ? "ok" : r.required ? "MISSING" : "optional-missing"}: ${r.name} :: ${r.note ?? ""}${r.preview ? ` :: ${r.preview}` : ""}`,
   )
 }
 

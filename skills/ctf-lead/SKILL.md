@@ -6,6 +6,27 @@ compatibility: opencode
 
 # CTF Lead
 
+
+## Load When
+
+Load when a primary agent must coordinate phases, owner changes, resume state, or cross-category pivots.
+
+## Do Not Load When
+
+Do not use it for initial category scoring (`ctf-router` owns that), detailed exploit technique, or final flag verification (`ctf-closure-gate` and the category owner handle those).
+
+## Required Inputs
+
+Read the route plan, current evidence snapshot, active phase, candidate owner, and the category orchestrator's latest handoff.
+
+## First Safe Action
+
+Normalize the current phase and owner in the state files before assigning new work; preserve the previous owner and pivot reason.
+
+## Dispatch / Handoff
+
+Dispatch only to one active category owner at a time unless the phase explicitly permits independent recon. Return ranked work and state changes to the primary agent; escalate unresolved cross-category ambiguity to `ctf-router`.
+
 ## Purpose
 
 Use this skill as the main conductor for authorized CTF work. It is responsible for:

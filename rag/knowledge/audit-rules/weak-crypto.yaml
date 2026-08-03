@@ -1,0 +1,17 @@
+rules:
+  - id: weak-crypto
+    name: Weak Cryptography
+    description: Detect weak or hardcoded cryptographic primitives
+    languages: [python, javascript, typescript, java, go, php, ruby]
+    severity: medium
+    sinks:
+      - MD5, md5, SHA1, sha1, RC4, rc4, DES, des_cbc
+      - AES.ECB, ECB mode, NoPadding
+      - RSA with e=3, e=5, small exponent
+      - hardcoded_key =, secret_key =, private_key = (literal string)
+      - random, rand, mt_rand, Math.random (for crypto)
+    source_patterns:
+      - encrypt, decrypt, cipher, key, iv, nonce, signature
+    sanitizer_hints:
+      - AES.GCM, ChaCha20, SHA256, SHA512, RSA-OAEP, ECDH
+    ctf_relevance: high

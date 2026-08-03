@@ -1,3 +1,4 @@
+// Manual QA utility — not part of CI or npm run check. Run with: npx tsx scripts/check-pwn-retrieval-frontline.ts
 import { readFileSync, readdirSync, statSync } from "node:fs"
 import path from "node:path"
 

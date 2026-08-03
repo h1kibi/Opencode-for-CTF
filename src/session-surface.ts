@@ -1,24 +1,70 @@
+import path from "node:path"
+import { atomicUpdateJsonFile, loadJsonFile } from "./state-store.ts"
+import { runtimeStateRoot } from "./paths.ts"
+
 /**
  * Per-session tool surface after hard routing.
- * /ctf is declared with agent: ctf-fast, but BINDING route may be expert —
+ * /ctf is declared with agent: ctf-fast, but BINDING route may be expert;
  * tool.execute.before must allow expert tools for that session.
  */
 
 export type SessionToolSurface = "ctf-fast" | "ctf-expert"
 
+type PersistedSurface = {
+  surface: SessionToolSurface
+  updatedAt: string
+}
+
+type PersistedSurfaces = Record<string, PersistedSurface>
+
 const sessionToolSurface = new Map<string, SessionToolSurface>()
 const SESSION_SURFACE_MAX = 100
 
-export function rememberSessionSurface(
-  sessionID: string | undefined | null,
-  surface: SessionToolSurface,
-): void {
+function surfacesFile(worktree: string) {
+  return path.join(runtimeStateRoot(worktree), "session-surfaces.json")
+}
+
+export function rememberSessionSurface(sessionID: string | undefined | null, surface: SessionToolSurface): void {
   if (!sessionID) return
   if (sessionToolSurface.size >= SESSION_SURFACE_MAX) {
     const first = sessionToolSurface.keys().next().value
     if (first !== undefined) sessionToolSurface.delete(first)
   }
   sessionToolSurface.set(sessionID, surface)
+}
+
+/** Restore surfaces after a plugin restart so routed /ctf sessions keep Expert tools. */
+export async function restoreSessionSurfaces(worktree: string): Promise<void> {
+  const stored = await loadJsonFile<PersistedSurfaces>(surfacesFile(worktree), {})
+  const entries = Object.entries(stored)
+    .filter(([, value]) => value?.surface === "ctf-fast" || value?.surface === "ctf-expert")
+    .sort((a, b) => String(a[1].updatedAt).localeCompare(String(b[1].updatedAt)))
+    .slice(-SESSION_SURFACE_MAX)
+
+  for (const [sessionID, value] of entries) rememberSessionSurface(sessionID, value.surface)
+}
+
+export async function persistSessionSurface(
+  worktree: string,
+  sessionID: string | undefined | null,
+  surface: SessionToolSurface,
+): Promise<void> {
+  if (!sessionID) return
+  await atomicUpdateJsonFile<PersistedSurfaces>(surfacesFile(worktree), {}, (current) => ({
+    ...current,
+    [sessionID]: { surface, updatedAt: new Date().toISOString() },
+  }))
+}
+
+export async function removePersistedSessionSurface(worktree: string, sessionID: string | undefined | null): Promise<void> {
+  if (!sessionID) return
+  const file = surfacesFile(worktree)
+  await atomicUpdateJsonFile<PersistedSurfaces>(file, {}, (current) => {
+    if (!current[sessionID]) return current
+    const next = { ...current }
+    delete next[sessionID]
+    return next
+  })
 }
 
 export function getSessionSurface(sessionID: string | undefined | null): SessionToolSurface | undefined {
@@ -32,10 +78,7 @@ export function clearSessionSurface(sessionID: string | undefined | null): void 
 }
 
 /** Resolve agent name used for tool allowlist checks. */
-export function surfaceAgentForTools(
-  sessionID: string | undefined | null,
-  agentName: string,
-): string {
+export function surfaceAgentForTools(sessionID: string | undefined | null, agentName: string): string {
   if (agentName === "ctf-expert") return agentName
   if (sessionID && sessionToolSurface.get(sessionID) === "ctf-expert") return "ctf-expert"
   return agentName

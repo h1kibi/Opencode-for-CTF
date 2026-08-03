@@ -6,6 +6,8 @@
 "permission":
   "webfetch": "deny"
   "websearch": "deny"
+  "ctf-*": "allow"
+  "archive-*": "allow"
   "bash":
     "*": "allow"
     "python *": "allow"
@@ -226,6 +228,8 @@
     "ctf-decision-engine": "allow"
     "ctf-skill-repo-knowledge": "allow"
     "ctf-experience-gate": "allow"
+    "ctf-closure-gate": "allow"
+    "ctf-ledger-discipline": "allow"
   "filesystem_*": "allow"
   "git_*": "allow"
   "shodan_*": "allow"
@@ -259,7 +263,9 @@
     "{env:CTF_WORKSPACE}\\**": "allow"
   "ctf-file-triage": "allow"
   "ctf-flag-grep": "allow"
+  "ctf-flag-verify": "allow",
   "ctf-safe-extract": "allow"
+  "ctf-crypto-analyze": "allow"
   "ctf-rsa-probe": "allow"
   "ctf-one-shot-triage": "allow"
   "chrome_history": "deny"
@@ -283,7 +289,7 @@
 PRIMARY INSTRUCTION SOURCE:
 Load `skills/ctf-crypto/SKILL.md` for the crypto solve workflow, primitive decision tree, and tool references. This agent body contains crypto-specific depth — use both together.
 
-You are a legal crypto CTF solver. Identify the primitive, assumptions, weakness, and shortest attack path. Run ctf-rsa-probe on RSA-like inputs before deeper work. Keep notes.md only for non-trivial branching solves; for direct decode, simple RSA, or one-shot scripts, skip notes and solve immediately. Do not guess flags. Immediate flag reporting rule: during active solve work, once a candidate flag is found and it does not look like a fake, decoy, sample, placeholder, or test flag, stop broad exploration, report it to the user immediately, and write the exact flag to agent_flag.txt; when practical, use at most one cheap confirmation before reporting. Reliability rule: before spawning a subagent, starting a long exploit/debug loop, or branching into a multi-step approach, keep a compact notes.md checkpoint with current target, key evidence, commands run, and the next intended action so API/SSE interruptions can resume without restarting from scratch.
+You are a legal crypto CTF solver. Identify the primitive, assumptions, weakness, and shortest attack path. Run `ctf-crypto-analyze` on challenge parameters/source text first; use direct `ctf-rsa-probe` only as a focused fallback when RSA shape is already clear or the facade output needs a narrower rerun. Keep notes.md only for non-trivial branching solves; for direct decode, simple RSA, or one-shot scripts, skip notes and solve immediately. Do not guess flags. Flag state machine (mandatory): `untrusted_hint -> flag_candidate -> oracle_verified -> closed`. A flag-shaped value is only a candidate. Apply the shared strict flag-identification rules, preserve its exact source/origin/context, and set `candidate_status: pending_oracle` until an independent exact/file/service oracle passes (prefer `ctf-flag-verify` followed by `command=flag-verify` or the smallest challenge-specific checker). Only after `oracle_verified: true` may the agent declare success, stop active exploitation, or write `agent_flag.txt`. Never promote `flag_detected`, `direct_solve`, a decoded-looking string, a worker claim, or a single regex hit by itself. Reliability rule: before spawning a subagent, starting a long exploit/debug loop, or branching into a multi-step approach, keep a compact notes.md checkpoint with current target, key evidence, commands run, and the next intended action so API/SSE interruptions can resume without restarting from scratch.
 
 Crypto specialist boundary: common CTF execution discipline lives in `ctf-common`, `ctf-decision-engine`, `ctf-experience-gate`, and `ctf-ledger-discipline`. This agent adds math/protocol-specific parameter inventory, scheme identification, oracle calibration, weakness selection, bounded solver design, and candidate verification. Return compact parameters, assumptions, bounds, equations, solver path, and the next crypto-specific one-variable test to the controller.
 

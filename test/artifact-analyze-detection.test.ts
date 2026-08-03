@@ -48,14 +48,14 @@ describe("ctf-artifact-analyze detection coverage", () => {
 
     const java = readFileSync(join(fixtureDir, "VulnerableServlet.java"), "utf8")
     expect(java).toContain("FileReader")
-    expect(java).toContain("req.getParameter(\"file\")")
+    expect(java).toContain('req.getParameter("file")')
   })
 
   // Test SQL injection detection
   it("detects SQL injection in Java", () => {
     const java = readFileSync(join(fixtureDir, "VulnerableServlet.java"), "utf8")
     expect(java).toContain("executeQuery")
-    expect(java).toContain("req.getParameter(\"id\")")
+    expect(java).toContain('req.getParameter("id")')
     expect(java).toContain('"SELECT * FROM users WHERE id = " + id')
   })
 
@@ -71,7 +71,7 @@ describe("ctf-artifact-analyze detection coverage", () => {
     const java = readFileSync(join(fixtureDir, "VulnerableServlet.java"), "utf8")
     expect(java).toContain("readObject")
     expect(java).toContain("ObjectInputStream")
-    expect(java).toContain("req.getParameter(\"data\")")
+    expect(java).toContain('req.getParameter("data")')
   })
 
   // Test weak cryptography detection

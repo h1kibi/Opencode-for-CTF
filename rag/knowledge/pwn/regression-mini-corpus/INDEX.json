@@ -1,0 +1,91 @@
+{
+  "schema_version": "pwn_regression_mini_corpus.v2",
+  "expected_schema": "knowledge/pwn/regression-mini-corpus/EXPECTED.schema.md",
+  "total_cases": 14,
+  "cases": [
+    {
+      "name": "saved-rbp-printf-got-leak",
+      "sample_type": "c-source",
+      "expected_primitive": "FRAME_INDEXED_CALLSITE_LEAK",
+      "expected_json": "saved-rbp-printf-got-leak/EXPECTED.json"
+    },
+    {
+      "name": "got-page-bulk-write-pollutes-stdio",
+      "sample_type": "c-source",
+      "expected_primitive": "pwn.anti.got_page_bulk_write_pollutes_stdio",
+      "expected_json": "got-page-bulk-write-pollutes-stdio/EXPECTED.json"
+    },
+    {
+      "name": "no-pop-rdi-frame-callsite-leak",
+      "sample_type": "c-source",
+      "expected_primitive": "FRAME_INDEXED_CALLSITE_LEAK",
+      "expected_json": "no-pop-rdi-frame-callsite-leak/EXPECTED.json"
+    },
+    {
+      "name": "puts-rbp-minus-0x20-leak",
+      "sample_type": "c-source",
+      "expected_primitive": "FRAME_INDEXED_CALLSITE_LEAK",
+      "expected_json": "puts-rbp-minus-0x20-leak/EXPECTED.json"
+    },
+    {
+      "name": "ret2csu-no-pop-rdx",
+      "sample_type": "c-source",
+      "expected_primitive": "pwn.primitive.ret2csu_arg_control",
+      "expected_json": "ret2csu-no-pop-rdx/EXPECTED.json"
+    },
+    {
+      "name": "fmt-read-before-write",
+      "sample_type": "c-source",
+      "expected_primitive": "pwn.primitive.printf_readonly_fmt_leak",
+      "expected_json": "fmt-read-before-write/EXPECTED.json"
+    },
+    {
+      "name": "safe-linking-decode",
+      "sample_type": "metadata-only",
+      "expected_primitive": "pwn.heap.safe_linking_decode",
+      "expected_json": "safe-linking-decode/EXPECTED.json"
+    },
+    {
+      "name": "openat-orw-seccomp",
+      "sample_type": "metadata-only",
+      "expected_primitive": "pwn.closure.openat_orw",
+      "expected_json": "openat-orw-seccomp/EXPECTED.json"
+    },
+    {
+      "name": "stdout-file-leak",
+      "sample_type": "metadata-only",
+      "expected_primitive": "pwn.primitive.stdout_file_leak",
+      "expected_json": "stdout-file-leak/EXPECTED.json"
+    },
+    {
+      "name": "partial-relro-got-overwrite",
+      "sample_type": "c-source",
+      "expected_primitive": "pwn.primitive.partial_relro_got_overwrite",
+      "expected_json": "partial-relro-got-overwrite/EXPECTED.json"
+    },
+    {
+      "name": "system-cat-flag-vs-binsh",
+      "sample_type": "metadata-only",
+      "expected_primitive": "pwn.closure.system_binsh_vs_system_cat_flag",
+      "expected_json": "system-cat-flag-vs-binsh/EXPECTED.json"
+    },
+    {
+      "name": "one-gadget-constraints",
+      "sample_type": "metadata-only",
+      "expected_primitive": "pwn.closure.one_gadget_constraints",
+      "expected_json": "one-gadget-constraints/EXPECTED.json"
+    },
+    {
+      "name": "saved-rbp-stack-pivot",
+      "sample_type": "c-source",
+      "expected_primitive": "pwn.primitive.saved_rbp_stack_pivot",
+      "expected_json": "saved-rbp-stack-pivot/EXPECTED.json"
+    },
+    {
+      "name": "partial-pointer-overwrite",
+      "sample_type": "c-source",
+      "expected_primitive": "pwn.primitive.partial_pointer_overwrite",
+      "expected_json": "partial-pointer-overwrite/EXPECTED.json"
+    }
+  ]
+}

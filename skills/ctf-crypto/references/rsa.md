@@ -4,7 +4,7 @@ Use this reference for authorized crypto CTF challenges involving RSA parameters
 
 ## First Pass
 
-1. Run `ctf-rsa-probe` on files or copied parameter text.
+1. Run `ctf-crypto-analyze` on files or copied parameter text; use direct `ctf-rsa-probe` only for a narrower RSA rerun.
 2. Parse all integers with explicit base and endian assumptions.
 3. Record counts and bit lengths for `n`, `e`, `c`, `p`, `q`, `d`, `dp`, `dq`, and signatures.
 4. Check whether the challenge is encryption, signing, oracle interaction, or key recovery.

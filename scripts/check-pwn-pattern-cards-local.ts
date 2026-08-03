@@ -1,3 +1,4 @@
+// Manual QA utility — not part of CI or npm run check. Run with: npx tsx scripts/check-pwn-pattern-cards-local.ts
 import { readFileSync } from "node:fs"
 import path from "node:path"
 

@@ -11,6 +11,8 @@
   "websearch": "deny"
   "ctf-decision-state": "allow"
   "ctf-pattern-to-hypothesis": "allow"
+  "ctf-*": "allow"
+  "archive-*": "allow"
 "top_p": 0.1
 "hidden": true
 ---

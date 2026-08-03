@@ -1,5 +1,6 @@
 import { spawnSync } from "child_process"
-import { resolve } from "path"
+import { dirname, resolve } from "path"
+import { fileURLToPath } from "url"
 import { benchmarkFamilies } from "../packages/ctf-benchmark-core/src/index.ts"
 
 function runNodeScript(script: string, args: string[]) {
@@ -20,58 +21,31 @@ if (!mode) {
   process.exit(1)
 }
 
-const root = resolve(__dirname)
+const root = resolve(dirname(fileURLToPath(import.meta.url)))
 
-if (mode === "web") {
-  if (!target) {
-    console.log("Usage: node scripts/ctf-benchmark.ts web <target>")
-    process.exit(1)
-  }
-  const smoke = runNodeScript(resolve(root, "web-smoke-check.ts"), [])
-  if (smoke !== 0) process.exit(smoke)
-  process.exit(runNodeScript(resolve(root, "check-web-benchmarks.ts"), [target]))
+/** Default benchmark output dir for a family when no target is given. */
+function defaultFamilyTarget(mode: string): string {
+  return resolve(root, "..", "benchmarks", mode)
 }
 
-if (mode === "pwn") {
-  if (!target) {
-    console.log("Usage: node scripts/ctf-benchmark.ts pwn <target>")
-    process.exit(1)
-  }
-  const smoke = runNodeScript(resolve(root, "pwn-smoke-check.ts"), [])
-  if (smoke !== 0) process.exit(smoke)
-  process.exit(runNodeScript(resolve(root, "check-pwn-benchmarks.ts"), [target]))
+/** Family mode → checker script, with optional pre-flight smoke check. */
+const FAMILY_RUNNERS: Record<string, { checker: string; smoke?: string }> = {
+  web: { checker: "check-web-benchmarks.ts", smoke: "web-smoke-check.ts" },
+  pwn: { checker: "check-pwn-benchmarks.ts", smoke: "pwn-smoke-check.ts" },
+  crypto: { checker: "check-crypto-benchmarks.ts" },
+  rev: { checker: "check-rev-benchmarks.ts" },
+  forensics: { checker: "check-forensics-benchmarks.ts" },
+  misc: { checker: "check-misc-benchmarks.ts" },
 }
 
-if (mode === "crypto") {
-  if (!target) {
-    console.log("Usage: node scripts/ctf-benchmark.ts crypto <target>")
-    process.exit(1)
+const runner = FAMILY_RUNNERS[mode]
+if (runner) {
+  const targetDir = target ?? defaultFamilyTarget(mode)
+  if (runner.smoke) {
+    const smoke = runNodeScript(resolve(root, runner.smoke), [])
+    if (smoke !== 0) process.exit(smoke)
   }
-  process.exit(runNodeScript(resolve(root, "check-crypto-benchmarks.ts"), [target]))
-}
-
-if (mode === "rev") {
-  if (!target) {
-    console.log("Usage: node scripts/ctf-benchmark.ts rev <target>")
-    process.exit(1)
-  }
-  process.exit(runNodeScript(resolve(root, "check-rev-benchmarks.ts"), [target]))
-}
-
-if (mode === "forensics") {
-  if (!target) {
-    console.log("Usage: node scripts/ctf-benchmark.ts forensics <target>")
-    process.exit(1)
-  }
-  process.exit(runNodeScript(resolve(root, "check-forensics-benchmarks.ts"), [target]))
-}
-
-if (mode === "misc") {
-  if (!target) {
-    console.log("Usage: node scripts/ctf-benchmark.ts misc <target>")
-    process.exit(1)
-  }
-  process.exit(runNodeScript(resolve(root, "check-misc-benchmarks.ts"), [target]))
+  process.exit(runNodeScript(resolve(root, runner.checker), [targetDir]))
 }
 
 if (mode === "tooling") {

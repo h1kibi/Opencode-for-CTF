@@ -2,6 +2,11 @@
 
 Use this file as the top-level trigger map for `skills/ctf-rev/references/`. Keep the reverse skill thin and route by artifact family and current bottleneck.
 
+## Runtime / Platform Triage
+
+- ELF/PE/.NET/Java/Android/WASM/script/firmware identification, ABI/loader lock, and static-vs-dynamic choice
+  - `runtime-platform-triage.md`
+
 ## Native / Checker Extraction
 
 - native checker slicing and compare-path isolation
@@ -31,6 +36,9 @@ Use this file as the top-level trigger map for `skills/ctf-rev/references/`. Kee
 
 - packed / self-modifying / runtime-unpacked binaries
   - `packed-unpack-trace.md`
+
+- Windows packed / memory-reconstructed PE
+  - `windows-packed-pe-rebuild.md`
 
 - patch vs solve decision support
   - `patch-vs-solve.md`
@@ -69,6 +77,7 @@ Use this file as the top-level trigger map for `skills/ctf-rev/references/`. Kee
 ## Trigger Rules
 
 - If the artifact family is obvious, start with the matching reference before broad pseudocode reading.
+- If the loader, ABI, runtime, or execution substrate is unclear, load `runtime-platform-triage.md` before selecting a decompiler, emulator, or instrumentation path.
 - If dynamic work is tempting but the checker path is still unclear, stay static-first.
 - If the branch stalls, use `rev-fallback-matrix.md` and choose one fallback by failed stage.
 - If the challenge is not actually reverse-shaped after triage, hand off to pwn/misc/forensics/crypto.

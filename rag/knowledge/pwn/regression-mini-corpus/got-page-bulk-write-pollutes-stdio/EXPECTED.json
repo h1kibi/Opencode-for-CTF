@@ -1,0 +1,20 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "got-page-bulk-write-pollutes-stdio",
+  "sample_type": "c-source",
+  "expected_primitive": "pwn.anti.got_page_bulk_write_pollutes_stdio",
+  "expected_tags": {
+    "control": [
+      "arbitrary_write"
+    ],
+    "anti_pattern": [
+      "got_page_pollution"
+    ]
+  },
+  "minimal_probe_shape": "compare exact target write vs bulk write crossing adjacent globals",
+  "confirm_oracle": "exact write preserves output; bulk write corrupts adjacent stdio/global pointer",
+  "falsify_oracle": "corruption occurs before write or no adjacency touched",
+  "anti_pattern_to_avoid": [
+    "got_page_pollution"
+  ]
+}

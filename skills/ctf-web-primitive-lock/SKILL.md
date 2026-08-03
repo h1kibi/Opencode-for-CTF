@@ -6,6 +6,30 @@ compatibility: opencode
 
 # CTF Web Primitive Lock
 
+## Stop Conditions
+
+Stop when the signal is falsified, the stated budget is exhausted, the action would exceed scope/risk, or the result is sufficient for handoff. Do not continue with payload variants without a new discriminator.
+
+## Dispatch / Handoff
+
+Return the locked primitive to `ctf-web-control-plane` and `ctf-closure-gate`; release unrelated focused skills.
+
+## First Safe Action
+
+Recheck the confirming response/oracle and write the strongest primitive before testing any new family.
+
+## Required Inputs
+
+Require the current Web phase, candidate/surface, relevant evidence, target constraints, and an explicit attempt or mutation budget before probing.
+
+## Do Not Load When
+
+Do not load without a matching observed signal, and do not use this focused skill to replace the `ctf-web` phase controller or global route ranking.
+
+## Load When
+
+Load after a critical primitive or two high-value primitives have an oracle-backed confirmation.
+
 ## Purpose
 
 Once a critical primitive or two high primitives are confirmed, stop broad probing and switch from discovery to exploit-chain construction. This skill enforces the convergence gate.

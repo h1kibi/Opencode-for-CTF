@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { quickHash, parseHashTag, stripHashTags, extractHashTags } from "../src/plugin.js"
+import { quickHash, parseHashTag, stripHashTags, extractHashTags } from "../src/plugin-support.js"
 
 // ---------------------------------------------------------------------------
 // quickHash

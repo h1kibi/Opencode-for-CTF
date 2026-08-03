@@ -1,0 +1,27 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "fmt-read-before-write",
+  "sample_type": "c-source",
+  "expected_primitive": "pwn.primitive.printf_readonly_fmt_leak",
+  "expected_tags": {
+    "control": [
+      "fmt"
+    ],
+    "leak": [
+      "libc",
+      "stack"
+    ],
+    "callsite": [
+      "printf"
+    ],
+    "anti_pattern": [
+      "write_before_leak"
+    ]
+  },
+  "minimal_probe_shape": "send read-only %p/%s positional probes before %n",
+  "confirm_oracle": "stable offset/leak map appears",
+  "falsify_oracle": "input not format-interpreted or no output",
+  "anti_pattern_to_avoid": [
+    "format_write_before_read_map"
+  ]
+}

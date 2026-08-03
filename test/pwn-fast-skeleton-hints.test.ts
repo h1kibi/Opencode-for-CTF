@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-const MOD_PATH = "../tools/ctf-pwn-fast-skeleton-hints.ts"
+const MOD_PATH = "../tools/pwn/ctf-pwn-fast-skeleton-hints.ts"
 
 describe("ctf-pwn-fast-skeleton-hints tool", () => {
   it("returns unified decision fields for ret2win", async () => {

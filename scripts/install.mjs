@@ -10,10 +10,12 @@ import {
   manifestPath,
   opencodeConfigDir,
   profileFromArgs,
+  probeInstalledPluginRuntime,
   projectVersion,
   readJsonc,
   removeManagedFiles,
   revertConfigOperations,
+  tryWritePluginHealthReport,
   writeJsonAtomic,
 } from "./lib/opencode-ctf-install.mjs"
 
@@ -45,12 +47,30 @@ try {
     ...resources,
     configOperations,
   })
+  const runtimeProbe = await probeInstalledPluginRuntime(configDir)
+  await tryWritePluginHealthReport(configDir, {
+    source: "install",
+    state: "installed",
+    profile,
+    config: file,
+    manifest: manifestFile,
+    pluginImportOk: runtimeProbe.ok,
+    pluginImportError: runtimeProbe.ok ? null : runtimeProbe.error,
+  })
 } catch (error) {
   try {
     if (resources) await removeManagedFiles(configDir, resources)
     await revertConfigOperations(file, configOperations)
     await rm(manifestFile, { force: true })
     if (backup) await rm(backup, { force: true })
+    await tryWritePluginHealthReport(configDir, {
+      source: "install",
+      state: "failed",
+      profile,
+      config: file,
+      manifest: manifestFile,
+      error: error instanceof Error ? error.message : String(error),
+    })
   } catch (rollbackError) {
     throw new AggregateError([error, rollbackError], "Installation failed and rollback was incomplete.")
   }

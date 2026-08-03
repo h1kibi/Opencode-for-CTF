@@ -6,6 +6,8 @@
 "permission":
   "websearch": "deny"
   "webfetch": "ask"
+  "ctf-*": "allow"
+  "archive-*": "allow"
   "bash":
     "*": "allow"
     "python *": "allow"
@@ -21,11 +23,18 @@
     "docker compose down*": "allow"
     "nmap 127.0.0.1*": "allow"
     "nmap localhost*": "allow"
+    "nuclei *": "ask"
+    "C:\\Tools\\nuclei\\nuclei.exe *": "ask"
     "ffuf *": "ask"
+    "C:\\Tools\\ffuf\\ffuf.exe *": "ask"
     "gobuster *": "ask"
     "feroxbuster *": "ask"
+    "C:\\Tools\\feroxbuster\\feroxbuster.exe *": "ask"
     "wfuzz *": "ask"
+    "python C:\\Tools\\dirsearch\\dirsearch.py *": "ask"
     "sqlmap *": "ask"
+    "python C:\\Tools\\sqlmap\\sqlmap.py *": "ask"
+    "C:\\Tools\\nmap\\nmap.exe *": "ask"
     "ab *": "ask"
     "hey *": "ask"
     "pwd": "allow"
@@ -197,7 +206,7 @@
     "solve.js": "allow"
     "agent_flag.txt": "allow"
     "retros/*.md": "allow"
-    "lessons/*.md": "allow"
+    "rag/lessons/*.md": "allow"
     "patches/*.md": "allow"
     "solve.sage": "allow"
     "exploit.py": "allow"
@@ -243,6 +252,8 @@
     "ctf-whitebox-audit": "allow"
     "ctf-decision-engine": "allow"
     "ctf-experience-gate": "allow"
+    "ctf-ledger-discipline": "allow"
+    "ctf-closure-gate": "allow"
     "ctf-skill-repo-knowledge": "allow"
   "filesystem_*": "allow"
   "git_*": "allow"
@@ -264,6 +275,8 @@
   "mysql_*": "allow"
   "nmap_*": "allow"
   "ctf-web-probe": "allow"
+  "ctf-web-analyze": "allow"
+  "ctf-java-analyze": "allow"
   "ctf-java-map": "allow"
   "ctf-java-archive-map": "allow"
   "ctf-java-bytecode-hints": "allow"
@@ -304,6 +317,7 @@
     "{env:CTF_WORKSPACE}\\**": "allow"
   "ctf-file-triage": "allow"
   "ctf-flag-grep": "allow"
+  "ctf-flag-verify": "allow",
   "ctf-safe-extract": "allow"
   "ctf-web-source-map": "allow"
   "ctf-whitebox-audit": "allow"
@@ -345,7 +359,7 @@ Common CTF execution discipline lives in `ctf-common`, `ctf-decision-engine`, `c
 
 ## Web routing workflow
 
-- URL-only/source-poor: `ctf-web-fingerprint` -> `ctf-web-blackbox-map mode=light` -> focused hypothesis/probe.
+- URL-only/source-poor: `ctf-web-analyze` first; use `ctf-web-fingerprint` or `ctf-web-blackbox-map mode=light` only as focused fallback before hypothesis/probe.
 - Source/archive/config/JAR/WAR/Docker/dependency evidence: `ctf-web-source-map` or `ctf-whitebox-audit` before black-box payloads; see `skills/ctf-web/references/source-leak-audit-bridge.md`.
 - JS/SPA/API evidence: `ctf-web-js-surface-map`.
 - Browser/admin-bot/DOM/CSP/storage/postMessage/service-worker evidence: `ctf-web-runtime-map` or one concise browser check; see `skills/ctf-web/references/browser-runtime-admin-bot.md`.
@@ -444,4 +458,8 @@ Visible output before a Web tool/probe must be at most one sentence. Do not outp
 
 If no tool/probe is appropriate, output only `PIVOT`, `FINAL`, or `NEED_INFO` with one sentence.
 
-Never guess flags. Once a real flag is verified, stop broad exploration, write `agent_flag.txt`, and report the shortest reproducible path.
+Never guess flags. Flag state machine (mandatory): `untrusted_hint -> flag_candidate -> oracle_verified -> closed`. A flag-shaped value is only a candidate. Apply the shared strict flag-identification rules, preserve its exact source/origin/context, and set `candidate_status: pending_oracle` until an independent exact/file/service oracle passes (prefer `ctf-flag-verify` followed by `command=flag-verify` or the smallest challenge-specific checker). Only after `oracle_verified: true` may the agent declare success, stop active exploitation, or write `agent_flag.txt`. Never promote `flag_detected`, `direct_solve`, a decoded-looking string, a worker claim, or a single regex hit by itself.
+
+## Flag recovery contract
+
+For Web closure, use the shared strict flag rules before treating a response, file read, SSRF result, database row, or command output as a flag. Accept strict `prefix{payload}` / UUID candidates; accept bare hashes only with explicit `flag.txt`/`/flag`/`readflag` context. Preserve the exact route and source context. Keep `candidate_status: pending_oracle` until the independent oracle passes; do not treat an HTTP 200, database row, SSRF response, shell, or command output as final success by itself.

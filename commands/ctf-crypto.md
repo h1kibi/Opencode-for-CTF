@@ -1,6 +1,7 @@
 ---
 description: Start a structured crypto CTF solve
 agent: ctf-crypto
+subtask: false
 ---
 
 Use `ctf-common` and `ctf-crypto` skills.
@@ -14,7 +15,7 @@ Rules:
 - Work only on authorized CTF/lab/local material.
 - Create or update `notes.md`.
 - Identify primitive, parameters, assumptions, and weakness before coding.
-- Prefer `ctf-rsa-probe` for RSA-shaped tasks before manual attacks.
+- Start with `ctf-crypto-analyze`; use direct `ctf-rsa-probe` only when RSA shape is already clear or a narrower rerun is needed.
 - Build a bounded parameter inventory before brute force or solver work.
 - Pivot early to `ctf-misc`, `ctf-rev`, or `ctf-forensics` once the dominant evidence is no longer cryptanalytic.
 - Do not brute force without bounds.

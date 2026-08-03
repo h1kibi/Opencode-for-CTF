@@ -1,6 +1,7 @@
 ---
 name: anysearch
-description: Real-time search engine supporting web search, vertical domain search, parallel batch search, and URL content extraction.
+description: Use for real-time search, vertical domain search, parallel batch search, and URL content extraction when current or externally sourced information is needed.
+compatibility: opencode
 version: 2.1.0
 authors:
   - AnySearch Team
@@ -10,6 +11,35 @@ credentials:
     description: "API key for higher rate limits. Anonymous access available with lower rate limits."
     storage: ".env file, environment variable, or --api_key CLI flag"
 ---
+
+## Load When
+
+Use when an authorized task needs external search through the AnySearch CLI and local search is insufficient.
+
+## Do Not Load When
+
+Do not load for offline-only tasks, local repository search, or when the user has not authorized external lookup.
+
+## Required Inputs
+
+- Search objective and relevant query terms.
+- A permitted runtime and target scope.
+
+## First Safe Action
+
+Inspect the local runtime configuration and verify the selected search command before making a request.
+
+## Dispatch / Handoff
+
+Return search results with source context; hand off to the primary CTF lane when the result needs challenge-specific analysis.
+
+## Output Contract
+
+Report the query, runtime, relevant findings, and any unavailable result or quota condition.
+
+## Stop Conditions
+
+Stop when the request is out of scope, credentials are unavailable, or the search result is not materially useful.
 
 ## Overview
 

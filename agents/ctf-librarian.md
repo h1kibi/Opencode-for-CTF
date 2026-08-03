@@ -14,6 +14,8 @@
   "ctf-pattern-card-search": "allow"
   "ctf-pattern-to-hypothesis": "allow"
   "ctf-pattern-curation-report": "allow"
+  "ctf-*": "allow"
+  "archive-*": "allow"
 "top_p": 0.1
 "hidden": true
 ---

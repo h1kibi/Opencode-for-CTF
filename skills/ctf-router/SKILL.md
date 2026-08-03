@@ -10,9 +10,30 @@ compatibility: opencode
 
 Use this skill before solving a new CTF challenge. The goal is fast classification and the smallest effective workflow, not deep exploitation.
 
+
+## Load When
+
+Load at the start of a new challenge or when the current category/agent is no longer supported by the observed artifacts.
+
+## Do Not Load When
+
+Do not reload for every focused probe, and do not use routing to override a live primitive, an existing evidence branch, or an explicit user-selected category without recording the conflict.
+
+## Required Inputs
+
+Use the challenge statement, artifact inventory, service metadata, and any existing evidence snapshot. Keep uncertain categories as secondary hypotheses until a cheap discriminator resolves them.
+
+## First Safe Action
+
+Call `ctf-route-plan` with the challenge text/path/URL, then verify its returned category, mode, skills, and tool packs against the local artifacts.
+
+## Dispatch / Handoff
+
+Return one route decision to `/ctf` or the selected primary lane (`ctf-fast` / `ctf-expert`) with one category orchestrator and the first safe action. Do not dispatch focused leaf skills directly from initial triage.
+
 **Runtime helper:** call tool `ctf-route-plan` with the challenge text/path/URL first. It returns `mode`, `agent`, `skills`, `tool_packs`, and `confidence`. Treat that object as the default plan; this skill supplies methodology when signals are ambiguous.
 
-**Product path:** prefer `/ctf` for users. `/ctf-expert` is a compatibility alias of `ctf-expert` only — never present it as a third mode.
+**Product path:** prefer `/ctf` for users. Use `/ctf-fast`, `/ctf-expert`, or `/resume` only when the lane is already known; do not present historical compatibility commands.
 
 | Lane | When |
 | --- | --- |

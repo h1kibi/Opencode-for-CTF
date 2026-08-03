@@ -52,6 +52,10 @@ const pluginDir = resolve(env.PLUGIN_DIR)
 const workspaceDir = resolve(env.WORKSPACE_DIR)
 const ghidraDir = env.GHIDRA_INSTALL_DIR ? resolve(env.GHIDRA_INSTALL_DIR) : ""
 
+function jsonSafePath(value) {
+  return value.replaceAll("\\", "/")
+}
+
 // ── Generate opencode.json ─────────────────────────────────────────
 const config = {
   $schema: "https://opencode.ai/config.json",
@@ -59,9 +63,13 @@ const config = {
   default_agent: "ctf-fast",
   small_model: "deepseek/deepseek-v4-flash",
   skills: {
-    paths: [join(pluginDir, "skills"), join(pluginDir, "skills-external", "ctf-skills")],
+    paths: [join(pluginDir, "skills")],
   },
-  instructions: [join(pluginDir, "rules", "zh-rules.md"), join(pluginDir, "rules", "en-solve-rules.md")],
+  instructions: [
+    join(pluginDir, "rules", "zh-rules.md"),
+    join(pluginDir, "rules", "en-solve-rules.md"),
+    join(pluginDir, "rules", "agent-equipment.md"),
+  ],
   mcp: {
     filesystem: {
       type: "local",
@@ -84,7 +92,7 @@ if (ghidraDir) {
 if (env.WIREMCP_LAUNCHER) {
   config.mcp["wireshark-mcp"] = {
     type: "local",
-    command: ["python", resolve(env.WIREMCP_LAUNCHER), "--stdio"],
+    command: ["node", jsonSafePath(resolve(env.WIREMCP_LAUNCHER))],
     enabled: true,
   }
 }

@@ -1,10 +1,34 @@
 ---
 name: ctf-web-recon
-description: Use at the start of any Web CTF challenge. Performs read-only reconnaissance: route map, parameter discovery, form inventory, cookie/header analysis, framework fingerprint, source review, debug surfaces, admin endpoints, upload/editor surfaces, bot detection, and API documentation discovery.
+description: Use at the start of any Web CTF challenge for read-only reconnaissance: route maps, parameters, forms, cookies, headers, framework fingerprinting, source review, debug/admin/upload surfaces, bot detection, and API docs.
 compatibility: opencode
 ---
 
 # CTF Web Recon
+
+## Stop Conditions
+
+Stop when the signal is falsified, the stated budget is exhausted, the action would exceed scope/risk, or the result is sufficient for handoff. Do not continue with payload variants without a new discriminator.
+
+## Dispatch / Handoff
+
+Return a Recon Map to `ctf-web`; transition to `ctf-web-attack-queue` only when the minimum recon fields are present.
+
+## First Safe Action
+
+Read the latest route plan and run the Web analysis facade or a read-only inventory; do not begin vulnerability payload probing.
+
+## Required Inputs
+
+Require the current Web phase, candidate/surface, relevant evidence, target constraints, and an explicit attempt or mutation budget before probing.
+
+## Do Not Load When
+
+Do not load without a matching observed signal, and do not use this focused skill to replace the `ctf-web` phase controller or global route ranking.
+
+## Load When
+
+Load when `ctf-web` has selected the Web category and the route/input/auth surface is not yet mapped.
 
 ## Purpose
 

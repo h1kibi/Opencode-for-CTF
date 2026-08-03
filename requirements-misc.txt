@@ -1,0 +1,20 @@
+# Misc-specific Python dependencies.
+# Keep this separate from requirements.txt so lightweight installs do not pull
+# image/audio/DNS helpers unless the Misc workflow needs them.
+z3-solver>=4.13
+Pillow>=10.0
+numpy>=1.26
+dnspython>=2.6
+dnslib>=0.9
+qrcode>=7.4
+opencv-python-headless>=4.9
+# pyzbar also needs the native zbar library; install that separately.
+pyzbar>=0.1.9
+
+# Recommended optional fallbacks for protocol, SMT, and VM/native routes.
+# ctf-misc-env-check reports these individually; install only for the selected route.
+sympy>=1.13
+scipy>=1.14
+pwntools>=4.13
+capstone>=5.0
+unicorn>=2.1

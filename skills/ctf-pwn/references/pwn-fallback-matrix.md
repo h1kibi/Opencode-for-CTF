@@ -4,7 +4,7 @@ Use this when a pwn branch stalls. Pick exactly one fallback that changes the ev
 
 | Failed Stage | Symptom | Fallback | Stop / Pivot Rule |
 |---|---|---|---|
-| Triage | `ctf-binary-probe` lacks enough context | Inspect source/Docker/libc, rerun file/protection summary only if artifact changed | If no native binary or service exists, route out of pwn |
+| Triage | `ctf-pwn-analyze` lacks enough context | Inspect source/Docker/libc, rerun file/protection summary only if artifact changed | If no native binary or service exists, route out of pwn |
 | Protocol | Payloads do not reach vulnerable code | Script normal interaction with pwntools, record menu states and prompts | If parser state is unknown after two attempts, build a state table before more payloads |
 | Crash | No crash or unstable crash | Check input length limits, newline/null handling, argv/env/file input, timeout, and Docker runtime | After 3 variants with no new behavior, pivot to source audit or logic bug |
 | Control | Crash exists but RIP/EIP/control not proven | Generate cyclic pattern, inspect register/stack/core with gdb batch | Do not build ROP until offset/control is measured |

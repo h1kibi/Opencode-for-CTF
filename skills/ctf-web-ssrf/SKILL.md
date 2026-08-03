@@ -6,6 +6,26 @@ compatibility: opencode
 
 # CTF Web SSRF
 
+## Dispatch / Handoff
+
+Return facts, uncertainty, and the next probe to `ctf-web` / `ctf-web-attack-queue`; enter primitive-lock only after oracle-backed confirmation.
+
+## First Safe Action
+
+Read the current candidate, evidence, and attempt budget, then run the smallest read-only or reversible discriminator defined by this skill.
+
+## Required Inputs
+
+Require the current Web phase, candidate/surface, relevant evidence, target constraints, and an explicit attempt or mutation budget before probing.
+
+## Do Not Load When
+
+Do not load without a matching observed signal, and do not use this focused skill to replace the `ctf-web` phase controller or global route ranking.
+
+## Load When
+
+Load after `ctf-web` focused-probe selects a matching ssrf signal; do not use it for generic Web recon.
+
 ## Purpose
 
 Use this skill when an application fetches URLs or network resources on behalf of the user. The workflow is vulnerability-specific: identify fetch sink, prove server-side fetch, map allowed schemes/hosts, bypass filters, and retrieve the intended internal resource.

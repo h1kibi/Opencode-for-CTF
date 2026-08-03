@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from "vitest"
 
-const MOD_PATH = "../tools/ctf-pwn-probe.ts"
+const MOD_PATH = "../tools/pwn/ctf-pwn-probe.ts"
 
 describe("ctf-pwn-probe tool", () => {
   it("returns a unified local-binary probe summary", async () => {
     const mod = await import(MOD_PATH)
-    const execute = mod.default.execute as (args: Record<string, unknown>, context: { directory: string }) => Promise<string>
+    const execute = mod.default.execute as (
+      args: Record<string, unknown>,
+      context: { directory: string },
+    ) => Promise<string>
     const text = await execute(
       { targetDir: "templates", binary: "templates/pwn_fast_ret2win.py", jsonOnly: true },
       { directory: "C:/Projects/Agent-projects/Opencode-for-CTF" },
@@ -31,9 +34,18 @@ describe("ctf-pwn-probe tool", () => {
 
     try {
       const mod = await import(MOD_PATH)
-      const execute = mod.default.execute as (args: Record<string, unknown>, context: { directory: string }) => Promise<string>
+      const execute = mod.default.execute as (
+        args: Record<string, unknown>,
+        context: { directory: string },
+      ) => Promise<string>
       const text = await execute(
-        { targetDir: "templates", binary: "templates/pwn_fast_ret2win.py", host: "127.0.0.1", port: 31337, jsonOnly: true },
+        {
+          targetDir: "templates",
+          binary: "templates/pwn_fast_ret2win.py",
+          host: "127.0.0.1",
+          port: 31337,
+          jsonOnly: true,
+        },
         { directory: "C:/Projects/Agent-projects/Opencode-for-CTF" },
       )
       const parsed = JSON.parse(text)

@@ -14,6 +14,27 @@ Category agents and `ctf-expert` should treat this skill as the shared source fo
 
 This skill is not about discovering new payloads. It is about keeping the solve state executable.
 
+
+## Load When
+
+Load when the branch has multiple hypotheses, a pivot, an interruption, a stale snapshot, or a shared early chain that several owners depend on.
+
+## Do Not Load When
+
+Do not create a second narrative notebook or replace the evidence board. For a crisp one-shot solve, record only the minimum restart state.
+
+## Required Inputs
+
+Read the evidence board, route/hypothesis files, current owner, primitive/closure state, and the latest command or worker result.
+
+## First Safe Action
+
+Refresh the compact state from observed artifacts, mark stale or unverified fields explicitly, and preserve the last known-good checkpoint.
+
+## Dispatch / Handoff
+
+Return the refreshed queue, chain ledger, snapshot, and pivot reason to `ctf-lead` / `ctf-expert`; the category owner receives only the next executable probe.
+
 ## Source of Truth
 
 `ctf-expert` is the normative source of truth for queue size, pivot discipline, shared-segment reuse, and anti-drift behavior. This skill should synchronize state, not restate the whole doctrine.
@@ -125,3 +146,7 @@ Return compact stateful updates only:
 If ownership changes, explicitly state the new `closure_owner`.
 
 Do not output broad theory. Output executable state.
+
+## Stop Conditions
+
+Stop after the snapshot is executable and internally consistent. Escalate when authoritative state files disagree, a required artifact is missing, or the next owner cannot be determined without guessing.

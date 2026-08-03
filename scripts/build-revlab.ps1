@@ -40,7 +40,7 @@ if (-not (Test-Path -LiteralPath $dockerfilePath)) {
     exit 1
 }
 
-# 榛樿涓浗闀滃儚棰勮
+# 默认中国镜像预设
 if ($UseCNMirror) {
     if (-not $AptMirror)    { $AptMirror    = "http://mirrors.tuna.tsinghua.edu.cn/ubuntu/" }
     if (-not $AptSecurity)  { $AptSecurity  = "http://mirrors.tuna.tsinghua.edu.cn/ubuntu/" }
@@ -78,13 +78,13 @@ if ($SkipBuild) {
     }
     Write-Host "==> image present: $existingId"
 } else {
-    # 浼樺厛鐢?docker build --build-arg 閫忎紶 mirror
+    # 优先用 docker build --build-arg 透传 mirror
     $buildArgs = @("--build-arg", "APT_MIRROR=$AptMirror",
                    "--build-arg", "APT_SECURITY=$AptSecurity",
                    "--build-arg", "PIP_INDEX_URL=$PipIndexUrl",
                    "--build-arg", "PIP_TRUSTED_HOST=$PipTrustedHost",
                    "--build-arg", "GOPROXY=$GoProxy")
-    # 杩囨护绌哄€?(build-arg 浼犵┖瀛楃涓茬瓑浠蜂簬涓嶄紶)
+    # 过滤空值（build-arg 传空字符串等价于不传）
     $filteredArgs = @()
     for ($i = 0; $i -lt $buildArgs.Count; $i += 2) {
         $val = $buildArgs[$i + 1]

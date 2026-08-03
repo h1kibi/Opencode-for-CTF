@@ -1,10 +1,11 @@
+// Manual QA utility — not part of CI or npm run check. Run with: npx tsx scripts/check-tool-bug-regressions.ts
 import { execFileSync } from "node:child_process"
 import { mkdtempSync, readFileSync, rmSync, readdirSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import ctfSafeExtract from "../tools/ctf-safe-extract.ts"
-import archiveSafeExtract from "../tools/archive-safe-extract.ts"
-import pwnRemoteFingerprint from "../tools/ctf-pwn-remote-fingerprint.ts"
+import ctfSafeExtract from "../tools/core/ctf-safe-extract.ts"
+import archiveSafeExtract from "../tools/core/archive-safe-extract.ts"
+import pwnRemoteFingerprint from "../tools/pwn/ctf-pwn-remote-fingerprint.ts"
 
 type Ctx = { directory: string }
 

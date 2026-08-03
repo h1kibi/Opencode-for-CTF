@@ -1,0 +1,2566 @@
+{
+  "meta": {
+    "cards": 45,
+    "generated_at": "deterministic",
+    "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+    "source_commit": "unknown",
+    "version": 1,
+    "curated_cards": 45,
+    "auto_cards": 0
+  },
+  "cards": [
+    {
+      "id": "des-ctf-web-sqli",
+      "source": "des-ctf-knowledge",
+      "source_file": "SQL.idx.md",
+      "source_hint": "SQL.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "SQL injection evidence routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: sql, sqli, union, blind, error-based, waf. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Classify reflection, error, boolean, or timing oracle before selecting one minimally destructive SQL probe.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "sql",
+        "sqli",
+        "union",
+        "blind",
+        "error-based",
+        "waf"
+      ],
+      "snippet": "Paraphrased decision unit derived from SQL.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "sql",
+        "sqli",
+        "union",
+        "blind",
+        "error-based",
+        "waf"
+      ],
+      "semantic_tokens": [
+        "sql",
+        "sqli",
+        "union",
+        "blind",
+        "error-based",
+        "waf"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-rce",
+      "source": "des-ctf-knowledge",
+      "source_file": "命令执行.idx.md",
+      "source_hint": "命令执行.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "Command execution oracle routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: rce, command, exec, shell, dnslog, no-output. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Establish whether output, timing, DNS, or file side effects provide the safest command-execution oracle.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "rce",
+        "command",
+        "exec",
+        "shell",
+        "dnslog",
+        "no-output"
+      ],
+      "snippet": "Paraphrased decision unit derived from 命令执行.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "rce",
+        "command",
+        "exec",
+        "shell",
+        "dnslog",
+        "no-output"
+      ],
+      "semantic_tokens": [
+        "rce",
+        "command",
+        "exec",
+        "shell",
+        "dnslog",
+        "no-output"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-upload",
+      "source": "des-ctf-knowledge",
+      "source_file": "文件上传漏洞.idx.md",
+      "source_hint": "文件上传漏洞.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "Upload validation and parsing split",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: upload, mime, extension, parser, webshell. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Compare client, MIME, extension, storage, and server parsing behavior with a harmless marker file before payload escalation.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "upload",
+        "mime",
+        "extension",
+        "parser",
+        "webshell"
+      ],
+      "snippet": "Paraphrased decision unit derived from 文件上传漏洞.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "upload",
+        "mime",
+        "extension",
+        "parser",
+        "webshell"
+      ],
+      "semantic_tokens": [
+        "upload",
+        "mime",
+        "extension",
+        "parser",
+        "webshell"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-lfi",
+      "source": "des-ctf-knowledge",
+      "source_file": "文件包含.idx.md",
+      "source_hint": "文件包含.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "File inclusion and wrapper classification",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: lfi, include, php-filter, wrapper, path. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Confirm controllable path resolution and wrapper handling with a benign readable resource before attempting closure.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "lfi",
+        "include",
+        "php-filter",
+        "wrapper",
+        "path"
+      ],
+      "snippet": "Paraphrased decision unit derived from 文件包含.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "lfi",
+        "include",
+        "php-filter",
+        "wrapper",
+        "path"
+      ],
+      "semantic_tokens": [
+        "lfi",
+        "include",
+        "php-filter",
+        "wrapper",
+        "path"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-ssrf",
+      "source": "des-ctf-knowledge",
+      "source_file": "SSRF漏洞.idx.md",
+      "source_hint": "SSRF漏洞.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "SSRF transport and reachability oracle",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: ssrf, gopher, redis, fastcgi, internal, dns-rebinding. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Use one controlled destination to distinguish URL parsing, DNS resolution, protocol filtering, and response visibility.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "ssrf",
+        "gopher",
+        "redis",
+        "fastcgi",
+        "internal",
+        "dns-rebinding"
+      ],
+      "snippet": "Paraphrased decision unit derived from SSRF漏洞.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "ssrf",
+        "gopher",
+        "redis",
+        "fastcgi",
+        "internal",
+        "dns-rebinding"
+      ],
+      "semantic_tokens": [
+        "ssrf",
+        "gopher",
+        "redis",
+        "fastcgi",
+        "internal",
+        "dns-rebinding"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-deserialization",
+      "source": "des-ctf-knowledge",
+      "source_file": "PHP反序列化漏洞总结.idx.md",
+      "source_hint": "PHP反序列化漏洞总结.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "PHP deserialization precondition gate",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: php, deserialization, pop-chain, phar, wakeup, magic-method. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Prove attacker-controlled deserialization and reachable magic methods before constructing a gadget chain.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "php",
+        "deserialization",
+        "pop-chain",
+        "phar",
+        "wakeup",
+        "magic-method"
+      ],
+      "snippet": "Paraphrased decision unit derived from PHP反序列化漏洞总结.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "php",
+        "deserialization",
+        "pop-chain",
+        "phar",
+        "wakeup",
+        "magic-method"
+      ],
+      "semantic_tokens": [
+        "php",
+        "deserialization",
+        "pop-chain",
+        "phar",
+        "wakeup",
+        "magic-method"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-ssti",
+      "source": "des-ctf-knowledge",
+      "source_file": "SSTI.md",
+      "source_hint": "SSTI.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "SSTI engine and expression differential",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: ssti, jinja2, template, expression, sandbox. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Use harmless arithmetic and syntax differentials to identify the template engine before deeper object traversal.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "ssti",
+        "jinja2",
+        "template",
+        "expression",
+        "sandbox"
+      ],
+      "snippet": "Paraphrased decision unit derived from SSTI.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "ssti",
+        "jinja2",
+        "template",
+        "expression",
+        "sandbox"
+      ],
+      "semantic_tokens": [
+        "ssti",
+        "jinja2",
+        "template",
+        "expression",
+        "sandbox"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-jwt",
+      "source": "des-ctf-knowledge",
+      "source_file": "JWT.idx.md",
+      "source_hint": "JWT.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "JWT trust-boundary classification",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: jwt, kid, jku, hs256, rs256, algorithm. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Compare accepted algorithms, key selection inputs, and claim validation with a non-privileged token mutation.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "jwt",
+        "kid",
+        "jku",
+        "hs256",
+        "rs256",
+        "algorithm"
+      ],
+      "snippet": "Paraphrased decision unit derived from JWT.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "jwt",
+        "kid",
+        "jku",
+        "hs256",
+        "rs256",
+        "algorithm"
+      ],
+      "semantic_tokens": [
+        "jwt",
+        "kid",
+        "jku",
+        "hs256",
+        "rs256",
+        "algorithm"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-php-audit",
+      "source": "des-ctf-knowledge",
+      "source_file": "php代码审计.idx.md",
+      "source_hint": "php代码审计.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "PHP weak-type and input-flow audit",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: php, audit, weak-type, preg-match, extract, strcmp. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Trace one attacker-controlled value through normalization and comparison to the first security-sensitive branch.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "php",
+        "audit",
+        "weak-type",
+        "preg-match",
+        "extract",
+        "strcmp"
+      ],
+      "snippet": "Paraphrased decision unit derived from php代码审计.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "php",
+        "audit",
+        "weak-type",
+        "preg-match",
+        "extract",
+        "strcmp"
+      ],
+      "semantic_tokens": [
+        "php",
+        "audit",
+        "weak-type",
+        "preg-match",
+        "extract",
+        "strcmp"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-xss",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "XSS跨站脚本攻击.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "XSS sink and browser-behavior routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: xss, html, attribute, dom, event-handler, filter-bypass. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Separate reflected, stored, DOM, and browser-context behavior with a harmless marker before attempting escalation.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "xss",
+        "html",
+        "attribute",
+        "dom",
+        "event-handler",
+        "filter-bypass"
+      ],
+      "snippet": "Paraphrased decision unit derived from XSS跨站脚本攻击.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "xss",
+        "html",
+        "attribute",
+        "dom",
+        "event-handler",
+        "filter-bypass"
+      ],
+      "semantic_tokens": [
+        "xss",
+        "html",
+        "attribute",
+        "dom",
+        "event-handler",
+        "filter-bypass"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-xxe",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "XXE漏洞总结.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "XXE parser and entity-resolution gate",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: xxe, xml, entity, doctype, oob, parser. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Verify controllable XML parsing and safe entity expansion behavior before attempting file, SSRF, or OOB closure.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "xxe",
+        "xml",
+        "entity",
+        "doctype",
+        "oob",
+        "parser"
+      ],
+      "snippet": "Paraphrased decision unit derived from XXE漏洞总结.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "xxe",
+        "xml",
+        "entity",
+        "doctype",
+        "oob",
+        "parser"
+      ],
+      "semantic_tokens": [
+        "xxe",
+        "xml",
+        "entity",
+        "doctype",
+        "oob",
+        "parser"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-jsonp",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "JSONP劫持漏洞.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "JSONP callback and trust-boundary routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: jsonp, callback, cors, script-src, cross-domain. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Confirm whether callback control changes executable script output or only data formatting before broader origin-trust assumptions.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "jsonp",
+        "callback",
+        "cors",
+        "script-src",
+        "cross-domain"
+      ],
+      "snippet": "Paraphrased decision unit derived from JSONP劫持漏洞.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "jsonp",
+        "callback",
+        "cors",
+        "script-src",
+        "cross-domain"
+      ],
+      "semantic_tokens": [
+        "jsonp",
+        "callback",
+        "cors",
+        "script-src",
+        "cross-domain"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-csrf",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "CSRF.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "CSRF token and state-change routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: csrf, token, same-site, state-change, origin, referer. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Identify whether the route depends on cookies alone, anti-CSRF tokens, or origin checks with one non-destructive state-change attempt.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "csrf",
+        "token",
+        "same-site",
+        "state-change",
+        "origin",
+        "referer"
+      ],
+      "snippet": "Paraphrased decision unit derived from CSRF.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "csrf",
+        "token",
+        "same-site",
+        "state-change",
+        "origin",
+        "referer"
+      ],
+      "semantic_tokens": [
+        "csrf",
+        "token",
+        "same-site",
+        "state-change",
+        "origin",
+        "referer"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-java-deserialization",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "Java反序列化漏洞总结.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "Java deserialization and gadget reachability",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: java, deserialization, readobject, gadget, commons-collections, fastjson. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Prove attacker-controlled object input and reachable gadget execution primitives before selecting a chain family.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "java",
+        "deserialization",
+        "readobject",
+        "gadget",
+        "commons-collections",
+        "fastjson"
+      ],
+      "snippet": "Paraphrased decision unit derived from Java反序列化漏洞总结.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "java",
+        "deserialization",
+        "readobject",
+        "gadget",
+        "commons-collections",
+        "fastjson"
+      ],
+      "semantic_tokens": [
+        "java",
+        "deserialization",
+        "readobject",
+        "gadget",
+        "commons-collections",
+        "fastjson"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-java-rce",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "Java代码审计.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "Java web expression and template execution",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: java, spel, ognl, el, freemarker, velocity. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Use harmless expression or template differentials to classify the Java execution surface before object or command escalation.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "java",
+        "spel",
+        "ognl",
+        "el",
+        "freemarker",
+        "velocity"
+      ],
+      "snippet": "Paraphrased decision unit derived from Java代码审计.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "java",
+        "spel",
+        "ognl",
+        "el",
+        "freemarker",
+        "velocity"
+      ],
+      "semantic_tokens": [
+        "java",
+        "spel",
+        "ognl",
+        "el",
+        "freemarker",
+        "velocity"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-serialization-logic",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "序列化和反序列化漏洞.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "Cross-stack serialization trust routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: serialization, object, pickle, yaml, fastjson, jackson. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Test whether untrusted structured input crosses a serialization boundary with one minimal object-shape differential.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "serialization",
+        "object",
+        "pickle",
+        "yaml",
+        "fastjson",
+        "jackson"
+      ],
+      "snippet": "Paraphrased decision unit derived from 序列化和反序列化漏洞.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "serialization",
+        "object",
+        "pickle",
+        "yaml",
+        "fastjson",
+        "jackson"
+      ],
+      "semantic_tokens": [
+        "serialization",
+        "object",
+        "pickle",
+        "yaml",
+        "fastjson",
+        "jackson"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-smuggling",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "HTTP走私.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "HTTP request smuggling and parser differential",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: request smuggling, desync, cl.te, te.cl, hop-by-hop, front-end back-end. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Use one harmless differential request to classify front-end versus back-end parsing disagreement before any queue-poisoning escalation.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "request smuggling",
+        "desync",
+        "cl.te",
+        "te.cl",
+        "hop-by-hop",
+        "front-end back-end"
+      ],
+      "snippet": "Paraphrased decision unit derived from HTTP走私.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "request smuggling",
+        "desync",
+        "cl.te",
+        "te.cl",
+        "hop-by-hop",
+        "front-end back-end"
+      ],
+      "semantic_tokens": [
+        "request smuggling",
+        "desync",
+        "cl.te",
+        "te.cl",
+        "hop-by-hop",
+        "front-end back-end"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-cache",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "缓存投毒.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "Cache, CDN, and proxy trust routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: cache, cdn, proxy, x-forwarded-host, poisoning, vary. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Compare cache key behavior, header trust, and reflection persistence with one non-destructive marker response before broader poisoning attempts.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "cache",
+        "cdn",
+        "proxy",
+        "x-forwarded-host",
+        "poisoning",
+        "vary"
+      ],
+      "snippet": "Paraphrased decision unit derived from 缓存投毒.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "cache",
+        "cdn",
+        "proxy",
+        "x-forwarded-host",
+        "poisoning",
+        "vary"
+      ],
+      "semantic_tokens": [
+        "cache",
+        "cdn",
+        "proxy",
+        "x-forwarded-host",
+        "poisoning",
+        "vary"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-graphql",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "GraphQL安全.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "GraphQL schema and authorization routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: graphql, introspection, resolver, authz, batching, idor. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Classify whether introspection, resolver exposure, batching, or authz gaps provide the safest first GraphQL differential.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "graphql",
+        "introspection",
+        "resolver",
+        "authz",
+        "batching",
+        "idor"
+      ],
+      "snippet": "Paraphrased decision unit derived from GraphQL安全.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "graphql",
+        "introspection",
+        "resolver",
+        "authz",
+        "batching",
+        "idor"
+      ],
+      "semantic_tokens": [
+        "graphql",
+        "introspection",
+        "resolver",
+        "authz",
+        "batching",
+        "idor"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-prototype-pollution",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "原型链污染.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "Prototype pollution and object-merge routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: prototype pollution, __proto__, constructor, merge, node, express. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Confirm controllable object merge behavior with a harmless property differential before sink hunting or gadget escalation.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "prototype pollution",
+        "__proto__",
+        "constructor",
+        "merge",
+        "node",
+        "express"
+      ],
+      "snippet": "Paraphrased decision unit derived from 原型链污染.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "prototype pollution",
+        "__proto__",
+        "constructor",
+        "merge",
+        "node",
+        "express"
+      ],
+      "semantic_tokens": [
+        "prototype pollution",
+        "__proto__",
+        "constructor",
+        "merge",
+        "node",
+        "express"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-websocket-sse",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "WebSocket安全.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "WebSocket and SSE session-boundary routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: websocket, sse, socket.io, channel, authz, eventstream. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Check handshake trust, channel naming, and state transitions with one low-impact subscription or event differential before message forgery.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "websocket",
+        "sse",
+        "socket.io",
+        "channel",
+        "authz",
+        "eventstream"
+      ],
+      "snippet": "Paraphrased decision unit derived from WebSocket安全.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "websocket",
+        "sse",
+        "socket.io",
+        "channel",
+        "authz",
+        "eventstream"
+      ],
+      "semantic_tokens": [
+        "websocket",
+        "sse",
+        "socket.io",
+        "channel",
+        "authz",
+        "eventstream"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-nosql-search",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "NoSQL注入.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "NoSQL and search-query trust routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: nosql, mongodb, elasticsearch, search, regex, aggregation. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Use one constrained search/filter differential to separate parser quirks, regex behavior, and auth-scoped search exposure before payload variation.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "nosql",
+        "mongodb",
+        "elasticsearch",
+        "search",
+        "regex",
+        "aggregation"
+      ],
+      "snippet": "Paraphrased decision unit derived from NoSQL注入.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "nosql",
+        "mongodb",
+        "elasticsearch",
+        "search",
+        "regex",
+        "aggregation"
+      ],
+      "semantic_tokens": [
+        "nosql",
+        "mongodb",
+        "elasticsearch",
+        "search",
+        "regex",
+        "aggregation"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-cors-postmessage",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "跨域通信安全.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "Cross-origin messaging and browser trust routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: cors, postmessage, origin, iframe, trusted origin, targetorigin. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Verify origin checks, wildcard trust, and message handling with one benign cross-origin marker before privilege assumptions.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "cors",
+        "postmessage",
+        "origin",
+        "iframe",
+        "trusted origin",
+        "targetorigin"
+      ],
+      "snippet": "Paraphrased decision unit derived from 跨域通信安全.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "cors",
+        "postmessage",
+        "origin",
+        "iframe",
+        "trusted origin",
+        "targetorigin"
+      ],
+      "semantic_tokens": [
+        "cors",
+        "postmessage",
+        "origin",
+        "iframe",
+        "trusted origin",
+        "targetorigin"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-oauth-jwk",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "OAuth与JWK.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "OAuth, JWK, and token-key selection routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: oauth, jwk, jku, kid, jwks, openid. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Classify whether token verification depends on remote key fetch, kid selection, or issuer trust with one non-privileged token differential.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "oauth",
+        "jwk",
+        "jku",
+        "kid",
+        "jwks",
+        "openid"
+      ],
+      "snippet": "Paraphrased decision unit derived from OAuth与JWK.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "oauth",
+        "jwk",
+        "jku",
+        "kid",
+        "jwks",
+        "openid"
+      ],
+      "semantic_tokens": [
+        "oauth",
+        "jwk",
+        "jku",
+        "kid",
+        "jwks",
+        "openid"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-race-toctou",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "竞争条件.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "Race condition and state-transition routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: race, toctou, parallel, double-spend, retry, window. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Test one bounded concurrent action pair to determine whether timing, stale state, or retry windows expose the real race surface.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "race",
+        "toctou",
+        "parallel",
+        "double-spend",
+        "retry",
+        "window"
+      ],
+      "snippet": "Paraphrased decision unit derived from 竞争条件.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "race",
+        "toctou",
+        "parallel",
+        "double-spend",
+        "retry",
+        "window"
+      ],
+      "semantic_tokens": [
+        "race",
+        "toctou",
+        "parallel",
+        "double-spend",
+        "retry",
+        "window"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-web-cloud-metadata",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "云环境安全.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "web",
+      "title": "Cloud metadata and CI trust-boundary routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: metadata, iam, ecs, ci, runner, instance. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Confirm whether the first reachable trust surface is metadata, CI variables, runner secrets, or proxy headers before SSRF-style escalation.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "metadata",
+        "iam",
+        "ecs",
+        "ci",
+        "runner",
+        "instance"
+      ],
+      "snippet": "Paraphrased decision unit derived from 云环境安全.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "metadata",
+        "iam",
+        "ecs",
+        "ci",
+        "runner",
+        "instance"
+      ],
+      "semantic_tokens": [
+        "metadata",
+        "iam",
+        "ecs",
+        "ci",
+        "runner",
+        "instance"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-crypto-rsa-routing",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "RSA密码学.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "crypto",
+      "title": "RSA attack-surface classification",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: rsa, small e, common modulus, broadcast, dp leak, crt. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Determine whether the first exploitable RSA surface is padding, modulus reuse, leaked CRT material, or exponent misuse before solving.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "rsa",
+        "small e",
+        "common modulus",
+        "broadcast",
+        "dp leak",
+        "crt"
+      ],
+      "snippet": "Paraphrased decision unit derived from RSA密码学.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "rsa",
+        "small e",
+        "common modulus",
+        "broadcast",
+        "dp leak",
+        "crt"
+      ],
+      "semantic_tokens": [
+        "rsa",
+        "small e",
+        "common modulus",
+        "broadcast",
+        "dp leak",
+        "crt"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-crypto-padding-oracle",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "PaddingOracle.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "crypto",
+      "title": "CBC padding-oracle routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: padding oracle, cbc, oracle, iv, decrypt error, pkcs7. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Probe one ciphertext/IV differential to separate padding feedback, MAC feedback, and silent rejection before adaptive decryption.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "padding oracle",
+        "cbc",
+        "oracle",
+        "iv",
+        "decrypt error",
+        "pkcs7"
+      ],
+      "snippet": "Paraphrased decision unit derived from PaddingOracle.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "padding oracle",
+        "cbc",
+        "oracle",
+        "iv",
+        "decrypt error",
+        "pkcs7"
+      ],
+      "semantic_tokens": [
+        "padding oracle",
+        "cbc",
+        "oracle",
+        "iv",
+        "decrypt error",
+        "pkcs7"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-crypto-xor-keystream",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "XOR与流密码.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "crypto",
+      "title": "XOR and keystream-reuse routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: xor, repeating key, keystream, stream cipher, crib, nonce reuse. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Classify fixed-key XOR, repeating-key XOR, and keystream reuse with one structure-preserving differential before brute force.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "xor",
+        "repeating key",
+        "keystream",
+        "stream cipher",
+        "crib",
+        "nonce reuse"
+      ],
+      "snippet": "Paraphrased decision unit derived from XOR与流密码.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "xor",
+        "repeating key",
+        "keystream",
+        "stream cipher",
+        "crib",
+        "nonce reuse"
+      ],
+      "semantic_tokens": [
+        "xor",
+        "repeating key",
+        "keystream",
+        "stream cipher",
+        "crib",
+        "nonce reuse"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-crypto-hash-mac",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "Hash与MAC.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "crypto",
+      "title": "Hash, MAC, and length-extension routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: length extension, mac, sha1, md5, hmac, token. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Test whether integrity depends on raw hash concatenation, keyed MAC, or HMAC before attempting token forgery.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "length extension",
+        "mac",
+        "sha1",
+        "md5",
+        "hmac",
+        "token"
+      ],
+      "snippet": "Paraphrased decision unit derived from Hash与MAC.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "length extension",
+        "mac",
+        "sha1",
+        "md5",
+        "hmac",
+        "token"
+      ],
+      "semantic_tokens": [
+        "length extension",
+        "mac",
+        "sha1",
+        "md5",
+        "hmac",
+        "token"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-crypto-prng-nonce",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "随机数与Nonce.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "crypto",
+      "title": "PRNG and nonce-generation routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: prng, nonce, seed, mt19937, predictable, reuse. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Check for nonce reuse, timestamp seeding, or observable PRNG state before algebraic reconstruction.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "prng",
+        "nonce",
+        "seed",
+        "mt19937",
+        "predictable",
+        "reuse"
+      ],
+      "snippet": "Paraphrased decision unit derived from 随机数与Nonce.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "prng",
+        "nonce",
+        "seed",
+        "mt19937",
+        "predictable",
+        "reuse"
+      ],
+      "semantic_tokens": [
+        "prng",
+        "nonce",
+        "seed",
+        "mt19937",
+        "predictable",
+        "reuse"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-crypto-ecc-dlog",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "ECC与离散对数.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "crypto",
+      "title": "Elliptic-curve and discrete-log routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: ecc, ecdh, ecdsa, curve, discrete log, invalid curve. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Identify whether the weakness is signature nonce reuse, invalid-curve handling, or discrete-log structure before deeper math work.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "ecc",
+        "ecdh",
+        "ecdsa",
+        "curve",
+        "discrete log",
+        "invalid curve"
+      ],
+      "snippet": "Paraphrased decision unit derived from ECC与离散对数.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "ecc",
+        "ecdh",
+        "ecdsa",
+        "curve",
+        "discrete log",
+        "invalid curve"
+      ],
+      "semantic_tokens": [
+        "ecc",
+        "ecdh",
+        "ecdsa",
+        "curve",
+        "discrete log",
+        "invalid curve"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-crypto-lattice-routing",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "Lattice与HNP.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "crypto",
+      "title": "Lattice and hidden-number routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: lattice, lll, knapsack, hidden number, approximate gcd, small root. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Determine whether the evidence suggests a lattice, hidden-number, approximate-GCD, or subset-sum family before solver selection.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "lattice",
+        "lll",
+        "knapsack",
+        "hidden number",
+        "approximate gcd",
+        "small root"
+      ],
+      "snippet": "Paraphrased decision unit derived from Lattice与HNP.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "lattice",
+        "lll",
+        "knapsack",
+        "hidden number",
+        "approximate gcd",
+        "small root"
+      ],
+      "semantic_tokens": [
+        "lattice",
+        "lll",
+        "knapsack",
+        "hidden number",
+        "approximate gcd",
+        "small root"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-crypto-encoding-vs-crypto",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "编码还是密码.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "crypto",
+      "title": "Encoding-versus-cryptography classification",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: base64, hex, rot, encoding, substitution, not crypto. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Separate pure representation transforms from real cryptographic structure with one reversible normalization pass before solver escalation.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "base64",
+        "hex",
+        "rot",
+        "encoding",
+        "substitution",
+        "not crypto"
+      ],
+      "snippet": "Paraphrased decision unit derived from 编码还是密码.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "base64",
+        "hex",
+        "rot",
+        "encoding",
+        "substitution",
+        "not crypto"
+      ],
+      "semantic_tokens": [
+        "base64",
+        "hex",
+        "rot",
+        "encoding",
+        "substitution",
+        "not crypto"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-forensics-image",
+      "source": "des-ctf-knowledge",
+      "source_file": "图片隐写.idx.md",
+      "source_hint": "图片隐写.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "forensics",
+      "title": "Image container and stego layer routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: image, stego, png, crc, lsb, metadata. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Validate container structure, dimensions, trailing data, metadata, and channel anomalies before brute force.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "image",
+        "stego",
+        "png",
+        "crc",
+        "lsb",
+        "metadata"
+      ],
+      "snippet": "Paraphrased decision unit derived from 图片隐写.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "image",
+        "stego",
+        "png",
+        "crc",
+        "lsb",
+        "metadata"
+      ],
+      "semantic_tokens": [
+        "image",
+        "stego",
+        "png",
+        "crc",
+        "lsb",
+        "metadata"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-forensics-archive",
+      "source": "des-ctf-knowledge",
+      "source_file": "压缩包总结.idx.md",
+      "source_hint": "压缩包总结.idx.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "forensics",
+      "title": "Archive integrity and encryption classification",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: archive, zip, rar, crc, known-plaintext, encryption. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Inventory members and distinguish corruption, pseudo-encryption, weak encryption, and nested archives before cracking.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "archive",
+        "zip",
+        "rar",
+        "crc",
+        "known-plaintext",
+        "encryption"
+      ],
+      "snippet": "Paraphrased decision unit derived from 压缩包总结.idx.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "archive",
+        "zip",
+        "rar",
+        "crc",
+        "known-plaintext",
+        "encryption"
+      ],
+      "semantic_tokens": [
+        "archive",
+        "zip",
+        "rar",
+        "crc",
+        "known-plaintext",
+        "encryption"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-forensics-traffic",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "流量分析.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "forensics",
+      "title": "Traffic artifact and protocol extraction routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: pcap, traffic, http, dns, credential, stream. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Classify the dominant protocol, reconstruction target, and credential-bearing artifacts before deep carving or brute-force decoding.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "pcap",
+        "traffic",
+        "http",
+        "dns",
+        "credential",
+        "stream"
+      ],
+      "snippet": "Paraphrased decision unit derived from 流量分析.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "pcap",
+        "traffic",
+        "http",
+        "dns",
+        "credential",
+        "stream"
+      ],
+      "semantic_tokens": [
+        "pcap",
+        "traffic",
+        "http",
+        "dns",
+        "credential",
+        "stream"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-forensics-disk",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "磁盘文件分析.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "forensics",
+      "title": "Disk-image partition and filesystem routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: disk, filesystem, partition, mft, deleted, mount. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Confirm partition layout, filesystem type, and deleted-artifact recovery surface before broad extraction passes.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "disk",
+        "filesystem",
+        "partition",
+        "mft",
+        "deleted",
+        "mount"
+      ],
+      "snippet": "Paraphrased decision unit derived from 磁盘文件分析.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "disk",
+        "filesystem",
+        "partition",
+        "mft",
+        "deleted",
+        "mount"
+      ],
+      "semantic_tokens": [
+        "disk",
+        "filesystem",
+        "partition",
+        "mft",
+        "deleted",
+        "mount"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-forensics-memory",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "内存取证.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "forensics",
+      "title": "Memory artifact and process-surface routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: memory, dump, process, credential, network, volatility. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Identify whether the first high-value surface is process state, credentials, handles, or network remnants before large plugin sweeps.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "memory",
+        "dump",
+        "process",
+        "credential",
+        "network",
+        "volatility"
+      ],
+      "snippet": "Paraphrased decision unit derived from 内存取证.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "memory",
+        "dump",
+        "process",
+        "credential",
+        "network",
+        "volatility"
+      ],
+      "semantic_tokens": [
+        "memory",
+        "dump",
+        "process",
+        "credential",
+        "network",
+        "volatility"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-misc-audio",
+      "source": "des-ctf-knowledge",
+      "source_file": "音频隐写.md",
+      "source_hint": "音频隐写.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "misc",
+      "title": "Audio stego representation routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: audio, stego, spectrum, waveform, dtmf, lsb. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Inspect waveform, spectrum, channels, duration, and metadata before choosing a decoding family.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "audio",
+        "stego",
+        "spectrum",
+        "waveform",
+        "dtmf",
+        "lsb"
+      ],
+      "snippet": "Paraphrased decision unit derived from 音频隐写.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "audio",
+        "stego",
+        "spectrum",
+        "waveform",
+        "dtmf",
+        "lsb"
+      ],
+      "semantic_tokens": [
+        "audio",
+        "stego",
+        "spectrum",
+        "waveform",
+        "dtmf",
+        "lsb"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-misc-qr",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "二维码隐写.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "misc",
+      "title": "QR reconstruction and decode routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: qr, qrcode, finder, mask, rotation, repair. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Check finder patterns, orientation, masking, and error-correction clues before attempting manual reconstruction or decoding.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "qr",
+        "qrcode",
+        "finder",
+        "mask",
+        "rotation",
+        "repair"
+      ],
+      "snippet": "Paraphrased decision unit derived from 二维码隐写.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "qr",
+        "qrcode",
+        "finder",
+        "mask",
+        "rotation",
+        "repair"
+      ],
+      "semantic_tokens": [
+        "qr",
+        "qrcode",
+        "finder",
+        "mask",
+        "rotation",
+        "repair"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-misc-jsfuck",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "JSFuck编码.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "misc",
+      "title": "Obfuscated script representation routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: jsfuck, obfuscation, eval, unicode, packer, decode. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Classify the encoding family and produce one safe deobfuscation layer before interpreting behavior or searching for flags.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "jsfuck",
+        "obfuscation",
+        "eval",
+        "unicode",
+        "packer",
+        "decode"
+      ],
+      "snippet": "Paraphrased decision unit derived from JSFuck编码.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "jsfuck",
+        "obfuscation",
+        "eval",
+        "unicode",
+        "packer",
+        "decode"
+      ],
+      "semantic_tokens": [
+        "jsfuck",
+        "obfuscation",
+        "eval",
+        "unicode",
+        "packer",
+        "decode"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-misc-pyjail",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "Python沙箱逃逸.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "misc",
+      "title": "Python sandbox and pyjail routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: pyjail, sandbox, builtin, blacklist, eval, import. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Classify whether the jail restricts builtins, syntax, imports, or output before attempting object-graph traversal.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "pyjail",
+        "sandbox",
+        "builtin",
+        "blacklist",
+        "eval",
+        "import"
+      ],
+      "snippet": "Paraphrased decision unit derived from Python沙箱逃逸.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "pyjail",
+        "sandbox",
+        "builtin",
+        "blacklist",
+        "eval",
+        "import"
+      ],
+      "semantic_tokens": [
+        "pyjail",
+        "sandbox",
+        "builtin",
+        "blacklist",
+        "eval",
+        "import"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-misc-layered-encoding",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "编码还是密码.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "misc",
+      "title": "Layered custom encoding routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: encoding, base64, hex, rot, custom alphabet, layered. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Perform one reversible normalization pass to separate pure representation layers from real cryptographic structure.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "encoding",
+        "base64",
+        "hex",
+        "rot",
+        "custom alphabet",
+        "layered"
+      ],
+      "snippet": "Paraphrased decision unit derived from 编码还是密码.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "encoding",
+        "base64",
+        "hex",
+        "rot",
+        "custom alphabet",
+        "layered"
+      ],
+      "semantic_tokens": [
+        "encoding",
+        "base64",
+        "hex",
+        "rot",
+        "custom alphabet",
+        "layered"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    },
+    {
+      "id": "des-ctf-misc-protocol-puzzle",
+      "source": "des-ctf-knowledge",
+      "source_file": "AI-SEARCH-INDEX.md",
+      "source_hint": "流量分析.md",
+      "source_repo": "https://github.com/Dest1ny-Sec/Des-CTF-Knowledge.git",
+      "source_commit": "unknown",
+      "license_note": "Compilation is MIT; individual collected articles, writeups, and scripts may have separate authors and licenses.",
+      "category": "misc",
+      "title": "Protocol-state and puzzle routing",
+      "kind": "workflow",
+      "trigger": "Current evidence matches: protocol, state machine, menu, interactive, framing, oracle. Use this as pattern recall, not as an answer lookup.",
+      "first_safe_check": "Use one bounded interaction to determine whether the dominant challenge surface is framing, state sequencing, or hidden protocol semantics.",
+      "oracle": "The controlled probe produces a stable differential that identifies one technique family or rules it out.",
+      "stop_rule": "Stop after two calibrated checks with no differential; record the result and pivot instead of varying payload syntax.",
+      "pivot_rule": "Pivot to the adjacent parser, transport, representation, or trust-boundary family indicated by the observed differential.",
+      "keywords": [
+        "protocol",
+        "state machine",
+        "menu",
+        "interactive",
+        "framing",
+        "oracle"
+      ],
+      "snippet": "Paraphrased decision unit derived from 流量分析.md; consult the local ignored mirror for source context.",
+      "quality": 5,
+      "specificity": 4,
+      "curated": true,
+      "preconditions": [
+        "Evidence contains at least one matching signal",
+        "A bounded non-destructive probe is available"
+      ],
+      "confirm": "Expected differential is repeatable under one-variable control.",
+      "falsify": "Two calibrated controls remain identical and no expected oracle appears.",
+      "query_aliases": [
+        "protocol",
+        "state machine",
+        "menu",
+        "interactive",
+        "framing",
+        "oracle"
+      ],
+      "semantic_tokens": [
+        "protocol",
+        "state machine",
+        "menu",
+        "interactive",
+        "framing",
+        "oracle"
+      ],
+      "retrieval_intents": [
+        "first-safe-check",
+        "route-selection",
+        "stop-rule"
+      ],
+      "rank_boost": 80
+    }
+  ]
+}

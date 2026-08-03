@@ -10,7 +10,7 @@ Use for ELF/PE/Mach-O crackmes or native validation binaries where the goal is t
 
 ## First Safe Checks
 
-1. Run one artifact triage or `ctf-binary-probe`.
+1. Run one artifact triage or `ctf-rev-analyze`; use direct `ctf-binary-probe` only when the facade output needs a narrower fallback.
 2. Find success/failure strings and xrefs.
 3. Locate input boundary: argv, stdin, file, env, network, GUI, resource.
 4. Walk from success/failure branch backward to the nearest checker.

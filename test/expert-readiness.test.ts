@@ -106,10 +106,7 @@ describe("evaluateExpertReadiness", () => {
 
   it("supports tools with .ts/.js extensions in registered set", () => {
     const tools = allRequiredTools()
-    const withExtensions = new Set([
-      ...tools.map((t) => `${t}.ts`),
-      ...tools.map((t) => `${t}.js`),
-    ])
+    const withExtensions = new Set([...tools.map((t) => `${t}.ts`), ...tools.map((t) => `${t}.js`)])
     const report = evaluateExpertReadiness({
       registeredTools: withExtensions,
       teamModeEnabled: true,
@@ -129,12 +126,49 @@ describe("evaluateExpertReadiness", () => {
     expect(report.missingSupportTools).toBeDefined()
   })
 
-  it("keeps manifest expert readiness lists in sync with runtime constants", () => {
+  it("keeps manifest expert readiness lists and structural expert contract metadata in sync", () => {
     const manifest = JSON.parse(readFileSync(resolve("ctf-agent.manifest.json"), "utf8")) as {
+      default_entrypoints: string[]
+      primary_agents: string[]
+      support_primary_agents: string[]
+      routing: { tool: string; skill: string; core_module: string }
+      required_tools: string[]
+      optional_pack_tools: string[]
+      required_scripts: string[]
+      required_indexes: string[]
       readiness_gate: {
         expert_required_tools: string[]
         expert_soft_dependencies: string[]
       }
+    }
+    expect(manifest.default_entrypoints).toContain("/ctf")
+    expect(manifest.default_entrypoints).toContain("/ctf-expert")
+    expect(manifest.primary_agents).toEqual(["ctf-fast", "ctf-expert"])
+    expect(manifest.support_primary_agents).toContain("researcher")
+    expect(manifest.routing.tool).toBe("ctf-route-plan")
+    expect(manifest.routing.skill).toBe("ctf-router")
+    expect(manifest.routing.core_module).toBe("packages/ctf-core/src/router.ts")
+    expect(manifest.required_tools).toEqual(
+      expect.arrayContaining(["ctf-pattern-card-search", "ctf-pattern-to-hypothesis"]),
+    )
+    expect(manifest.optional_pack_tools).toEqual(
+      expect.arrayContaining([
+        "ctf-lesson-search",
+        "ctf-retro-search",
+        "ctf-skill-repo-search",
+        "ctf-imported-knowledge-search",
+      ]),
+    )
+    expect(manifest.required_indexes).toEqual(
+      expect.arrayContaining([
+        "rag/knowledge/lessons/lessons.index.json",
+        "rag/knowledge/retros/retros.index.json",
+        "rag/knowledge/pattern-cards/des-ctf/des-ctf.cards.v1.json",
+        "rag/knowledge/sources/des-ctf-knowledge.manifest.json",
+      ]),
+    )
+    for (const rel of [...manifest.required_scripts, ...manifest.required_indexes]) {
+      expect(readFileSync(resolve(rel), rel.includes(".json") ? "utf8" : "utf8")).toBeDefined()
     }
     expect(manifest.readiness_gate.expert_required_tools).toEqual([...EXPERT_REQUIRED_TOOLS])
     expect(manifest.readiness_gate.expert_soft_dependencies).toEqual([...EXPERT_SOFT_DEPENDENCIES])

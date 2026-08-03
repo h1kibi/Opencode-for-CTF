@@ -1,9 +1,38 @@
 ---
 name: ctf-forensics-memory
 description: Use for memory / RAM dump / hibernation file forensics — process analysis, injected code, network connections, and credential extraction.
+compatibility: opencode
 ---
 
 # CTF Forensics — Memory Analysis
+
+## Stop Conditions
+
+Stop before destructive extraction, when provenance would be lost, when the required tool/fallback is unavailable, or when the artifact class is falsified. Do not repeat equivalent extraction attempts without a new discriminator.
+
+## Output Contract
+
+Return confirmed evidence, uncertainty, source artifact/offset, command or tool used, status (`continue`, `pivot`, `blocked`, `dead`, or `close`), and exactly one next action.
+
+## Dispatch / Handoff
+
+Return artifact paths, hashes, offsets/streams, tool output, interpretation, and one next action to `ctf-forensics`; preserve provenance across any child artifact.
+
+## First Safe Action
+
+Hash and preserve the dump, identify its format and profile, then inventory processes/connections before extracting secrets.
+
+## Required Inputs
+
+Require the original artifact, hash/provenance, acquisition constraints, current forensics phase, and the exact extraction question.
+
+## Do Not Load When
+
+Do not load without the matching artifact class, and do not use this focused skill to replace `ctf-forensics` preservation, provenance, or phase ownership.
+
+## Load When
+
+Load when the artifact is RAM, a hibernation file, a crash dump, or a process/injection/credential reconstruction task.
 
 ## Trigger
 

@@ -1,0 +1,21 @@
+{
+  "schema_version": "pwn_regression_expected.v1",
+  "name": "saved-rbp-stack-pivot",
+  "sample_type": "c-source",
+  "expected_primitive": "pwn.primitive.saved_rbp_stack_pivot",
+  "expected_tags": {
+    "control": [
+      "saved_rbp",
+      "stack_pivot"
+    ],
+    "closure": [
+      "ret2libc"
+    ]
+  },
+  "minimal_probe_shape": "fake stack + saved_rbp=fake_stack + saved_rip=leave_ret",
+  "confirm_oracle": "rsp/rbp/rip migrate to fake stack",
+  "falsify_oracle": "leave not reached or fake stack unreadable",
+  "anti_pattern_to_avoid": [
+    "pivot_before_argument_selector_check"
+  ]
+}

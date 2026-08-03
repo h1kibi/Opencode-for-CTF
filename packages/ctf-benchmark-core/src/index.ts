@@ -32,7 +32,8 @@ export const benchmarkFamilies: BenchmarkExpectation[] = [
     name: "upload-vs-file-write-routing",
     description: "Upload validation and file-write closure are routed through the correct web specialist lanes.",
     routeClass: "fallback",
-    fallbackExpectation: "Route upload behavior to ctf-web-upload first and explicit write/overwrite behavior to ctf-web-file-write.",
+    fallbackExpectation:
+      "Route upload behavior to ctf-web-upload first and explicit write/overwrite behavior to ctf-web-file-write.",
     evidenceExpectation: "The chosen control plane and canary path are recorded before state-changing file operations.",
     benchmarkStatus: "covered",
   },
@@ -68,7 +69,8 @@ export const benchmarkFamilies: BenchmarkExpectation[] = [
     name: "rsa-probe-before-manual",
     description: "Structured crypto probe runs before ad-hoc attacks.",
     routeClass: "specialist",
-    fallbackExpectation: "Normalize parameters and pivot to reversible-first or oracle-backed fallback before brute force.",
+    fallbackExpectation:
+      "Normalize parameters and pivot to reversible-first or oracle-backed fallback before brute force.",
     evidenceExpectation: "Parameter inventory, weakness statement, and recovery script are recorded.",
     benchmarkStatus: "partial",
   },
@@ -77,7 +79,8 @@ export const benchmarkFamilies: BenchmarkExpectation[] = [
     name: "static-before-dynamic",
     description: "Static analysis happens before dynamic instrumentation.",
     routeClass: "specialist",
-    fallbackExpectation: "Use the artifact-family reference index and fallback matrix before broad decompilation or runtime work.",
+    fallbackExpectation:
+      "Use the artifact-family reference index and fallback matrix before broad decompilation or runtime work.",
     evidenceExpectation: "Checker path, constants/transform chain, and verification oracle are recorded.",
     benchmarkStatus: "partial",
   },
@@ -86,7 +89,8 @@ export const benchmarkFamilies: BenchmarkExpectation[] = [
     name: "preserve-original",
     description: "Original evidence is preserved before extraction work.",
     routeClass: "dispatcher",
-    fallbackExpectation: "Dedicated probes first, raw tools second, and preserve provenance for every derived artifact.",
+    fallbackExpectation:
+      "Dedicated probes first, raw tools second, and preserve provenance for every derived artifact.",
     evidenceExpectation: "Hashes, triage notes, extraction log, and reconstruction provenance are recorded.",
     benchmarkStatus: "partial",
   },
@@ -95,8 +99,13 @@ export const benchmarkFamilies: BenchmarkExpectation[] = [
     name: "classify-before-heavy-tools",
     description: "Classify the challenge before committing to a specialist route.",
     routeClass: "dispatcher",
-    fallbackExpectation: "Use a classification-first fallback and hand off immediately once the real family is obvious.",
+    fallbackExpectation:
+      "Use a classification-first fallback and hand off immediately once the real family is obvious.",
     evidenceExpectation: "Classification evidence, eliminated families, and final route are recorded.",
-    benchmarkStatus: "planned",
+    benchmarkStatus: "partial",
   },
 ]
+
+export * from "./nyu.ts"
+
+export * from "./runner.ts"

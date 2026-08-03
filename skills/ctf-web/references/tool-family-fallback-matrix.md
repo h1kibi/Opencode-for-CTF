@@ -12,6 +12,7 @@ Use this reference when a dedicated Web tool fails or aborts. It is a routing ai
 ## Family A — Recon / profile tools
 
 Tools:
+- `ctf-web-analyze`
 - `ctf-web-probe`
 - `ctf-web-fingerprint`
 - `ctf-web-blackbox-map`
@@ -22,10 +23,11 @@ Typical failures:
 - insufficient route/state hints
 
 Fallback order:
-1. `ctf-web-fingerprint` for headers/server/profile baseline
-2. `ctf-web-blackbox-map mode=light` for URL-only surface model
-3. `ctf-web-js-surface-map` if HTML/scripts suggest JS-heavy routes
-4. one browser body/runtime check if browser-only evidence exists or text/body is still unknown
+1. `ctf-web-analyze` for the stable first-pass URL model
+2. `ctf-web-fingerprint` for headers/server/profile baseline if missing
+3. `ctf-web-blackbox-map mode=light` for URL-only surface model if still unclear
+4. `ctf-web-js-surface-map` if HTML/scripts suggest JS-heavy routes
+5. one browser body/runtime check if browser-only evidence exists or text/body is still unknown
 
 Do not:
 - repeat the same recon call unchanged more than once
@@ -68,10 +70,11 @@ Typical failures:
 - target not stateful enough
 
 Fallback order:
-1. `ctf-web-fingerprint`
-2. `ctf-web-blackbox-map mode=light`
-3. one browser check if browser/runtime evidence is specifically missing
-4. `ctf-skill-repo-search` or `ctf-pattern-card-search` when you need pattern recall rather than target discovery
+1. `ctf-web-analyze`
+2. `ctf-web-fingerprint`
+3. `ctf-web-blackbox-map mode=light`
+4. one browser check if browser/runtime evidence is specifically missing
+5. `ctf-skill-repo-search` or `ctf-pattern-card-search` when you need pattern recall rather than target discovery
 
 Do not:
 - force a state-machine or template-family interpretation without enough evidence
@@ -112,10 +115,11 @@ Use only when:
 - you need browser-only network/runtime signals
 
 Fallback order when browser check fails:
-1. `ctf-web-fingerprint`
-2. `ctf-web-blackbox-map`
-3. `ctf-web-js-surface-map`
-4. `ctf-web-runtime-map`
+1. `ctf-web-analyze`
+2. `ctf-web-fingerprint`
+3. `ctf-web-blackbox-map`
+4. `ctf-web-js-surface-map`
+5. `ctf-web-runtime-map`
 
 Do not:
 - use browser as the first fallback for everything

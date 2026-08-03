@@ -13,7 +13,7 @@ tools/         — Tool definitions (TypeScript, @opencode-ai/plugin tool())
 packages/      — Shared workspace packages (ctf-core router, adapter surface, …)
 scripts/       — Diagnostic and setup scripts
 test/          — Vitest unit tests
-knowledge/     — Knowledge base (lessons, pattern-cards, pwn, rev)
+rag/knowledge/   — Knowledge base (lessons, pattern-cards, pwn, rev)
 rules/         — Safety and CTF solving rules
 templates/     — Solve/exploit templates
 docker/        — PWN/REV multi-arch Dockerfiles

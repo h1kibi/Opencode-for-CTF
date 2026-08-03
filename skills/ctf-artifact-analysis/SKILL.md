@@ -6,6 +6,38 @@ compatibility: opencode
 
 # CTF Artifact Analysis
 
+## Load When
+
+Use when an authorized CTF artifact needs structured classification before choosing a category-specific analysis path.
+
+## Do Not Load When
+
+Do not load when the artifact class is already known and a narrower specialist skill is sufficient.
+
+## Required Inputs
+
+- Artifact path or bounded target description.
+- Challenge context and any available provenance.
+
+## First Safe Action
+
+Preserve the original, collect metadata, and classify the artifact without executing it.
+
+## Dispatch / Handoff
+
+Return the classification and evidence needed to hand off to the matching web, pwn, rev, crypto, or forensics skill.
+
+## Output Contract
+
+Report artifact type, confidence, safe observations, next skill/tool, and unresolved uncertainty.
+
+## Flag Handling
+
+Use `ctf-common/references/flag-identification-rules.md` for every recovered string. Keep `untrusted_hint`, `flag_candidate`, and `oracle-verified` separate. Strict `prefix{payload}` candidates are not final success by themselves; bare MD5/SHA-256 values require explicit flag-file or flag-helper context. Preserve `source`, `origin`, and `context`, and write `agent_flag.txt` only after an independent exact/file/service oracle verifies the value.
+## Stop Conditions
+
+Stop when the target is outside the authorized workspace, the artifact cannot be safely read, or classification confidence is insufficient for a focused next step.
+
 ## Purpose
 
 Use this skill to get a structured first look at **any** challenge artifact. It automatically classifies the file type, extracts sinks/entrypoints/secrets/flags from source code, identifies binary protections and interesting strings, and routes the artifact to the correct analysis path. All subagents can use it — not just web for source audit.

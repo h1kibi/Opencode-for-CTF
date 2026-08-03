@@ -6,38 +6,19 @@ import {
   configPath,
   manifestPath,
   opencodeConfigDir,
+  pluginHealthPath,
+  probeInstalledPluginRuntime,
   projectVersion,
   readJsonc,
   repoRoot,
+  tryWritePluginHealthReport,
 } from "./lib/opencode-ctf-install.mjs"
+import { runToolChecks, TOOL_CHECK_GROUPS } from "./lib/tool-checks.mjs"
+import { wireMcpBackendStatus } from "./lib/wiremcp-status.mjs"
 
 const json = process.argv.includes("--json")
 const strict = process.argv.includes("--strict")
-const checks = [
-  ["core", "node", "node", ["--version"]],
-  ["core", "npm", "npm", ["--version"]],
-  ["core", "git", "git", ["--version"]],
-  ["core", "python", "python", ["--version"]],
-  ["web", "curl", "curl", ["--version"]],
-  ["web", "docker", "docker", ["--version"]],
-  ["web", "ffuf", "ffuf", ["-V"]],
-  ["pwn", "gdb", "gdb", ["--version"]],
-  ["pwn", "checksec", "checksec", ["--version"]],
-  ["rev", "file", "file", ["--version"]],
-  ["rev", "jadx", "jadx", ["--version"]],
-  ["forensics", "tshark", "tshark", ["--version"]],
-  ["forensics", "exiftool", "exiftool", ["-ver"]],
-  ["forensics", "ida-pro-mcp", "ida-pro-mcp", ["--help"]],
-  ["crypto", "openssl", "openssl", ["version"]],
-  ["crypto", "sage", "sage", ["--version"]],
-]
-
-const groups = new Map()
-for (const [group, name, command, args] of checks) {
-  const bucket = groups.get(group) ?? { found: [], missing: [] }
-  ;(commandExists(command, args) ? bucket.found : bucket.missing).push(name)
-  groups.set(group, bucket)
-}
+const groups = runToolChecks()
 
 const configDir = opencodeConfigDir()
 const configFile = configPath(configDir)
@@ -46,8 +27,9 @@ const installed = existsSync(manifestFile)
 const currentVersion = await projectVersion()
 let configError = null
 let installedVersion = null
+let config = {}
 try {
-  await readJsonc(configFile)
+  config = await readJsonc(configFile)
 } catch (error) {
   configError = error instanceof Error ? error.message : String(error)
 }
@@ -59,26 +41,52 @@ if (installed) {
   }
 }
 
+const wireMcp = wireMcpBackendStatus()
+const pluginRuntimeProbe = existsSync(path.join(configDir, "opencode-for-ctf", "plugin", "index.js"))
+  ? await probeInstalledPluginRuntime(configDir)
+  : { ok: false, error: "managed plugin bundle missing", exportNames: [] }
 const result = {
   configDir,
   configFile,
   manifestFile,
+  healthFile: pluginHealthPath(configDir),
   installed,
   openCode: commandExists("opencode", ["--version"]),
   nodeModules: existsSync(path.join(repoRoot, "node_modules")),
   pluginBundle: existsSync(path.join(repoRoot, "dist", "plugin", "index.js")),
+  idaMcpAvailable: commandExists("ida-pro-mcp", ["--help"]),
   configError,
   currentVersion,
   installedVersion,
   upgradeAvailable: installed && installedVersion !== currentVersion,
+  pluginRuntimeImportOk: pluginRuntimeProbe.ok,
+  pluginRuntimeImportError: pluginRuntimeProbe.ok ? null : pluginRuntimeProbe.error,
+  wireMcpConfigured: wireMcp.configured,
   groups: Object.fromEntries(groups),
 }
+await tryWritePluginHealthReport(configDir, {
+  source: "doctor-install",
+  installed: result.installed,
+  currentVersion: result.currentVersion,
+  installedVersion: result.installedVersion,
+  configFile: result.configFile,
+  manifestFile: result.manifestFile,
+  pluginRuntimeImportOk: result.pluginRuntimeImportOk,
+  pluginRuntimeImportError: result.pluginRuntimeImportError,
+  wireMcpConfigured: result.wireMcpConfigured,
+  openCode: result.openCode,
+  nodeModules: result.nodeModules,
+  pluginBundle: result.pluginBundle,
+  upgradeAvailable: result.upgradeAvailable,
+  configError: result.configError,
+})
 const unhealthy =
   !result.installed ||
   result.configError ||
   !result.openCode ||
   !result.nodeModules ||
   !result.pluginBundle ||
+  !result.pluginRuntimeImportOk ||
   result.upgradeAvailable
 if (json) console.log(JSON.stringify(result, null, 2))
 else {
@@ -87,15 +95,27 @@ else {
   console.log(`opencode: ${result.openCode ? "found" : "missing"}`)
   console.log(`config: ${configError ? `invalid - ${configError}` : "valid"}`)
   console.log(`plugin_bundle: ${result.pluginBundle ? "ready" : "missing - run npm run build:plugin"}`)
+  console.log(
+    `plugin_runtime_import: ${
+      result.pluginRuntimeImportOk ? "ok" : `failed - ${result.pluginRuntimeImportError ?? "unknown error"}`
+    }`,
+  )
+  console.log(`health_file: ${result.healthFile}`)
   console.log(`version: ${installedVersion ?? "not installed"} (project ${currentVersion})`)
-  for (const group of ["core", "web", "pwn", "rev", "forensics", "crypto"]) {
+  for (const group of TOOL_CHECK_GROUPS) {
     const bucket = groups.get(group) ?? { found: [], missing: [] }
     console.log(`\n## ${group}`)
     console.log(`found: ${bucket.found.length ? bucket.found.join(", ") : "none"}`)
     console.log(`missing: ${bucket.missing.length ? bucket.missing.join(", ") : "none"}`)
   }
   console.log("\nOptional tools are only required for challenge paths that use them.")
-  console.log(`WireMCP launcher: ${process.env.WIREMCP_LAUNCHER ? "configured" : "not configured (set WIREMCP_LAUNCHER for wireshark-mcp)"}`)
-  console.log("IDA MCP backend: install mrexodia/ida-pro-mcp so `ida-pro-mcp --stdio` is available for the ida-pro slot.")
+  console.log(`WireMCP backend: ${wireMcp.label}`)
+  console.log(
+    `IDA MCP backend: ${
+      result.idaMcpAvailable
+        ? "available (run `ida-pro-mcp`; stdio is the default transport)"
+        : "missing - install mrexodia/ida-pro-mcp so `ida-pro-mcp` is available for the ida-pro slot"
+    }`,
+  )
 }
 if (strict && unhealthy) process.exitCode = 1

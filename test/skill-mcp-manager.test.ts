@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest"
 import type { SkillMcpLease, SkillMcpState } from "../src/types.js"
-import { toSdkConfig, sameLease, otherConnectedLease } from "../src/skill-mcp-manager.js"
+import { mkdtempSync, readFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { skillMcpStateFile } from "../src/paths.js"
+import {
+  describeMcpActivationError,
+  ensureNamedServerLeases,
+  ensureSkillMcpLeases,
+  leaseIsConnected,
+  releaseSkillMcpLeases,
+  sameLease,
+  otherConnectedLease,
+  toSdkConfig,
+} from "../src/skill-mcp-manager.js"
 
 // ---------------------------------------------------------------------------
 // toSdkConfig
@@ -140,5 +153,286 @@ describe("otherConnectedLease", () => {
     expect(otherConnectedLease(state, { sessionID: "session-1", skillName: "ctf-web", serverName: "filesystem" })).toBe(
       true,
     )
+  })
+})
+
+describe("describeMcpActivationError", () => {
+  it("classifies Context7 rate-limit failures with actionable guidance", () => {
+    const result = describeMcpActivationError("context7", "HTTP 429 Too Many Requests: quota exceeded")
+    expect(result.code).toBe("context7_rate_limited")
+    expect(result.message).toContain("Context7")
+    expect(result.message).toContain("rate-limited")
+  })
+
+  it("classifies remote auth failures generically", () => {
+    const result = describeMcpActivationError("runtime_anysearch_remote", "401 Unauthorized")
+    expect(result.code).toBe("remote_auth_failed")
+    expect(result.message).toContain("authentication failed")
+  })
+})
+
+describe("ensureSkillMcpLeases", () => {
+  it("persists successful bindings even when a later binding fails", async () => {
+    const worktree = mkdtempSync(join(tmpdir(), "ctf-skill-mcp-"))
+    const client = {
+      mcp: {
+        add: async () => undefined,
+        connect: async ({ path }: { path: { name: string } }) => {
+          if (path.name === "runtime_cvekb_local") {
+            throw new Error("HTTP 429 Too Many Requests: quota exceeded")
+          }
+        },
+      },
+    }
+
+    const result = await ensureSkillMcpLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-1",
+      skillName: "ctf-seckb",
+    })
+
+    expect(result.activated).toContain("runtime_seckb_local")
+    expect(result.failed).toHaveLength(1)
+    expect(result.failed[0].serverName).toBe("runtime_cvekb_local")
+
+    const state = JSON.parse(readFileSync(skillMcpStateFile(worktree), "utf8")) as SkillMcpState
+    expect(state.leases.map((lease) => lease.serverName)).toContain("runtime_seckb_local")
+    expect(state.leases.map((lease) => lease.serverName)).not.toContain("runtime_cvekb_local")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Lease lifecycle state machine (claim / share / release / compensation)
+// ---------------------------------------------------------------------------
+
+const SERVER = { serverName: "runtime_test_server", config: { type: "local" as const, command: ["node", "x.mjs"] } }
+
+function makeClient(overrides?: {
+  connect?: (name: string) => Promise<void>
+  disconnect?: (name: string) => Promise<void>
+}) {
+  const connects: string[] = []
+  const disconnects: string[] = []
+  return {
+    client: {
+      mcp: {
+        add: async () => undefined,
+        connect: async ({ path }: { path: { name: string } }) => {
+          connects.push(path.name)
+          await overrides?.connect?.(path.name)
+        },
+        disconnect: async ({ path }: { path: { name: string } }) => {
+          disconnects.push(path.name)
+          await overrides?.disconnect?.(path.name)
+        },
+      },
+    },
+    connects,
+    disconnects,
+  }
+}
+
+function loadLeases(worktree: string): SkillMcpLease[] {
+  try {
+    return (JSON.parse(readFileSync(skillMcpStateFile(worktree), "utf8")) as SkillMcpState).leases
+  } catch {
+    return [] // state file not created yet (claim still in flight)
+  }
+}
+
+describe("lease lifecycle state machine", () => {
+  it("shares an already-connected server without a second external connect", async () => {
+    const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-share-"))
+    const { client, connects } = makeClient()
+
+    const first = await ensureNamedServerLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-1",
+      skillName: "agent-default:ctf-web",
+      servers: [SERVER],
+    })
+    expect(first.activated).toEqual(["runtime_test_server"])
+    expect(connects).toHaveLength(1)
+
+    const second = await ensureNamedServerLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-2",
+      skillName: "agent-default:ctf-web",
+      servers: [SERVER],
+    })
+    expect(second.activated).toEqual([])
+    expect(second.shared).toContain("runtime_test_server")
+    expect(connects).toHaveLength(1)
+
+    const leases = loadLeases(worktree)
+    expect(leases.filter((lease) => leaseIsConnected(lease))).toHaveLength(2)
+  })
+
+  it("re-ensure for the same session is idempotent (no duplicate connect)", async () => {
+    const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-idem-"))
+    const { client, connects } = makeClient()
+
+    await ensureNamedServerLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-1",
+      skillName: "agent-default:ctf-web",
+      servers: [SERVER],
+    })
+    const again = await ensureNamedServerLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-1",
+      skillName: "agent-default:ctf-web",
+      servers: [SERVER],
+    })
+    expect(again.activated).toEqual([])
+    expect(connects).toHaveLength(1)
+  })
+
+  it("concurrent claims for the same server produce exactly one external connect", async () => {
+    const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-race-"))
+    let releaseConnect!: () => void
+    const connectGate = new Promise<void>((resolve) => {
+      releaseConnect = resolve
+    })
+    const { client, connects } = makeClient({ connect: () => connectGate })
+
+    const first = ensureNamedServerLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-1",
+      skillName: "agent-default:ctf-web",
+      servers: [SERVER],
+    })
+
+    // Wait until the first caller's claim is persisted as `connecting`.
+    const deadline = Date.now() + 2000
+    while (Date.now() < deadline) {
+      const leases = loadLeases(worktree)
+      if (leases.some((lease) => lease.status === "connecting")) break
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+    expect(loadLeases(worktree).some((lease) => lease.status === "connecting")).toBe(true)
+
+    // Second caller must see the fresh `connecting` claim and NOT connect.
+    const second = await ensureNamedServerLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-2",
+      skillName: "agent-default:ctf-web",
+      servers: [SERVER],
+    })
+    expect(second.activated).toEqual([])
+    expect(connects).toHaveLength(1)
+
+    releaseConnect()
+    const firstResult = await first
+    expect(firstResult.activated).toEqual(["runtime_test_server"])
+    expect(connects).toHaveLength(1)
+
+    // B's pending lease resolves on the next ensure without connecting again.
+    const secondAgain = await ensureNamedServerLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-2",
+      skillName: "agent-default:ctf-web",
+      servers: [SERVER],
+    })
+    expect(secondAgain.activated).toEqual([])
+    expect(connects).toHaveLength(1)
+    expect(loadLeases(worktree).filter((lease) => leaseIsConnected(lease))).toHaveLength(2)
+  })
+
+  it("removes the claim when the external connect fails, allowing a clean retry", async () => {
+    const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-fail-"))
+    let fail = true
+    const { client, connects } = makeClient({
+      connect: async (name) => {
+        if (fail) throw new Error("remote_unreachable: ECONNREFUSED")
+        void name
+      },
+    })
+
+    const failed = await ensureNamedServerLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-1",
+      skillName: "agent-default:ctf-web",
+      servers: [SERVER],
+    })
+    expect(failed.activated).toEqual([])
+    expect(failed.failed.map((f) => f.serverName)).toEqual(["runtime_test_server"])
+    // No ghost lease left behind.
+    expect(loadLeases(worktree)).toHaveLength(0)
+
+    fail = false
+    const retried = await ensureNamedServerLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-1",
+      skillName: "agent-default:ctf-web",
+      servers: [SERVER],
+    })
+    expect(retried.activated).toEqual(["runtime_test_server"])
+    expect(connects).toHaveLength(2)
+  })
+
+  it("reverts to connected when the external disconnect fails (compensation)", async () => {
+    const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-dc-"))
+    let failDisconnect = true
+    const { client } = makeClient({
+      disconnect: async () => {
+        if (failDisconnect) throw new Error("server already gone")
+      },
+    })
+
+    await ensureNamedServerLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-1",
+      skillName: "agent-default:ctf-web",
+      servers: [SERVER],
+    })
+
+    const released = await releaseSkillMcpLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-1",
+      skillName: "agent-default:ctf-web",
+    })
+    expect(released.disconnectFailed).toEqual(["runtime_test_server"])
+    // State must NOT claim disconnected while the connection may still be live.
+    const leases = loadLeases(worktree)
+    const lease = leases.find((item) => item.serverName === "runtime_test_server")
+    expect(lease && leaseIsConnected(lease)).toBe(true)
+
+    // A later release with a working disconnect completes the cycle.
+    failDisconnect = false
+    const second = await releaseSkillMcpLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-1",
+      skillName: "agent-default:ctf-web",
+    })
+    expect(second.released).toEqual(["runtime_test_server"])
+    expect(second.disconnectFailed).toEqual([])
+    expect(leaseIsConnected(loadLeases(worktree)[0])).toBe(false)
   })
 })

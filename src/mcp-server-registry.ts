@@ -114,20 +114,21 @@ export const MCP_SERVER_REGISTRY: McpServerMeta[] = [
     categories: ["forensics", "misc"],
     config: {
       type: "local",
-      command: ["python", "{env:WIREMCP_LAUNCHER}", "--stdio"],
+      command: ["node", "{plugin_root}/mcp-server/vendor/WireMCP/index.js"],
     },
-    envRequired: ["WIREMCP_LAUNCHER"],
   },
   {
     id: "cyberchef-mcp",
-    description: "CyberChef workflow automation — structured transforms for encodings, crypto helpers, and artifact triage.",
+    description:
+      "CyberChef workflow automation — structured transforms for encodings, crypto helpers, and artifact triage.",
     weight: "medium",
     group: "analysis",
     categories: ["crypto", "forensics", "misc"],
     config: {
       type: "local",
-      command: ["npx", "-y", "cyberchef-mcp"],
+      command: ["{env:CYBERCHEF_MCP_COMMAND}"],
     },
+    envRequired: ["CYBERCHEF_MCP_COMMAND"],
   },
   {
     id: "seckb",
@@ -153,14 +154,89 @@ export const MCP_SERVER_REGISTRY: McpServerMeta[] = [
   // ====================================================================
   {
     id: "ida-pro",
-    description: "IDA Pro / mrexodia ida-pro-mcp backend — advanced static analysis, decompilation, script execution.",
+    description: "IDA Pro / mrexodia ida-pro-mcp backend - advanced static analysis, decompilation, script execution.",
     weight: "heavy",
     group: "analysis",
     categories: ["rev", "pwn"],
     config: {
       type: "local",
-      command: ["ida-pro-mcp", "--stdio"],
+      command: ["ida-pro-mcp"],
     },
+  },
+  {
+    id: "jadx-mcp",
+    description: "JADX MCP backend - Android APK/DEX decompilation, class lookup, and targeted source slicing.",
+    weight: "heavy",
+    group: "analysis",
+    categories: ["rev", "misc"],
+    config: {
+      type: "local",
+      command: ["{env:JADX_MCP_COMMAND}"],
+      environment: { JADX_HOME: "{env:JADX_HOME}" },
+    },
+    envRequired: ["JADX_MCP_COMMAND"],
+  },
+  {
+    id: "gdb-mcp",
+    description: "GDB MCP backend - debugger automation for pwn/rev, breakpoints, memory/register inspection.",
+    weight: "heavy",
+    group: "debug",
+    categories: ["pwn", "rev"],
+    config: {
+      type: "local",
+      command: ["{env:GDB_MCP_COMMAND}"],
+    },
+    envRequired: ["GDB_MCP_COMMAND"],
+  },
+  {
+    id: "mysql-mcp",
+    description: "MySQL MCP backend - authorized database inspection for web/forensics challenges.",
+    weight: "heavy",
+    group: "analysis",
+    categories: ["web", "forensics", "misc"],
+    config: {
+      type: "local",
+      command: ["{env:MYSQL_MCP_COMMAND}"],
+      environment: {
+        MYSQL_HOST: "{env:MYSQL_HOST}",
+        MYSQL_PORT: "{env:MYSQL_PORT}",
+        MYSQL_USER: "{env:MYSQL_USER}",
+        MYSQL_PASSWORD: "{env:MYSQL_PASSWORD}",
+        MYSQL_DATABASE: "{env:MYSQL_DATABASE}",
+      },
+    },
+    envRequired: ["MYSQL_MCP_COMMAND"],
+  },
+  {
+    id: "x64dbg-mcp",
+    description: "x64dbg MCP backend - Windows debugger automation for PE reverse engineering and pwn.",
+    weight: "heavy",
+    group: "debug",
+    categories: ["rev", "pwn"],
+    config: {
+      type: "local",
+      command: ["{env:X64DBG_MCP_COMMAND}"],
+      environment: { X64DBG_PATH: "{env:X64DBG_PATH}" },
+    },
+    envRequired: ["X64DBG_MCP_COMMAND"],
+  },
+  {
+    id: "ssh-mcp",
+    description: "SSH MCP backend - authorized remote shell/file operations for lab targets.",
+    weight: "heavy",
+    group: "recon",
+    categories: ["web", "pwn", "rev", "forensics", "misc"],
+    config: {
+      type: "local",
+      command: ["{env:SSH_MCP_COMMAND}"],
+      environment: {
+        SSH_MCP_HOST: "{env:SSH_MCP_HOST}",
+        SSH_MCP_PORT: "{env:SSH_MCP_PORT}",
+        SSH_MCP_USER: "{env:SSH_MCP_USER}",
+        SSH_MCP_KEY: "{env:SSH_MCP_KEY}",
+      },
+    },
+    envRequired: ["SSH_MCP_COMMAND"],
   },
   {
     id: "flutter-aot",
@@ -194,13 +270,14 @@ export const MCP_SERVER_REGISTRY: McpServerMeta[] = [
   },
   {
     id: "ctfd-mcp",
-    description: "CTFd integration — challenge metadata and event workflow helper, kept disabled unless explicitly configured.",
+    description:
+      "CTFd integration — challenge metadata and event workflow helper, kept disabled unless explicitly configured.",
     weight: "heavy",
     group: "knowledge",
     categories: ["web", "pwn", "rev", "crypto", "forensics", "misc"],
     config: {
       type: "local",
-      command: ["npx", "-y", "ctfd-mcp"],
+      command: ["npx", "-y", "ctfd-mcp-server"],
     },
   },
   {

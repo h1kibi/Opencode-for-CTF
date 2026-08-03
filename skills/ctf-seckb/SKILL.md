@@ -1,5 +1,7 @@
 ---
+name: ctf-seckb
 description: Use for CTF agent knowledge retrieval and controlled SecKB updates. Enforces read-only local RAG during active solving, and allows updates only after solve/timeout or explicit user request.
+compatibility: opencode
 ---
 
 # CTF SecKB Retrieval and Update Discipline
@@ -21,32 +23,32 @@ When retro/updating lessons, prefer these compact schemas:
 ### Owner matrix
 
 | Surface | Evidence | Why not primary | Supporting role | Handoff trigger | Return trigger | Closure owner |
-|---|---|---|---|---|---|---|
+| ------- | -------- | --------------- | --------------- | --------------- | -------------- | ------------- |
 
 ### Closure queue
 
 | Order | Probe | Success oracle | Failure condition |
-|---|---|---|---|
+| ----- | ----- | -------------- | ----------------- |
 
 ### Failure signature
 
 | Failure signature | Trigger | Misleading signal | Earlier kill signal | Better next probe |
-|---|---|---|---|---|
+| ----------------- | ------- | ----------------- | ------------------- | ----------------- |
 
 ### Lesson entry
 
 | Family | Trigger signal | Wrong behavior | Damage caused | Correction rule | Next control action | Promotion trigger |
-|---|---|---|---|---|---|---|
+| ------ | -------------- | -------------- | ------------- | --------------- | ------------------- | ----------------- |
 
 ### Flag location model
 
 | Primitive | Current boundary | Flag location type | Storage candidates | Read paths | Best oracle | Blockers | Closure owner |
-|---|---|---|---|---|---|---|---|
+| --------- | ---------------- | ------------------ | ------------------ | ---------- | ----------- | -------- | ------------- |
 
 ### Best evidence snapshot
 
 | strongest_evidence | current_primary_owner | supporting_surface | closure_owner | best_hypothesis | best_oracle | current_boundary | confirmed_primitive | nearest_flag_path | next_probe | why_not_other_branches |
-|---|---|---|---|---|---|---|---|---|---|---|
+| ------------------ | --------------------- | ------------------ | ------------- | --------------- | ----------- | ---------------- | ------------------- | ----------------- | ---------- | ---------------------- |
 
 Keep all fields compact and sanitized; never write flags, cookies, session IDs, API keys, private keys, live target credentials, or one-off challenge secrets.
 
@@ -243,3 +245,33 @@ After a challenge is solved, timed out, or explicitly ended:
 ## Hygiene
 
 Never index `.env`, credentials, private keys, cookies, sessions, flags, or private challenge secrets. Prefer reusable technique notes over full writeup copies.
+
+## Shared Skill Contract
+
+## Load When
+
+Load when this skill's trigger conditions are evidenced in the current authorized CTF branch.
+
+## Do Not Load When
+
+Do not load when the trigger is absent, the branch is out of scope, or a simpler in-scope workflow answers the question.
+
+## Required Inputs
+
+Provide the authorized scope, relevant artifacts/evidence, current hypothesis, and any required tool or environment constraints.
+
+## First Safe Action
+
+Record the current hypothesis and perform the smallest read-only, bounded, reversible check that can distinguish it.
+
+## Dispatch / Handoff
+
+Hand off with scope, evidence, hypothesis, bounded next action, risks, and the expected output format.
+
+## Output Contract
+
+Return concise confirmed facts, evidence references, rejected alternatives, risk, and one recommended next action.
+
+## Stop Conditions
+
+Stop when scope, authorization, evidence, or required capability is missing; pivot or escalate rather than guessing.

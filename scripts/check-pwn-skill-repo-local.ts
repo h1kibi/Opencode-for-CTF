@@ -1,8 +1,9 @@
+// Manual QA utility — not part of CI or npm run check. Run with: npx tsx scripts/check-pwn-skill-repo-local.ts
 import { readFileSync, readdirSync, statSync } from "node:fs"
 import path from "node:path"
 
 const ROOT = process.cwd()
-const DEFAULT_REPO = path.join(ROOT, "knowledge", "ljagiello-ctf-skills")
+const DEFAULT_REPO = path.join(ROOT, "skills-external", "secknowledge-skill")
 const DEFAULT_LOCAL_PWN = path.join(ROOT, "knowledge", "pwn")
 const QUERY_SET = [
   "bundled libc first runtime lock wrong libc heap verification",

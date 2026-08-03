@@ -1,8 +1,35 @@
+---
+name: ctf-decision-engine
+description: Use when a CTF solve needs structured hypothesis ranking, probe contracts, gate checks, or chain/knowledge discipline.
+compatibility: opencode
+---
+
 # CTF Decision Engine
 
 Use this skill when a CTF solve needs structured hypothesis ranking, probe contracts, gate checks, or chain/knowledge discipline.
 
 ## Agent Integration Contract
+
+
+## Load When
+
+Load when two or more hypotheses, owners, or probes compete, or when a previous probe changes route ranking.
+
+## Do Not Load When
+
+Do not use it for raw inventory, payload construction, or execution. A single obvious low-risk action may proceed without a ranking ceremony, but its result must still be recorded.
+
+## Required Inputs
+
+Read confirmed facts, failed-path records, primitive/control state, probe costs, risk, stability, oracle quality, and current owner capacity.
+
+## First Safe Action
+
+Refresh the evidence board and remove stale candidates before scoring the remaining routes.
+
+## Dispatch / Handoff
+
+Return a bounded queue (normally top three), each with evidence, discriminator, budget, owner, and stop condition. The category orchestrator executes; `ctf-lead` changes ownership.
 
 Category agents should not duplicate this full decision doctrine in their own prompts. They may reference this skill as the shared source for:
 
@@ -165,3 +192,11 @@ Hard rule:
 - Probe one variable at a time.
 - After every probe, call `observe` before another same-family probe.
 - If a chain or branch becomes `BLOCKED`, call the structured `ctf-waf-bypass-plan` tool with `blocker`, `stack`, `sink`, and compact evidence, or use `/ctf-waf-bypass-plan` as fallback. Try at most three bypass families without a new differential before marking the branch blocked/backtracked; mark it dead only when the sink/parser family itself is falsified.
+
+## Output Contract
+
+Return at most three ranked candidates. Each candidate must include `id`, `owner`, `evidence`, `next_probe`, `budget`, `expected_signal`, and `stop_condition`; mark stale candidates as blocked/dead instead of silently dropping them.
+
+## Stop Conditions
+
+Stop ranking when one candidate has a concrete low-risk discriminator and an owner. Re-rank after its result, after a state/owner change, or when no candidate has sufficient evidence; in the latter case return to `ctf-router` or request missing inventory.

@@ -8,7 +8,7 @@ vi.mock("node:fs/promises", async () => {
   }
 })
 
-const MOD_PATH = "../tools/ctf-pwn-libc-hint.ts"
+const MOD_PATH = "../tools/pwn/ctf-pwn-libc-hint.ts"
 
 describe("ctf-pwn-libc-hint tool", () => {
   it("computes libc base and derived addresses from a leaked symbol", async () => {
@@ -39,10 +39,13 @@ describe("ctf-pwn-libc-hint tool", () => {
     })
 
     try {
-      const execute = mod.default.execute as (args: Record<string, unknown>, context: { directory: string }) => Promise<string>
+      const execute = mod.default.execute as (
+        args: Record<string, unknown>,
+        context: { directory: string },
+      ) => Promise<string>
       const text = await execute(
         {
-          libc: "tools/ctf-pwn-offset.ts",
+          libc: "tools/pwn/ctf-pwn-offset.ts",
           leakSymbol: "puts",
           leakAddress: "0x7ffff7a809c0",
           jsonOnly: true,

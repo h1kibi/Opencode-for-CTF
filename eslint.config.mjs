@@ -10,6 +10,8 @@ export default tseslint.config(
       "node_modules/**",
       "skills-external/**",
       "runtime/state/**",
+      "mcp-server/**/node_modules/**",
+      "mcp-server/vendor/**",
       "mcp-servers/**/node_modules/**",
       "knowledge/**",
       "templates/**",

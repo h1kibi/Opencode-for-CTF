@@ -33,7 +33,7 @@ Expected primitive:
 - Template expression evaluation or file read/RCE depending on sink.
 
 First safe check:
-- Run `ctf-java-map`; confirm route-to-template sink before probing.
+- Run `ctf-java-analyze`; confirm route-to-template sink before probing.
 
 Attack queue effect:
 - Value: 5 if source-backed, 3 if black-box only.

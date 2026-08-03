@@ -2,7 +2,8 @@ import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { parse, type ParseError } from "jsonc-parser"
+import { parse, type ParseError } from "jsonc-parser/lib/esm/main.js"
+import { isToolPackId, normalizeToolPackName } from "./tool-packs.ts"
 
 /** Known runtime hooks that users may disable via config. */
 export type HookName =
@@ -22,6 +23,7 @@ export type PluginUserConfig = {
   team_mode: {
     enabled: boolean
     max_workers: number
+    max_job_attempts?: number
   }
   continuation: {
     enabled: boolean
@@ -57,6 +59,7 @@ export const DEFAULT_PLUGIN_CONFIG: PluginUserConfig = {
   team_mode: {
     enabled: true,
     max_workers: 8,
+    max_job_attempts: 2,
   },
   continuation: {
     enabled: true,
@@ -108,6 +111,9 @@ export function mergePluginConfig(partial: unknown): PluginUserConfig {
     if (typeof partial.team_mode.max_workers === "number" && partial.team_mode.max_workers > 0) {
       base.team_mode.max_workers = Math.min(16, Math.floor(partial.team_mode.max_workers))
     }
+    if (typeof partial.team_mode.max_job_attempts === "number" && partial.team_mode.max_job_attempts > 0) {
+      base.team_mode.max_job_attempts = Math.min(10, Math.floor(partial.team_mode.max_job_attempts))
+    }
   }
   if (isRecord(partial.continuation) && typeof partial.continuation.enabled === "boolean") {
     base.continuation.enabled = partial.continuation.enabled
@@ -127,10 +133,18 @@ export function mergePluginConfig(partial: unknown): PluginUserConfig {
     base.hashline.enabled = partial.hashline.enabled
   }
   if (Array.isArray(partial.tool_packs)) {
-    base.tool_packs = partial.tool_packs.filter((x): x is string => typeof x === "string")
+    base.tool_packs = partial.tool_packs
+      .filter((x): x is string => typeof x === "string")
+      .map((x) => x.trim().toLowerCase())
+      .filter(isToolPackName)
+      .map((x) => normalizeToolPackName(x) ?? x)
   }
   if (Array.isArray(partial.expert_tool_packs)) {
-    base.expert_tool_packs = partial.expert_tool_packs.filter((x): x is string => typeof x === "string")
+    base.expert_tool_packs = partial.expert_tool_packs
+      .filter((x): x is string => typeof x === "string")
+      .map((x) => x.trim().toLowerCase())
+      .filter(isToolPackName)
+      .map((x) => normalizeToolPackName(x) ?? x)
   }
   if (typeof partial.external_skills === "boolean") {
     base.external_skills = partial.external_skills
@@ -185,6 +199,10 @@ export function resolveConfigCandidates(startDir?: string): string[] {
   return out
 }
 
+export function isToolPackName(value: string): boolean {
+  return value === "all" || value === "*" || isToolPackId(value) || Boolean(normalizeToolPackName(value))
+}
+
 export type LoadedPluginConfig = {
   config: PluginUserConfig
   /** Absolute path of the config file that was loaded, or null when defaults were used. */
@@ -193,7 +211,8 @@ export type LoadedPluginConfig = {
 
 /**
  * Load the first existing opencode-for-ctf config plus its path.
- * Parse failures warn and continue to the next candidate; if none load, defaults are returned.
+ * Parse failures are fatal for the nearest existing candidate so a broken project
+ * policy cannot silently inherit a broader global configuration.
  */
 export async function loadPluginConfigWithPath(startDir?: string): Promise<LoadedPluginConfig> {
   for (const file of resolveConfigCandidates(startDir)) {
@@ -203,18 +222,13 @@ export async function loadPluginConfigWithPath(startDir?: string): Promise<Loade
       const errors: ParseError[] = []
       const parsed = parse(raw, errors, { allowTrailingComma: true, disallowComments: false }) as unknown
       if (errors.length > 0) {
-        throw new Error(
-          errors
-            .map((error) => `${file}:${error.offset} parse error ${error.error}`)
-            .join("; "),
-        )
+        throw new Error(errors.map((error) => `${file}:${error.offset} parse error ${error.error}`).join("; "))
       }
       return { config: mergePluginConfig(parsed), path: file }
     } catch (err) {
-      console.warn(
-        `[plugin] failed to parse config ${file}:`,
-        err instanceof Error ? err.message : String(err),
-      )
+      const message = err instanceof Error ? err.message : String(err)
+      console.warn(`[plugin] failed to parse config ${file}:`, message)
+      throw new Error(`Invalid opencode-for-ctf config at ${file}: ${message}`, { cause: err })
     }
   }
   return { config: structuredClone(DEFAULT_PLUGIN_CONFIG), path: null }

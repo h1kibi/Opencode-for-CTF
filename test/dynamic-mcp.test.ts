@@ -8,9 +8,12 @@ import {
 } from "../src/mcp-server-registry.js"
 import {
   agentNameToCategory,
+  clearMcpActivationIssues,
   isInMemoryApproved,
+  listRecentActivationIssues,
   metaToRuntimeConfig,
   pruneInMemoryApproved,
+  recordMcpActivationIssue,
 } from "../src/dynamic-mcp-manager.js"
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from "node:fs"
 import { join } from "node:path"
@@ -37,30 +40,46 @@ describe("agent-mcp-profiles", () => {
     }
   })
 
-  it("ctf-web has browser in its defaults", () => {
+  it("ctf-web has browser plus requestable Java/DB/SSH MCPs in its defaults", () => {
     expect(AGENT_MCP_DEFAULTS["ctf-web"]).toContain("browser")
+    expect(AGENT_MCP_DEFAULTS["ctf-web"]).toContain("jadx-mcp")
+    expect(AGENT_MCP_DEFAULTS["ctf-web"]).toContain("mysql-mcp")
+    expect(AGENT_MCP_DEFAULTS["ctf-web"]).toContain("ssh-mcp")
   })
 
-  it("ctf-rev has ReVa in its defaults", () => {
+  it("ctf-rev has ReVa plus requestable reverse/debugger MCPs in its defaults", () => {
     expect(AGENT_MCP_DEFAULTS["ctf-rev"]).toContain("ReVa")
+    expect(AGENT_MCP_DEFAULTS["ctf-rev"]).toContain("ida-pro")
+    expect(AGENT_MCP_DEFAULTS["ctf-rev"]).toContain("jadx-mcp")
+    expect(AGENT_MCP_DEFAULTS["ctf-rev"]).toContain("gdb-mcp")
+    expect(AGENT_MCP_DEFAULTS["ctf-rev"]).toContain("x64dbg-mcp")
+    expect(AGENT_MCP_DEFAULTS["ctf-rev"]).toContain("ssh-mcp")
   })
 
-  it("ctf-forensics defaults to wireshark and CyberChef", () => {
+  it("ctf-forensics defaults to wireshark and CyberChef, with DB/SSH requestable", () => {
     expect(AGENT_MCP_DEFAULTS["ctf-forensics"]).toContain("wireshark-mcp")
     expect(AGENT_MCP_DEFAULTS["ctf-forensics"]).toContain("cyberchef-mcp")
+    expect(AGENT_MCP_DEFAULTS["ctf-forensics"]).toContain("mysql-mcp")
+    expect(AGENT_MCP_DEFAULTS["ctf-forensics"]).toContain("ssh-mcp")
   })
 
   it("ctf-crypto defaults to CyberChef", () => {
     expect(AGENT_MCP_DEFAULTS["ctf-crypto"]).toContain("cyberchef-mcp")
   })
 
-  it("ctf-misc defaults to wireshark and CyberChef", () => {
+  it("ctf-misc defaults to wireshark and CyberChef, with DB/SSH requestable", () => {
     expect(AGENT_MCP_DEFAULTS["ctf-misc"]).toContain("wireshark-mcp")
     expect(AGENT_MCP_DEFAULTS["ctf-misc"]).toContain("cyberchef-mcp")
+    expect(AGENT_MCP_DEFAULTS["ctf-misc"]).toContain("mysql-mcp")
+    expect(AGENT_MCP_DEFAULTS["ctf-misc"]).toContain("ssh-mcp")
   })
 
-  it("ctf-pwn has only common light MCPs", () => {
-    expect(AGENT_MCP_DEFAULTS["ctf-pwn"]).toEqual([...COMMON_LIGHT_MCPS])
+  it("ctf-aisec defaults to common light MCPs plus browser", () => {
+    expect(AGENT_MCP_DEFAULTS["ctf-aisec"]).toEqual([...COMMON_LIGHT_MCPS, "browser"])
+  })
+
+  it("ctf-pwn includes requestable debugger/IDA/SSH MCP candidates", () => {
+    expect(AGENT_MCP_DEFAULTS["ctf-pwn"]).toEqual([...COMMON_LIGHT_MCPS, "gdb-mcp", "ida-pro", "ssh-mcp"])
   })
 
   it("ctf-crypto defaults to common light MCPs plus CyberChef", () => {
@@ -155,21 +174,50 @@ describe("mcp-server-registry", () => {
     }
   })
 
-  it("expands env-based launcher placeholders for external local MCP commands", () => {
-    process.env.WIREMCP_LAUNCHER = "/tmp/wiremcp/server.py"
+  it("expands plugin-root placeholders for bundled local MCP commands", () => {
     const server = lookupMcpServer("wireshark-mcp")!
     const config = metaToRuntimeConfig(server)
     expect(config?.type).toBe("local")
-    expect(config?.command?.join(" ")).toContain("/tmp/wiremcp/server.py")
-    expect(config?.command?.join(" ")).not.toContain("{env:WIREMCP_LAUNCHER}")
-    delete process.env.WIREMCP_LAUNCHER
+    expect(config?.command?.[0]).toBe("node")
+    expect(config?.command?.join(" ")).toContain("mcp-server")
+    expect(config?.command?.join(" ")).toContain("WireMCP")
+    expect(config?.command?.join(" ")).not.toContain("{plugin_root}")
   })
 
-  it("keeps IDA and Flutter AOT as heavy on-demand MCPs and exposes optional CTFd", () => {
-    expect(lookupMcpServer("ida-pro")?.weight).toBe("heavy")
+  it("keeps heavyweight CTF MCPs on-demand and exposes optional CTFd", () => {
+    for (const id of ["ida-pro", "jadx-mcp", "gdb-mcp", "mysql-mcp", "x64dbg-mcp", "ssh-mcp", "flutter-aot"]) {
+      expect(lookupMcpServer(id)?.weight).toBe("heavy")
+    }
+    expect(lookupMcpServer("jadx-mcp")?.envRequired).toContain("JADX_MCP_COMMAND")
+    expect(lookupMcpServer("gdb-mcp")?.envRequired).toContain("GDB_MCP_COMMAND")
+    expect(lookupMcpServer("mysql-mcp")?.envRequired).toContain("MYSQL_MCP_COMMAND")
+    expect(lookupMcpServer("x64dbg-mcp")?.envRequired).toContain("X64DBG_MCP_COMMAND")
+    expect(lookupMcpServer("ssh-mcp")?.envRequired).toContain("SSH_MCP_COMMAND")
     expect(lookupMcpServer("flutter-aot")?.weight).toBe("heavy")
     expect(lookupMcpServer("flutter-aot")?.envRequired).toContain("FLUTTER_AOT_MCP_SERVER")
     expect(lookupMcpServer("ctfd-mcp")?.weight).toBe("heavy")
+  })
+
+  it("new service MCP slots report missing env prerequisites when unset", () => {
+    const cases: Array<[string, string]> = [
+      ["jadx-mcp", "JADX_MCP_COMMAND"],
+      ["gdb-mcp", "GDB_MCP_COMMAND"],
+      ["mysql-mcp", "MYSQL_MCP_COMMAND"],
+      ["x64dbg-mcp", "X64DBG_MCP_COMMAND"],
+      ["ssh-mcp", "SSH_MCP_COMMAND"],
+    ]
+    for (const [id, envVar] of cases) {
+      const saved = process.env[envVar]
+      delete process.env[envVar]
+      try {
+        const server = lookupMcpServer(id)!
+        const result = envPrerequisitesSatisfied(server)
+        expect(result.ok).toBe(false)
+        expect(result.missing).toContain(envVar)
+      } finally {
+        if (saved !== undefined) process.env[envVar] = saved
+      }
+    }
   })
 })
 
@@ -354,6 +402,41 @@ describe("agent-mcp-state persistence", () => {
     expect(revProfile!.serverNames).toContain("ReVa")
     expect(revProfile!.serverNames).not.toContain("browser")
   })
+
+  it("records and clears recent activation issues for user-visible MCP failures", async () => {
+    const worktree = tempWorktree()
+
+    await recordMcpActivationIssue({
+      worktree,
+      sessionID: "session-web-1",
+      agentName: "ctf-web",
+      serverName: "context7",
+      phase: "agent_default",
+      error: "HTTP 429 Too Many Requests: quota exceeded",
+    })
+
+    let issues = await listRecentActivationIssues(worktree, {
+      sessionID: "session-web-1",
+      agentName: "ctf-web",
+    })
+    expect(issues).toHaveLength(1)
+    expect(issues[0].code).toBe("context7_rate_limited")
+    expect(issues[0].message).toContain("Context7")
+
+    await clearMcpActivationIssues({
+      worktree,
+      sessionID: "session-web-1",
+      agentName: "ctf-web",
+      serverNames: ["context7"],
+      phase: "agent_default",
+    })
+
+    issues = await listRecentActivationIssues(worktree, {
+      sessionID: "session-web-1",
+      agentName: "ctf-web",
+    })
+    expect(issues).toHaveLength(0)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -368,6 +451,7 @@ describe("agentNameToCategory", () => {
     expect(agentNameToCategory("ctf-crypto")).toBe("crypto")
     expect(agentNameToCategory("ctf-forensics")).toBe("forensics")
     expect(agentNameToCategory("ctf-misc")).toBe("misc")
+    expect(agentNameToCategory("ctf-aisec")).toBe("misc")
   })
 
   it("returns undefined for cross-category agents", () => {
@@ -377,7 +461,6 @@ describe("agentNameToCategory", () => {
     expect(agentNameToCategory("ctf-retro")).toBeUndefined()
     expect(agentNameToCategory("ctf-librarian")).toBeUndefined()
     expect(agentNameToCategory("ctf-verifier")).toBeUndefined()
-    expect(agentNameToCategory("ctf-pwn-fast")).toBeUndefined()
   })
 
   it("returns undefined for unknown agents", () => {

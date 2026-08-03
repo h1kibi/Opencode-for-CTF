@@ -4,14 +4,7 @@ import { describe, expect, it } from "vitest"
 
 const root = process.cwd()
 
-const commands = [
-  "ctf-web",
-  "ctf-pwn",
-  "ctf-rev",
-  "ctf-crypto",
-  "ctf-forensics",
-  "ctf-misc",
-] as const
+const commands = ["ctf-web", "ctf-pwn", "ctf-rev", "ctf-crypto", "ctf-forensics", "ctf-misc"] as const
 
 describe("family command entrypoints", () => {
   it("commands mention their skill stack and reference-index-first contract", () => {

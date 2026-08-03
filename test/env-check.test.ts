@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import envCheck from "../tools/ctf-env-check.ts"
+import envCheck from "../tools/core/ctf-env-check.ts"
 
 type ToolResult = string | { output?: string }
 
@@ -16,10 +16,7 @@ function makeContext(): ToolContext {
 
 describe("ctf-env-check startup summary", () => {
   it("returns startup environment probes in json mode", async () => {
-    const result = (await envCheck.execute(
-      { category: "all", jsonOnly: true },
-      makeContext(),
-    )) as ToolResult
+    const result = (await envCheck.execute({ category: "all", jsonOnly: true }, makeContext())) as ToolResult
     const parsed = JSON.parse(extractOutput(result)) as {
       environment_probes: Record<string, { executed?: boolean }>
     }
@@ -31,6 +28,14 @@ describe("ctf-env-check startup summary", () => {
     expect(parsed.environment_probes["env:wiremcp-launcher"]?.executed).toBe(true)
     expect(parsed.environment_probes["env:cyberchef-mcp"]?.executed).toBe(true)
     expect(parsed.environment_probes["env:ida-pro-mcp"]?.executed).toBe(true)
+    expect(parsed.environment_probes["env:pwntools"]?.executed).toBe(true)
+    expect(parsed.environment_probes["env:revlab-image"]?.executed).toBe(true)
+    expect(parsed.environment_probes["env:hashcat"]?.executed).toBe(true)
+    expect(parsed.environment_probes["env:gmpy2"]?.executed).toBe(true)
+    expect(parsed.environment_probes["env:sage"]?.executed).toBe(true)
+    expect(parsed.environment_probes["env:binwalk"]?.executed).toBe(true)
+    expect(parsed.environment_probes["env:scapy"]?.executed).toBe(true)
+    expect(parsed.environment_probes["env:pyshark"]?.executed).toBe(true)
   }, 60_000)
 
   it("prints a startup environment summary in text mode", async () => {

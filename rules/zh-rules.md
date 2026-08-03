@@ -31,3 +31,16 @@
 - 不主动 commit，除非用户要求
 - commit message 简洁，用英文
 
+
+## CTF Agent Equipment
+- CTF agent tool/MCP/environment equipment is declared in `rules/agent-equipment.md`.
+
+## 默认 Flag 判定
+
+除非题目或用户明确指定了其他格式，所有 Agent 默认遵循 `skills/ctf-common/references/flag-identification-rules.md`：
+
+- 优先接受 `prefix{payload}`：前缀 3–10 位字母数字，payload 10–60 位，仅允许字母、数字、`_`、`-`、`@`、`!`，禁止空白和换行。
+- UUID 形态的 `flag{...}` 可作为高置信度候选。
+- 不带前缀的 MD5/SHA-256 默认拒绝；只有同一证据明确出现 `flag.txt`、`.flag`、`/flag`、`readflag`、`getflag` 或读取这些来源的命令时才接受为中置信度候选。
+- 正则命中只是候选，不是解题成功；必须经过独立的精确值、文件或 hash oracle 才能报告已验证。
+- 不得因短样例、诱饵、普通 hash 或未验证候选写入 `agent_flag.txt`。

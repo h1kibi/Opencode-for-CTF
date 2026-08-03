@@ -340,6 +340,12 @@ describe("team-manager", () => {
         memberId,
         title: "bruteforce",
         prompt: "run hydra on port 22",
+        runtimeVisibility: {
+          surface: "ctf-expert",
+          pluginToolCount: 42,
+          expectedSkills: ["ctf-pwn", "ctf-common"],
+          externalSkillsEnabled: true,
+        },
       })
 
       expect(result.tasks).toHaveLength(1)
@@ -350,7 +356,22 @@ describe("team-manager", () => {
         expect.objectContaining({
           body: expect.objectContaining({
             agent: "ctf-pwn",
-            parts: [expect.objectContaining({ text: "run hydra on port 22" })],
+            parts: [
+              expect.objectContaining({
+                text: expect.stringContaining("Expected runtime surface: ctf-expert"),
+              }),
+            ],
+          }),
+        }),
+      )
+      expect(mockClient.session.promptAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            parts: [
+              expect.objectContaining({
+                text: expect.stringContaining("Expected plugin-visible tools: 42"),
+              }),
+            ],
           }),
         }),
       )

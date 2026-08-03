@@ -1,0 +1,16 @@
+rules:
+  - id: ssrf
+    name: Server-Side Request Forgery
+    description: Detect user-controlled URLs in HTTP request functions
+    languages: [python, javascript, typescript, java, go, php, ruby]
+    severity: high
+    sinks:
+      - urlopen, urllib.request, requests.get, requests.post
+      - fetch, axios.get, axios.post, http.get, http.request
+      - curl_exec, file_get_contents, HttpURLConnection
+      - http.Get, http.Post, http.NewRequest
+    source_patterns:
+      - request, input, args, param, query, url, href, redirect, next
+    sanitizer_hints:
+      - urlparse, urljoin, allowed_hosts, host_whitelist, validate_url
+    ctf_relevance: high

@@ -6,8 +6,8 @@ V9 absorbs useful ideas from httpx, katana/hakrawler, gau/waybackurls/ParamSpide
 
 ## Default sequence
 
-1. `ctf-web-fingerprint` first for app style, framework/API/auth/infra hints, high-value surfaces, and next-tool routing.
-2. `ctf-web-blackbox-map mode=light` for headers, cookies, route/form/API/admin/debug/upload/source-leak signals, static JS hints, state model, and `attack_queue_seed`.
+1. `ctf-web-analyze` first for low-volume URL analysis, app style, route/static hints, high-value surfaces, and next-tool routing.
+2. Use `ctf-web-fingerprint` or `ctf-web-blackbox-map mode=light` only when the facade output leaves headers, cookies, route/form/API/admin/debug/upload/source-leak signals, static JS hints, or state model unclear.
 3. `ctf-web-js-surface-map` when JS bundles, SPA, XHR/fetch-only APIs, source maps, GraphQL operation names, client-side role strings, storage keys, or hidden routes matter.
 4. Escalate to `ctf-web-blackbox-map mode=browser` or `ctf-web-runtime-map` when DOM, postMessage, service worker, admin bot, CSP, browser storage, or browser-only network behavior matters.
 5. Use `ctf-web-url-corpus` to normalize URLs from crawl, JS extraction, logs, archived URL tools, or notes into route patterns, parameter families, and high-value URL candidates before fuzzing.

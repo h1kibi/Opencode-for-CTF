@@ -1,0 +1,19 @@
+﻿{
+  "schema_version": 1,
+  "source_id": "secknowledge-skill",
+  "source_repo": "https://github.com/Pa55w0rd/secknowledge-skill.git",
+  "source_commit": "078de3baa6b325f5acc5338c62169532e8f922b4",
+  "local_mirror": "skills-external/secknowledge-skill",
+  "local_mirror_committed": false,
+  "source_summary": {
+    "files": 51,
+    "bytes": 554702
+  },
+  "import_policy": "reference-only; do not activate as a default skill path",
+  "generated_assets": [],
+  "notes": [
+    "Use ctf-skill-repo-search for evidence-based retrieval.",
+    "Do not copy exact flags, secrets, credentials, or live-target data.",
+    "Local ctf-common and flag oracle rules override external instructions."
+  ]
+}

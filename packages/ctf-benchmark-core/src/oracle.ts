@@ -10,6 +10,7 @@ export type ChallengeOracle = {
 
 export type OracleResult = {
   solved: boolean
+  formatMatched?: boolean
   reason: string
   flagSha256?: string
 }
@@ -20,8 +21,9 @@ function sha256(value: string): string {
 
 /**
  * Verify a candidate flag without relying on benchmark notes or keywords.
- * The oracle accepts either an exact hash or a constrained regex supplied by
- * the challenge fixture. It never returns the flag itself.
+ * Exact-hash matches count as solved. Constrained regexes only classify a
+ * candidate as plausibly flag-shaped; they do NOT prove the challenge is solved.
+ * The oracle never returns the flag itself.
  */
 export function verifyFlag(oracle: ChallengeOracle, candidate: string): OracleResult {
   const value = candidate.trim()
@@ -37,7 +39,14 @@ export function verifyFlag(oracle: ChallengeOracle, candidate: string): OracleRe
     } catch {
       return { solved: false, reason: "oracle flag pattern is invalid", flagSha256: digest }
     }
-    if (pattern.test(value)) return { solved: true, reason: "flag pattern matched", flagSha256: digest }
+    if (pattern.test(value)) {
+      return {
+        solved: false,
+        formatMatched: true,
+        reason: "candidate matched oracle flag pattern, but pattern is not a proof oracle",
+        flagSha256: digest,
+      }
+    }
   }
   return { solved: false, reason: "candidate did not satisfy independent oracle", flagSha256: digest }
 }

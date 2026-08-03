@@ -43,20 +43,27 @@ node scripts/cli.mjs status --strict
 
 1. Builds the plugin bundle (`npm run build:plugin` → `dist/plugin/`)
 2. Deploys managed assets into the OpenCode config directory:
-   - agents, commands, skills, rules, templates, knowledge, lessons
-   - plugin bundle
-3. Merges plugin paths into existing `opencode.jsonc` with **minimal JSONC edits** (comments preserved)
-4. Creates backups before overwriting managed files
-5. Writes a SHA-256 **manifest** so later upgrades/uninstalls skip files you edited after install
-6. Sets `default_agent` to `ctf-fast` when missing
-7. Stages only portable runtime assets; machine-specific MCP launchers stay external and env-driven
+   - `agents/` and `commands/` directly under the OpenCode config directory, so `/ctf`, `/help`, `ctf-fast`, `ctf-expert`, and category subagents are visible after restart
+   - built-in `skills/` under `opencode-for-ctf/skills`
+   - rules, templates, RAG/knowledge assets, and the self-contained plugin bundle
+   - bundled portable MCP backends such as WireMCP
+3. Merges plugin, skill, instruction, tool, and profile MCP entries into existing `opencode.jsonc` with **minimal JSONC edits** (comments preserved).
+   - `plugin[]` points to the managed bundle: `opencode-for-ctf/plugin/index.js`
+   - `skills.paths[]` publishes the managed CTF skill directory so agents can resolve their assigned skills at runtime
+   - `instructions[]` includes the CTF rules and agent equipment rules
+   - profile MCP entries are written as disabled stubs; they are registered for later activation but not auto-enabled
+4. If you manually wire the repo instead of using the managed installer, you must also expose the skill directory through OpenCode `skills.paths`; agent permission declarations alone do not publish skills into the runtime catalog.
+5. Creates backups before overwriting managed files
+6. Writes a SHA-256 **manifest** so later upgrades/uninstalls skip files you edited after install
+7. Sets `default_agent` to `ctf-fast` when missing
+8. Stages only portable runtime assets; machine-specific MCP launchers stay external and env-driven
 
 ### Default config locations
 
-| Platform | Typical OpenCode config dir |
-| --- | --- |
-| Linux / macOS | `~/.config/opencode` |
-| Windows | `%USERPROFILE%\.config\opencode` or XDG equivalent |
+| Platform      | Typical OpenCode config dir                        |
+| ------------- | -------------------------------------------------- |
+| Linux / macOS | `~/.config/opencode`                               |
+| Windows       | `%USERPROFILE%\.config\opencode` or XDG equivalent |
 
 Override with:
 
@@ -71,16 +78,20 @@ $env:OPENCODE_CONFIG_DIR="C:\path\to\opencode-config"
 ### Install profiles
 
 ```bash
-npm run ctf:install -- --profile safe   # default: no MCP definitions staged as ready-to-use
-npm run ctf:install -- --profile web    # adds disabled browser / markitdown / context7 stubs
-npm run ctf:install -- --profile full   # adds more disabled MCP stubs (github, ReVa, seckb, cvekb, …)
+npm run ctf:install                     # default full: registers disabled MCP stubs for all supported CTF integrations
+npm run ctf:install -- --profile safe   # no MCP definitions
+npm run ctf:install -- --profile web    # registers disabled browser / markitdown / context7 stubs
+npm run ctf:install -- --profile full   # explicit full profile
 ```
 
 **Important:** profile MCP entries remain **disabled**. Review command, paths, credentials, and data flow before enabling any MCP.
 
+Use `npm run ctf:status -- --strict` after install or upgrade. It verifies the managed files, plugin bundle registration, `skills.paths`, agent/command counts, and the MCP stubs expected by the selected install profile.
+
 The installer does **not** copy reference MCP definitions that hard-code machine-specific absolute paths.
-Specialist MCPs such as Wireshark / Packet Tracer / IDA integrations are expected to be provisioned externally and referenced through environment-backed launcher paths.
-Current recommended browser backend is Playwright MCP; the Wireshark slot is intended for WireMCP-style launchers.
+Specialist MCPs such as IDA Pro, JADX, GDB, MySQL, x64dbg, and SSH integrations are expected to be provisioned externally and referenced through environment-backed launcher paths.
+Current recommended browser backend is Playwright MCP; the Wireshark slot uses the bundled WireMCP backend copied into the managed install directory.
+IDA Pro uses `ida-pro-mcp` (stdio is the default transport; `--stdio` is not a valid flag in v2.x); the other external specialist MCP stubs use `JADX_MCP_COMMAND`, `GDB_MCP_COMMAND`, `MYSQL_MCP_COMMAND`, `X64DBG_MCP_COMMAND`, `SSH_MCP_COMMAND`, and `CYBERCHEF_MCP_COMMAND`.
 
 ### After install
 
@@ -92,7 +103,7 @@ Current recommended browser backend is Playwright MCP; the Wireshark slot is int
 
 Paste:
 
-> Clone `https://github.com/h1kibi/Opencode-for-CTF.git`, read `INSTALL.md` and `SECURITY.md`, verify Node.js is `>=22.20.0`, then run `npm install`, `npm run check`, `npm run ctf:install`, and `npm run ctf:status -- --strict`. Use the default `safe` profile. Do not enable any MCP server and do not replace my provider/model configuration. If installation or validation fails, stop and report the exact error; do not delete or overwrite configuration files I have modified.
+> Clone `https://github.com/h1kibi/Opencode-for-CTF.git`, read `INSTALL.md` and `SECURITY.md`, verify Node.js is `>=22.20.0`, then run `npm install`, `npm run check`, `npm run ctf:install`, and `npm run ctf:status -- --strict`. Use the default `full` profile, which registers MCP stubs disabled by default. Do not enable any MCP server and do not replace my provider/model configuration. If installation or validation fails, stop and report the exact error; do not delete or overwrite configuration files I have modified.
 
 ## npm / packaged install (future)
 
@@ -177,34 +188,35 @@ cp opencode-for-ctf.example.jsonc opencode-for-ctf.jsonc
 
 Useful keys:
 
-| Key | Meaning |
-| --- | --- |
-| `default_mode` | `auto` / `fast` / `expert` for `/ctf` |
-| `disabled_hooks` | Turn off individual runtime hooks |
-| `tool_packs` | Which tool packs register at startup |
-| `expert_tool_packs` | Extra packs merged for expert-heavy machines |
-| `team_mode.max_workers` | Cap concurrent workers |
+| Key                     | Meaning                                                                                                                                                  |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default_mode`          | `auto` / `fast` / `expert` for `/ctf`                                                                                                                    |
+| `disabled_hooks`        | Turn off individual runtime hooks                                                                                                                        |
+| `tool_packs`            | Which tool packs register at startup                                                                                                                     |
+| `expert_tool_packs`     | Extra packs merged for expert-heavy machines                                                                                                             |
+| `external_skills`       | Whether plugin-side skill publication is expected; false means skill folders may exist locally while runtime catalog publication is still considered off |
+| `team_mode.max_workers` | Cap concurrent workers                                                                                                                                   |
 
 Environment overrides:
 
-| Variable | Purpose |
-| --- | --- |
-| `OPENCODE_CTF_TOOL_PACKS` | e.g. `all` or `core,web,pwn` |
-| `OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS=1` | Copy external ctf-skills snapshot (large) |
-| `OPENCODE_CTF_FORCE_BUILD=0` | Skip rebuild if `dist/` already exists |
-| `CTF_ALLOWED_ROOTS` | Extra allowed filesystem roots |
-| `CTF_ALLOWED_HOSTS` | Extra hosts for web tools |
+| Variable                                 | Purpose                                   |
+| ---------------------------------------- | ----------------------------------------- |
+| `OPENCODE_CTF_TOOL_PACKS`                | e.g. `all` or `core,web,pwn`              |
+| `OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS=1` | Copy external SecKnowledge reference skill snapshot (large) |
+| `OPENCODE_CTF_FORCE_BUILD=0`             | Skip rebuild if `dist/` already exists    |
+| `CTF_ALLOWED_ROOTS`                      | Extra allowed filesystem roots            |
+| `CTF_ALLOWED_HOSTS`                      | Extra hosts for web tools                 |
 
 ## Slim package contents
 
 The default published / installed surface is intentionally slim:
 
-| Included | Excluded by default |
-| --- | --- |
-| Current pattern index `ljagiello-ctf-skills.cards.v9.json` | Intermediate card dumps `cards.json` / `cards.v2`–`v8` |
-| `java-web` + `pwn-curated` indexes, lessons, pwn/rev knowledge | Pattern-card build/smoke scripts |
-| Built-in `skills/`, agents, commands, plugin bundle | `skills-external/` (opt-in) |
-| Runtime docs / env helpers | `benchmarks/`, `retros/`, `patches/`, machine-specific MCP server sources |
+| Included                                                       | Excluded by default                                                       |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Current pattern index `ljagiello-ctf-skills.cards.v9.json`     | Intermediate card dumps `cards.json` / `cards.v2`–`v8`                    |
+| `java-web` + `pwn-curated` indexes, lessons, pwn/rev knowledge | Pattern-card build/smoke scripts                                          |
+| Built-in `skills/`, agents, commands, plugin bundle            | `skills-external/` (opt-in)                                               |
+| Runtime docs / env helpers                                     | `benchmarks/`, `retros/`, `patches/`, machine-specific MCP server sources |
 
 Managed install applies the same knowledge filter even on a full source checkout, so intermediate cards are not copied into `~/.config/opencode`.
 
@@ -213,10 +225,10 @@ Managed install applies the same knowledge filter even on a full source checkout
 `npm install` does **not** fetch network content. The npm tarball also does **not** ship `skills-external/`.
 
 ```bash
-npm run fetch-skills   # clones/updates skills-external/ctf-skills (source checkout)
+npm run fetch-skills   # clones/updates skills-external/secknowledge-skill (source checkout)
 ```
 
-To also deploy that snapshot into the OpenCode config directory:
+To also copy that reference snapshot into the OpenCode config directory (it remains reference-only and is not added to `skills.paths`):
 
 ```bash
 # Bash
@@ -232,26 +244,26 @@ License/attribution: [third_party/NOTICE.md](./third_party/NOTICE.md).
 ## Manual setup (fallback)
 
 Only if you cannot use the managed installer. Replace paths with absolute paths on your machine.
+Run `npm run build:plugin` first, then point OpenCode at the built plugin entry file.
 
 `~/.config/opencode/opencode.jsonc`:
 
 ```jsonc
 {
-  "plugin": ["file:/absolute/path/to/Opencode-for-CTF"],
+  "plugin": ["file:/absolute/path/to/Opencode-for-CTF/dist/plugin/index.js"],
   "default_agent": "ctf-fast",
   "skills": {
-    "paths": [
-      "/absolute/path/to/Opencode-for-CTF/skills"
-    ]
+    "paths": ["/absolute/path/to/Opencode-for-CTF/skills"],
   },
   "instructions": [
     "/absolute/path/to/Opencode-for-CTF/rules/zh-rules.md",
-    "/absolute/path/to/Opencode-for-CTF/rules/en-solve-rules.md"
-  ]
+    "/absolute/path/to/Opencode-for-CTF/rules/en-solve-rules.md",
+    "/absolute/path/to/Opencode-for-CTF/rules/agent-equipment.md",
+  ],
 }
 ```
 
-Manual mode has **no** manifest, upgrade, or safe uninstall.
+Manual mode has **no** manifest, upgrade, or safe uninstall. It also does not copy `agents/` and `commands/` into the OpenCode config root for you; use the managed installer when you want `/ctf`, `/help`, all CTF agents, plugin tools, skills, and profile MCP stubs registered in one step.
 
 ### Legacy generator
 
@@ -285,19 +297,19 @@ work/<challenge-id>/
 
 ## Troubleshooting
 
-| Symptom | What to try |
-| --- | --- |
-| `release check` fails locally | Run `npm run build:plugin` first; `dist/` is gitignored |
-| OpenCode does not see agents | Confirm install target dir; restart OpenCode; `npm run ctf:status -- --strict` |
-| Plugin path wrong after move | Re-run `npm run ctf:upgrade` from the new checkout |
-| MCP tools missing | Expected — defaults disabled; enable only after review |
-| Permission / path denied in tools | Check `CTF_ALLOWED_ROOTS` and avoid sensitive paths (`.env`, `.ssh`, …) |
-| Node engine errors | Upgrade to Node `>= 22.20.0` |
-| Want clean reinstall | `npm run ctf:uninstall` then `npm run ctf:install` |
+| Symptom                           | What to try                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------ |
+| `release check` fails locally     | Run `npm run build:plugin` first; `dist/` is gitignored                        |
+| OpenCode does not see agents      | Confirm install target dir; restart OpenCode; `npm run ctf:status -- --strict` |
+| Plugin path wrong after move      | Re-run `npm run ctf:upgrade` from the new checkout                             |
+| MCP tools missing                 | Expected — defaults disabled; enable only after review                         |
+| Permission / path denied in tools | Check `CTF_ALLOWED_ROOTS` and avoid sensitive paths (`.env`, `.ssh`, …)        |
+| Node engine errors                | Upgrade to Node `>= 22.20.0`                                                   |
+| Want clean reinstall              | `npm run ctf:uninstall` then `npm run ctf:install`                             |
 
 ## Safety notes for installers
 
-- Default profile is **safe**
+- Default profile is **full**; MCP stubs are registered disabled
 - MCP stays **off** until you enable it
 - Installer avoids copying machine-specific absolute MCP paths from reference configs
 - Backups + manifest protect user edits

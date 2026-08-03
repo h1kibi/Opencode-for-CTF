@@ -1,5 +1,5 @@
-import { readFileSync, readdirSync, existsSync, statSync } from "fs"
-import { resolve, join } from "path"
+// Benchmark output checker — run via npm run check:benchmarks (scripts/ctf-benchmark.ts) or directly: npx tsx scripts/check-misc-benchmarks.ts <target>
+import { runFamilyBenchmarkSuite } from "./lib/benchmark-checker.ts"
 
 interface BenchmarkRule {
   name: string
@@ -10,14 +10,17 @@ const rules: BenchmarkRule[] = [
   {
     name: "classify before heavy tools",
     check(output) {
-      const hasClassify = /classification|initial category signals|classify the challenge before using heavy tools/i.test(output)
+      const hasClassify =
+        /classification|initial category signals|classify the challenge before using heavy tools/i.test(output)
       return hasClassify ? "PASS" : "FAIL"
     },
   },
   {
     name: "reversible transform or minimal client first",
     check(output) {
-      const hasMinimal = /reversible transformation chain|minimal client|solver reproducible|protocol grammar/i.test(output)
+      const hasMinimal = /reversible transformation chain|minimal client|solver reproducible|protocol grammar/i.test(
+        output,
+      )
       return hasMinimal ? "PASS" : "FAIL"
     },
   },
@@ -45,75 +48,20 @@ const rules: BenchmarkRule[] = [
   },
 ]
 
-function findOutputFiles(dir: string): string[] {
-  const candidates: string[] = []
-  try {
-    const entries = readdirSync(dir)
-    for (const e of entries) {
-      const full = join(dir, e)
-      if (statSync(full).isDirectory() && !e.startsWith(".")) {
-        candidates.push(...findOutputFiles(full))
-      } else if (/^(notes|solve|exploit|agent_flag|output|log|result)\.(md|txt|py|js|json)$/i.test(e)) {
-        candidates.push(full)
-      }
-    }
-  } catch {
-    // skip unreadable
-  }
-  return candidates
-}
-
-function runBenchmarks(targetDir: string) {
-  const abs = resolve(targetDir)
-  if (!existsSync(abs)) {
-    console.log(`Directory not found: ${targetDir}`)
-    process.exit(1)
-  }
-
-  const outputFiles = findOutputFiles(abs)
-  let combined = ""
-  for (const f of outputFiles) {
-    try {
-      combined += readFileSync(f, "utf8") + "\n"
-    } catch {
-      // skip
-    }
-  }
-
-  if (outputFiles.length === 0) {
-    console.log("No output files found (notes.md, solve.py, solve.js, etc.)")
-    process.exit(0)
-  }
-
-  console.log(`# Misc Benchmark Results`)
-  console.log(`\n## Target: ${targetDir}\n`)
-  console.log("| Rule | Status |")
-  console.log("|------|--------|")
-
-  let pass = 0
-  let fail = 0
-  const failures: string[] = []
-
-  for (const rule of rules) {
-    const status = rule.check(combined)
-    console.log(`| ${rule.name} | ${status} |`)
-    if (status === "PASS") pass++
-    if (status === "FAIL") {
-      fail++
-      failures.push(rule.name)
-    }
-  }
-
-  console.log(`\n## Summary\n`)
-  console.log(`- Pass Rate: ${pass}/${pass + fail + (rules.length - pass - fail)}`)
-  if (failures.length > 0) console.log(`- Critical Failures: ${failures.join(", ")}`)
-  console.log("- Recommendations: review failures against family contract, misc fallback matrix, and reference index guidance")
-}
-
 const target = process.argv[2]
 if (!target) {
   console.log("Usage: npx tsx scripts/check-misc-benchmarks.ts <benchmark-directory-or-log-dir>")
   process.exit(1)
 }
 
-runBenchmarks(target)
+process.exit(
+  await runFamilyBenchmarkSuite({
+    family: "misc",
+    title: "Misc Benchmark Results",
+    targetDir: target,
+    rules,
+    outputFilePattern: /^(notes|solve|exploit|agent_flag|output|log|result)\.(md|txt|py|js|json)$/i,
+    emptyArtifactHint: "notes.md, solve.py, solve.js, etc.",
+    recommendations: "review failures against family contract, misc fallback matrix, and reference index guidance",
+  }),
+)

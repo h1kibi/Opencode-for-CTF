@@ -18,8 +18,30 @@ Use only on provided challenge artifacts or explicitly authorized evidence.
 
 ## Contract
 
+
+## Load When
+
+Load when the primary input is a disk/memory image, pcap, document, archive, image/audio/video, metadata set, or other preserved artifact.
+
+## Do Not Load When
+
+Do not load for a live service whose artifact is only incidental; preserve and hand off to the relevant service/category orchestrator instead.
+
+## Required Inputs
+
+Require the original artifact, hashes/provenance, file type and size, acquisition constraints, and any existing extraction/evidence state.
+
+## First Safe Action
+
+Preserve the original, hash it, inventory container structure and metadata, then choose one read-only triage path.
+
+## Dispatch / Handoff
+
+Dispatch to disk, memory, network, stego, or document/audio references only after classification. Return extracted evidence and provenance, or pivot with the classifier's reason.
+
 - Load `references/REFERENCE_INDEX.md` first when the artifact surface is unclear.
-- Prefer dedicated probes (`ctf-pcap-probe`, `ctf-stego-probe`, `ctf-artifact-page`) before broad raw-tool loops.
+- For PCAPs involving covert channels, timing, fragmented application data, or multi-layer reconstruction, load `references/network-advanced.md` and retain packet/flow/stream/transaction provenance.
+- Prefer `ctf-forensics-analyze` first; use direct probes (`ctf-pcap-probe`, `ctf-stego-probe`, `ctf-artifact-page`) when the artifact class is already clear.
 - Keep exact derived paths, offsets, stream IDs, inodes, and hashes in `notes.md`.
 - Pivot quickly when the evidence is actually rev/crypto/web/misc shaped.
 
@@ -115,37 +137,37 @@ tcpdump -r <pcap> -A          → ASCII packet content
 #### Image / Stego Analysis
 ```
 Checklist:
-□ `ctf-stego-probe` first for quick triage
-□ File type and appended data (binwalk / strings after image end)
-□ EXIF metadata (exiftool)
-□ LSB in each color channel (zsteg / stegsolve)
-□ Palette manipulation (stegsolve)
-□ Alpha channel manipulation
-□ Thumbnail differs from main image
-□ Multiple images compared (subtract / XOR)
-□ QR / barcode scanning
-□ Color table anomalies
+鈻?`ctf-forensics-analyze` first for quick routing, then `ctf-stego-probe` for image/media hidden-channel triage
+鈻?File type and appended data (binwalk / strings after image end)
+鈻?EXIF metadata (exiftool)
+鈻?LSB in each color channel (zsteg / stegsolve)
+鈻?Palette manipulation (stegsolve)
+鈻?Alpha channel manipulation
+鈻?Thumbnail differs from main image
+鈻?Multiple images compared (subtract / XOR)
+鈻?QR / barcode scanning
+鈻?Color table anomalies
 ```
 
 #### Document Forensics
 ```
-• OLE objects and macros (oleid, olevba)
-• Hidden text / whitespace stego
-• XML relationships in OOXML (unzip → inspect)
-• Embedded images, fonts, objects
-• PDF: streams, objects, JS actions
-• Version history / tracked changes
-• Metadata fields (author, creation date, software)
+— OLE objects and macros (oleid, olevba)
+— Hidden text / whitespace stego
+— XML relationships in OOXML (unzip → inspect)
+— Embedded images, fonts, objects
+— PDF: streams, objects, JS actions
+— Version history / tracked changes
+— Metadata fields (author, creation date, software)
 ```
 
 #### Audio Forensics
 ```
-• Spectrogram analysis (audacity, sonic-visualiser)
-• LSB / phase encoding
-• Echo / tone / DTMF decoding
-• Slow down / speed up for hidden messages
-• Reverse audio for backmasking
-• Morse code detection
+— Spectrogram analysis (audacity, sonic-visualiser)
+— LSB / phase encoding
+— Echo / tone / DTMF decoding
+— Slow down / speed up for hidden messages
+— Reverse audio for backmasking
+— Morse code detection
 ```
 
 ### Phase: Reconstruct
@@ -209,6 +231,9 @@ Every finding requires:
 3. Interpretation (why this matters)
 4. Reproducibility (same command produces same result)
 
+## Flag Handling
+
+Use `ctf-common/references/flag-identification-rules.md` for every recovered string. Keep `untrusted_hint`, `flag_candidate`, and `oracle-verified` separate. Strict `prefix{payload}` candidates are not final success by themselves; bare MD5/SHA-256 values require explicit flag-file or flag-helper context. Preserve `source`, `origin`, and `context`, and write `agent_flag.txt` only after an independent exact/file/service oracle verifies the value.
 ## Stop Conditions
 
 Stop or ask when:
@@ -229,3 +254,4 @@ Stop or ask when:
 | Document / OLE / OOXML / PDF | `references/document-and-binary.md` |
 | Binary / blob / firmware | `references/document-and-binary.md` |
 | Archive / compressed / encrypted | `ctf-safe-extract` tool |
+| Windows malware, PE malware, persistence, or malware triage | `ctf-forensics-malware` |

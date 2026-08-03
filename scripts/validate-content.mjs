@@ -64,6 +64,118 @@ async function validateAgents() {
   return files.length
 }
 
+const SKILL_CONTRACT_FIELDS = [
+  "Load When",
+  "Do Not Load When",
+  "Required Inputs",
+  "First Safe Action",
+  "Dispatch / Handoff",
+  "Output Contract",
+  "Stop Conditions",
+]
+
+const CONTROL_SKILLS = [
+  "ctf-common",
+  "ctf-router",
+  "ctf-lead",
+  "ctf-decision-engine",
+  "ctf-experience-gate",
+  "ctf-ledger-discipline",
+  "ctf-closure-gate",
+]
+
+const ORCHESTRATOR_SKILLS = ["ctf-web", "ctf-pwn", "ctf-rev", "ctf-crypto", "ctf-forensics", "ctf-misc", "ctf-aisec"]
+const FOCUSED_SKILL_FIELDS = SKILL_CONTRACT_FIELDS
+
+function hasHeading(body, heading) {
+  const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return new RegExp(`^##\\s+${escapedHeading}\\s*$`, "m").test(body)
+}
+
+async function validateSkillContracts() {
+  const contractFile = path.join(ROOT, "skills", "SKILL_CONTRACT.md")
+  try {
+    if (!(await stat(contractFile)).isFile()) throw new Error("not a file")
+  } catch {
+    errors.push("skills/SKILL_CONTRACT.md: missing shared skill contract")
+  }
+
+  const bundledSkillNames = new Set(
+    (await readdir(path.join(ROOT, "skills"), { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name),
+  )
+
+  for (const skillName of [...CONTROL_SKILLS, ...ORCHESTRATOR_SKILLS]) {
+    const skillFile = path.join(ROOT, "skills", skillName, "SKILL.md")
+    let body
+    try {
+      body = await readFile(skillFile, "utf8")
+    } catch {
+      continue
+    }
+    for (const field of SKILL_CONTRACT_FIELDS) {
+      if (!hasHeading(body, field)) errors.push(`${path.relative(ROOT, skillFile)}: missing contract heading '## ${field}'`)
+    }
+  }
+
+  const normalizedFocusedSkills = [...bundledSkillNames].filter(
+    (name) => name.startsWith("ctf-web-") || name.startsWith("ctf-forensics-"),
+  )
+  const webFocusedSkills = normalizedFocusedSkills.filter((name) => name.startsWith("ctf-web-"))
+  const forensicsFocusedSkills = normalizedFocusedSkills.filter((name) => name.startsWith("ctf-forensics-"))
+  const webRouterPath = path.join(ROOT, "skills", "ctf-web", "SKILL.md")
+  const webRouter = await readFile(webRouterPath, "utf8")
+  for (const skillName of normalizedFocusedSkills) {
+    const skillFile = path.join(ROOT, "skills", skillName, "SKILL.md")
+    const body = await readFile(skillFile, "utf8")
+    for (const field of FOCUSED_SKILL_FIELDS) {
+      if (!hasHeading(body, field)) errors.push(`${path.relative(ROOT, skillFile)}: missing focused contract heading '## ${field}'`)
+    }
+    if (webFocusedSkills.includes(skillName) && !webRouter.includes(`\`${skillName}\``)) {
+      errors.push(`skills/ctf-web/SKILL.md: focused skill ${skillName} is not in the dispatch table`)
+    }
+  }
+
+  const forensicsRouter = await readFile(path.join(ROOT, "skills", "ctf-forensics", "SKILL.md"), "utf8")
+  for (const skillName of forensicsFocusedSkills) {
+    if (!forensicsRouter.includes(`\`${skillName}\``)) {
+      errors.push(`skills/ctf-forensics/SKILL.md: focused skill ${skillName} is not in the dispatch table`)
+    }
+  }
+
+  const loadEdges = new Map()
+  for (const skillName of bundledSkillNames) {
+    const skillFile = path.join(ROOT, "skills", skillName, "SKILL.md")
+    const body = await readFile(skillFile, "utf8")
+    const edges = [...body.matchAll(/\b[Ll]oad\s+`(ctf-[a-z0-9-]+)`/g)]
+      .map((match) => match[1])
+      .filter((target) => bundledSkillNames.has(target))
+    loadEdges.set(skillName, new Set(edges))
+  }
+
+  const visitState = new Map()
+  const activePath = []
+  function visit(skillName) {
+    visitState.set(skillName, "active")
+    activePath.push(skillName)
+    for (const target of loadEdges.get(skillName) ?? []) {
+      const targetState = visitState.get(target)
+      if (targetState === "active") {
+        const start = activePath.indexOf(target)
+        errors.push(`skills: cyclic Load dispatch ${[...activePath.slice(start), target].join(" -> ")}`)
+      } else if (!targetState) {
+        visit(target)
+      }
+    }
+    activePath.pop()
+    visitState.set(skillName, "done")
+  }
+  for (const skillName of bundledSkillNames) {
+    if (!visitState.has(skillName)) visit(skillName)
+  }
+}
+
 async function validateSkills() {
   const skillsDir = path.join(ROOT, "skills")
   const entries = await readdir(skillsDir, { withFileTypes: true })
@@ -86,6 +198,7 @@ async function validateSkills() {
 const commandCount = await validateCommands()
 const agentCount = await validateAgents()
 const skillCount = await validateSkills()
+await validateSkillContracts()
 
 for (const warning of warnings) console.warn(`warning: ${warning}`)
 if (errors.length) {

@@ -57,16 +57,17 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
   web: {
     family: "web",
     expectedToolPacks: ["core", "web"],
-    requiredTools: ["ctf-web-fingerprint", "ctf-web-blackbox-map"],
-    supportTools: ["ctf-web-source-map", "ctf-web-runtime-map", "ctf-web-authz-matrix"],
+    requiredTools: ["ctf-web-analyze"],
+    supportTools: ["ctf-web-fingerprint", "ctf-web-blackbox-map", "ctf-api-map"],
     softDependencies: ["browser"],
-    defaultMcps: ["filesystem", "context7", "github", "markitdown", "browser"],
-    requestableHeavyMcps: ["anysearch", "cvekb"],
+    defaultMcps: ["filesystem", "context7", "github", "markitdown", "browser", "jadx-mcp", "mysql-mcp", "ssh-mcp"],
+    requestableHeavyMcps: ["jadx-mcp", "mysql-mcp", "ssh-mcp", "anysearch", "cvekb"],
     fallbackModes: [
       {
         id: "web:blackbox-first",
         label: "Blackbox-first fallback",
-        detail: "Use fingerprint + blackbox mapping when browser/runtime or source-first paths are unavailable.",
+        detail:
+          "Use ctf-web-analyze first; fall back to fingerprint + blackbox mapping when browser/runtime or source-first paths are unavailable.",
       },
       {
         id: "web:source-first",
@@ -77,7 +78,11 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     handoffContract: {
       owner: "ctf-web",
       summary: "Return the locked primitive, affected owner/state boundary, and the next one-variable probe.",
-      escalationTriggers: ["browser-only flow blocked", "needs deeper source/runtime chain", "cross-domain exploit path"],
+      escalationTriggers: [
+        "browser-only flow blocked",
+        "needs deeper source/runtime chain",
+        "cross-domain exploit path",
+      ],
     },
     benchmarkCoverage: {
       status: "covered",
@@ -101,16 +106,16 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
   pwn: {
     family: "pwn",
     expectedToolPacks: ["core", "pwn"],
-    requiredTools: ["ctf-binary-probe", "ctf-pwn-runner"],
-    supportTools: ["ctf-pwn-libc-runtime-doctor", "ctf-pwn-remote-drift-check", "ctf-pwn-stage-harness"],
+    requiredTools: ["ctf-pwn-analyze", "ctf-pwn-runner"],
+    supportTools: ["ctf-binary-probe", "ctf-pwn-probe", "ctf-pwn-remote-fingerprint", "ctf-pwn-libc-hint"],
     softDependencies: ["docker", "gdb", "ghidra", "ida"],
-    defaultMcps: ["filesystem", "context7", "github", "markitdown"],
-    requestableHeavyMcps: ["ida-pro"],
+    defaultMcps: ["filesystem", "context7", "github", "markitdown", "gdb-mcp", "ida-pro", "ssh-mcp"],
+    requestableHeavyMcps: ["ida-pro", "gdb-mcp", "ssh-mcp"],
     fallbackModes: [
       {
         id: "pwn:local-substrate-lock",
         label: "Local substrate lock",
-        detail: "Prefer binary probe plus local runner/runtime doctor before remote gambling.",
+        detail: "Prefer ctf-pwn-analyze plus local runner/runtime doctor before remote gambling.",
       },
       {
         id: "pwn:remote-drift",
@@ -120,8 +125,13 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     ],
     handoffContract: {
       owner: "ctf-pwn",
-      summary: "Return substrate state, exploit artifact path, current primitive family, and the next shortest validation step.",
-      escalationTriggers: ["remote/local divergence persists", "heap family unresolved", "needs expert multi-route closure"],
+      summary:
+        "Return substrate state, exploit artifact path, current primitive family, and the next shortest validation step.",
+      escalationTriggers: [
+        "remote/local divergence persists",
+        "heap family unresolved",
+        "needs expert multi-route closure",
+      ],
     },
     benchmarkCoverage: {
       status: "covered",
@@ -151,7 +161,8 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
       {
         id: "env:pwnlab-images",
         label: "pwnlab Docker images",
-        detail: "pwnlab images provide controlled Ubuntu/Debian/Alpine environments with pwntools, gdb, ROPgadget, etc.",
+        detail:
+          "pwnlab images provide controlled Ubuntu/Debian/Alpine environments with pwntools, gdb, ROPgadget, etc.",
         setupCommand: "docker compose -f docker/docker-compose.revlab.yml --profile general build pwn-general",
       },
       {
@@ -165,16 +176,39 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
   rev: {
     family: "rev",
     expectedToolPacks: ["core", "rev"],
-    requiredTools: ["ctf-binary-probe", "ctf-rev-closure-ladder"],
-    supportTools: ["ctf-rev-pe-slice", "ctf-go-pclntool", "ctf-rev-unicorn-helper"],
+    requiredTools: ["ctf-rev-analyze"],
+    supportTools: [
+      "ctf-binary-probe",
+      "ctf-rev-pe-slice",
+      "ctf-go-pclntool",
+      "ctf-memstr",
+      "ctf-pe-unpack",
+      "ctf-pe-hybrid-rebuild",
+      "ctf-runtime-dump",
+      "ctf-rev-pe-recovery",
+      "ctf-windows-expect-runner",
+      "ctf-windows-debug-helper",
+    ],
     softDependencies: ["ReVa", "ghidra", "ida", "jadx", "frida", "apktool"],
-    defaultMcps: ["filesystem", "context7", "github", "markitdown", "ReVa"],
-    requestableHeavyMcps: ["ida-pro", "flutter-aot"],
+    defaultMcps: [
+      "filesystem",
+      "context7",
+      "github",
+      "markitdown",
+      "ReVa",
+      "ida-pro",
+      "jadx-mcp",
+      "gdb-mcp",
+      "x64dbg-mcp",
+      "ssh-mcp",
+    ],
+    requestableHeavyMcps: ["ida-pro", "jadx-mcp", "gdb-mcp", "x64dbg-mcp", "ssh-mcp", "flutter-aot"],
     fallbackModes: [
       {
         id: "rev:static-first",
         label: "Static-first fallback",
-        detail: "Use binary/APK triage and slice helpers before escalating to heavy GUI or dynamic tooling.",
+        detail:
+          "Use ctf-rev-analyze first; fall back to binary/APK triage and slice helpers before escalating to heavy GUI or dynamic tooling.",
       },
       {
         id: "rev:artifact-family-pivot",
@@ -184,8 +218,13 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     ],
     handoffContract: {
       owner: "ctf-rev",
-      summary: "Return artifact family, confirmed transform/checker boundary, extracted constants, and next solver/instrumentation step.",
-      escalationTriggers: ["needs heavy GUI tooling", "dynamic instrumentation required", "cross-domain closure path found"],
+      summary:
+        "Return artifact family, confirmed transform/checker boundary, extracted constants, and next solver/instrumentation step.",
+      escalationTriggers: [
+        "needs heavy GUI tooling",
+        "dynamic instrumentation required",
+        "cross-domain closure path found",
+      ],
     },
     benchmarkCoverage: {
       status: "partial",
@@ -215,7 +254,8 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
       {
         id: "env:revlab-image",
         label: "revlab Docker image",
-        detail: "revlab provides a full reverse engineering environment (rizin, binwalk, qemu, apktool, frida, angr, etc.).",
+        detail:
+          "revlab provides a full reverse engineering environment (rizin, binwalk, qemu, apktool, frida, angr, etc.).",
         setupCommand: "docker compose -f docker/docker-compose.revlab.yml --profile revlab build revlab",
       },
       {
@@ -235,8 +275,8 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
   crypto: {
     family: "crypto",
     expectedToolPacks: ["core", "crypto"],
-    requiredTools: ["ctf-rsa-probe"],
-    supportTools: ["ctf-python-inline", "ctf-pattern-to-hypothesis"],
+    requiredTools: ["ctf-crypto-analyze"],
+    supportTools: ["ctf-rsa-probe", "ctf-python-inline", "ctf-pattern-to-hypothesis"],
     softDependencies: ["sage", "python", "cyberchef-mcp"],
     defaultMcps: ["filesystem", "context7", "github", "markitdown", "cyberchef-mcp"],
     requestableHeavyMcps: ["anysearch", "cvekb"],
@@ -244,7 +284,8 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
       {
         id: "crypto:parameter-inventory",
         label: "Parameter inventory fallback",
-        detail: "Normalize parameters, modulus/order sizes, transforms, and oracle behavior before solver escalation.",
+        detail:
+          "Use ctf-crypto-analyze to normalize parameters, primitive family, transforms, and oracle behavior before solver escalation.",
       },
       {
         id: "crypto:reversible-first",
@@ -254,7 +295,8 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     ],
     handoffContract: {
       owner: "ctf-crypto",
-      summary: "Return family classification, parameter inventory, current assumption, and the next bounded solver/oracle probe.",
+      summary:
+        "Return family classification, parameter inventory, current assumption, and the next bounded solver/oracle probe.",
       escalationTriggers: ["needs heavier math tooling", "oracle behavior unstable", "route crosses into misc/rev"],
     },
     benchmarkCoverage: {
@@ -271,13 +313,15 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
       {
         id: "mcp:cyberchef",
         required: false,
-        detail: "cyberchef-mcp accelerates reversible transform chains, but Python/manual transforms remain a valid fallback.",
-        remediation: "Install cyberchef-mcp or continue with reversible-first workflows and lightweight local scripts.",
+        detail:
+          "cyberchef-mcp accelerates reversible transform chains, but Python/manual transforms remain a valid fallback.",
+        remediation: "Configure CYBERCHEF_MCP_COMMAND with a working CyberChef MCP server, or continue with reversible-first workflows and lightweight local scripts.",
       },
       {
         id: "solver:sage",
         required: false,
-        detail: "Advanced algebra/lattice routes degrade without Sage, but reversible/parameter-led routes should remain available.",
+        detail:
+          "Advanced algebra/lattice routes degrade without Sage, but reversible/parameter-led routes should remain available.",
         remediation: "Install Sage or keep crypto flows on reversible, oracle, and lightweight Python paths.",
       },
     ],
@@ -285,24 +329,35 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
       {
         id: "env:cyberchef-mcp",
         label: "CyberChef MCP",
-        detail: "Optional MCP backend for structured decode/transform chains; registry can still launch through npx when enabled.",
-        setupCommand: "Install or expose cyberchef-mcp, or rely on npx-backed activation and local Python transforms.",
+        detail:
+          "Optional MCP backend for structured decode/transform chains; there is no official npm package, so a backend must be supplied via CYBERCHEF_MCP_COMMAND.",
+        setupCommand: "Set CYBERCHEF_MCP_COMMAND to a working CyberChef MCP server, or rely on local Python transforms.",
       },
     ],
   },
   forensics: {
     family: "forensics",
     expectedToolPacks: ["core", "forensics"],
-    requiredTools: ["ctf-pcap-probe", "ctf-stego-probe"],
-    supportTools: ["ctf-pcap-carve", "ctf-image-open", "ctf-artifact-page"],
+    requiredTools: ["ctf-forensics-analyze"],
+    supportTools: ["ctf-pcap-probe", "ctf-stego-probe", "ctf-image-open"],
     softDependencies: ["wireshark-mcp", "volatility", "binwalk", "cyberchef-mcp"],
-    defaultMcps: ["filesystem", "context7", "github", "markitdown", "wireshark-mcp", "cyberchef-mcp"],
-    requestableHeavyMcps: [],
+    defaultMcps: [
+      "filesystem",
+      "context7",
+      "github",
+      "markitdown",
+      "wireshark-mcp",
+      "cyberchef-mcp",
+      "mysql-mcp",
+      "ssh-mcp",
+    ],
+    requestableHeavyMcps: ["mysql-mcp", "ssh-mcp"],
     fallbackModes: [
       {
         id: "forensics:probe-first",
         label: "Dedicated-probe-first fallback",
-        detail: "Start with pcap/stego/document probes before dropping to raw shell tools.",
+        detail:
+          "Start with ctf-forensics-analyze; fall back to pcap/stego/document probes before dropping to raw shell tools.",
       },
       {
         id: "forensics:manual-raw-tools",
@@ -312,8 +367,13 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     ],
     handoffContract: {
       owner: "ctf-forensics",
-      summary: "Return artifact inventory, extracted evidence paths, preservation notes, and the next narrow extraction or pivot.",
-      escalationTriggers: ["needs deeper memory/disk tooling", "GUI/network simulation required", "artifact route crosses into rev/crypto"],
+      summary:
+        "Return artifact inventory, extracted evidence paths, preservation notes, and the next narrow extraction or pivot.",
+      escalationTriggers: [
+        "needs deeper memory/disk tooling",
+        "GUI/network simulation required",
+        "artifact route crosses into rev/crypto",
+      ],
     },
     benchmarkCoverage: {
       status: "partial",
@@ -330,22 +390,18 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
         id: "mcp:wireshark",
         required: false,
         detail: "wireshark-mcp improves packet workflows but raw pcap probe/carve fallback should remain viable.",
-        remediation: "Configure WireMCP via WIREMCP_LAUNCHER or stay on pcap probe/carve plus shell-level protocol extraction.",
+        remediation:
+          "Use the managed WireMCP backend when available or stay on pcap probe/carve plus shell-level protocol extraction.",
       },
       {
         id: "mcp:cyberchef",
         required: false,
-        detail: "cyberchef-mcp speeds structured decode/transform chains, but manual carving and local scripts remain valid fallbacks.",
+        detail:
+          "cyberchef-mcp speeds structured decode/transform chains, but manual carving and local scripts remain valid fallbacks.",
         remediation: "Install cyberchef-mcp or keep using dedicated probes, manual carving, and small helper scripts.",
       },
     ],
     envDependencies: [
-      {
-        id: "env:wiremcp-launcher",
-        label: "WireMCP launcher",
-        detail: "WIREMCP_LAUNCHER points at the WireMCP server launcher used by wireshark-mcp.",
-        setupCommand: "Set WIREMCP_LAUNCHER to the WireMCP server launcher path, or use raw pcap probe/carve fallback.",
-      },
       {
         id: "env:cyberchef-mcp",
         label: "CyberChef MCP",
@@ -357,16 +413,26 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
   misc: {
     family: "misc",
     expectedToolPacks: ["core", "misc"],
-    requiredTools: ["ctf-one-shot-triage"],
-    supportTools: ["ctf-file-triage", "ctf-flag-grep", "ctf-pattern-to-hypothesis"],
+    requiredTools: ["ctf-misc-analyze"],
+    supportTools: ["ctf-one-shot-triage", "ctf-file-triage", "ctf-flag-grep", "ctf-pattern-to-hypothesis"],
     softDependencies: ["browser", "wireshark-mcp", "flutter-aot", "cyberchef-mcp"],
-    defaultMcps: ["filesystem", "context7", "github", "markitdown", "wireshark-mcp", "cyberchef-mcp"],
-    requestableHeavyMcps: ["flutter-aot", "anysearch"],
+    defaultMcps: [
+      "filesystem",
+      "context7",
+      "github",
+      "markitdown",
+      "wireshark-mcp",
+      "cyberchef-mcp",
+      "mysql-mcp",
+      "ssh-mcp",
+    ],
+    requestableHeavyMcps: ["mysql-mcp", "ssh-mcp", "flutter-aot", "anysearch"],
     fallbackModes: [
       {
         id: "misc:classify-first",
         label: "Classify-first fallback",
-        detail: "Treat misc as a routing family: classify container, encoding, or artifact type before solving directly.",
+        detail:
+          "Treat misc as a routing family: run ctf-misc-analyze to classify container, encoding, or artifact type before solving directly.",
       },
       {
         id: "misc:specialist-handoff",
@@ -376,11 +442,16 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     ],
     handoffContract: {
       owner: "ctf-misc",
-      summary: "Return classification evidence, eliminated families, and the exact reason to keep or transfer ownership.",
-      escalationTriggers: ["specialist family signal appears", "mixed artifact route stalls", "needs expert decomposition"],
+      summary:
+        "Return classification evidence, eliminated families, and the exact reason to keep or transfer ownership.",
+      escalationTriggers: [
+        "specialist family signal appears",
+        "mixed artifact route stalls",
+        "needs expert decomposition",
+      ],
     },
     benchmarkCoverage: {
-      status: "planned",
+      status: "partial",
       benchmarkIds: ["misc/classify-before-heavy-tools"],
     },
     readinessChecks: [
@@ -394,28 +465,25 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
         id: "mcp:wireshark",
         required: false,
         detail: "wireshark-mcp helps when misc pivots into packet/protocol artifacts.",
-        remediation: "Configure WireMCP via WIREMCP_LAUNCHER only when misc evidence is packet-shaped; otherwise hand off or use core triage.",
+        remediation:
+          "Use the managed WireMCP backend only when misc evidence is packet-shaped; otherwise hand off or use core triage.",
       },
       {
         id: "mcp:cyberchef",
         required: false,
         detail: "cyberchef-mcp helps with mixed encodings and layered artifact transforms.",
-        remediation: "Install cyberchef-mcp for transform-heavy misc; otherwise keep classification-first and hand off to crypto/forensics as soon as evidence supports it.",
+        remediation:
+          "Install cyberchef-mcp for transform-heavy misc; otherwise keep classification-first and hand off to crypto/forensics as soon as evidence supports it.",
       },
       {
         id: "handoff:misc",
         required: true,
-        detail: "misc must preserve a fast handoff path to specialist families rather than solving by undirected trial.",
+        detail:
+          "misc must preserve a fast handoff path to specialist families rather than solving by undirected trial.",
         remediation: "Keep misc routed through quick triage and explicit specialist handoff triggers.",
       },
     ],
     envDependencies: [
-      {
-        id: "env:wiremcp-launcher",
-        label: "WireMCP launcher",
-        detail: "Optional for misc challenges that pivot into packet/protocol artifacts.",
-        setupCommand: "Set WIREMCP_LAUNCHER when misc evidence is packet-shaped; otherwise keep the classify-first fallback.",
-      },
       {
         id: "env:cyberchef-mcp",
         label: "CyberChef MCP",

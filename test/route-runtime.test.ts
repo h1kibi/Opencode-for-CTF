@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import routePlanTool from "../tools/core/ctf-route-plan.js"
 import {
   planRoute,
   resolveSolveMode,
@@ -42,10 +43,7 @@ describe("planRoute + default_mode", () => {
   })
 
   it("routes strong web URL toward a decision with web category", () => {
-    const d = planRoute(
-      { text: "http://127.0.0.1:8000 flask xss admin bot", mode: "auto" },
-      "auto",
-    )
+    const d = planRoute({ text: "http://127.0.0.1:8000 flask xss admin bot", mode: "auto" }, "auto")
     expect(d.category).toBe("web")
     expect(d.primaryAgent).toBe("ctf-fast")
     expect(d.agent).toBe("ctf-fast")
@@ -59,6 +57,21 @@ describe("formatHardRouteHandoff", () => {
     expect(text).toContain("BINDING")
     expect(text).toContain("primary_session_agent:")
     expect(text).toContain("MANDATORY")
+  })
+
+  it("keeps the expert Phase 2 recall ordering in the runtime handoff", () => {
+    const d = planRoute({ text: "complex jwt trust boundary with existing evidence", mode: "expert" }, "expert")
+    const text = formatHardRouteHandoff(d, { configDefaultMode: "expert" })
+    const lessons = text.indexOf("lessons")
+    const retros = text.indexOf("retros")
+    const knowledge = text.indexOf("knowledge recall")
+    const routes = text.indexOf("exactly 3")
+    expect(text).toContain("Behave as **ctf-expert**")
+    expect(text).toContain("ctf-evidence-board command=init")
+    expect(lessons).toBeGreaterThan(-1)
+    expect(retros).toBeGreaterThan(lessons)
+    expect(knowledge).toBeGreaterThan(retros)
+    expect(routes).toBeGreaterThan(knowledge)
   })
 })
 
@@ -92,5 +105,29 @@ describe("session tool surface", () => {
   it("does not route expert without readiness helper", () => {
     const d = planRoute({ text: "checksec libc ret2libc", mode: "fast" }, "auto")
     expect(primaryAgentForDecision(d)).toBe("ctf-fast")
+  })
+
+  it("allows ctf-route-plan expert hints after the session has been promoted to expert", async () => {
+    const sid = "sess-route-plan-expert"
+    clearSessionSurface(sid)
+
+    await expect(
+      routePlanTool.execute({ text: "heap pwn challenge with libc", mode: "expert" }, {
+        directory: process.cwd(),
+        sessionID: sid,
+      } as never),
+    ).rejects.toThrow(/Expert route planning/)
+
+    rememberSessionSurface(sid, "ctf-expert")
+    const text = String(
+      await routePlanTool.execute({ text: "heap pwn challenge with libc", mode: "expert" }, {
+        directory: process.cwd(),
+        sessionID: sid,
+      } as never),
+    )
+    expect(text).toContain("primary_session_agent: ctf-expert")
+    expect(text).toContain("category: pwn")
+
+    clearSessionSurface(sid)
   })
 })

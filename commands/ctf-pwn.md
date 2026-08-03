@@ -1,6 +1,7 @@
 ---
 description: Start a structured pwn CTF solve
 agent: ctf-pwn
+subtask: false
 ---
 
 Use `ctf-common`, `ctf-terminal`, and `ctf-pwn` skills.
@@ -19,7 +20,7 @@ Rules:
 - Canonical closure order for PWN execution is: `ret2win` -> `pivot to writable static/global memory` -> `single leak + replay` -> `ORW` -> `shell`, unless a higher route is concretely falsified.
 - Distinguish bridge primitives from closure primitives. “One more read / one more replay / one more rewrite” does not outrank a live direct closure primitive unless required by the chosen canonical closure template.
 - On Windows for Linux ELF targets, prefer one Linux substrate early; if `ctf-pwn-runner` blocks host execution, move to `ctf-pwn-docker-runner` or `ctf-pwn-wsl-runner` instead of retrying on the host.
-- Treat `ctf-binary-probe` `probe_backend: docker_fallback` as the preferred mitigation source when host ELF tooling is incomplete.
+- Start with `ctf-pwn-analyze`; treat delegated `ctf-binary-probe` / probe output with `probe_backend: docker_fallback` as the preferred mitigation source when host ELF tooling is incomplete.
 - Reproduce crashes before exploitation claims.
 - Prefer pwntools scripts over fragile shell pipes.
 - For local-vs-remote fixed-read or menu-framing drift, use `references/pwn-runtime-trigger-matrix.md` before rotating gadgets, libc, or exploit family.

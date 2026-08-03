@@ -11,7 +11,10 @@ import path from "node:path"
 
 /** Normalize to posix-ish relative path for matching. */
 export function toPosixRel(input = "") {
-  return String(input).replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/^\/+/, "")
+  return String(input)
+    .replace(/\\/g, "/")
+    .replace(/^\.\/+/, "")
+    .replace(/^\/+/, "")
 }
 
 /**
@@ -30,48 +33,60 @@ const INTERMEDIATE_CARD_BASENAMES = new Set([
 ])
 
 const PATTERN_CARD_DEV_PREFIXES = [
-  "knowledge/pattern-cards/build-",
-  "knowledge/pattern-cards/smoke-",
-  "knowledge/pattern-cards/update-",
+  "rag/knowledge/pattern-cards/build-",
+  "rag/knowledge/pattern-cards/smoke-",
+  "rag/knowledge/pattern-cards/update-",
 ]
 
-const PATTERN_CARD_DEV_FILES = new Set([
-  "knowledge/pattern-cards/curation-candidates.json",
-])
+const PATTERN_CARD_DEV_FILES = new Set(["rag/knowledge/pattern-cards/curation-candidates.json"])
 
 /** Paths that must never appear in the default published tarball. */
 const PACK_FORBIDDEN_SUBSTRINGS = [
   "skills-external/",
-  "knowledge/pattern-cards/ljagiello-ctf-skills.cards.v2.json",
-  "knowledge/pattern-cards/ljagiello-ctf-skills.cards.v3.json",
-  "knowledge/pattern-cards/ljagiello-ctf-skills.cards.v4.json",
-  "knowledge/pattern-cards/ljagiello-ctf-skills.cards.v5.json",
-  "knowledge/pattern-cards/ljagiello-ctf-skills.cards.v6.json",
-  "knowledge/pattern-cards/ljagiello-ctf-skills.cards.v7.json",
-  "knowledge/pattern-cards/ljagiello-ctf-skills.cards.v8.json",
-  "knowledge/pattern-cards/ljagiello-ctf-skills.cards.json",
+  "mcp-server/vendor/WireMCP/.git/",
+  "mcp-server/vendor/WireMCP/node_modules/",
+  "mcp-server/vendor/WireMCP/package-lock.json",
+  "rag/Des-CTF-Knowledge/",
+  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v2.json",
+  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v3.json",
+  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v4.json",
+  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v5.json",
+  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v6.json",
+  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v7.json",
+  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v8.json",
+  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.json",
+  "rag/knowledge/imported/",
+  "rag/knowledge/sources/des-ctf-knowledge/raw/",
 ]
 
 /** Paths that must exist in a healthy published package (relative to package root). */
 export const PACK_REQUIRED_PATHS = [
   "dist/plugin/index.js",
-  "knowledge/pattern-cards/ljagiello-ctf-skills.cards.v9.json",
-  "knowledge/pattern-cards/java-web/java-web.cards.v1.json",
-  "knowledge/pattern-cards/pwn-curated.cards.v1.json",
-  "knowledge/pattern-cards/synonyms.json",
+  "dist/wiremcp/index.js",
+  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v9.json",
+  "rag/knowledge/pattern-cards/java-web/java-web.cards.v1.json",
+  "rag/knowledge/pattern-cards/pwn-curated.cards.v1.json",
+  "rag/knowledge/pattern-cards/des-ctf/des-ctf.cards.v1.json",
+  "rag/knowledge/pattern-cards/synonyms.json",
+  "rag/knowledge/lessons/lessons.index.json",
+  "rag/knowledge/retros/retros.index.json",
+  "rag/knowledge/sources/des-ctf-knowledge.manifest.json",
+  "rag/knowledge/sources/secknowledge-skill.manifest.json",
   "agents/ctf-fast.md",
   "agents/ctf-expert.md",
   "commands/ctf.md",
+  "commands/help.md",
   "scripts/cli.mjs",
 ]
 
 /**
- * Whether a path under `knowledge/` should be copied during managed install.
+ * Whether a path under runtime `rag/knowledge/` should be copied during managed install.
  * `rel` is relative to the knowledge directory (not the repo root).
  */
 export function isKnowledgeInstallIncluded(rel = "") {
   const posix = toPosixRel(rel)
   if (!posix) return true
+  if (posix === "imported" || posix.startsWith("imported/")) return false
 
   const base = path.posix.basename(posix)
   if (INTERMEDIATE_CARD_BASENAMES.has(base)) return false
@@ -101,8 +116,10 @@ export function isPackExcluded(relPosixPath = "") {
 
   if (normalized.startsWith("skills-external/")) return true
 
-  if (normalized.startsWith("knowledge/")) {
-    const underKnowledge = normalized.slice("knowledge/".length)
+  if (normalized.startsWith("rag/Des-CTF-Knowledge/")) return true
+
+  if (normalized.startsWith("rag/knowledge/")) {
+    const underKnowledge = normalized.slice("rag/knowledge/".length)
     if (!isKnowledgeInstallIncluded(underKnowledge)) return true
   }
 
@@ -128,9 +145,9 @@ export function findForbiddenPackPaths(fileList = []) {
         break
       }
     }
-    // Also catch intermediate cards by basename anywhere under knowledge/
+    // Also catch intermediate cards by basename anywhere under runtime knowledge.
     const base = path.posix.basename(posix)
-    if (posix.startsWith("knowledge/") && INTERMEDIATE_CARD_BASENAMES.has(base)) {
+    if (posix.startsWith("rag/knowledge/") && INTERMEDIATE_CARD_BASENAMES.has(base)) {
       if (!offenders.includes(posix)) offenders.push(posix)
     }
   }

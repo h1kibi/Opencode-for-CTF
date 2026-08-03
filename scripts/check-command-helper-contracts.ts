@@ -1,4 +1,5 @@
-import { readFileSync } from "fs"
+// Manual QA utility — not part of CI or npm run check. Run with: npx tsx scripts/check-command-helper-contracts.ts
+import { existsSync, readFileSync } from "fs"
 import { resolve } from "path"
 
 type Rule = {
@@ -6,9 +7,27 @@ type Rule = {
   checks: Array<{ name: string; pattern: RegExp }>
 }
 
-const rules: Rule[] = [
+const currentCommandRules: Rule[] = [
   {
-    file: resolve("commands", "ctf-resume.md"),
+    file: resolve("commands", "ctf.md"),
+    checks: [
+      { name: "ctf binding route", pattern: /BINDING route/i },
+      { name: "ctf route planner", pattern: /ctf-route-plan/i },
+      { name: "ctf hard handoff", pattern: /ctf-handoff lane=expert/i },
+      { name: "ctf public help", pattern: /Help: `\/help`/i },
+    ],
+  },
+  {
+    file: resolve("commands", "help.md"),
+    checks: [
+      { name: "help documents main entry", pattern: /`\/ctf <target>`/i },
+      { name: "help documents public help entry", pattern: /`\/help`/i },
+      { name: "help says historical commands are gone", pattern: /Historical compatibility aliases/i },
+      { name: "help points advanced flows at tools and skills", pattern: /tools, and skills/i },
+    ],
+  },
+  {
+    file: resolve("commands", "resume.md"),
     checks: [
       { name: "resume preferred evidence order", pattern: /Preferred evidence order under `work\/ctf-evidence\//i },
       {
@@ -28,102 +47,57 @@ const rules: Rule[] = [
     ],
   },
   {
-    file: resolve("commands", "ctf-snapshot.md"),
-    checks: [
-      {
-        name: "snapshot default disk target",
-        pattern: /Default disk target: `work\/ctf-evidence\/<challenge-slug>\/snapshot\.md`/i,
-      },
-      {
-        name: "snapshot writer-first hint",
-        pattern: /prefer updating `route\.json`, `hypotheses\.json`, and `primitive\.json`/i,
-      },
-    ],
-  },
-  {
-    file: resolve("commands", "ctf-closure.md"),
-    checks: [
-      {
-        name: "closure default disk target",
-        pattern: /Default disk targets: `work\/ctf-evidence\/<challenge-slug>\/closure\.json`/i,
-      },
-      {
-        name: "closure writer hint",
-        pattern: /Prefer `write-evidence-state closure <challenge-slug> .*` or the dedicated closure writer/i,
-      },
-    ],
-  },
-  {
-    file: resolve("commands", "ctf-final.md"),
-    checks: [
-      {
-        name: "final default disk target",
-        pattern: /Default disk target: `work\/ctf-evidence\/<challenge-slug>\/final-verification\.txt`/i,
-      },
-      {
-        name: "final preserves branch history",
-        pattern: /Preserve existing `resume\.md`, `handoff\.md`, `fast-handoff\.md`, and `snapshot\.md`/i,
-      },
-      { name: "final verifier contract", pattern: /Prefer `ctf-verifier` or the equivalent verifier contract/i },
-    ],
-  },
-  {
-    file: resolve("commands", "ctf-hard-open.md"),
-    checks: [
-      {
-        name: "hard-open evidence packet",
-        pattern: /Prefer initializing `work\/ctf-evidence\/<challenge-slug>\/` early/i,
-      },
-      { name: "hard-open hypotheses file", pattern: /refresh `route\.json`, `inventory\.md`, and `hypotheses\.json`/i },
-      {
-        name: "hard-open evidence doctor refresh",
-        pattern: /refresh the evidence packet with `ctf:evidence-doctor <challenge-slug>`/i,
-      },
-    ],
-  },
-  {
-    file: resolve("commands", "ctf.md"),
-    checks: [
-      { name: "ctf route profile recommendation", pattern: /Recommended route profiles:/i },
-      {
-        name: "ctf resume bias",
-        pattern: /If there is already a populated `work\/ctf-evidence\/<challenge-slug>\/` branch/i,
-      },
-      {
-        name: "ctf evidence doctor recommendation",
-        pattern: /Prefer `ctf:evidence-doctor <challenge-slug>` once a stable slug exists/i,
-      },
-    ],
-  },
-  {
-    file: resolve("commands", "ctf-fanout.md"),
-    checks: [
-      {
-        name: "fanout evidence doctor merge hint",
-        pattern: /refresh the packet with `ctf:evidence-doctor <challenge-slug>`/i,
-      },
-    ],
-  },
-  {
     file: resolve("commands", "ctf-fast.md"),
     checks: [
-      { name: "pwn-fast shared boundary reference", pattern: /references\/pwn-mode-boundary\.md/i },
-      { name: "pwn-fast shared runtime trigger reference", pattern: /references\/pwn-runtime-trigger-matrix\.md/i },
+      { name: "fast uses fast agent", pattern: /agent: ctf-fast/i },
+      { name: "fast soft budget", pattern: /15 minutes/i },
+      { name: "fast allowlist", pattern: /fast tool allowlist/i },
+      { name: "fast evidence board bootstrap", pattern: /ctf-evidence-board command=init/i },
     ],
   },
   {
     file: resolve("commands", "ctf-pwn.md"),
     checks: [
-      { name: "pwn command shared boundary reference", pattern: /references\/pwn-mode-boundary\.md/i },
-      { name: "pwn command shared runtime trigger reference", pattern: /references\/pwn-runtime-trigger-matrix\.md/i },
+      { name: "pwn shared boundary reference", pattern: /references\/pwn-mode-boundary\.md/i },
+      { name: "pwn shared runtime trigger reference", pattern: /references\/pwn-runtime-trigger-matrix\.md/i },
     ],
   },
   {
     file: resolve("commands", "ctf-expert.md"),
     checks: [
       { name: "expert entry exists", pattern: /ctf-expert/i },
+      { name: "expert evidence board", pattern: /ctf-evidence-board/i },
+      { name: "expert team dispatch", pattern: /ctf-team-dispatch/i },
+      { name: "expert mcp control", pattern: /ctf-mcp-control/i },
     ],
   },
+  {
+    file: resolve("tools", "ctf-evidence-board.ts"),
+    checks: [
+      { name: "evidence board owns evidence markdown", pattern: /Evidence\.md/i },
+      { name: "evidence board owns closure state", pattern: /closure/i },
+      { name: "evidence board writes canonical state", pattern: /case\.json/i },
+    ],
+  },
+  {
+    file: resolve("src", "team", "team-runtime-core.ts"),
+    checks: [
+      { name: "team mode exposes dispatch", pattern: /ctf-team-dispatch/i },
+      { name: "team mode exposes collect", pattern: /ctf-team-collect/i },
+    ],
+  },
+]
+
+const retiredCommands = [
+  "ctf-snapshot.md",
+  "ctf-closure.md",
+  "ctf-final.md",
+  "ctf-close.md",
+  "ctf-hard-open.md",
+  "ctf-fanout.md",
+  "ctf-control.md",
+  "ctf-signal-memory.md",
+  "ctf-evidence.md",
 ]
 
 function main() {
@@ -132,7 +106,12 @@ function main() {
   console.log("| File | Check | Status |")
   console.log("|---|---|---|")
 
-  for (const rule of rules) {
+  for (const rule of currentCommandRules) {
+    if (!existsSync(rule.file)) {
+      failures.push(`${rule.file}: missing file`)
+      console.log(`| ${rule.file.replace(process.cwd() + "\\", "")} | file exists | FAIL |`)
+      continue
+    }
     const text = readFileSync(rule.file, "utf8")
     for (const check of rule.checks) {
       const ok = check.pattern.test(text)
@@ -141,8 +120,17 @@ function main() {
     }
   }
 
+  for (const command of retiredCommands) {
+    const file = resolve("commands", command)
+    const ok = !existsSync(file)
+    console.log(`| commands\\${command} | retired command absent | ${ok ? "PASS" : "FAIL"} |`)
+    if (!ok) failures.push(`${file}: retired command should not be installed`)
+  }
+
   console.log("\n## Summary\n")
-  console.log(`- Checked rules: ${rules.reduce((n, r) => n + r.checks.length, 0)}`)
+  console.log(
+    `- Checked rules: ${currentCommandRules.reduce((n, r) => n + r.checks.length, 0) + retiredCommands.length}`,
+  )
   console.log(`- Failures: ${failures.length}`)
   if (failures.length > 0) {
     for (const failure of failures) console.log(`  - ${failure}`)

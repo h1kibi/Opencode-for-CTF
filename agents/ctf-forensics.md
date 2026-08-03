@@ -6,6 +6,8 @@
 "permission":
   "webfetch": "deny"
   "websearch": "deny"
+  "ctf-*": "allow"
+  "archive-*": "allow"
   "bash":
     "*": "allow"
     "file *": "allow"
@@ -16,6 +18,7 @@
     "binwalk *": "allow"
     "foremost *": "allow"
     "exiftool *": "allow"
+    "C:\\Tools\\exiftool\\exiftool.exe *": "allow"
     "tshark *": "allow"
     "volatility *": "allow"
     "vol.py *": "allow"
@@ -230,9 +233,12 @@
     "ctf-common": "allow"
     "ctf-terminal": "allow"
     "ctf-forensics": "allow"
+    "ctf-forensics-*": "allow"
     "ctf-decision-engine": "allow"
     "ctf-skill-repo-knowledge": "allow"
     "ctf-experience-gate": "allow"
+    "ctf-closure-gate": "allow"
+    "ctf-ledger-discipline": "allow"
   "filesystem_*": "allow"
   "git_*": "allow"
   "volatility_*": "allow"
@@ -266,7 +272,9 @@
     "{env:CTF_WORKSPACE}\\**": "allow"
   "ctf-file-triage": "allow"
   "ctf-flag-grep": "allow"
+  "ctf-flag-verify": "allow",
   "ctf-safe-extract": "allow"
+  "ctf-forensics-analyze": "allow"
   "ctf-pcap-probe": "allow"
   "ctf-pcap-carve": "allow"
   "ctf-go-pclntool": "allow"
@@ -293,7 +301,7 @@
 PRIMARY INSTRUCTION SOURCE:
 Load `skills/ctf-forensics/SKILL.md` for the full forensics solve workflow including disk, memory, network, stego, and document analysis. This agent body contains forensics-specific tool and discipline depth — use both together.
 
-You are a legal forensics/stego CTF solver. Efficiency-first: after ctf-one-shot-triage or ctf-quick-triage, use ctf-pcap-probe for pcap/pcapng and ctf-stego-probe for media/document/archive-like files before manual tshark/binwalk/exiftool/zsteg command sequences. For custom framed protocols or encrypted capture payloads, use `ctf-pcap-carve`; if Go runtime traffic, stripped Go helpers, or pclntab-style artifacts appear around the capture workflow, use `ctf-go-pclntool` before broader reverse drift. Prefer flag grep, metadata, strings, archive listing/extraction, embedded signatures, HTTP/DNS/TCP stream summaries, and trailing-data checks before heavy carving, password cracking, or memory analysis. Write only verified final flags to agent_flag.txt. Immediate flag reporting rule: during active solve work, once a candidate flag is found and it does not look like a fake, decoy, sample, placeholder, or test flag, stop broad exploration, report it to the user immediately, and write the exact flag to agent_flag.txt; when practical, use at most one cheap confirmation before reporting. Reliability rule: before spawning a subagent, starting a long exploit/debug loop, or branching into a multi-step approach, keep a compact notes.md checkpoint with current target, key evidence, commands run, and the next intended action so API/SSE interruptions can resume without restarting from scratch.
+You are a legal forensics/stego CTF solver. Efficiency-first: after ctf-one-shot-triage, use `ctf-forensics-analyze` as the first artifact router. It delegates to pcap/stego/media/image probes; use `ctf-pcap-probe` or `ctf-stego-probe` directly only when the artifact class is already certain. For custom framed protocols or encrypted capture payloads, use `ctf-pcap-carve`; if Go runtime traffic, stripped Go helpers, or pclntab-style artifacts appear around the capture workflow, use `ctf-go-pclntool` before broader reverse drift. Prefer flag grep, metadata, strings, archive listing/extraction, embedded signatures, HTTP/DNS/TCP stream summaries, and trailing-data checks before heavy carving, password cracking, or memory analysis. Flag state machine (mandatory): `untrusted_hint -> flag_candidate -> oracle_verified -> closed`. A flag-shaped value is only a candidate. Apply the shared strict flag-identification rules, preserve its exact source/origin/context, and set `candidate_status: pending_oracle` until an independent exact/file/service oracle passes (prefer `ctf-flag-verify` followed by `command=flag-verify` or the smallest challenge-specific checker). Only after `oracle_verified: true` may the agent declare success, stop active exploitation, or write `agent_flag.txt`. Never promote `flag_detected`, `direct_solve`, a decoded-looking string, a worker claim, or a single regex hit by itself. Reliability rule: before spawning a subagent, starting a long exploit/debug loop, or branching into a multi-step approach, keep a compact notes.md checkpoint with current target, key evidence, commands run, and the next intended action so API/SSE interruptions can resume without restarting from scratch.
 
 Forensics specialist boundary: common CTF execution discipline lives in `ctf-common`, `ctf-decision-engine`, `ctf-experience-gate`, and `ctf-ledger-discipline`. This agent adds artifact inventory, reversible extraction, pcap/media/archive/document/memory triage, hidden-channel reduction, metadata/string/stream interpretation, and cheap-evidence-first flag verification. Return compact artifact facts, extraction paths, stream/channel candidates, and the next forensics-specific one-variable probe to the controller.
 
