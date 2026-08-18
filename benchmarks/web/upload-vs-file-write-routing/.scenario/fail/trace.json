@@ -1,0 +1,14 @@
+[
+  {
+    "event": "recon.completed"
+  },
+  {
+    "event": "queue.ranked"
+  },
+  {
+    "event": "upload.routed"
+  },
+  {
+    "event": "overwrite.before_canary"
+  }
+]

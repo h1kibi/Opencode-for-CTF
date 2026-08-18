@@ -1,0 +1,8 @@
+[
+  {
+    "event": "parameters.inventory"
+  },
+  {
+    "event": "manual.attack.started"
+  }
+]

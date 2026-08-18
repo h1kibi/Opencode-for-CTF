@@ -1,0 +1,11 @@
+[
+  {
+    "event": "binary.probed"
+  },
+  {
+    "event": "remote.failed"
+  },
+  {
+    "event": "primitive.rotated"
+  }
+]

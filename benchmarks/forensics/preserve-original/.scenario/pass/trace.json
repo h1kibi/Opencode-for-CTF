@@ -1,0 +1,17 @@
+[
+  {
+    "event": "originals.preserved"
+  },
+  {
+    "event": "triage.completed"
+  },
+  {
+    "event": "route.selected"
+  },
+  {
+    "event": "provenance.recorded"
+  },
+  {
+    "event": "reconstruction.verified"
+  }
+]

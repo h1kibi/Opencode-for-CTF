@@ -144,6 +144,7 @@ const TOOL_REQUIRES: Record<string, string[]> = {
     "qemu-aarch64?",
   ],
   "ctf-file-triage": ["node", "file?"],
+  "ctf-file-read-via-parser": ["node"],
   "ctf-one-shot-triage": ["node", "file?"],
   "ctf-env-check": ["node", "docker?", "adb?", "powershell?"],
   "ctf-aisec-env-check": ["node", "python?", "docker?"],

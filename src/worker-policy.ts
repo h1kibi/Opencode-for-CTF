@@ -41,6 +41,7 @@ export const WORKER_DENIED_TOOLS = new Set([
   "ctf-team-close",
   "ctf-team-recover",
   "ctf-team-adopt",
+  "ctf-team-repair",
   "ctf-evidence-board",
   "ctf-decision-state",
   "ctf-file-write-matrix",

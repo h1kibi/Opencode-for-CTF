@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "web/pattern-recall-before-focused-probe",
+  "family": "web",
+  "description": "Deterministic behavior contract scenario: pass must satisfy the family checker and fail must be rejected.",
+  "passArtifact": ".scenario/pass",
+  "failArtifact": ".scenario/fail",
+  "traceContract": {
+    "pass": {
+      "requiredOrdered": [
+        "recon.completed",
+        "queue.ranked",
+        "candidate.signal",
+        "pattern.recalled",
+        "safe_check.completed"
+      ],
+      "forbidden": ["payload.storm"]
+    },
+    "fail": {
+      "requiredOrdered": ["recon.completed", "queue.ranked", "pattern.recalled"],
+      "forbidden": ["candidate.signal", "safe_check.completed"]
+    }
+  }
+}

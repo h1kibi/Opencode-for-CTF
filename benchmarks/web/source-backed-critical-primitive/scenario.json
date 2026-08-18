@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "web/source-backed-critical-primitive",
+  "family": "web",
+  "description": "Deterministic behavior contract scenario: pass must satisfy the family checker and fail must be rejected.",
+  "passArtifact": ".scenario/pass",
+  "failArtifact": ".scenario/fail",
+  "traceContract": {
+    "pass": {
+      "requiredOrdered": [
+        "recon.completed",
+        "queue.ranked",
+        "candidate.signal",
+        "primitive.checked",
+        "primitive.locked",
+        "closure.handoff"
+      ],
+      "forbidden": ["payload.storm"]
+    },
+    "fail": {
+      "requiredOrdered": ["recon.completed", "queue.ranked", "primitive.claimed"],
+      "forbidden": ["primitive.checked", "primitive.locked"]
+    }
+  }
+}

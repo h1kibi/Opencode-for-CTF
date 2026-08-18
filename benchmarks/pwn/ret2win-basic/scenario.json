@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "pwn/ret2win-basic",
+  "family": "pwn",
+  "description": "Deterministic behavior contract scenario: pass must satisfy the family checker and fail must be rejected.",
+  "passArtifact": ".scenario/pass",
+  "failArtifact": ".scenario/fail",
+  "traceContract": {
+    "pass": {
+      "requiredOrdered": ["binary.probed", "fast_lane.selected", "closure.direct"],
+      "forbidden": ["gadget.roulette"]
+    },
+    "fail": {
+      "requiredOrdered": ["binary.probe.skipped", "complexity.expanded"],
+      "forbidden": ["binary.probed"]
+    }
+  }
+}

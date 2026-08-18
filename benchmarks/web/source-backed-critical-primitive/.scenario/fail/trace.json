@@ -1,0 +1,11 @@
+[
+  {
+    "event": "recon.completed"
+  },
+  {
+    "event": "queue.ranked"
+  },
+  {
+    "event": "primitive.claimed"
+  }
+]

@@ -459,6 +459,9 @@ const WEB_HEAVY_EXACT = new Set([
   "ctf-web-state-machine-map",
   "ctf-web-template-check",
   "ctf-web-url-corpus",
+  "ctf-web-blind-sqli",
+  "ctf-web-xxe-closure",
+  "ctf-file-read-via-parser",
   "ctf-whitebox-env-check",
   "ctf-whitebox-handoff",
 ])

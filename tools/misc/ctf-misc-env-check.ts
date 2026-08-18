@@ -174,17 +174,21 @@ export default tool({
       },
     ]
 
-    const capabilities: Capability[] = []
-    for (const group of groups) {
-      const checks = await Promise.all(group.probes.map(runProbe))
-      capabilities.push({
-        id: group.id,
-        label: group.label,
-        status: statusFor(checks, group.fallbackGroups),
-        checks,
-        ...(group.fallbackGroups ? { fallbackGroups: group.fallbackGroups } : {}),
-      })
-    }
+    // All probes are read-only capability checks. Run capability groups in
+    // parallel so a missing command cannot serialize the 2.5s fail-fast
+    // timeout across every Misc family on startup (especially on Windows).
+    const capabilities = await Promise.all(
+      groups.map(async (group): Promise<Capability> => {
+        const checks = await Promise.all(group.probes.map(runProbe))
+        return {
+          id: group.id,
+          label: group.label,
+          status: statusFor(checks, group.fallbackGroups),
+          checks,
+          ...(group.fallbackGroups ? { fallbackGroups: group.fallbackGroups } : {}),
+        }
+      }),
+    )
 
     const blocked = capabilities.filter((capability) => capability.status === "blocked")
     const degraded = capabilities.filter((capability) => capability.status === "degraded")

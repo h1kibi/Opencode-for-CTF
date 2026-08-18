@@ -104,6 +104,7 @@
       "ctf-team-close",
       "ctf-team-recover",
       "ctf-team-adopt",
+      "ctf-team-repair",
       "ctf-evidence-board",
       "ctf-mcp-control",
       "ctf-decompose-task"

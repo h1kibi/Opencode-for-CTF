@@ -23,8 +23,11 @@ const rules: BenchmarkRule[] = [
     check(output) {
       const hasQueue = /Attack Queue/i.test(output)
       if (!hasQueue) return "FAIL"
-      const hasRanking = /(?:Value|Cost|Risk|Stability|Confidence)/i.test(output)
-      return hasRanking ? "PASS" : "FAIL"
+      const hasRanking = ["Value", "Cost", "Risk", "Stability", "Confidence"].every((field) =>
+        new RegExp(`\\b${field}\\b`, "i").test(output),
+      )
+      const hasDecision = /Decision/i.test(output)
+      return hasRanking && hasDecision ? "PASS" : "FAIL"
     },
   },
   {
@@ -33,6 +36,36 @@ const rules: BenchmarkRule[] = [
       const beforeQueue = output.split(/Attack Queue/i)[0] ?? ""
       const hasWordlistEarly = /(?:ffuf|gobuster|feroxbuster|dirsearch|wfuzz|sqlmap|hydra)/i.test(beforeQueue)
       return hasWordlistEarly ? "FAIL" : "PASS"
+    },
+  },
+  {
+    name: "pattern recall after candidate signal",
+    check(output) {
+      const hasPatternRecall = /ctf-web-pattern-search|pattern recall|pattern match/i.test(output)
+      if (!hasPatternRecall) return "N/A"
+
+      const reconIndex = output.search(/Recon Map/i)
+      const queueIndex = output.search(/Attack Queue/i)
+      const patternIndex = output.search(/ctf-web-pattern-search|pattern recall|pattern match/i)
+      if (reconIndex < 0 || queueIndex < 0 || patternIndex < reconIndex || patternIndex < queueIndex) return "FAIL"
+
+      const beforePattern = output.slice(0, patternIndex)
+      const hasCandidateSignal =
+        /candidate signal|signal:|selected candidate|candidate evidence|confirmed candidate/i.test(beforePattern)
+      if (!hasCandidateSignal) return "FAIL"
+
+      const afterPattern = output.slice(patternIndex)
+      if (!/first safe check|safe check/i.test(afterPattern)) return "FAIL"
+      return /(?:payload storm|sqlmap|ffuf|gobuster|hydra)/i.test(afterPattern) ? "FAIL" : "PASS"
+    },
+  },
+  {
+    name: "upload and file-write lanes separated",
+    check(output) {
+      const hasUpload = /upload/i.test(output)
+      const hasFileWrite = /(?:file.?write|overwrite)/i.test(output)
+      if (!hasUpload || !hasFileWrite) return "N/A"
+      return /ctf-web-upload/i.test(output) && /ctf-web-file-write/i.test(output) ? "PASS" : "FAIL"
     },
   },
   {
@@ -64,7 +97,7 @@ const rules: BenchmarkRule[] = [
     name: "attempt budget recorded",
     check(output) {
       const hasBudget = /(?:budget|max.?attempts|attempt limit|retry limit)/i
-      return hasBudget ? "PASS" : "N/A"
+      return hasBudget.test(output) ? "PASS" : "N/A"
     },
   },
   {

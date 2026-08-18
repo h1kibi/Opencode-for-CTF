@@ -475,7 +475,7 @@ export default tool({
     command: tool.schema
       .string()
       .describe(
-        "init | add-fact | add-clue | add | set-routes | set-route-state | summary | query | sync-md | close-path | next-round | flag-verify | update",
+        "init | add-fact | add-clue | add | add-probe-result | set-routes | set-route-state | summary | query | sync-md | close-path | next-round | flag-verify | update",
       ),
     challengeName: tool.schema.string().optional(),
     evidenceSlug: tool.schema
@@ -518,6 +518,7 @@ export default tool({
       .string()
       .optional()
       .describe('Set to "true" to approve route -> live when an independent oracle already accepted the flag.'),
+    probeResultJson: tool.schema.string().optional().describe("JSON result emitted by a CTF web probe; records budgets, hashes, observations, and route state."),
   },
   async execute(args, context) {
     const cwd = context?.worktree ?? context?.directory ?? process.cwd()
@@ -596,6 +597,56 @@ export default tool({
           if (args.strategy) board.strategy = args.strategy
           await persist(board, boardPath, mdPath, cwd, slug)
           return `${entrySummary(entry)}\n   Evidence.md updated`
+        }
+
+        case "add-probe-result": {
+          if (!args.probeResultJson) return "ERROR: add-probe-result requires probeResultJson"
+          let probe: Record<string, unknown>
+          try {
+            const parsed = JSON.parse(args.probeResultJson)
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return "ERROR: probeResultJson must be a JSON object"
+            probe = parsed as Record<string, unknown>
+          } catch {
+            return "ERROR: invalid probeResultJson"
+          }
+          const board = await loadBoard(boardPath)
+          const toolName = String(probe.tool || "ctf-probe")
+          const route = args.routeId ? board.routes.find((item) => item.id === args.routeId || item.name === args.routeId) : undefined
+          const routeState = String(probe.route_state || probe.routeState || "")
+          const observations = Array.isArray(probe.observations) ? probe.observations : []
+          const finding = args.finding || `${toolName} probe${route ? ` on ${route.id}` : ""}`
+          const evidence = JSON.stringify({
+            evidence_ref: probe.evidence_ref || probe.evidenceRef,
+            requests: probe.requests,
+            state_changing_requests: probe.state_changing_requests,
+            route_state: routeState,
+            response_hashes: observations.map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>).responseHash : undefined)).filter(Boolean),
+            stop_reason: probe.stop_reason,
+            confirmed_primitives: probe.confirmed_primitives,
+          })
+          board.entries.push({
+            id: generateId("probe"),
+            agent: args.agent || "ctf-expert",
+            wave: args.wave ?? board.round,
+            timestamp: now(),
+            finding,
+            type: (args.type as EvidenceType) || "fact",
+            category: args.category || board.challenge.category,
+            confidence: (args.confidence as EvidenceEntry["confidence"]) || (probe.confirmed_primitives ? "high" : "medium"),
+            status: (args.status as EvidenceStatus) || "confirmed",
+            flagPathDistance: args.flagPathDistance ?? 3,
+            evidence,
+            followUp: args.followUp || String(probe.next_probe || "review probe evidence and choose one bounded next probe"),
+          })
+          if (route && ["blocked", "live", "dead"].includes(routeState)) {
+            route.state = routeState as RouteState
+            route.updatedAt = now()
+            route.attempts += 1
+            if (routeState === "blocked") route.blockers.push(String(probe.stop_reason || "probe reported blocked"))
+            if (probe.next_probe) route.nextProbe = String(probe.next_probe)
+          }
+          await persist(board, boardPath, mdPath, cwd, slug)
+          return `probe recorded: ${finding}\n   requests=${String(probe.requests ?? "?")} state_changing=${String(probe.state_changing_requests ?? "?")} route_state=${routeState || "unchanged"}\n   Evidence.md updated`
         }
 
         case "update": {

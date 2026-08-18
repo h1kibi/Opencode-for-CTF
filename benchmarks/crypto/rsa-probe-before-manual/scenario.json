@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "crypto/rsa-probe-before-manual",
+  "family": "crypto",
+  "description": "Deterministic behavior contract scenario: pass must satisfy the family checker and fail must be rejected.",
+  "passArtifact": ".scenario/pass",
+  "failArtifact": ".scenario/fail",
+  "traceContract": {
+    "pass": {
+      "requiredOrdered": ["parameters.inventory", "rsa.probe.selected", "reversible.path", "verification.completed"],
+      "forbidden": ["manual.attack.started"]
+    },
+    "fail": {
+      "requiredOrdered": ["parameters.inventory", "manual.attack.started"],
+      "forbidden": ["rsa.probe.selected"]
+    }
+  }
+}

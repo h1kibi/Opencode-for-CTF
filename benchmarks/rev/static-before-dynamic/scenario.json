@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "rev/static-before-dynamic",
+  "family": "rev",
+  "description": "Deterministic behavior contract scenario: pass must satisfy the family checker and fail must be rejected.",
+  "passArtifact": ".scenario/pass",
+  "failArtifact": ".scenario/fail",
+  "traceContract": {
+    "pass": {
+      "requiredOrdered": ["static.triage", "checker.extracted", "solver.reproducible", "closure.verified"],
+      "forbidden": ["dynamic.instrumentation.before_static"]
+    },
+    "fail": {
+      "requiredOrdered": ["dynamic.instrumentation.before_static"],
+      "forbidden": ["static.triage"]
+    }
+  }
+}

@@ -1,10 +1,10 @@
 import { mkdtempSync } from "node:fs"
-import { rm } from "node:fs/promises"
+import { readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 import { resolveFileLockPaths, withFileLock } from "../src/file-lock.ts"
-import { inspectTeamLockState, normalizeTeamState } from "../src/team/team-state.ts"
+import { inspectTeamLockState, normalizePersistedTeamState, normalizeTeamState, parseTeamState, quarantineTeamState, readTeamState } from "../src/team/team-state.ts"
 import type { TeamState } from "../src/team/team-types.ts"
 
 function makeState(overrides: Partial<TeamState> = {}): TeamState {
@@ -16,6 +16,94 @@ function makeState(overrides: Partial<TeamState> = {}): TeamState {
     ...overrides,
   }
 }
+
+describe("team state recovery", () => {
+  it("keeps unknown agents readable and marks the job orphaned", () => {
+    const state = parseTeamState({
+      schemaVersion: 1,
+      revision: 3,
+      updatedAt: "2026-07-31T00:00:00.000Z",
+      runs: [{
+        id: "run-orphan",
+        title: "old wave",
+        parentSessionID: "parent-1",
+        status: "running",
+        createdAt: "2026-07-31T00:00:00.000Z",
+        updatedAt: "2026-07-31T00:00:00.000Z",
+        notificationPending: false,
+        jobs: [{
+          id: "job-old",
+          title: "old worker",
+          objective: "recover",
+          agent: "ctf-web-removed",
+          routeId: "R1",
+          concurrency: "independent",
+          sessionID: "worker-old",
+          status: "running",
+          createdAt: "2026-07-31T00:00:00.000Z",
+          updatedAt: "2026-07-31T00:00:00.000Z",
+        }],
+      }],
+    })
+    const job = state.runs[0].jobs[0]
+    expect(job.status).toBe("orphaned")
+    expect(job.orphaned).toMatchObject({ state: "orphaned", reason: "unknown_agent", originalAgent: "ctf-web-removed", recoverable: true })
+    expect(job.originalAgent).toBe("ctf-web-removed")
+  })
+
+  it("persists the orphan marker when normalization is requested", async () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-orphan-persist-"))
+    try {
+      await writeFile(path.join(directory, ".ctf-team.json"), JSON.stringify({
+        schemaVersion: 1,
+        revision: 0,
+        updatedAt: "2026-07-31T00:00:00.000Z",
+        runs: [{
+          id: "run-orphan-persist",
+          title: "old wave",
+          parentSessionID: "parent-1",
+          status: "running",
+          createdAt: "2026-07-31T00:00:00.000Z",
+          updatedAt: "2026-07-31T00:00:00.000Z",
+          notificationPending: false,
+          jobs: [{
+            id: "job-old",
+            title: "old job",
+            objective: "inspect",
+            agent: "ctf-removed",
+            routeId: "R1",
+            concurrency: "independent",
+            sessionID: "worker-old",
+            status: "running",
+            createdAt: "2026-07-31T00:00:00.000Z",
+            updatedAt: "2026-07-31T00:00:00.000Z",
+          }],
+        }],
+        activeRunID: "run-orphan-persist",
+      }), "utf8")
+      const normalized = await normalizePersistedTeamState(directory)
+      expect(normalized.repairs.join("\n")).toContain("unknown agent ctf-removed marked orphaned")
+      const persisted = JSON.parse(await readFile(path.join(directory, ".ctf-team.json"), "utf8"))
+      expect(persisted.runs[0].jobs[0].orphaned).toMatchObject({ state: "orphaned", reason: "unknown_agent", recoverable: true })
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("quarantines the original state and leaves a dispatchable fresh state", async () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-repair-"))
+    try {
+      await writeFile(path.join(directory, ".ctf-team.json"), "{ invalid", "utf8")
+      const result = await quarantineTeamState(directory, "test repair")
+      expect(result.quarantined).toBe(true)
+      expect(result.destination).toBeTruthy()
+      expect(await readTeamState(directory)).toMatchObject({ schemaVersion: 1, runs: [] })
+      expect(await readFile(result.destination!, "utf8")).toBe("{ invalid")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+})
 
 describe("team state hygiene", () => {
   it("reopens a closed run when a non-terminal worker is still persisted", () => {

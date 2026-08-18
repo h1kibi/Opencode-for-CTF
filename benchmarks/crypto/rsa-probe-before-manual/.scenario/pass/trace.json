@@ -1,0 +1,14 @@
+[
+  {
+    "event": "parameters.inventory"
+  },
+  {
+    "event": "rsa.probe.selected"
+  },
+  {
+    "event": "reversible.path"
+  },
+  {
+    "event": "verification.completed"
+  }
+]

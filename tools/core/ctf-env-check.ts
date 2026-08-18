@@ -10,6 +10,8 @@ import {
   type EnvironmentProbeResult,
 } from "../../src/family-readiness.ts"
 import { resolveEnabledPacks } from "../../src/tool-packs.ts"
+import { loadCtfTools } from "../../src/ctf-tools.ts"
+import { loadPluginConfigWithPath } from "../../src/plugin-config.ts"
 
 type EnvCheckResult = {
   name: string
@@ -223,7 +225,7 @@ export default tool({
       ),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
-  async execute(args) {
+  async execute(args, context) {
     const category = (args.category || "all").toLowerCase()
     const rawResults: EnvCheckResult[] = []
     const results = rawResults
@@ -1017,9 +1019,14 @@ export default tool({
     const missingCritical = results.filter((r) => r.required && !r.ok)
     const missingOptional = results.filter((r) => !r.required && !r.ok)
     const ready = missingCritical.length === 0
+    const directory = context?.directory || process.cwd()
+    const loadedConfig = await loadPluginConfigWithPath(directory)
+    const requestedPacks = [...(loadedConfig.config.tool_packs ?? []), ...(loadedConfig.config.expert_tool_packs ?? [])]
+    const enabledPacks = resolveEnabledPacks(requestedPacks.length ? requestedPacks : undefined)
+    const registeredTools = Object.keys(await loadCtfTools({ packs: [...enabledPacks] }))
     const familyReadiness = evaluateAllFamilyReadiness({
-      registeredTools: results.map((r) => r.name),
-      enabledToolPacks: [...resolveEnabledPacks()],
+      registeredTools,
+      enabledToolPacks: [...enabledPacks],
       environmentProbes,
     })
     const startupEnvironmentSummary = formatStartupEnvironmentSummary(environmentProbes)
@@ -1046,6 +1053,8 @@ export default tool({
           pwn_build_commands: pwnBuildHints,
           rev_build_commands: revBuildHints,
           results,
+          registered_tools: registeredTools.sort(),
+          tool_registry_config: loadedConfig.path,
           environment_probes: environmentProbes,
           readiness: familyReadiness,
         },
@@ -1058,6 +1067,7 @@ export default tool({
       "=== CTF Environment Check ===",
       `category: ${category}`,
       `ready: ${ready ? "YES" : "NO"}`,
+      `tool registry: ${registeredTools.length} tools (${loadedConfig.path ?? "defaults"})`,
       "",
     ]
 

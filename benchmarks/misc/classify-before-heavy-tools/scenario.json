@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "misc/classify-before-heavy-tools",
+  "family": "misc",
+  "description": "Deterministic behavior contract scenario: pass must satisfy the family checker and fail must be rejected.",
+  "passArtifact": ".scenario/pass",
+  "failArtifact": ".scenario/fail",
+  "traceContract": {
+    "pass": {
+      "requiredOrdered": [
+        "classification.completed",
+        "reversible.chain.selected",
+        "minimal.client.started",
+        "specialist.handoff"
+      ],
+      "forbidden": ["heavy.tools.started.before_classification"]
+    },
+    "fail": {
+      "requiredOrdered": ["heavy.tools.started.before_classification"],
+      "forbidden": ["classification.completed"]
+    }
+  }
+}

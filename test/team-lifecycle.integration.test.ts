@@ -31,12 +31,20 @@ async function makeEvidenceFixture(directory: string) {
 
 function fakeTeamClient(
   abortResults: Array<{ error?: string }> = [],
-  failureOptions: { failCreateCalls?: number[]; failPromptCalls?: number[]; delayStatusMs?: number } = {},
+  failureOptions: {
+    failCreateCalls?: number[]
+    invalidCreateCalls?: number[]
+    failPromptCalls?: number[]
+    failAbortCalls?: number[]
+    delayStatusMs?: number
+    parentMessages?: Record<string, unknown[]>
+  } = {},
 ) {
   const abortQueue = [...abortResults]
   let counter = 0
   let createCalls = 0
   let promptCalls = 0
+  let abortCalls = 0
   const statuses: Record<string, { type: string }> = {}
   const messages: Record<string, unknown> = {}
   const client = {
@@ -45,6 +53,9 @@ function fakeTeamClient(
         createCalls++
         if (failureOptions.failCreateCalls?.includes(createCalls)) {
           return { error: `session.create failure on call ${createCalls}` }
+        }
+        if (failureOptions.invalidCreateCalls?.includes(createCalls)) {
+          return { data: {} }
         }
         const id = `worker-session-${++counter}`
         statuses[id] = { type: "running" }
@@ -72,9 +83,18 @@ function fakeTeamClient(
         return { data: statuses }
       }),
       messages: vi.fn(async ({ path: requestPath }: { path: { id: string } }) => ({
-        data: messages[requestPath.id] ?? [],
+        data:
+          failureOptions.parentMessages?.[requestPath.id] ??
+          messages[requestPath.id] ??
+          (requestPath.id.startsWith("worker-session-")
+            ? []
+            : [{ info: { role: "assistant", providerID: "test-provider", modelID: "test-model" }, parts: [] }]),
       })),
-      abort: vi.fn(async () => abortQueue.shift() ?? { data: {} }),
+      abort: vi.fn(async () => {
+        abortCalls++
+        if (failureOptions.failAbortCalls?.includes(abortCalls)) return { error: `abort failure on call ${abortCalls}` }
+        return abortQueue.shift() ?? { data: {} }
+      }),
     },
     mcp: {
       add: vi.fn(async () => ({ data: {} })),
@@ -305,6 +325,7 @@ describe("Team Mode lifecycle integration", () => {
     expect(run.jobs.every((job) => job.status === "failed")).toBe(true)
     expect(run.jobs.every((job) => job.abortRequestedAt && job.abortSucceededAt)).toBe(true)
     expect(run.jobs.every((job) => job.error?.includes("deadline exceeded"))).toBe(true)
+    expect(run.jobs.every((job) => job.errorDetails?.errorType === "heartbeat" && job.errorDetails?.phase === "running")).toBe(true)
     expect(run.notificationSentAt).toBeDefined()
     expect(client.session.abort).toHaveBeenCalledTimes(4)
   }, 30_000)
@@ -975,6 +996,219 @@ describe("Team Mode lifecycle integration", () => {
     expect(state.runs[0].status).toBe("ready_for_synthesis")
     expect(state.runs[0].jobs.find((job) => job.routeId === "R1")?.status).toBe("completed")
   }, 30_000)
+
+  it("rejects an unregistered agent before creating a child session", async () => {
+    const directory = await fsTempDirectory()
+    await makeEvidenceFixture(directory)
+    const { client } = fakeTeamClient()
+    const tools = createTeamTools(client, directory, directory, { maxWorkers: 2 })
+
+    await expect(
+      tools["ctf-team-dispatch"].execute(
+        {
+          title: "registry validation",
+          jobs: [
+            { title: "bad", objective: "health check", agent: "ctf-does-not-exist", routeId: "R1", concurrency: "independent" },
+            { title: "good", objective: "health check", agent: "ctf-web", routeId: "R2", concurrency: "independent" },
+          ],
+        },
+        { agent: "ctf-expert", sessionID: "registry-parent" } as any,
+      ),
+    ).rejects.toThrow(/UnknownAgentError.*ctf-does-not-exist.*available agents/)
+    expect(client.session.create).not.toHaveBeenCalled()
+    expect((await readTeamState(directory)).runs).toHaveLength(0)
+  })
+
+  it("cleans up a child session when prompt startup fails", async () => {
+    const directory = await fsTempDirectory()
+    await makeEvidenceFixture(directory)
+    const parentSessionID = "startup-cleanup-parent"
+    const { client } = fakeTeamClient([], { failPromptCalls: [1] })
+    const tools = createTeamTools(client, directory, directory, { maxWorkers: 2, maxJobAttempts: 1 })
+
+    await tools["ctf-team-dispatch"].execute({
+      title: "startup cleanup wave",
+      jobs: [
+        { title: "web route", objective: "check startup cleanup", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
+        { title: "pwn route", objective: "check healthy startup", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+      ],
+    }, { agent: "ctf-expert", sessionID: parentSessionID, directory } as never)
+
+    const state = await readTeamState(directory)
+    const failed = state.runs[0].jobs.find((job) => job.agent === "ctf-web")!
+    expect(client.session.abort).toHaveBeenCalledTimes(1)
+    expect(failed.status).toBe("failed")
+    expect(failed.errorDetails?.phase).toBe("prompt_injection")
+    expect(failed.errorDetails?.message).toContain("promptAsync failure")
+  })
+
+  it("persists structured diagnostics when a child returns bare UnknownError", async () => {
+    const directory = await fsTempDirectory()
+    await makeEvidenceFixture(directory)
+    const parentSessionID = "structured-error-parent"
+    const { client } = fakeTeamClient()
+    client.session.promptAsync
+      .mockResolvedValueOnce({ error: { name: "UnknownError" } })
+      .mockResolvedValueOnce({ data: {} })
+    const tools = createTeamTools(client, directory, directory, { maxWorkers: 2 })
+
+    await tools["ctf-team-dispatch"].execute(
+      {
+        title: "startup diagnostics",
+        jobs: [
+          { title: "web startup", objective: "health check", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
+          { title: "pwn startup", objective: "health check", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+        ],
+      },
+      { agent: "ctf-expert", sessionID: parentSessionID } as any,
+    )
+
+    const state = await readTeamState(directory)
+    const failed = state.runs[0].jobs.find((job) => job.title === "web startup")!
+    expect(failed.status).toBe("failed")
+    expect(failed.error).not.toBe("UnknownError")
+    expect(failed.errorDetails).toMatchObject({
+      errorType: "prompt_injection",
+      phase: "prompt_injection",
+      agent: "ctf-web",
+      parentSessionID,
+      jobID: failed.id,
+      retryable: true,
+    })
+    expect(failed.errorDetails?.message).toContain("UnknownError")
+    expect(failed.errorDetails?.childSessionID).toBe(failed.sessionID)
+  })
+
+  it("refuses to create workers when the lead provider/model cannot be resolved", async () => {
+    const directory = await fsTempDirectory()
+    await makeEvidenceFixture(directory)
+    const parentSessionID = "missing-model-parent"
+    const { client } = fakeTeamClient([], { parentMessages: { [parentSessionID]: [] } })
+    const tools = createTeamTools(client, directory, directory, { maxWorkers: 2 })
+
+    await expect(
+      tools["ctf-team-dispatch"].execute(
+        {
+          title: "strict model requirement",
+          jobs: [
+            { title: "web health", objective: "health check", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
+            { title: "pwn health", objective: "health check", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+          ],
+        },
+        { agent: "ctf-expert", sessionID: parentSessionID } as any,
+      ),
+    ).rejects.toThrow(/ParentModelUnavailableError.*no child was created/)
+    expect(client.session.create).not.toHaveBeenCalled()
+    expect((await readTeamState(directory)).runs).toHaveLength(0)
+  })
+
+  it("classifies provider policy blocks and preserves the SDK diagnostic", async () => {
+    const directory = await fsTempDirectory()
+    await makeEvidenceFixture(directory)
+    const parentSessionID = "provider-policy-parent"
+    const { client } = fakeTeamClient()
+    client.session.promptAsync
+      .mockResolvedValueOnce({
+        error: {
+          name: "UnknownError",
+          data: { message: "This content was flagged for possible cybersecurity risk." },
+        },
+      })
+      .mockResolvedValueOnce({ data: {} })
+    const tools = createTeamTools(client, directory, directory, { maxWorkers: 2, maxJobAttempts: 3 })
+
+    await tools["ctf-team-dispatch"].execute(
+      {
+        title: "provider policy diagnostics",
+        jobs: [
+          { title: "web startup", objective: "health check", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
+          { title: "pwn startup", objective: "health check", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+        ],
+      },
+      { agent: "ctf-expert", sessionID: parentSessionID } as any,
+    )
+
+    const state = await readTeamState(directory)
+    const failed = state.runs[0].jobs.find((job) => job.title === "web startup")!
+    expect(failed.status).toBe("failed")
+    expect(failed.errorDetails).toMatchObject({
+      errorType: "provider_policy",
+      phase: "prompt_injection",
+      retryable: false,
+      parentSessionID,
+    })
+    expect(failed.errorDetails?.message).toContain("possible cybersecurity risk")
+    expect(failed.error).not.toBe("UnknownError")
+  })
+
+  it("inherits the parent provider and model when starting child workers", async () => {
+    const directory = await fsTempDirectory()
+    await makeEvidenceFixture(directory)
+    const parentSessionID = "model-inheritance-parent"
+    const { client } = fakeTeamClient([], {
+      parentMessages: {
+        [parentSessionID]: [
+          {
+            info: { role: "assistant", providerID: "apihub", modelID: "gpt-5.6-luna" },
+            parts: [],
+          },
+        ],
+      },
+    })
+    const tools = createTeamTools(client, directory, directory, { maxWorkers: 2 })
+
+    await tools["ctf-team-dispatch"].execute(
+      {
+        title: "model inheritance",
+        jobs: [
+          { title: "web health", objective: "return a health report", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
+          { title: "pwn health", objective: "return a health report", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+        ],
+      },
+      { agent: "ctf-expert", sessionID: parentSessionID } as any,
+    )
+
+    const childPrompts = client.session.promptAsync.mock.calls.filter((call: any[]) =>
+      String(call[0]?.path?.id ?? "").startsWith("worker-session-"),
+    )
+    expect(childPrompts).toHaveLength(2)
+    for (const call of childPrompts as any[]) {
+      expect(call[0]?.body?.model).toEqual({ providerID: "apihub", modelID: "gpt-5.6-luna" })
+    }
+  })
+
+  it("does not collect an absent child session as a successful result", async () => {
+    const directory = await fsTempDirectory()
+    await makeEvidenceFixture(directory)
+    const parentSessionID = "absent-child-parent"
+    const { client } = fakeTeamClient()
+    client.session.status.mockResolvedValue({ data: {} })
+    ;(client.session as any).get = vi.fn(async () => ({ error: { name: "NotFoundError", message: "session not found" } }))
+    const tools = createTeamTools(client, directory, directory, { maxWorkers: 2 })
+
+    await tools["ctf-team-dispatch"].execute(
+      {
+        title: "missing child",
+        jobs: [
+          { title: "web child", objective: "health check", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
+          { title: "pwn child", objective: "health check", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+        ],
+      },
+      { agent: "ctf-expert", sessionID: parentSessionID } as any,
+    )
+    await tools["ctf-team-recover"].execute(
+      {},
+      { agent: "ctf-expert", sessionID: parentSessionID } as any,
+    )
+
+    const state = await readTeamState(directory)
+    for (const job of state.runs[0].jobs) {
+      expect(job.status).toBe("failed")
+      expect(job.result).toBeUndefined()
+      expect(job.errorDetails?.phase).toBe("running")
+      expect(job.errorDetails?.retryable).toBe(true)
+    }
+  })
 })
 
 async function waitForTeamState(

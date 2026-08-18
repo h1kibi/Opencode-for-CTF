@@ -41,6 +41,7 @@ const RUNTIME_GENERATED = [
   "ctf-team-close",
   "ctf-team-recover",
   "ctf-team-adopt",
+  "ctf-team-repair",
 ]
 
 describe("tool registry drift", () => {

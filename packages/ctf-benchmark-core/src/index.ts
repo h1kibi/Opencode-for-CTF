@@ -38,6 +38,39 @@ export const benchmarkFamilies: BenchmarkExpectation[] = [
     benchmarkStatus: "covered",
   },
   {
+    family: "web",
+    name: "java-map-first-pass",
+    description: "Java Web artifacts are mapped before manual review or exploit selection.",
+    routeClass: "specialist",
+    fallbackExpectation:
+      "Use ctf-java-map when Java/Spring/Servlet/JAR/WAR evidence exists, then fall back to targeted source review.",
+    evidenceExpectation:
+      "Java Web Map, route table, dependency/sink findings, and the next focused check are recorded.",
+    benchmarkStatus: "covered",
+  },
+  {
+    family: "web",
+    name: "pattern-recall-before-focused-probe",
+    description: "Pattern knowledge is recalled only after recon and a concrete candidate signal exist.",
+    routeClass: "fallback",
+    fallbackExpectation:
+      "Return to recon and attack-queue when no candidate signal exists instead of loading broad pattern notes.",
+    evidenceExpectation:
+      "The recalled pattern produces one safe check and does not trigger payload storms or premature destructive actions.",
+    benchmarkStatus: "covered",
+  },
+  {
+    family: "web",
+    name: "source-backed-critical-primitive",
+    description: "Source evidence justifies one low-risk critical primitive check before deeper exploitation.",
+    routeClass: "specialist",
+    fallbackExpectation:
+      "Return to the attack queue when the source-backed primitive is not confirmed; lock the primitive when it is confirmed.",
+    evidenceExpectation:
+      "The source/sink map, single safe verification, primitive-lock state, and closure handoff are recorded.",
+    benchmarkStatus: "covered",
+  },
+  {
     family: "pwn",
     name: "ret2win-basic",
     description: "Direct or shortest ret2win-style closure is preferred before unnecessary route expansion.",

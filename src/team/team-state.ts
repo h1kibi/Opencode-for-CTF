@@ -1,4 +1,4 @@
-import { readFile, readdir, stat } from "node:fs/promises"
+import { mkdir, readFile, readdir, rename, stat } from "node:fs/promises"
 import path from "node:path"
 import { DEFAULT_FILE_LOCK_STALE_MS } from "../file-lock.ts"
 import { atomicUpdateJsonFile } from "../state-store.ts"
@@ -6,8 +6,12 @@ import { TEAM_AGENTS, TEAM_ROUTE_IDS } from "./team-types.ts"
 import type { TeamJob, TeamRun, TeamState } from "./team-types.ts"
 import { STATE_FILE, STATE_VERSION, now } from "./team-types.ts"
 
-function statePath(directory: string) {
+export function teamStatePath(directory: string) {
   return path.join(directory, STATE_FILE)
+}
+
+function statePath(directory: string) {
+  return teamStatePath(directory)
 }
 
 export function emptyTeamState(): TeamState {
@@ -28,6 +32,7 @@ const TEAM_JOB_STATUSES = [
   "cancelled",
   "cancel_failed",
   "interrupted",
+  "orphaned",
 ] as const
 
 const TEAM_RUN_STATUSES = [
@@ -69,7 +74,23 @@ export function parseTeamState(value: unknown): TeamState {
         throw new Error(`Invalid CTF team state: job ${job.id} has an unknown status.`)
       }
       if (job.agent !== undefined && !isOneOf(TEAM_AGENTS, job.agent)) {
-        throw new Error(`Invalid CTF team state: job ${job.id} has an unknown agent.`)
+        // A stale run may outlive an agent/plugin build that created it. Keep
+        // the run readable for status/repair instead of making every Team
+        // command fail closed on the entire state file. The sentinel is never
+        // used to restart a worker; the original value is retained for repair.
+        const originalAgent = String(job.agent)
+        const previousOrphaned = isObject(job.orphaned) ? job.orphaned : undefined
+        job.agent = TEAM_AGENTS[0]
+        job.originalAgent = originalAgent
+        job.orphaned = {
+          state: "orphaned",
+          reason: "unknown_agent",
+          originalAgent,
+          recoverable: true,
+          detectedAt: typeof previousOrphaned?.detectedAt === "string" ? previousOrphaned.detectedAt : now(),
+        }
+        job.status = "orphaned"
+        job.error = job.error || `Unknown agent ${originalAgent}; worker is orphaned and cannot be restarted.`
       }
       if (job.routeId !== undefined && !isOneOf(TEAM_ROUTE_IDS, job.routeId)) {
         throw new Error(`Invalid CTF team state: job ${job.id} has an unknown route.`)
@@ -99,6 +120,48 @@ export async function readTeamState(directory: string): Promise<TeamState> {
     return parseTeamState(JSON.parse(await readFile(statePath(directory), "utf8")))
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return emptyTeamState()
+    throw error
+  }
+}
+
+export function isOrphanedJob(job: Pick<TeamJob, "orphaned" | "status">): boolean {
+  return job.status === "orphaned" || job.orphaned?.state === "orphaned"
+}
+
+export type TeamStateQuarantineResult = {
+  quarantined: boolean
+  source: string
+  destination?: string
+  reason: string
+}
+
+/** Preserve an unreadable state file and reset the live state atomically enough
+ * for a subsequent dispatch. This is deliberately explicit: callers must
+ * choose repair/quarantine rather than silently discarding evidence. */
+export async function quarantineTeamState(directory: string, reason: string): Promise<TeamStateQuarantineResult> {
+  const source = statePath(directory)
+  const quarantineDir = path.join(directory, ".ctf-team-quarantine")
+  try {
+    await stat(source)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { quarantined: false, source, reason: "state file does not exist" }
+    }
+    throw error
+  }
+  await mkdir(quarantineDir, { recursive: true })
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-")
+  const destination = path.join(quarantineDir, `${STATE_FILE}.${stamp}.json`)
+  await rename(source, destination)
+  await writeTeamState(directory, emptyTeamState())
+  return { quarantined: true, source, destination, reason }
+}
+
+export async function readRawTeamState(directory: string): Promise<unknown | undefined> {
+  try {
+    return JSON.parse(await readFile(statePath(directory), "utf8"))
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined
     throw error
   }
 }
@@ -136,7 +199,7 @@ export function findJobBySession(state: TeamState, sessionID: string) {
 }
 
 export function isTerminalJob(status: TeamJob["status"]) {
-  return ["completed", "failed", "cancelled", "cancel_failed", "interrupted"].includes(status)
+  return ["completed", "failed", "cancelled", "cancel_failed", "interrupted", "orphaned"].includes(status)
 }
 
 function isClosedRun(status: TeamRun["status"]) {
@@ -235,14 +298,31 @@ export function normalizeTeamState(state: TeamState): TeamStateHygieneReport {
   return { changed: repairs.length > 0, repairs }
 }
 
+function detectUnknownAgentRepairs(value: unknown): string[] {
+  if (!isObject(value) || !Array.isArray(value.runs)) return []
+  const repairs: string[] = []
+  for (const run of value.runs) {
+    if (!isObject(run) || typeof run.id !== "string" || !Array.isArray(run.jobs)) continue
+    for (const job of run.jobs) {
+      if (!isObject(job) || typeof job.id !== "string") continue
+      if (job.agent !== undefined && !isOneOf(TEAM_AGENTS, job.agent)) {
+        repairs.push(`run ${run.id} job ${job.id}: unknown agent ${String(job.agent)} marked orphaned`)
+      }
+    }
+  }
+  return repairs
+}
+
 export async function normalizePersistedTeamState(directory: string): Promise<{ state: TeamState; repairs: string[] }> {
-  const current = await readTeamState(directory)
+  const raw = await readRawTeamState(directory)
+  const unknownAgentRepairs = detectUnknownAgentRepairs(raw)
+  const current = raw === undefined ? emptyTeamState() : parseTeamState(raw)
   const initial = normalizeTeamState(current)
-  if (!initial.changed) return { state: current, repairs: [] }
+  if (!initial.changed && unknownAgentRepairs.length === 0) return { state: current, repairs: [] }
 
   let repairs: string[] = []
   const state = await updateTeamState(directory, (draft) => {
-    repairs = normalizeTeamState(draft).repairs
+    repairs = [...unknownAgentRepairs, ...normalizeTeamState(draft).repairs]
   })
   return { state, repairs }
 }

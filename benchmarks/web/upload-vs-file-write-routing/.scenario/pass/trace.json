@@ -1,0 +1,20 @@
+[
+  {
+    "event": "recon.completed"
+  },
+  {
+    "event": "queue.ranked"
+  },
+  {
+    "event": "upload.routed"
+  },
+  {
+    "event": "file_write.matrix"
+  },
+  {
+    "event": "canary.completed"
+  },
+  {
+    "event": "file_write.routed"
+  }
+]

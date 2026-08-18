@@ -468,6 +468,71 @@ npm run release:check
 npm run pack:check
 ```
 
+### Benchmark checks
+
+The benchmark corpus has two complementary layers:
+
+- `npm run benchmark:scenarios` runs deterministic contract scenarios. Each scenario contains a pass artifact that must be accepted by its family checker and a fail artifact that must be rejected. This validates checker behavior and benchmark wiring; it is not an end-to-end agent solve-rate measurement.
+- Scenarios may also contain `trace.json` in each pass/fail artifact directory. The manifest `traceContract` declares ordered required events and forbidden events, so the runner can validate behavior sequence separately from human-readable `notes.md` text.
+- `npm run check:benchmarks` runs the family benchmark entry points. When a family has `scenario.json` manifests under the default `benchmarks/<family>` target, it automatically runs the scenario corpus for that family. Explicit target paths retain the legacy checker behavior for solver output directories and challenge fixtures.
+
+The NYU benchmark runner is the place for real challenge execution with an independent private flag oracle, isolated agent workspaces, optional service lifecycle hooks, replay validation, and per-challenge/suite solve-rate reports. It is intentionally separate from the deterministic corpus: deterministic scenarios validate benchmark contracts, while NYU runs measure end-to-end solving.
+
+To fetch a reproducible snapshot of the official NYU dataset, use the setup helper. It performs a blob-filtered, no-checkout clone and exports only the challenge directories referenced by the selected split. On Windows it extracts through a safe tar reader, rewrites invalid path segments, and does not expose `challenge.json` (which contains the private flag) in the agent workspace.
+
+```bash
+# Start with development; it is intended for strategy and integration work.
+npm run benchmark:nyu:setup -- --dir .cache/nyu-ctf-bench --ref main --split development
+
+npm run benchmark:nyu -- list \
+  --dataset .cache/nyu-ctf-bench/development_dataset.json \
+  --root .cache/nyu-ctf-bench \
+  --split development
+
+# Prepare one challenge's public files without running a solver.
+npm run benchmark:nyu -- prepare \
+  --dataset .cache/nyu-ctf-bench/development_dataset.json \
+  --root .cache/nyu-ctf-bench \
+  --split development \
+  --id 2015q-rev-wyvern \
+  --workspace .cache/nyu-workspaces/2015q-rev-wyvern
+```
+
+Run a single challenge or a suite with your solver command. The runner extracts candidate flags from solver output, verifies them against the private oracle, records stdout/stderr and lifecycle status, and returns a non-zero exit code when the selected run is not solved.
+
+```bash
+npm run benchmark:nyu -- run \
+  --dataset .cache/nyu-ctf-bench/development_dataset.json \
+  --root .cache/nyu-ctf-bench \
+  --split development \
+  --id 2015q-rev-wyvern \
+  --workspace .cache/nyu-workspaces/2015q-rev-wyvern \
+  --report .cache/nyu-reports/2015q-rev-wyvern \
+  --solver-command opencode \
+  --solver-opencode-command ctf-rev \
+  --solver-model provider/model \
+  --replay-command your-replay-command \
+  --replay-required
+
+npm run benchmark:nyu -- run-suite \
+  --dataset .cache/nyu-ctf-bench/development_dataset.json \
+  --root .cache/nyu-ctf-bench \
+  --split development \
+  --category rev \
+  --workspace-root .cache/nyu-workspaces/rev \
+  --report-root .cache/nyu-reports/rev \
+  --solver-command opencode \
+  --solver-opencode-command ctf-rev \
+  --solver-model provider/model
+```
+
+Use `--split test` only for final evaluation, and keep test reports/private dataset storage outside any agent-visible directory. The complete `both` setup can be substantially larger than `development`; selecting a split makes the download and evaluation boundary explicit.
+
+```bash
+npm run benchmark:scenarios
+npm run check:benchmarks
+```
+
 ## License
 
 MIT

@@ -15,6 +15,7 @@ export const EXPERT_TEAM_RUNTIME_TOOLS = [
   "ctf-team-close",
   "ctf-team-recover",
   "ctf-team-adopt",
+  "ctf-team-repair",
 ] as const
 
 export const EXPERT_CORE_WORKFLOW_TOOLS = ["ctf-evidence-board", "ctf-mcp-control", "ctf-decompose-task"] as const
@@ -47,8 +48,13 @@ export type ExpertReadinessInput = {
   configPath?: string | null
 }
 
+export type ExpertReadinessStatus = "ready" | "degraded" | "blocked"
+
 export type ExpertReadinessReport = {
+  /** Backward-compatible boolean: true means hard dependencies are usable. */
   ready: boolean
+  status: ExpertReadinessStatus
+  reasons: string[]
   checks: ExpertReadinessCheck[]
   missingTools: string[]
   missingSupportTools: string[]
@@ -123,9 +129,18 @@ export function evaluateExpertReadiness(input: ExpertReadinessInput): ExpertRead
     })
   }
 
-  const ready = teamModeOk && missingTools.length === 0
+  const blocked = !teamModeOk || missingTools.length > 0
+  const status: ExpertReadinessStatus = blocked ? "blocked" : missingSupportTools.length > 0 ? "degraded" : "ready"
+  const reasons = [
+    ...(!teamModeOk ? ["team_mode.enabled is false"] : []),
+    ...(missingTools.length ? [`missing required tools: ${missingTools.join(", ")}`] : []),
+    ...(missingSupportTools.length ? [`missing optional support tools: ${missingSupportTools.join(", ")}`] : []),
+  ]
+  const ready = !blocked
   return {
     ready,
+    status,
+    reasons,
     checks,
     missingTools,
     missingSupportTools,
@@ -179,7 +194,15 @@ export function formatExpertReadinessFailure(
   const packs = report.toolPacks.length ? JSON.stringify(report.toolPacks) : "(defaults)"
   const expertPacks = report.expertToolPacks.length ? JSON.stringify(report.expertToolPacks) : "(none)"
 
-  const lines: string[] = ["CTF Expert is configured but not active in this session.", "", "Missing required tools:"]
+  const lines: string[] = [
+    report.status === "degraded"
+      ? "CTF Expert is available in degraded mode (optional support capabilities are missing)."
+      : "CTF Expert is configured but not active in this session.",
+    `Readiness: ${report.status}`,
+    ...(report.reasons.length ? [`Reasons: ${report.reasons.join("; ")}`] : []),
+    "",
+    "Missing required tools:",
+  ]
 
   if (missing.length) {
     for (const name of missing) lines.push(`- ${name}`)

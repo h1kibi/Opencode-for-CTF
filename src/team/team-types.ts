@@ -24,6 +24,43 @@ export type TeamJobStatus =
   | "cancelled"
   | "cancel_failed"
   | "interrupted"
+  | "orphaned"
+
+export type TeamJobErrorType =
+  | "child_session_startup"
+  | "agent_registry"
+  | "tool_surface"
+  | "skill_load"
+  | "prompt_injection"
+  | "heartbeat"
+  | "worker_runtime"
+  | "provider_policy"
+  | "parent_model"
+  | "serialization"
+  | "unknown"
+
+export type TeamJobErrorPhase =
+  | "dispatching"
+  | "session_create"
+  | "session_start"
+  | "prompt_injection"
+  | "running"
+  | "collect"
+  | "finalize"
+
+export type TeamJobError = {
+  errorType: TeamJobErrorType
+  message: string
+  phase: TeamJobErrorPhase
+  agent: string
+  parentSessionID: string
+  childSessionID?: string
+  jobID: string
+  retryable: boolean
+  timestamp: string
+  cause?: string
+  stack?: string
+}
 
 export type TeamRunStatus =
   "dispatching" | "running" | "ready_for_synthesis" | "degraded" | "completed" | "cancelled" | "cancelling"
@@ -32,11 +69,23 @@ export type TeamRouteId = "recon" | "R1" | "R2" | "R3" | "general"
 
 export const TEAM_ROUTE_IDS = ["recon", "R1", "R2", "R3", "general"] as const
 
+export type TeamOrphanedMetadata = {
+  state: "orphaned"
+  reason: "unknown_agent" | "malformed_state" | "missing_session"
+  originalAgent?: string
+  recoverable: boolean
+  detectedAt?: string
+}
+
 export type TeamJob = {
   id: string
   title: string
   objective: string
+  /** Last valid agent identity used for type compatibility. Orphaned jobs fail closed. */
   agent: TeamAgent
+  /** Raw agent name retained when the persisted state referenced an unknown agent. */
+  originalAgent?: string
+  orphaned?: TeamOrphanedMetadata
   routeId: TeamRouteId
   concurrency: "independent" | "shared_state"
   sessionID?: string
@@ -65,7 +114,19 @@ export type TeamJob = {
   /** Replacement session persisted before prompt so restart recovery can abort it. */
   retrySessionID?: string
   result?: string
+  /** Short compatibility summary for existing renderers/consumers. */
   error?: string
+  /** Structured lifecycle diagnostic; never rely on UnknownError alone. */
+  errorDetails?: TeamJobError
+  /** Audit trail for an explicit orphan adoption; the old session is never reused. */
+  adoptionHistory?: Array<{
+    originalAgent?: string
+    adoptedAgent: TeamAgent
+    adoptedAt: string
+    adoptedBySessionID: string
+    reason: string
+    previousSessionID?: string
+  }>
 }
 
 export type TeamParentAdoption = {
@@ -100,8 +161,15 @@ export type TeamState = {
   runs: TeamRun[]
 }
 
+export type TeamModel = {
+  providerID: string
+  modelID: string
+}
+
 export type CreateTeamToolsOptions = {
   maxWorkers?: number
+  /** @deprecated Team workers always inherit the parent provider/model; false is rejected at dispatch. */
+  inheritParentModel?: boolean
   /** Supervisor retry budget: how many deadline exceedances before a worker fails. */
   maxJobAttempts?: number
   runtimeVisibility?: {
@@ -140,9 +208,32 @@ export function now() {
   return new Date().toISOString()
 }
 
-export function safeError(error: unknown) {
-  if (error instanceof Error) return `${error.name}: ${error.message}`.slice(0, 1_000)
-  if (error && typeof error === "object" && "name" in error) return String(error.name).slice(0, 1_000)
+export function safeError(error: unknown): string {
+  if (error instanceof Error) {
+    const cause = error.cause === undefined ? undefined : safeError(error.cause)
+    return [`${error.name}: ${error.message}`, cause && `cause=${cause}`].filter(Boolean).join("; ").slice(0, 1_000)
+  }
+  if (error && typeof error === "object") {
+    const value = error as Record<string, unknown>
+    const name = typeof value.name === "string" ? value.name : undefined
+    const message = typeof value.message === "string" ? value.message : undefined
+    const data = value.data && typeof value.data === "object" ? (value.data as Record<string, unknown>) : undefined
+    const dataMessage = typeof data?.message === "string" ? data.message : undefined
+    const responseBody = typeof data?.responseBody === "string" ? data.responseBody : undefined
+    const nested = value.error !== error ? value.error : undefined
+    const nestedText: string | undefined = nested === undefined ? undefined : safeError(nested)
+    const code = typeof value.code === "string" ? value.code : undefined
+    const text = [
+      name,
+      message || dataMessage,
+      responseBody && `responseBody=${responseBody}`,
+      nestedText,
+      code && `code=${code}`,
+    ]
+      .filter(Boolean)
+      .join(": ")
+    if (text) return text.slice(0, 1_000)
+  }
   return String(error).slice(0, 1_000)
 }
 

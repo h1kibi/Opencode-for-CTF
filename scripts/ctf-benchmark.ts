@@ -1,4 +1,5 @@
 import { spawnSync } from "child_process"
+import { readdirSync } from "fs"
 import { dirname, resolve } from "path"
 import { fileURLToPath } from "url"
 import { benchmarkFamilies } from "../packages/ctf-benchmark-core/src/index.ts"
@@ -28,6 +29,23 @@ function defaultFamilyTarget(mode: string): string {
   return resolve(root, "..", "benchmarks", mode)
 }
 
+function hasScenarioManifest(dir: string): boolean {
+  let entries
+  try {
+    entries = readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return false
+  }
+
+  for (const entry of entries) {
+    if (entry.name === "node_modules" || entry.name === ".git") continue
+    const full = resolve(dir, entry.name)
+    if (entry.isFile() && entry.name === "scenario.json") return true
+    if (entry.isDirectory() && hasScenarioManifest(full)) return true
+  }
+  return false
+}
+
 /** Family mode → checker script, with optional pre-flight smoke check. */
 const FAMILY_RUNNERS: Record<string, { checker: string; smoke?: string }> = {
   web: { checker: "check-web-benchmarks.ts", smoke: "web-smoke-check.ts" },
@@ -44,6 +62,9 @@ if (runner) {
   if (runner.smoke) {
     const smoke = runNodeScript(resolve(root, runner.smoke), [])
     if (smoke !== 0) process.exit(smoke)
+  }
+  if (!target && hasScenarioManifest(targetDir)) {
+    process.exit(runNodeScript(resolve(root, "ctf-benchmark-scenarios.ts"), ["--root", targetDir, "--family", mode]))
   }
   process.exit(runNodeScript(resolve(root, runner.checker), [targetDir]))
 }

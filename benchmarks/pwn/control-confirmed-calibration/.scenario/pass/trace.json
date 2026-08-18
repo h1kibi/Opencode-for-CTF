@@ -1,0 +1,14 @@
+[
+  {
+    "event": "binary.probed"
+  },
+  {
+    "event": "control.confirmed"
+  },
+  {
+    "event": "calibration.entered"
+  },
+  {
+    "event": "closure.hypothesis"
+  }
+]

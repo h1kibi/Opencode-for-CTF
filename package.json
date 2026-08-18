@@ -89,7 +89,7 @@
     "opencode-for-ctf.example.jsonc"
   ],
   "scripts": {
-    "check": "tsc --noEmit && npm run check:content && vitest run",
+    "check": "tsc --noEmit && npm run check:content && vitest run && npm run benchmark:scenarios",
     "check:content": "node scripts/validate-content.mjs",
     "check:benchmarks": "node scripts/ctf-benchmark.ts web && node scripts/ctf-benchmark.ts pwn && node scripts/ctf-benchmark.ts rev && node scripts/ctf-benchmark.ts crypto && node scripts/ctf-benchmark.ts forensics && node scripts/ctf-benchmark.ts misc",
     "build:plugin": "node scripts/build-plugin.mjs",
@@ -121,7 +121,9 @@
     "doctor:revlab": "tsx scripts/doctor-revlab.ts",
     "doctor:godot-rev": "tsx scripts/doctor-godot-rev.ts",
     "ctf:evidence-doctor": "tsx scripts/ctf-evidence-doctor.ts",
-    "benchmark:nyu": "tsx scripts/ctf-benchmark-nyu.ts"
+    "benchmark:nyu": "tsx scripts/ctf-benchmark-nyu.ts",
+    "benchmark:nyu:setup": "node scripts/setup-nyu-benchmark.mjs",
+    "benchmark:scenarios": "node scripts/ctf-benchmark-scenarios.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",

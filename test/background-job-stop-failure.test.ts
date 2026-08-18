@@ -44,4 +44,32 @@ describe("ctf-background-job stop contract", () => {
     expect(parsed.stopped).toBe(false)
     expect(parsed.error).toMatch(/taskkill exited with code 1/)
   })
+  it("redacts secret environment values and URL query credentials from collected output", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "ctf-bg-redact-"))
+    const jobDir = path.join(dir, "work", "background-jobs", "redact")
+    await mkdir(jobDir, { recursive: true })
+    vi.stubEnv("CTF_TEST_TOKEN", "super-secret-token")
+    try {
+      await writeFile(path.join(jobDir, "stdout.log"), "token=super-secret-token url=https://user:pass@example.test/x?api_key=super-secret-token\n", "utf8")
+      await writeFile(path.join(jobDir, "stderr.log"), "", "utf8")
+      await writeFile(
+        path.join(jobDir, "job.json"),
+        JSON.stringify({
+          id: "redact",
+          pid: 0,
+          stdoutPath: path.join(jobDir, "stdout.log"),
+          stderrPath: path.join(jobDir, "stderr.log"),
+          startedAt: new Date().toISOString(),
+        }),
+        "utf8",
+      )
+      const out = await backgroundJob.execute({ operation: "read", id: "redact", jsonOnly: true }, { directory: dir } as never)
+      const parsed = JSON.parse(String(out))
+      expect(parsed.stdout).not.toContain("super-secret-token")
+      expect(parsed.stdout).toContain("REDACTED")
+      expect(parsed.stdout).not.toContain("user:pass")
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
 })

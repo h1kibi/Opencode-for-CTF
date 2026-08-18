@@ -14,6 +14,9 @@ export type {
   CreateTeamToolsOptions,
   TeamAgent,
   TeamJob,
+  TeamJobError,
+  TeamJobErrorPhase,
+  TeamJobErrorType,
   TeamJobStatus,
   TeamRouteId,
   TeamRun,
@@ -37,11 +40,14 @@ export {
 } from "./team/team-types.ts"
 export {
   findJobBySession,
+  isOrphanedJob,
   findRun,
   isTerminalJob,
   readTeamState,
   updateTeamState,
   writeTeamState,
+  quarantineTeamState,
+  readRawTeamState,
 } from "./team/team-state.ts"
 export { renderRun, summarizeTeamState } from "./team/team-render.ts"
 

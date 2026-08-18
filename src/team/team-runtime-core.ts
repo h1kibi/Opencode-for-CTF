@@ -8,8 +8,11 @@ import {
   findJobBySession,
   findRun,
   inspectTeamLockState,
+  isOrphanedJob,
   isTerminalJob,
   normalizePersistedTeamState,
+  quarantineTeamState,
+  readRawTeamState,
   readTeamState,
   updateTeamState,
 } from "./team-state.ts"
@@ -30,6 +33,10 @@ import {
   safeError,
   type CreateTeamToolsOptions,
   type TeamAgent,
+  type TeamJobError,
+  type TeamJobErrorPhase,
+  type TeamJobErrorType,
+  type TeamModel,
   type TeamParentAdoption,
   type TeamJob,
   type TeamRun,
@@ -39,6 +46,17 @@ import {
 interface TeamEventish {
   type: string
   properties?: Record<string, any>
+}
+
+function buildUnknownAgentError(unknownAgents: string[]): Error {
+  const error = new Error(
+    `UnknownAgentError: requested agent(s) ${unknownAgents.join(", ")}; available agents: ${TEAM_AGENTS.join(", ")}; ` +
+      "registry source: src/team/team-types.ts (process-start registry).",
+  )
+  error.name = "UnknownAgentError"
+  ;(error as Error & { errorType?: string; agents?: string[] }).errorType = "agent_registry"
+  ;(error as Error & { agents?: string[] }).agents = unknownAgents
+  return error
 }
 
 function requireExpert(agent: string, sessionID?: string) {
@@ -100,14 +118,98 @@ export function nextWorkerJobStatus(
   return undefined
 }
 
+function diagnosticText(value: unknown): string {
+  const text = safeError(value)
+    .replace(/(authorization|cookie|token|password|secret|api[_-]?key)\s*[:=]\s*[^\s,;]+/gi, "$1=[redacted]")
+    .replace(/([?&](?:token|key|secret|password|session)[^=]*=)[^&\s]+/gi, "$1[redacted]")
+  return text.slice(0, 2_000)
+}
+
+function attachCause(error: Error, cause: unknown) {
+  ;(error as Error & { cause?: unknown }).cause = cause
+  return error
+}
+
 function responseData<T>(response: { data?: T; error?: unknown }, action: string): T {
-  if (response.error) throw new Error(`${action} failed: ${safeError(response.error)}`)
-  if (response.data === undefined) throw new Error(`${action} returned no data.`)
+  if (response?.error) throw attachCause(new Error(`${action} failed: ${diagnosticText(response.error)}`), response.error)
+  if (response?.data === undefined) throw new Error(`${action} returned no data.`)
   return response.data
 }
 
-function assertAccepted(response: { error?: unknown }, action: string) {
-  if (response.error) throw new Error(`${action} failed: ${safeError(response.error)}`)
+function assertAccepted(response: { error?: unknown } | undefined, action: string) {
+  if (response?.error) throw attachCause(new Error(`${action} failed: ${diagnosticText(response.error)}`), response.error)
+}
+
+function classifyTeamError(error: unknown, fallback: TeamJobErrorType): TeamJobErrorType {
+  const text = diagnosticText(error)
+  if (/content was flagged|possible cybersecurity risk|trusted access|safety policy|provider policy/i.test(text)) {
+    return "provider_policy"
+  }
+  if (/parent.*model|model.*(unavailable|not found|could not be resolved)|provider.*model.*(missing|unknown)/i.test(text)) {
+    return "parent_model"
+  }
+  if (/unknown\s+agent|agent.*(not|un)registered|registry|allowlist/i.test(text)) return "agent_registry"
+  if (/tool|surface|mcp/i.test(text)) return "tool_surface"
+  if (/skill/i.test(text)) return "skill_load"
+  if (/prompt|injection/i.test(text)) return "prompt_injection"
+  if (/serialize|parse|no data|invalid response/i.test(text)) return "serialization"
+  if (/heartbeat|timeout|deadline|hung/i.test(text)) return "heartbeat"
+  return fallback
+}
+
+function buildTeamJobError(
+  run: TeamRun,
+  job: TeamJob,
+  opts: {
+    phase: TeamJobErrorPhase
+    errorType?: TeamJobErrorType
+    error: unknown
+    retryable?: boolean
+    cause?: unknown
+  },
+): TeamJobError {
+  const raw = diagnosticText(opts.error)
+  const message = raw === "UnknownError"
+    ? `Worker returned UnknownError during ${opts.phase}; no lower-level message was supplied.`
+    : raw || `Worker failed during ${opts.phase}.`
+  const cause = opts.cause === undefined ? (opts.error as any)?.cause : opts.cause
+  const rawStack = opts.error instanceof Error ? opts.error.stack : (opts.error as any)?.stack
+  const classifiedType = classifyTeamError(opts.error, opts.errorType ?? "unknown")
+  const errorType = classifiedType === "provider_policy" ? classifiedType : (opts.errorType ?? classifiedType)
+  return {
+    errorType,
+    message,
+    phase: opts.phase,
+    agent: job.orphaned?.originalAgent ?? job.originalAgent ?? job.agent,
+    parentSessionID: run.parentSessionID,
+    ...(job.sessionID ? { childSessionID: job.sessionID } : {}),
+    jobID: job.id,
+    retryable: errorType === "provider_policy" || errorType === "parent_model" ? false : (opts.retryable ?? false),
+    timestamp: now(),
+    ...(cause === undefined ? {} : { cause: diagnosticText(cause) }),
+    ...(rawStack ? { stack: diagnosticText(rawStack) } : {}),
+  }
+}
+
+function persistTeamJobError(
+  run: TeamRun,
+  job: TeamJob,
+  opts: Parameters<typeof buildTeamJobError>[2],
+) {
+  const details = buildTeamJobError(run, job, opts)
+  job.errorDetails = details
+  job.error = details.message.slice(0, 1_000)
+  return details
+}
+
+function failTeamJob(
+  run: TeamRun,
+  job: TeamJob,
+  opts: Parameters<typeof buildTeamJobError>[2],
+) {
+  const details = persistTeamJobError(run, job, opts)
+  transitionTeamJob(job, "failed", details.message)
+  return details
 }
 
 function buildChildSessionTools(
@@ -193,7 +295,7 @@ function extractResult(
 ) {
   const assistant = [...messages].reverse().find((m) => m.info.role === "assistant")
   if (!assistant) return { result: "Worker reached idle without an assistant result." }
-  if (assistant.info.error) return { error: safeError(assistant.info.error) }
+  if (assistant.info.error) return { error: assistant.info.error }
   const text = assistant.parts
     .filter((p) => p.type === "text" && typeof p.text === "string")
     .map((p) => p.text)
@@ -240,6 +342,61 @@ export function createTeamRuntimeCore(
 ) {
   const maxJobs = resolveMaxJobs(options.maxWorkers)
   const maxJobAttempts = resolveMaxJobAttempts(options.maxJobAttempts)
+  const parentModelCache = new Map<string, TeamModel>()
+
+  async function resolveParentModel(parentSessionID: string | undefined): Promise<TeamModel> {
+    if (!parentSessionID) {
+      const error = new Error(
+        "ParentModelUnavailableError: Team workers require the lead session provider/model, but no parent session ID was supplied.",
+      )
+      error.name = "ParentModelUnavailableError"
+      throw error
+    }
+    if (options.inheritParentModel === false) {
+      const error = new Error(
+        `ParentModelUnavailableError: refusing to dispatch workers without strict provider/model inheritance for parent session ${parentSessionID}.`,
+      )
+      error.name = "ParentModelUnavailableError"
+      throw error
+    }
+    const cached = parentModelCache.get(parentSessionID)
+    if (cached) return cached
+    if (!client.session?.messages) {
+      const error = new Error(
+        `ParentModelUnavailableError: the session API cannot read provider/model metadata for parent session ${parentSessionID}; no child was created.`,
+      )
+      error.name = "ParentModelUnavailableError"
+      throw error
+    }
+    try {
+      const response = await client.session.messages({
+        path: { id: parentSessionID },
+        query: { directory, limit: 20 },
+      })
+      const messages = responseData(response, `Read parent model ${parentSessionID}`) as Array<{ info?: Record<string, unknown> }>
+      const assistant = [...messages].reverse().find((message) => message?.info?.role === "assistant")
+      const providerID = typeof assistant?.info?.providerID === "string" ? assistant.info.providerID : undefined
+      const modelID = typeof assistant?.info?.modelID === "string" ? assistant.info.modelID : undefined
+      if (!providerID || !modelID) {
+        const error = new Error(
+          `ParentModelUnavailableError: could not resolve both providerID and modelID from lead session ${parentSessionID}; no child was created.`,
+        )
+        error.name = "ParentModelUnavailableError"
+        throw error
+      }
+      const model = { providerID, modelID }
+      parentModelCache.set(parentSessionID, model)
+      return model
+    } catch (cause) {
+      if (cause instanceof Error && cause.name === "ParentModelUnavailableError") throw cause
+      throw attachCause(
+        new Error(
+          `ParentModelUnavailableError: failed to read provider/model metadata from lead session ${parentSessionID}; no child was created.`,
+        ),
+        cause,
+      )
+    }
+  }
 
   async function collectJob(sessionID: string) {
     const state = await readTeamState(directory)
@@ -257,7 +414,12 @@ export function createTeamRuntimeCore(
         current.job.updatedAt = now()
         current.job.finishedAt = now()
         if (collected.error) {
-          transitionTeamJob(current.job, "failed", collected.error)
+          failTeamJob(current.run, current.job, {
+            phase: "collect",
+            errorType: "worker_runtime",
+            error: collected.error,
+            retryable: false,
+          })
         } else {
           transitionTeamJob(current.job, "completed")
           current.job.result = collected.result
@@ -268,7 +430,12 @@ export function createTeamRuntimeCore(
       await updateTeamState(directory, (draft) => {
         const current = findJobBySession(draft, sessionID)
         if (!current || isTerminalJob(current.job.status) || current.job.retryPending) return
-        transitionTeamJob(current.job, "failed", safeError(error))
+        failTeamJob(current.run, current.job, {
+          phase: "collect",
+          errorType: "serialization",
+          error,
+          retryable: true,
+        })
         current.job.updatedAt = now()
         current.job.finishedAt = now()
         refreshRunStatus(draft, current.run)
@@ -420,10 +587,16 @@ export function createTeamRuntimeCore(
         current.job.abortRequestedAt = now()
         current.job.deadlineAt = undefined
         current.job.lastHeartbeatAt = undefined
+        persistTeamJobError(current.run, current.job, {
+          phase: "running",
+          errorType: "heartbeat",
+          error: `Worker deadline exceeded (attempt ${verdict.attempt}/${verdict.maxAttempts}); abort failed: ${oldAbortError}`,
+          retryable: true,
+        })
         transitionTeamJob(
           current.job,
           "cancel_failed",
-          `Worker deadline exceeded (attempt ${verdict.attempt}/${verdict.maxAttempts}); abort failed: ${oldAbortError}`,
+          current.job.errorDetails?.message,
         )
         current.job.finishedAt = now()
         current.job.updatedAt = now()
@@ -446,7 +619,9 @@ export function createTeamRuntimeCore(
     }
 
     let replacementSessionID: string | undefined
+    let parentModel: TeamModel
     try {
+      parentModel = await resolveParentModel(run.parentSessionID)
       const created = await client.session.create({
         query: { directory },
         body: { parentID: run.parentSessionID, title: `[CTF Team Retry ${verdict.attempt}] ${job.title}` },
@@ -494,6 +669,7 @@ export function createTeamRuntimeCore(
         query: { directory },
         body: {
           agent: job.agent,
+          model: parentModel,
           tools: buildChildSessionTools(options.runtimeVisibility?.exportedToolNames, {
             task: false,
             edit: false,
@@ -560,13 +736,16 @@ export function createTeamRuntimeCore(
         current.job.lastHeartbeatAt = undefined
         clearRetryReservation(current.job)
         if (replacementSessionID) current.job.sessionID = replacementSessionID
-        transitionTeamJob(
-          current.job,
-          replacementAbortError ? "cancel_failed" : "failed",
-          replacementAbortError
-            ? `Deadline retry worker failed to start: ${safeError(error)}; replacement abort failed: ${replacementAbortError}`
-            : `Deadline retry worker failed to start: ${safeError(error)}`,
-        )
+        const retryFailure = replacementAbortError
+          ? `Deadline retry worker failed to start: ${safeError(error)}; replacement abort failed: ${replacementAbortError}`
+          : `Deadline retry worker failed to start: ${safeError(error)}`
+        persistTeamJobError(current.run, current.job, {
+          phase: "session_start",
+          errorType: classifyTeamError(error, "child_session_startup"),
+          error: retryFailure,
+          retryable: true,
+        })
+        transitionTeamJob(current.job, replacementAbortError ? "cancel_failed" : "failed", current.job.errorDetails?.message)
         current.job.finishedAt = now()
         current.job.updatedAt = now()
         refreshRunStatus(draft, current.run)
@@ -816,13 +995,17 @@ export function createTeamRuntimeCore(
               current.job.abortSucceededAt = abortError ? undefined : now()
               current.job.deadlineAt = undefined
               current.job.lastHeartbeatAt = undefined
-              transitionTeamJob(
-                current.job,
-                abortError ? "cancel_failed" : "failed",
-                abortError
-                  ? `Worker deadline exceeded (attempt ${verdict.attempt}/${verdict.maxAttempts}); abort failed: ${abortError}`
-                  : `Worker deadline exceeded after ${verdict.attempt} attempt(s); retry budget exhausted`,
-              )
+              const deadlineFailure = abortError
+                ? `Worker deadline exceeded (attempt ${verdict.attempt}/${verdict.maxAttempts}); abort failed: ${abortError}`
+                : `Worker deadline exceeded after ${verdict.attempt} attempt(s); retry budget exhausted`
+              persistTeamJobError(current.run, current.job, {
+                phase: "running",
+                errorType: "heartbeat",
+                error: deadlineFailure,
+                retryable: Boolean(abortError),
+                cause: abortError,
+              })
+              transitionTeamJob(current.job, abortError ? "cancel_failed" : "failed", deadlineFailure)
               current.job.finishedAt = now()
               current.job.updatedAt = now()
               refreshRunStatus(draft, current.run)
@@ -846,7 +1029,28 @@ export function createTeamRuntimeCore(
           continue
         }
 
-        if (!status || status.type === "idle") await collectJob(job.sessionID)
+        if (!status) {
+          const presence = await probeSessionPresence(client, directory, job.sessionID)
+          if (presence === "absent") {
+            await updateTeamState(directory, (draft) => {
+              const current = findJobBySession(draft, job.sessionID!)
+              if (!current || isTerminalJob(current.job.status) || current.job.retryPending) return
+              const phase = current.job.status === "starting" ? "session_start" : "running"
+              failTeamJob(current.run, current.job, {
+                phase,
+                errorType: current.job.status === "starting" ? "child_session_startup" : "worker_runtime",
+                error: `Worker child session ${job.sessionID} is absent from the session registry.`,
+                retryable: true,
+              })
+              current.job.finishedAt = now()
+              current.job.updatedAt = now()
+              refreshRunStatus(draft, current.run)
+            })
+          }
+          // An inconclusive presence probe is a transport uncertainty, not a
+          // completed worker. Leave it for the deadline supervisor instead of
+          // converting a missing status entry into a false successful collect.
+        } else if (status.type === "idle") await collectJob(job.sessionID)
         else if (status.type === "retry") {
           await updateTeamState(directory, (draft) => {
             const current = findJobBySession(draft, job.sessionID!)
@@ -862,7 +1066,120 @@ export function createTeamRuntimeCore(
     }
   }
 
+  function runCanBeAutoArchived(run: TeamRun): boolean {
+    // Never hide a live, valid worker. A run is safe to isolate when all jobs
+    // are terminal/orphaned; this covers stale sessions from an older plugin
+    // build without guessing an agent identity.
+    return run.jobs.some(isOrphanedJob) && run.jobs.every((job) => isTerminalJob(job.status) || isOrphanedJob(job))
+  }
+
   const tools: Record<string, ToolDefinition> = {
+    "ctf-team-repair": tool({
+      description:
+        "Inspect and repair stale CTF Team state. Unknown-agent jobs are shown as orphaned; cancel_orphans aborts recoverable sessions; quarantine/reset preserves the original state file before creating a fresh state.",
+      args: {
+        operation: tool.schema
+          .enum(["inspect", "cancel_orphans", "quarantine", "reset"])
+          .describe("inspect | cancel_orphans | quarantine | reset"),
+        runID: tool.schema.string().optional(),
+        force: tool.schema.boolean().optional().describe("Required for reset."),
+        reason: tool.schema.string().max(1_000).optional(),
+      },
+      async execute(args, context) {
+        requireExpert(context.agent, context.sessionID)
+        const reason = args.reason?.trim() || "explicit Team state repair"
+        if (args.operation === "quarantine" || args.operation === "reset") {
+          if (args.operation === "reset" && (!args.force || !args.reason?.trim())) {
+            throw new Error("ctf-team-repair reset requires force=true and a non-empty reason.")
+          }
+          const result = await quarantineTeamState(directory, reason)
+          return JSON.stringify({ ok: true, operation: args.operation, ...result, next: "ctf-team-dispatch" }, null, 2)
+        }
+
+        let state
+        try {
+          state = await readTeamState(directory)
+        } catch (error) {
+          const raw = await readRawTeamState(directory).catch(() => undefined)
+          return JSON.stringify({
+            ok: false,
+            operation: args.operation,
+            stateReadable: false,
+            error: safeError(error),
+            rawStatePresent: raw !== undefined,
+            repairCommands: [
+              "ctf-team-repair operation=quarantine reason=\"preserve corrupt Team state\"",
+              "ctf-team-repair operation=reset force=true reason=\"reset corrupt Team state\"",
+            ],
+          }, null, 2)
+        }
+        const runs = args.runID ? ([findRun(state, args.runID)].filter(Boolean) as TeamRun[]) : state.runs
+        if (args.operation === "inspect") {
+          const orphaned = runs.flatMap((run) => run.jobs.filter(isOrphanedJob).map((job) => ({
+            runID: run.id,
+            runTitle: run.title,
+            jobID: job.id,
+            state: "orphaned",
+            reason: job.orphaned?.reason || "unknown_agent",
+            originalAgent: job.orphaned?.originalAgent || job.originalAgent,
+            sessionID: job.sessionID,
+            recoverable: job.orphaned?.recoverable ?? true,
+            status: job.status,
+            error: job.error,
+            errorDetails: job.errorDetails,
+          })))
+          return JSON.stringify({
+            ok: true,
+            operation: args.operation,
+            stateReadable: true,
+            orphaned,
+            runs: runs.map((run) => ({ id: run.id, status: run.status, jobs: run.jobs.length })),
+            repairCommands: orphaned.length
+              ? ["ctf-team-repair operation=cancel_orphans", "ctf-team-repair operation=quarantine reason=\"archive stale Team run\""]
+              : [],
+          }, null, 2)
+        }
+
+        const targets = runs.flatMap((run) => run.jobs.filter(isOrphanedJob).map((job) => ({ runID: run.id, jobID: job.id, sessionID: job.sessionID })))
+        const aborts = await Promise.allSettled(targets.filter((item) => item.sessionID).map((item) => client.session.abort({ path: { id: item.sessionID! }, query: { directory } })))
+        let abortIndex = 0
+        await updateTeamState(directory, (draft) => {
+          for (const target of targets) {
+            const located = findRun(draft, target.runID)
+            const job = located?.jobs.find((candidate) => candidate.id === target.jobID)
+            if (!job || !isOrphanedJob(job)) continue
+            const result = target.sessionID ? aborts[abortIndex++] : undefined
+            const abortError = result?.status === "rejected"
+              ? safeError(result.reason)
+              : result?.status === "fulfilled" && (result.value as { error?: unknown })?.error
+                ? safeError((result.value as { error?: unknown }).error)
+                : undefined
+            if (abortError) {
+              job.error = `${reason}; abort failed: ${abortError}`
+              job.orphaned = { ...(job.orphaned || { state: "orphaned", reason: "unknown_agent", recoverable: true }), recoverable: true }
+            } else {
+              job.status = "cancelled"
+              job.error = `${reason}; orphaned worker quarantined`
+              job.finishedAt = now()
+              job.updatedAt = now()
+              if (job.orphaned) job.orphaned.recoverable = false
+            }
+            if (
+              located &&
+              runCanBeAutoArchived(located) &&
+              !located.jobs.some((candidate) => !isTerminalJob(candidate.status)) &&
+              !located.jobs.some((candidate) => isOrphanedJob(candidate) && candidate.orphaned?.recoverable)
+            ) {
+              located.status = "cancelled"
+              located.notificationPending = false
+              located.synthesisSummary = `${reason}; stale/orphaned workers isolated`
+              if (draft.activeRunID === located.id) draft.activeRunID = undefined
+            }
+          }
+        })
+        return JSON.stringify({ ok: true, operation: args.operation, targeted: targets.length, state: await readTeamState(directory) }, null, 2)
+      },
+    }),
     "ctf-team-dispatch": tool({
       description:
         `CTF Expert Team Mode: atomically create and concurrently start 2-${maxJobs} CTF subagent sessions. ` +
@@ -875,7 +1192,9 @@ export function createTeamRuntimeCore(
             tool.schema.object({
               title: tool.schema.string().min(1).max(160),
               objective: tool.schema.string().min(1).max(8_000),
-              agent: tool.schema.enum(TEAM_AGENTS as unknown as [string, ...string[]]),
+              // Keep this a string rather than a schema enum so dispatch can
+              // return a diagnosable UnknownAgentError with the live registry.
+              agent: tool.schema.string().min(1).max(80),
               routeId: tool.schema
                 .enum(TEAM_ROUTE_IDS as unknown as [string, ...string[]])
                 .describe("Evidence.md route slot: recon | R1 | R2 | R3 | general"),
@@ -896,6 +1215,11 @@ export function createTeamRuntimeCore(
       },
       async execute(args, context) {
         requireExpert(context.agent, context.sessionID)
+        const requestedAgents = [...new Set(args.jobs.map((job) => job.agent))]
+        const unknownAgents = requestedAgents.filter((agent) => !(TEAM_AGENTS as readonly string[]).includes(agent))
+        if (unknownAgents.length) {
+          throw buildUnknownAgentError(unknownAgents)
+        }
         const routeCounts = new Map<string, number>()
         for (const job of args.jobs) {
           const rid = job.routeId
@@ -915,6 +1239,7 @@ export function createTeamRuntimeCore(
             throw new Error(`Too many jobs bound to ${r} (max 2). Split into another wave.`)
           }
         }
+        const parentModel = await resolveParentModel(context.sessionID)
         const timeoutMs = Math.min(360, Math.max(1, args.timeoutMinutes ?? DEFAULT_JOB_TIMEOUT_MINUTES)) * 60_000
         const run: TeamRun = {
           id: buildRunId(),
@@ -948,9 +1273,32 @@ export function createTeamRuntimeCore(
         await updateTeamState(directory, (state) => {
           const active = findRun(state)
           if (active && !["completed", "cancelled"].includes(active.status)) {
-            throw new Error(
-              `Team run ${active.id} is still ${active.status}; collect and close or cancel it before dispatching another wave.`,
-            )
+            if (runCanBeAutoArchived(active)) {
+              const recoverableOrphans = active.jobs.some(
+                (job) => isOrphanedJob(job) && job.orphaned?.recoverable,
+              )
+              if (recoverableOrphans) {
+                // Isolation must not destroy the explicit adoption path. A
+                // recoverable unknown-agent job can still be adopted later;
+                // clear only the active pointer and keep the run degraded.
+                active.status = "degraded"
+                active.notificationPending = true
+                active.notificationSentAt = undefined
+                active.notificationError = undefined
+                active.synthesisSummary =
+                  `Automatically isolated stale Team run before dispatch; recoverable orphan jobs remain adoptable: ${active.id}`
+              } else {
+                active.status = "cancelled"
+                active.notificationPending = false
+                active.synthesisSummary = `Automatically isolated stale Team run before dispatch: ${active.id}`
+              }
+              active.updatedAt = now()
+              if (state.activeRunID === active.id) state.activeRunID = undefined
+            } else {
+              throw new Error(
+                `Team run ${active.id} is still ${active.status}; collect/cancel it first. If the state is stale, run ctf-team-repair operation=inspect or operation=quarantine reason="archive stale Team run".`,
+              )
+            }
           }
           state.runs.push(run)
           state.activeRunID = run.id
@@ -973,15 +1321,30 @@ export function createTeamRuntimeCore(
             const job = current.jobs[index]
             job.updatedAt = now()
             if (result.status === "rejected") {
-              transitionTeamJob(job, "failed", safeError(result.reason))
+              failTeamJob(current, job, {
+                phase: "session_create",
+                errorType: "child_session_startup",
+                error: result.reason,
+                retryable: true,
+              })
               job.finishedAt = now()
               return
             }
             try {
-              job.sessionID = (responseData(result.value, `Create worker ${job.id}`) as { id: string }).id
+              const createdData = responseData(result.value, `Create worker ${job.id}`) as { id?: unknown }
+              if (typeof createdData.id !== "string" || !createdData.id) {
+                throw new Error(`Create worker ${job.id} returned an invalid session id.`)
+              }
+              job.sessionID = createdData.id
               job.status = "starting"
+              job.updatedAt = now()
             } catch (error) {
-              transitionTeamJob(job, "failed", safeError(error))
+              failTeamJob(current, job, {
+                phase: "session_create",
+                errorType: "child_session_startup",
+                error,
+                retryable: true,
+              })
               job.finishedAt = now()
             }
           })
@@ -1016,65 +1379,86 @@ export function createTeamRuntimeCore(
             error: result.error,
           })
         }
+        const startCandidates = created.jobs.filter((j) => j.sessionID && j.status === "starting")
         const starts = await Promise.allSettled(
-          created.jobs
-            .filter((j) => j.sessionID && j.status === "starting")
-            .map(async (job) => {
-              const mcp = defaultMcpByJob.get(job.id)
-              const response = await client.session.promptAsync({
-                path: { id: job.sessionID! },
-                query: { directory },
-                body: {
-                  agent: job.agent,
-                  tools: buildChildSessionTools(options.runtimeVisibility?.exportedToolNames, {
-                    task: false,
-                    edit: false,
-                    write: false,
-                    apply_patch: false,
-                    "ctf-team-dispatch": false,
-                    "ctf-team-status": false,
-                    "ctf-team-collect": false,
-                    "ctf-team-cancel": false,
-                    "ctf-team-cancel-route": false,
-                    "ctf-team-close": false,
-                    "ctf-team-recover": false,
-                    "ctf-team-adopt": false,
-                    "ctf-team-mode": false,
-                  }),
-                  parts: [
-                    {
-                      type: "text",
-                      text: [
-                        workerPrompt(created, job, {
-                          surface: options.runtimeVisibility?.surface ?? "ctf-expert",
-                          pluginToolCount: options.runtimeVisibility?.pluginToolCount,
-                          expectedSkills: options.runtimeVisibility?.expectedSkills,
-                          externalSkillsEnabled: options.runtimeVisibility?.externalSkillsEnabled,
-                        }),
-                        "",
-                        "Default MCP profile:",
-                        `- activated: ${mcp?.activated.length ? mcp.activated.join(", ") : "(none)"}`,
-                        `- skipped: ${mcp?.skipped.length ? mcp.skipped.join("; ") : "(none)"}`,
-                        mcp?.error ? `- activation_error: ${mcp.error}` : "",
-                        "Request heavy MCPs only through ctf-dynamic-mcp-advisor with route-bound justification.",
-                      ]
-                        .filter(Boolean)
-                        .join("\n"),
-                    },
-                  ],
-                },
-              })
-              assertAccepted(response, `Start worker ${job.id}`)
-              return job.id
-            }),
+          startCandidates.map(async (job) => {
+            const mcp = defaultMcpByJob.get(job.id)
+            const response = await client.session.promptAsync({
+              path: { id: job.sessionID! },
+              query: { directory },
+              body: {
+                agent: job.agent,
+                model: parentModel,
+                tools: buildChildSessionTools(options.runtimeVisibility?.exportedToolNames, {
+                  task: false,
+                  edit: false,
+                  write: false,
+                  apply_patch: false,
+                  "ctf-team-dispatch": false,
+                  "ctf-team-status": false,
+                  "ctf-team-collect": false,
+                  "ctf-team-cancel": false,
+                  "ctf-team-cancel-route": false,
+                  "ctf-team-close": false,
+                  "ctf-team-recover": false,
+                  "ctf-team-adopt": false,
+                  "ctf-team-repair": false,
+                  "ctf-team-mode": false,
+                }),
+                parts: [
+                  {
+                    type: "text",
+                    text: [
+                      workerPrompt(created, job, {
+                        surface: options.runtimeVisibility?.surface ?? "ctf-expert",
+                        pluginToolCount: options.runtimeVisibility?.pluginToolCount,
+                        expectedSkills: options.runtimeVisibility?.expectedSkills,
+                        externalSkillsEnabled: options.runtimeVisibility?.externalSkillsEnabled,
+                      }),
+                      "",
+                      "Default MCP profile:",
+                      `- activated: ${mcp?.activated.length ? mcp.activated.join(", ") : "(none)"}`,
+                      `- skipped: ${mcp?.skipped.length ? mcp.skipped.join("; ") : "(none)"}`,
+                      mcp?.error ? `- activation_error: ${mcp.error}` : "",
+                      "Request heavy MCPs only through ctf-dynamic-mcp-advisor with route-bound justification.",
+                    ]
+                      .filter(Boolean)
+                      .join("\n"),
+                  },
+                ],
+              },
+            })
+            assertAccepted(response, `Start worker ${job.id}`)
+            return job.id
+          }),
         )
         const startedIDs = new Set(
           starts.filter((e): e is PromiseFulfilledResult<string> => e.status === "fulfilled").map((e) => e.value),
         )
-        const failedStarts = starts.filter((e): e is PromiseRejectedResult => e.status === "rejected")
+        const failedStarts = starts.flatMap((result, index) =>
+          result.status === "rejected" ? [{ job: startCandidates[index], reason: result.reason }] : [],
+        )
+        const failedStartByJob = new Map(failedStarts.map((failure) => [failure.job.id, failure]))
+        const cleanupResults = await Promise.allSettled(
+          failedStarts.map(async (failure) => {
+            const sessionID = failure.job.sessionID
+            if (!sessionID) return undefined
+            const response = await client.session.abort({ path: { id: sessionID }, query: { directory } })
+            assertAccepted(response, `Cleanup failed worker ${failure.job.id}`)
+            return sessionID
+          }),
+        )
+        const cleanupErrorByJob = new Map(
+          failedStarts.map((failure, index) => {
+            const cleanup = cleanupResults[index]
+            return [
+              failure.job.id,
+              cleanup?.status === "rejected" ? diagnosticText(cleanup.reason) : undefined,
+            ] as const
+          }),
+        )
         await updateTeamState(directory, (state) => {
           const current = findRun(state, run.id)!
-          let failIdx = 0
           for (const job of current.jobs) {
             if (startedIDs.has(job.id)) {
               transitionTeamJob(job, "running")
@@ -1084,8 +1468,20 @@ export function createTeamRuntimeCore(
               job.lastHeartbeatAt = startedAt
               job.updatedAt = startedAt
             } else if (job.status === "starting") {
-              transitionTeamJob(job, "failed", safeError(failedStarts[failIdx++]?.reason ?? "Worker start failed"))
-              job.error = safeError(failedStarts[failIdx - 1]?.reason ?? "Worker start failed")
+              const failure = failedStartByJob.get(job.id)
+              const startupError = failure?.reason ?? "Worker start failed"
+              const cleanupError = cleanupErrorByJob.get(job.id)
+              const detail = cleanupError
+                ? `Worker startup failed: ${diagnosticText(startupError)}; cleanup abort failed: ${cleanupError}`
+                : startupError
+              persistTeamJobError(current, job, {
+                phase: "prompt_injection",
+                errorType: classifyTeamError(startupError, "prompt_injection"),
+                error: detail,
+                retryable: true,
+                cause: cleanupError,
+              })
+              transitionTeamJob(job, cleanupError ? "cancel_failed" : "failed", job.errorDetails?.message)
               job.finishedAt = now()
               job.updatedAt = now()
             }
@@ -1102,10 +1498,25 @@ export function createTeamRuntimeCore(
       description: "Read persisted CTF Team Mode run and worker lifecycle status.",
       args: { runID: tool.schema.string().optional() },
       async execute(args) {
-        const { state, repairs } = await normalizePersistedTeamState(directory)
-        const run = findRun(state, args.runID)
-        if (!run) return "No matching CTF team run."
-        return appendRuntimeNotes(renderRun(run), repairs, await inspectTeamLockState(directory))
+        try {
+          const { state, repairs } = await normalizePersistedTeamState(directory)
+          const run = findRun(state, args.runID)
+          if (!run) return "No matching CTF team run."
+          return appendRuntimeNotes(renderRun(run), repairs, await inspectTeamLockState(directory))
+        } catch (error) {
+          const raw = await readRawTeamState(directory).catch(() => undefined)
+          return JSON.stringify({
+            ok: false,
+            stateReadable: false,
+            error: safeError(error),
+            rawStatePresent: raw !== undefined,
+            repairCommands: [
+              'ctf-team-repair operation=inspect',
+              'ctf-team-repair operation=quarantine reason="preserve corrupt Team state"',
+              'ctf-team-repair operation=reset force=true reason="reset corrupt Team state"',
+            ],
+          }, null, 2)
+        }
       },
     }),
 
@@ -1128,6 +1539,7 @@ export function createTeamRuntimeCore(
       args: {
         runID: tool.schema.string().optional(),
         reason: tool.schema.string().min(1).max(1_000),
+        force: tool.schema.boolean().optional().describe("Force cancellation even when an orphaned/unknown-agent session cannot be reconciled."),
       },
       async execute(args, context) {
         requireExpert(context.agent, context.sessionID)
@@ -1135,8 +1547,13 @@ export function createTeamRuntimeCore(
         const run = findRun(state, args.runID)
         if (!run) return "No matching CTF team run."
         const activeJobs = run.jobs.filter(
-          (j) => j.sessionID && (!isTerminalJob(j.status) || j.status === "cancel_failed"),
+          (j) => j.sessionID && (!isTerminalJob(j.status) || j.status === "cancel_failed" || (args.force && isOrphanedJob(j))),
         )
+        const orphanedJobs = run.jobs.filter(isOrphanedJob)
+        const orphanedWithoutSession = args.force ? orphanedJobs.filter((j) => !j.sessionID) : []
+        if (orphanedJobs.length > 0 && !args.force) {
+          throw new Error("The run contains orphaned jobs. Retry with force=true or use ctf-team-repair operation=cancel_orphans.")
+        }
         const followUpSessions: Array<{ runID: string; jobID: string; sessionID: string; supersedesSessionID?: string }> = []
         const aborts = await Promise.allSettled(
           activeJobs.map((job) =>
@@ -1153,7 +1570,14 @@ export function createTeamRuntimeCore(
           current.updatedAt = now()
           for (const [index, job] of activeJobs.entries()) {
             const cj = current.jobs.find((j) => j.id === job.id)
-            if (!cj || (isTerminalJob(cj.status) && cj.status !== "cancel_failed")) continue
+            if (
+              !cj ||
+              (
+                isTerminalJob(cj.status) &&
+                cj.status !== "cancel_failed" &&
+                !(args.force && isOrphanedJob(cj))
+              )
+            ) continue
             for (const candidate of [cj.sessionID, cj.retrySessionID]) {
               if (
                 candidate &&
@@ -1167,11 +1591,27 @@ export function createTeamRuntimeCore(
             if (result?.status === "fulfilled") {
               const value = result.value as { error?: unknown } | undefined
               if (value?.error) {
-                transitionTeamJob(cj, "cancel_failed", `${args.reason}; abort failed: ${safeError(value.error)}`)
-                abortFailure++
+                if (args.force && isOrphanedJob(cj)) {
+                  cj.status = "cancelled"
+                  cj.error = `${args.reason}; forced orphan cancellation; abort failed: ${safeError(value.error)}`
+                  if (cj.orphaned) cj.orphaned.recoverable = false
+                } else {
+                  transitionTeamJob(cj, "cancel_failed", `${args.reason}; abort failed: ${safeError(value.error)}`)
+                  abortFailure++
+                }
               } else {
-                transitionTeamJob(cj, "cancelled", args.reason)
+                if (isOrphanedJob(cj)) {
+                  cj.status = "cancelled"
+                  cj.error = args.reason
+                  if (cj.orphaned) cj.orphaned.recoverable = false
+                } else {
+                  transitionTeamJob(cj, "cancelled", args.reason)
+                }
               }
+            } else if (args.force && isOrphanedJob(cj)) {
+              cj.status = "cancelled"
+              cj.error = `${args.reason}; forced orphan cancellation; abort failed: ${safeError(result?.reason)}`
+              if (cj.orphaned) cj.orphaned.recoverable = false
             } else {
               transitionTeamJob(cj, "cancel_failed", `${args.reason}; abort failed: ${safeError(result?.reason)}`)
               abortFailure++
@@ -1179,6 +1619,15 @@ export function createTeamRuntimeCore(
             clearRetryReservation(cj)
             cj.finishedAt = now()
             cj.updatedAt = now()
+          }
+          for (const orphan of orphanedWithoutSession) {
+            const currentJob = current.jobs.find((candidate) => candidate.id === orphan.id)
+            if (!currentJob || !isOrphanedJob(currentJob)) continue
+            currentJob.status = "cancelled"
+            currentJob.error = `${args.reason}; forced orphan cancellation`
+            currentJob.finishedAt = now()
+            currentJob.updatedAt = now()
+            if (currentJob.orphaned) currentJob.orphaned.recoverable = false
           }
           current.status = abortFailure ? "degraded" : "cancelled"
           if (abortFailure) {
@@ -1305,10 +1754,136 @@ export function createTeamRuntimeCore(
       args: {
         runID: tool.schema.string().min(1),
         reason: tool.schema.string().min(1).max(1_000),
+        orphaned: tool.schema.boolean().optional().describe("Adopt one orphaned job with a newly-created worker session."),
+        jobID: tool.schema.string().optional().describe("Required with orphaned=true."),
+        agent: tool.schema.enum(TEAM_AGENTS as unknown as [string, ...string[]]).optional().describe("Replacement valid agent; required with orphaned=true."),
+        force: tool.schema.boolean().optional().describe("Required with orphaned=true; never reuses the old session."),
       },
       async execute(args, context) {
         requireExpert(context.agent, context.sessionID)
         if (!context.sessionID) throw new Error("Cannot adopt a Team run without the current parent session ID.")
+
+        if (args.orphaned) {
+          if (!args.force || !args.jobID || !args.agent) {
+            throw new Error("ctf-team-adopt orphaned=true requires force=true, jobID, and a valid replacement agent.")
+          }
+          const before = await readTeamState(directory)
+          const run = findRun(before, args.runID)
+          if (!run) throw new Error(`No matching CTF team run: ${args.runID}`)
+          const job = run.jobs.find((candidate) => candidate.id === args.jobID)
+          if (!job || !isOrphanedJob(job)) throw new Error(`Job ${args.jobID} is not an orphaned job in run ${args.runID}.`)
+          if (run.parentSessionID !== context.sessionID && hasOpenTeamWorker(run)) {
+            throw new Error("Cannot adopt an orphaned job while another worker in the run is active.")
+          }
+          const previousSessionID = job.sessionID
+          if (previousSessionID) {
+            const aborted = await client.session.abort({ path: { id: previousSessionID }, query: { directory } })
+            if ((aborted as { error?: unknown } | undefined)?.error) {
+              throw new Error(`Cannot adopt orphaned job until its old session is aborted: ${safeError((aborted as { error: unknown }).error)}`)
+            }
+          }
+          const parentModel = await resolveParentModel(context.sessionID)
+          const created = await client.session.create({
+            query: { directory },
+            body: { parentID: context.sessionID, title: `[CTF Team Adopt] ${job.title}` },
+          })
+          const createdData = responseData(created, `Create adopted worker ${job.id}`) as { id?: unknown }
+          if (typeof createdData.id !== "string" || !createdData.id) throw new Error(`Create adopted worker ${job.id} returned an invalid session id.`)
+          const replacementSessionID = createdData.id
+          let adoptedJob: TeamJob | undefined
+          await updateTeamState(directory, (state) => {
+            const currentRun = findRun(state, args.runID)
+            const currentJob = currentRun?.jobs.find((candidate) => candidate.id === args.jobID)
+            if (!currentRun || !currentJob || !isOrphanedJob(currentJob)) throw new Error("Orphaned job changed during adoption; retry with current state.")
+            const stamp = now()
+            currentRun.parentSessionID = context.sessionID!
+            currentRun.status = "dispatching"
+            currentRun.notificationPending = false
+            currentRun.updatedAt = stamp
+            currentJob.originalAgent = currentJob.originalAgent || currentJob.agent
+            currentJob.agent = args.agent as TeamAgent
+            currentJob.sessionID = replacementSessionID
+            currentJob.status = "starting"
+            currentJob.orphaned = undefined
+            currentJob.retryPending = false
+            currentJob.retrySessionID = undefined
+            currentJob.startedAt = undefined
+            currentJob.finishedAt = undefined
+            currentJob.error = `Adopted orphaned worker: ${args.reason.trim()}`
+            currentJob.updatedAt = stamp
+            currentJob.ownerToken = randomUUID().slice(0, 8)
+            currentJob.adoptionHistory = [...(currentJob.adoptionHistory ?? []), {
+              originalAgent: currentJob.originalAgent,
+              adoptedAgent: args.agent as TeamAgent,
+              adoptedAt: stamp,
+              adoptedBySessionID: context.sessionID!,
+              reason: args.reason.trim(),
+              ...(previousSessionID ? { previousSessionID } : {}),
+            }].slice(-8)
+            state.activeRunID = currentRun.id
+            adoptedJob = currentJob
+          })
+          try {
+            const mcp = await activateAgentDefaults({
+              client,
+              worktree,
+              directory,
+              sessionID: replacementSessionID,
+              agentName: args.agent as TeamAgent,
+            })
+            const response = await client.session.promptAsync({
+              path: { id: replacementSessionID },
+              query: { directory },
+              body: {
+                agent: args.agent,
+                model: parentModel,
+                tools: buildChildSessionTools(options.runtimeVisibility?.exportedToolNames, {
+                  task: false, edit: false, write: false, apply_patch: false,
+                  "ctf-team-dispatch": false, "ctf-team-status": false, "ctf-team-collect": false,
+                  "ctf-team-cancel": false, "ctf-team-cancel-route": false, "ctf-team-close": false,
+                  "ctf-team-recover": false, "ctf-team-adopt": false, "ctf-team-repair": false, "ctf-team-mode": false,
+                }),
+                parts: [{ type: "text", text: [workerPrompt({ ...run, parentSessionID: context.sessionID! }, adoptedJob!, {
+                  surface: options.runtimeVisibility?.surface ?? "ctf-expert",
+                  pluginToolCount: options.runtimeVisibility?.pluginToolCount,
+                  expectedSkills: options.runtimeVisibility?.expectedSkills,
+                  externalSkillsEnabled: options.runtimeVisibility?.externalSkillsEnabled,
+                }), "", "Default MCP profile:", `- activated: ${mcp.activated.join(", ") || "(none)"}`, `- skipped: ${mcp.skipped.join("; ") || "(none)"}`, mcp.failed.length ? `- activation_error: ${mcp.failed.map((item) => `${item.serverName}: ${item.message}`).join("; ")}` : ""].filter(Boolean).join("\n") }],
+              },
+            })
+            assertAccepted(response, `Start adopted worker ${job.id}`)
+            await updateTeamState(directory, (state) => {
+              const currentRun = findRun(state, args.runID)
+              const currentJob = currentRun?.jobs.find((candidate) => candidate.id === args.jobID)
+              if (!currentRun || !currentJob || currentJob.sessionID !== replacementSessionID) return
+              transitionTeamJob(currentJob, "running")
+              currentJob.startedAt = now()
+              currentJob.deadlineAt = computeJobDeadlineAt(currentJob.timeoutMs, Date.parse(currentJob.startedAt))
+              currentJob.lastHeartbeatAt = currentJob.startedAt
+              currentJob.updatedAt = currentJob.startedAt
+              refreshRunStatus(state, currentRun)
+            })
+          } catch (error) {
+            await updateTeamState(directory, (state) => {
+              const currentRun = findRun(state, args.runID)
+              const currentJob = currentRun?.jobs.find((candidate) => candidate.id === args.jobID)
+              if (!currentJob || currentJob.sessionID !== replacementSessionID) return
+              if (currentRun) {
+                failTeamJob(currentRun, currentJob, {
+                  phase: "prompt_injection",
+                  errorType: classifyTeamError(error, "prompt_injection"),
+                  error,
+                  retryable: true,
+                })
+              }
+              currentJob.finishedAt = now()
+              currentJob.updatedAt = now()
+              if (currentRun) refreshRunStatus(state, currentRun)
+            })
+            throw error
+          }
+          return JSON.stringify({ adopted: true, orphaned: true, runID: args.runID, jobID: args.jobID, previousSessionID, sessionID: replacementSessionID, agent: args.agent }, null, 2)
+        }
 
         const before = await readTeamState(directory)
         const run = findRun(before, args.runID)
@@ -1452,6 +2027,14 @@ export function createTeamRuntimeCore(
         if (!nextStatus) return
         const previousStatus = current.job.status
         const eventTime = now()
+        if (nextStatus === "failed") {
+          persistTeamJobError(current.run, current.job, {
+            phase: previousStatus === "starting" ? "session_start" : "running",
+            errorType: classifyTeamError(status, "worker_runtime"),
+            error: status,
+            retryable: true,
+          })
+        }
         transitionTeamJob(current.job, nextStatus)
         current.job.retryAttempt = status.type === "retry" ? status.attempt : undefined
         if (nextStatus === "running") {
@@ -1484,7 +2067,12 @@ export function createTeamRuntimeCore(
       await updateTeamState(directory, (state) => {
         const located = findJobBySession(state, sessionID)
         if (!located || isTerminalJob(located.job.status) || located.job.retryPending) return
-        transitionTeamJob(located.job, "failed", safeError(props.error ?? "Unknown worker session error"))
+        failTeamJob(located.run, located.job, {
+          phase: "running",
+          errorType: classifyTeamError(props.error, "worker_runtime"),
+          error: props.error ?? "Unknown worker session error",
+          retryable: true,
+        })
         clearRetryReservation(located.job)
         located.job.finishedAt = now()
         located.job.updatedAt = now()
@@ -1507,6 +2095,12 @@ export function createTeamRuntimeCore(
       await updateTeamState(directory, (state) => {
         const located = findJobBySession(state, info.id!)
         if (!located || isTerminalJob(located.job.status) || located.job.retryPending) return
+        persistTeamJobError(located.run, located.job, {
+          phase: "running",
+          errorType: "worker_runtime",
+          error: "Worker session was deleted before completion.",
+          retryable: true,
+        })
         transitionTeamJob(located.job, "interrupted", "Worker session was deleted before completion.")
         clearRetryReservation(located.job)
         located.job.finishedAt = now()

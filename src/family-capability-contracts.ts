@@ -86,7 +86,14 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     },
     benchmarkCoverage: {
       status: "covered",
-      benchmarkIds: ["web/recon-before-exploit", "web/attack-queue-ranking", "web/upload-vs-file-write-routing"],
+      benchmarkIds: [
+        "web/recon-before-exploit",
+        "web/attack-queue-ranking",
+        "web/upload-vs-file-write-routing",
+        "web/java-map-first-pass",
+        "web/pattern-recall-before-focused-probe",
+        "web/source-backed-critical-primitive",
+      ],
     },
     readinessChecks: [
       {
@@ -315,7 +322,8 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
         required: false,
         detail:
           "cyberchef-mcp accelerates reversible transform chains, but Python/manual transforms remain a valid fallback.",
-        remediation: "Configure CYBERCHEF_MCP_COMMAND with a working CyberChef MCP server, or continue with reversible-first workflows and lightweight local scripts.",
+        remediation:
+          "Configure CYBERCHEF_MCP_COMMAND with a working CyberChef MCP server, or continue with reversible-first workflows and lightweight local scripts.",
       },
       {
         id: "solver:sage",
@@ -331,7 +339,8 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
         label: "CyberChef MCP",
         detail:
           "Optional MCP backend for structured decode/transform chains; there is no official npm package, so a backend must be supplied via CYBERCHEF_MCP_COMMAND.",
-        setupCommand: "Set CYBERCHEF_MCP_COMMAND to a working CyberChef MCP server, or rely on local Python transforms.",
+        setupCommand:
+          "Set CYBERCHEF_MCP_COMMAND to a working CyberChef MCP server, or rely on local Python transforms.",
       },
     ],
   },

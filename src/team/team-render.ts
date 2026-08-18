@@ -12,7 +12,7 @@ export function renderRun(run: TeamRun, includeResults = false) {
   ]
   for (const job of run.jobs) {
     lines.push(
-      `- ${job.id} | ${job.agent} | route=${job.routeId ?? "?"} | ${job.concurrency ?? "independent"} | ${job.status} | ${job.title}`,
+      `- ${job.id} | ${job.orphaned?.originalAgent ?? job.agent} | route=${job.routeId ?? "?"} | ${job.concurrency ?? "independent"} | ${job.status}${job.orphaned ? ` (${job.orphaned.reason})` : ""} | ${job.title}`,
     )
     if (job.deadlineAt) {
       const deadlineNote =
@@ -22,6 +22,13 @@ export function renderRun(run: TeamRun, includeResults = false) {
       lines.push(deadlineNote)
     }
     if (job.error) lines.push(`  error: ${job.error}`)
+    if (job.errorDetails) {
+      lines.push(
+        `  error_details: type=${job.errorDetails.errorType} phase=${job.errorDetails.phase} ` +
+          `retryable=${job.errorDetails.retryable} parent=${job.errorDetails.parentSessionID} ` +
+          `child=${job.errorDetails.childSessionID ?? "(none)"}`,
+      )
+    }
     if (includeResults && job.result) lines.push(`  result:\n${job.result}`)
   }
   return lines.join("\n").slice(0, MAX_COLLECT_OUTPUT)
@@ -41,11 +48,13 @@ export function summarizeTeamState(state: TeamState, sessionID?: string) {
       jobs: r.jobs.map((j) => ({
         id: j.id,
         title: j.title,
-        agent: j.agent,
+        agent: j.orphaned?.originalAgent ?? j.agent,
+        orphaned: j.orphaned,
         routeId: j.routeId,
         concurrency: j.concurrency,
         status: j.status,
         error: j.error,
+        errorDetails: j.errorDetails,
       })),
       outcome: r.outcome,
       synthesisSummary: r.synthesisSummary,

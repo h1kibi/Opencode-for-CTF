@@ -1,0 +1,8 @@
+[
+  {
+    "event": "binary.probe.skipped"
+  },
+  {
+    "event": "complexity.expanded"
+  }
+]

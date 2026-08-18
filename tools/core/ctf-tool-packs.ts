@@ -8,6 +8,9 @@ import { listToolNames as discoverToolNames, loadCtfTools } from "../../src/ctf-
 import { compatAliasTarget, summarizeToolMetadata, toolMetadata } from "../../src/tool-metadata.ts"
 import { diagnoseToolVisibility, summarizeRuntimeToolRegistry } from "../../src/plugin-support.ts"
 import { directoryFromContext } from "../lib/workspace-path.ts"
+import { EXPERT_TEAM_RUNTIME_TOOLS } from "../../src/expert-readiness.ts"
+import { createRuntimeClient } from "../../src/sdk.ts"
+import { createTeamTools } from "../../src/team-runtime.ts"
 import {
   ALL_TOOL_PACKS,
   DEFAULT_TOOL_PACKS,
@@ -67,6 +70,20 @@ export default tool({
         : undefined,
     )
     const exportedTools = await loadCtfTools({ packs: [...enabled] })
+    // Team controls are created dynamically by the plugin entrypoint rather
+    // than discovered from tools/. Recreate the same definitions here so
+    // readiness reflects the live runtime registry instead of only static files.
+    if (loadedConfig.config.team_mode.enabled) {
+      const teamTools = createTeamTools(
+        createRuntimeClient(directory),
+        directory,
+        context.worktree,
+        { maxWorkers: loadedConfig.config.team_mode.max_workers, maxJobAttempts: loadedConfig.config.team_mode.max_job_attempts },
+      )
+      for (const name of EXPERT_TEAM_RUNTIME_TOOLS) {
+        if (!exportedTools[name] && teamTools[name]) exportedTools[name] = teamTools[name]
+      }
+    }
     const exportedNames = Object.keys(exportedTools).sort()
     const expectedSkills = await listExpectedSkillNames(directory)
     const summary = summarizeRuntimeToolRegistry({
@@ -114,6 +131,10 @@ export default tool({
       `ctf-fast visible tools: ${fastVisible.length}`,
       `ctf-expert visible tools: ${summary.expertVisibleToolCount}`,
       `expert ready: ${capabilitySummary.expertReady ? "yes" : "no"}`,
+      `expert readiness: ${capabilitySummary.expertReadinessStatus}`,
+      ...(capabilitySummary.expertReadinessReasons.length
+        ? [`expert readiness reasons: ${capabilitySummary.expertReadinessReasons.join("; ")}`]
+        : []),
       `skill files present: ${summary.skillFilesPresent ? "true" : "false"}`,
       `expected published skills: ${summary.expectedSkillNames?.length ?? 0}`,
       "",

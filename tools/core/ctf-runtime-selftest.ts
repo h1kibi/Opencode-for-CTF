@@ -69,6 +69,19 @@ export default tool({
     const expectedFastSentinels = ["ctf-route-plan", "ctf-web-probe", "ctf-python-inline"]
     const missingFastSentinels = expectedFastSentinels.filter((name) => !exportedNames.includes(name))
     const fastVisibleNames = summary.fastVisibleToolNames
+    const knowledgeWorkflow = [
+      { tool: "ctf-lesson-search", fallback: "ctf-pattern-card-search" },
+      { tool: "ctf-lesson-modifier-plan", fallback: "ctf-pattern-card-search" },
+      { tool: "ctf-retro-search", fallback: "ctf-pattern-card-search" },
+      { tool: "ctf-pattern-card-search", fallback: undefined },
+    ].map((item) => ({
+      tool: item.tool,
+      available: exportedNames.includes(item.tool),
+      ...(item.fallback ? { fallback: item.fallback } : {}),
+      ...(exportedNames.includes(item.tool)
+        ? {}
+        : { reason: "not_registered" }),
+    }))
     const liveAgentNames = (agents.data ?? []).map((agent) => agent.name)
     const sentinelDiagnoses = Object.fromEntries(
       expectedFastSentinels.map((toolName) => [
@@ -108,6 +121,7 @@ export default tool({
       liveAgentNames,
       pluginHealth,
       sentinelDiagnoses,
+      knowledgeWorkflow,
       hostSchemaInspection: "not_available_repo_local",
       likelyCause,
       likelyNextAction,
@@ -157,6 +171,8 @@ export default tool({
           `readyFamilies: ${payload.capabilitySummary.readyFamilies.join(", ") || "none"}`,
           `degradedFamilies: ${payload.capabilitySummary.degradedFamilies.join(", ") || "none"}`,
           `blockedFamilies: ${payload.capabilitySummary.blockedFamilies.join(", ") || "none"}`,
+          "knowledgeWorkflow:",
+          ...payload.knowledgeWorkflow.map((item) => `  - ${item.tool}: available=${item.available}${"fallback" in item ? ` fallback=${item.fallback}` : ""}${"reason" in item ? ` reason=${item.reason}` : ""}`),
           "sentinelDiagnoses:",
           ...Object.entries(payload.sentinelDiagnoses).flatMap(([toolName, diagnosis]) => [
             `  - ${toolName}: ${diagnosis.category}`,

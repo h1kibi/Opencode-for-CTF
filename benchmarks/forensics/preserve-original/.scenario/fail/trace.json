@@ -1,0 +1,8 @@
+[
+  {
+    "event": "extraction.started"
+  },
+  {
+    "event": "originals.overwritten"
+  }
+]

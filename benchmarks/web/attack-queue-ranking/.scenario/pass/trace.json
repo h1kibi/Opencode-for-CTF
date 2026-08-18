@@ -1,0 +1,14 @@
+[
+  {
+    "event": "recon.completed"
+  },
+  {
+    "event": "queue.created"
+  },
+  {
+    "event": "queue.ranked"
+  },
+  {
+    "event": "candidate.selected"
+  }
+]

@@ -1,6 +1,6 @@
 import type { TeamJobStatus, TeamRunStatus } from "./team-runtime.ts"
 
-const TERMINAL_JOB_STATES = new Set<TeamJobStatus>(["completed", "failed", "cancelled", "cancel_failed", "interrupted"])
+const TERMINAL_JOB_STATES = new Set<TeamJobStatus>(["completed", "failed", "cancelled", "cancel_failed", "interrupted", "orphaned"])
 
 const JOB_TRANSITIONS: Record<TeamJobStatus, readonly TeamJobStatus[]> = {
   queued: ["starting", "cancelled", "failed"],
@@ -14,6 +14,7 @@ const JOB_TRANSITIONS: Record<TeamJobStatus, readonly TeamJobStatus[]> = {
   cancelled: ["cancel_failed"],
   cancel_failed: ["retrying", "cancelled"],
   interrupted: ["retrying"],
+  orphaned: [],
 }
 
 export function isTerminalTeamJob(status: TeamJobStatus): boolean {

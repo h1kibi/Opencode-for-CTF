@@ -14,6 +14,47 @@ function safeId(input: string) {
   return input.replace(/[^A-Za-z0-9_.-]+/g, "_")
 }
 
+function resolveJobDir(root: string, id: string) {
+  const resolvedRoot = path.resolve(root)
+  const resolved = path.resolve(root, id)
+  if (resolved === resolvedRoot || !resolved.startsWith(`${resolvedRoot}${path.sep}`)) {
+    throw new Error("job id must resolve to a child directory under work/background-jobs")
+  }
+  return resolved
+}
+
+const SENSITIVE_NAME = /(?:TOKEN|SECRET|PASSWORD|PASSWD|API[_-]?KEY|COOKIE|AUTH|PRIVATE[_-]?KEY|CREDENTIAL)/i
+
+function redactUrl(raw: string) {
+  const trailing = raw.match(/[),.;:]+$/)?.[0] || ""
+  const value = trailing ? raw.slice(0, -trailing.length) : raw
+  try {
+    const url = new URL(value)
+    if (url.username || url.password) {
+      url.username = url.username ? "REDACTED" : ""
+      url.password = url.password ? "REDACTED" : ""
+    }
+    for (const key of [...url.searchParams.keys()]) {
+      if (SENSITIVE_NAME.test(key)) url.searchParams.set(key, "REDACTED")
+    }
+    return url.toString() + trailing
+  } catch {
+    return raw
+  }
+}
+
+function redactText(input: string) {
+  let output = input
+  const secretValues = Object.entries(process.env)
+    .filter(([name, value]) => SENSITIVE_NAME.test(name) && typeof value === "string" && value.length >= 4)
+    .map(([, value]) => value as string)
+    .sort((a, b) => b.length - a.length)
+  for (const secret of secretValues) output = output.split(secret).join("REDACTED")
+  output = output.replace(/\b([A-Z][A-Z0-9_-]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API[_-]?KEY|COOKIE|AUTH|PRIVATE[_-]?KEY|CREDENTIAL)[A-Z0-9_-]*)=([^\s&;,]+)/gi, (_match, name: string) => `${name}=REDACTED`)
+  output = output.replace(/https?:\/\/[^\s"'<>]+/gi, (url) => redactUrl(url))
+  return output
+}
+
 async function readJson(file: string) {
   try {
     return JSON.parse(await readFile(file, "utf8"))
@@ -131,8 +172,8 @@ export default tool({
   description:
     "CTF background job: start, inspect, stop, and read detached local Python/Node/PowerShell jobs for long-running brute force or analysis tasks.",
   args: {
-    operation: tool.schema.string().describe("start | status | stop | read"),
-    id: tool.schema.string().optional().describe("Job id for status/stop/read, or preferred id for start."),
+    operation: tool.schema.string().describe("start | status | checkpoint | collect | stop | read"),
+    id: tool.schema.string().optional().describe("Job id for status/stop/read/checkpoint/collect, or preferred id for start."),
     lang: tool.schema.string().optional().describe("python | node | powershell for start."),
     code: tool.schema.string().optional().describe("Inline script code for start."),
     scriptPath: tool.schema.string().optional().describe("Existing workspace-local script path for start."),
@@ -152,7 +193,7 @@ export default tool({
 
     if (op === "start") {
       const id = safeId(args.id || `job-${Date.now()}`)
-      const jobDir = path.join(root, id)
+      const jobDir = resolveJobDir(root, id)
       await mkdir(jobDir, { recursive: true })
       const runner = await chooseRunner(args.lang || "python")
       const workdir = resolveFromDirectoryInsideWorkspace(directory, workspace, args.workdir || ".")
@@ -182,6 +223,7 @@ export default tool({
       }
       const meta = {
         id,
+        schemaVersion: 2,
         lang: args.lang || "python",
         pid,
         scriptPath,
@@ -189,7 +231,7 @@ export default tool({
         stdoutPath,
         stderrPath,
         startedAt: new Date().toISOString(),
-        argv: args.argv || [],
+        argv: (args.argv || []).map((value) => redactText(value)),
       }
       await writeFile(metaPath, JSON.stringify(meta, null, 2), "utf8")
       const payload = { ok: true, ...meta }
@@ -206,23 +248,60 @@ export default tool({
     }
 
     const id = safeId(args.id || "")
-    if (!id) throw new Error("id is required for status/stop/read")
-    const jobDir = path.join(root, id)
+    if (!id) throw new Error("id is required for status/stop/read/checkpoint/collect")
+    const jobDir = resolveJobDir(root, id)
     const metaPath = path.join(jobDir, "job.json")
     const meta = await readJson(metaPath)
     if (!meta) throw new Error(`job not found: ${id}`)
 
+    async function readStreams() {
+      const rawStdout = existsSync(meta.stdoutPath) ? await readFile(meta.stdoutPath, "utf8") : ""
+      const rawStderr = existsSync(meta.stderrPath) ? await readFile(meta.stderrPath, "utf8") : ""
+      return {
+        rawStdout,
+        rawStderr,
+        stdout: redactText(rawStdout),
+        stderr: redactText(rawStderr),
+      }
+    }
+
+    if (op === "checkpoint" || op === "collect") {
+      const streams = await readStreams()
+      const checkpointPath = path.join(jobDir, "checkpoint.json")
+      const previous = (await readJson(checkpointPath)) || { stdoutBytes: 0, stderrBytes: 0 }
+      const stdoutBytes = Buffer.byteLength(streams.rawStdout)
+      const stderrBytes = Buffer.byteLength(streams.rawStderr)
+      const delta = {
+        stdout: redactText(Buffer.from(streams.rawStdout).subarray(Number(previous.stdoutBytes) || 0).toString("utf8")),
+        stderr: redactText(Buffer.from(streams.rawStderr).subarray(Number(previous.stderrBytes) || 0).toString("utf8")),
+      }
+      const checkpoint = { id, capturedAt: new Date().toISOString(), stdoutBytes, stderrBytes, running: isPidAlive(Number(meta.pid)) }
+      await writeFile(checkpointPath, JSON.stringify(checkpoint, null, 2), "utf8")
+      const payload = {
+        ok: true,
+        id,
+        operation: op,
+        running: checkpoint.running,
+        partial: checkpoint.running || stdoutBytes > 0 || stderrBytes > 0,
+        checkpoint,
+        stdout: op === "collect" ? streams.stdout : delta.stdout,
+        stderr: op === "collect" ? streams.stderr : delta.stderr,
+        next: checkpoint.running ? "ctf-background-job operation=checkpoint" : "job complete; collect for the final output",
+      }
+      if (args.jsonOnly) return JSON.stringify(payload, null, 2)
+      return JSON.stringify(payload, null, 2)
+    }
+
     if (op === "status") {
-      const stdout = existsSync(meta.stdoutPath) ? await readFile(meta.stdoutPath, "utf8") : ""
-      const stderr = existsSync(meta.stderrPath) ? await readFile(meta.stderrPath, "utf8") : ""
+      const { stdout, stderr } = await readStreams()
       const payload = {
         ok: true,
         id,
         running: isPidAlive(meta.pid),
         pid: meta.pid,
         startedAt: meta.startedAt,
-        stdoutTail: stdout.split(/\r?\n/).slice(-20).join("\n"),
-        stderrTail: stderr.split(/\r?\n/).slice(-20).join("\n"),
+        stdoutTail: redactText(stdout).split(/\r?\n/).slice(-20).join("\n"),
+        stderrTail: redactText(stderr).split(/\r?\n/).slice(-20).join("\n"),
       }
       if (args.jsonOnly) return JSON.stringify(payload, null, 2)
       return [
@@ -272,11 +351,10 @@ export default tool({
     }
 
     if (op === "read") {
-      const stdout = existsSync(meta.stdoutPath) ? await readFile(meta.stdoutPath, "utf8") : ""
-      const stderr = existsSync(meta.stderrPath) ? await readFile(meta.stderrPath, "utf8") : ""
-      const payload = { ok: true, id, stdout, stderr }
+      const streams = await readStreams()
+      const payload = { ok: true, id, stdout: streams.stdout, stderr: streams.stderr }
       if (args.jsonOnly) return JSON.stringify(payload, null, 2)
-      return ["CTF_BACKGROUND_JOB:", "- operation: read", `- id: ${id}`, "- stdout:", stdout, "- stderr:", stderr].join(
+      return ["CTF_BACKGROUND_JOB:", "- operation: read", `- id: ${id}`, "- stdout:", payload.stdout, "- stderr:", payload.stderr].join(
         "\n",
       )
     }

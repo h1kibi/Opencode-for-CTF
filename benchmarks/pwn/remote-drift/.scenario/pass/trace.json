@@ -1,0 +1,14 @@
+[
+  {
+    "event": "binary.probed"
+  },
+  {
+    "event": "remote.failed"
+  },
+  {
+    "event": "remote_drift.checked"
+  },
+  {
+    "event": "drift.probe.targeted"
+  }
+]

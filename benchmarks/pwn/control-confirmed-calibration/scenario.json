@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "pwn/control-confirmed-calibration",
+  "family": "pwn",
+  "description": "Deterministic behavior contract scenario: pass must satisfy the family checker and fail must be rejected.",
+  "passArtifact": ".scenario/pass",
+  "failArtifact": ".scenario/fail",
+  "traceContract": {
+    "pass": {
+      "requiredOrdered": ["binary.probed", "control.confirmed", "calibration.entered", "closure.hypothesis"],
+      "forbidden": ["gadget.roulette"]
+    },
+    "fail": {
+      "requiredOrdered": ["binary.probed", "control.confirmed", "gadget.roulette"],
+      "forbidden": ["calibration.entered"]
+    }
+  }
+}

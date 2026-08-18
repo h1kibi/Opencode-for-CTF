@@ -24,6 +24,8 @@ function asSet(items: string[]) {
 function makeReadyReport(overrides?: Partial<ExpertReadinessReport>): ExpertReadinessReport {
   return {
     ready: true,
+    status: "ready",
+    reasons: [],
     checks: [],
     missingTools: [],
     missingSupportTools: [],
@@ -39,6 +41,8 @@ function makeReadyReport(overrides?: Partial<ExpertReadinessReport>): ExpertRead
 function makeUnreadyReport(overrides?: Partial<ExpertReadinessReport>): ExpertReadinessReport {
   return {
     ready: false,
+    status: "blocked",
+    reasons: ["missing required tools"],
     checks: [],
     missingTools: ["ctf-team-dispatch", "ctf-evidence-board"],
     missingSupportTools: ["ctf-handoff"],
@@ -113,6 +117,27 @@ describe("evaluateExpertReadiness", () => {
       maxWorkers: 8,
     })
     expect(report.ready).toBe(true)
+  })
+
+  it("reports degraded when only optional support tools are missing", () => {
+    const report = evaluateExpertReadiness({
+      registeredTools: asSet(allRequiredTools()),
+      teamModeEnabled: true,
+      maxWorkers: 8,
+    })
+    expect(report.ready).toBe(true)
+    expect(report.status).toBe("degraded")
+    expect(report.reasons.join(" ")).toContain("optional support tools")
+  })
+
+  it("reports blocked when hard dependencies are missing", () => {
+    const report = evaluateExpertReadiness({
+      registeredTools: asSet(["ctf-evidence-board"]),
+      teamModeEnabled: true,
+      maxWorkers: 8,
+    })
+    expect(report.status).toBe("blocked")
+    expect(report.ready).toBe(false)
   })
 
   it("detects missing support tools without blocking readiness", () => {

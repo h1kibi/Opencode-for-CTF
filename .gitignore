@@ -62,3 +62,6 @@ dist/
 .ctf-locks/
 pwned
 pwn-tools-add.txt
+
+# Local NYU CTF Bench checkout (downloaded by benchmark:nyu:setup)
+.cache/nyu-ctf-bench/

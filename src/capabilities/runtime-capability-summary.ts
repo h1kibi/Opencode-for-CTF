@@ -4,6 +4,8 @@ import { explainToolVisibility } from "./tool-visibility.ts"
 
 export type RuntimeCapabilitySummary = {
   expertReady: boolean
+  expertReadinessStatus: ReturnType<typeof evaluateExpertReadiness>["status"]
+  expertReadinessReasons: string[]
   enabledPacks: string[]
   exportedToolCount: number
   fastVisibleToolCount: number
@@ -48,6 +50,8 @@ export function buildRuntimeCapabilitySummary(args: {
   ).length
   return {
     expertReady: expert.ready,
+    expertReadinessStatus: expert.status,
+    expertReadinessReasons: expert.reasons,
     enabledPacks: [...new Set(args.enabledPacks)].sort(),
     exportedToolCount: args.registeredTools.length,
     fastVisibleToolCount,

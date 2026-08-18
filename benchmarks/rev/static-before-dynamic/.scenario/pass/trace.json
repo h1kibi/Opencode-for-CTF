@@ -1,0 +1,14 @@
+[
+  {
+    "event": "static.triage"
+  },
+  {
+    "event": "checker.extracted"
+  },
+  {
+    "event": "solver.reproducible"
+  },
+  {
+    "event": "closure.verified"
+  }
+]

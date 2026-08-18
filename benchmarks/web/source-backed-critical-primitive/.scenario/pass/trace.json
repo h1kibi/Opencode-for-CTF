@@ -1,0 +1,20 @@
+[
+  {
+    "event": "recon.completed"
+  },
+  {
+    "event": "queue.ranked"
+  },
+  {
+    "event": "candidate.signal"
+  },
+  {
+    "event": "primitive.checked"
+  },
+  {
+    "event": "primitive.locked"
+  },
+  {
+    "event": "closure.handoff"
+  }
+]

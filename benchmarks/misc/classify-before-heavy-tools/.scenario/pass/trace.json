@@ -1,0 +1,14 @@
+[
+  {
+    "event": "classification.completed"
+  },
+  {
+    "event": "reversible.chain.selected"
+  },
+  {
+    "event": "minimal.client.started"
+  },
+  {
+    "event": "specialist.handoff"
+  }
+]
