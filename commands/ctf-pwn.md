@@ -2,6 +2,7 @@
 description: Start a structured pwn CTF solve
 agent: ctf-pwn
 subtask: false
+hidden: true
 ---
 
 Use `ctf-common`, `ctf-terminal`, and `ctf-pwn` skills.

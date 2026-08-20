@@ -2,6 +2,7 @@
 description: Start a structured Web CTF solve
 agent: ctf-web
 subtask: false
+hidden: true
 ---
 
 Use `ctf-common`, `ctf-terminal`, and `ctf-web` skills.

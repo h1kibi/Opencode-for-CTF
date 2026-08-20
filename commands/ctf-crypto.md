@@ -2,6 +2,7 @@
 description: Start a structured crypto CTF solve
 agent: ctf-crypto
 subtask: false
+hidden: true
 ---
 
 Use `ctf-common` and `ctf-crypto` skills.

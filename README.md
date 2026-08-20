@@ -121,7 +121,11 @@ Use `/ctf-expert` when:
 Invoke `researcher` manually after a solve when you want durable learning
 records.
 
-### Category Subagents
+### Internal Category Subagents
+
+These agents are hidden from the user-facing Agent picker and slash-command
+surface. `ctf-expert` dispatches them internally when the selected route needs
+focused category expertise.
 
 | Agent              | Focus                                                          |
 | ------------------ | -------------------------------------------------------------- |

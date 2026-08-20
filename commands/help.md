@@ -23,16 +23,11 @@ You only need these for normal work.
 | `/ctf-expert <target>` | Force evidence-driven expert lane  |
 | `/resume <context>`    | Resume an existing evidence branch |
 
-## L2 — category specialists
+## Internal specialist agents
 
-| Command          | Agent           |
-| ---------------- | --------------- |
-| `/ctf-web`       | `ctf-web`       |
-| `/ctf-pwn`       | `ctf-pwn`       |
-| `/ctf-rev`       | `ctf-rev`       |
-| `/ctf-crypto`    | `ctf-crypto`    |
-| `/ctf-forensics` | `ctf-forensics` |
-| `/ctf-misc`      | `ctf-misc`      |
+Web, Pwn, Rev, Crypto, Forensics, Misc, and AI-security specialists are
+hidden from the user-facing Agent picker and slash-command list. `ctf-expert`
+dispatches them internally when the route requires focused expertise.
 
 ## Public surface only
 
@@ -43,7 +38,6 @@ The command surface is intentionally small for this semi-automated plugin. Publi
 - `/ctf-fast`
 - `/ctf-expert`
 - `/resume`
-- `/ctf-web`, `/ctf-pwn`, `/ctf-rev`, `/ctf-crypto`, `/ctf-forensics`, `/ctf-misc`
 
 Historical compatibility aliases, control-plane helpers, and specialist micro-commands are no longer installed as slash commands. Advanced flows are reached through `/ctf`, `/ctf-expert`, tools, and skills.
 

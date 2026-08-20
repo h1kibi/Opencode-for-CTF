@@ -2,6 +2,7 @@
 description: Start a structured forensics CTF solve
 agent: ctf-forensics
 subtask: false
+hidden: true
 ---
 
 Use `ctf-common`, `ctf-terminal`, and `ctf-forensics` skills.

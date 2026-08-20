@@ -5,7 +5,7 @@
  * Usage: node scripts/setup.mjs
  */
 
-import { copyFile, mkdir, readdir } from "node:fs/promises"
+import { copyFile, mkdir, readdir, rm } from "node:fs/promises"
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import os from "node:os"
 import { resolve, dirname, join } from "node:path"
@@ -100,12 +100,17 @@ if (env.WIREMCP_LAUNCHER) {
 await mkdir(dirname(OUTPUT_PATH), { recursive: true })
 writeFileSync(OUTPUT_PATH, JSON.stringify(config, null, 2), "utf-8")
 
-async function installDefinitions(sourceDir, targetDir) {
+function isHiddenDefinition(source) {
+  return /^hidden:\s*["']?true["']?\s*$/m.test(readFileSync(source, "utf-8"))
+}
+
+async function installDefinitions(sourceDir, targetDir, { skipHidden = false } = {}) {
   await mkdir(targetDir, { recursive: true })
   const installed = []
   for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
     if (!entry.isFile() || !entry.name.endsWith(".md")) continue
     const source = join(sourceDir, entry.name)
+    if (skipHidden && isHiddenDefinition(source)) continue
     const target = join(targetDir, entry.name)
     if (existsSync(target)) {
       if (readFileSync(source, "utf-8") === readFileSync(target, "utf-8")) continue
@@ -122,14 +127,34 @@ async function installDefinitions(sourceDir, targetDir) {
   return installed
 }
 
+async function removeLegacyHiddenDefinitions(sourceDir, targetDir) {
+  const removed = []
+  for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith(".md")) continue
+    const source = join(sourceDir, entry.name)
+    if (!isHiddenDefinition(source)) continue
+    const target = join(targetDir, entry.name)
+    if (!existsSync(target)) continue
+    const backup = `${target}.bak-opencode-for-ctf`
+    if (!existsSync(backup)) await copyFile(target, backup)
+    await rm(target, { force: true })
+    removed.push(target)
+  }
+  return removed
+}
+
 const installedAgents = await installDefinitions(join(ROOT, "agents"), join(CONFIG_DIR, "agents"))
-const installedCommands = await installDefinitions(join(ROOT, "commands"), join(CONFIG_DIR, "commands"))
+const installedCommands = await installDefinitions(join(ROOT, "commands"), join(CONFIG_DIR, "commands"), {
+  skipHidden: true,
+})
+const removedHiddenCommands = await removeLegacyHiddenDefinitions(join(ROOT, "commands"), join(CONFIG_DIR, "commands"))
 
 console.log(`[setup] Generated ${OUTPUT_PATH}`)
 console.log(`[setup] Plugin dir : ${pluginDir}`)
 console.log(`[setup] Workspace   : ${workspaceDir}`)
 console.log(`[setup] OpenCode config dir: ${CONFIG_DIR}`)
 console.log(`[setup] Installed ${installedAgents.length} agents and ${installedCommands.length} commands`)
+if (removedHiddenCommands.length) console.log(`[setup] Removed ${removedHiddenCommands.length} retired hidden commands (backups preserved).`)
 console.log("")
 console.log("[setup] Next steps:")
 console.log("  1. Copy or symlink this opencode.json to your OpenCode config directory:")

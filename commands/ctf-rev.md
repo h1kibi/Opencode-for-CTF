@@ -2,6 +2,7 @@
 description: Start a structured reverse engineering CTF solve
 agent: ctf-rev
 subtask: false
+hidden: true
 ---
 
 Use `ctf-common`, `ctf-terminal`, and `ctf-rev` skills.

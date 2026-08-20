@@ -493,7 +493,7 @@ export async function managedFileHash(file) {
     .digest("hex")
 }
 
-function shouldCopyManagedRelative(mappingSource, rel) {
+async function shouldCopyManagedRelative(mappingSource, rel) {
   // Slim knowledge: skip intermediate pattern-card history and generator scripts.
   // Source checkouts may still contain v2-v8 for rebuild; install must not re-bloat.
   const source = mappingSource.replace(/\\/g, "/")
@@ -507,6 +507,10 @@ function shouldCopyManagedRelative(mappingSource, rel) {
     }
     if (posixRel === "lessons" || posixRel.startsWith("lessons/")) return true
     return false
+  }
+  if (source === "commands" && posixRel.endsWith(".md")) {
+    const definition = await readFile(path.join(repoRoot, mappingSource, rel), "utf8")
+    return !/^hidden:\s*["']?true["']?\s*$/m.test(definition)
   }
   return true
 }
@@ -561,7 +565,7 @@ export async function copyManagedFiles(configDir = opencodeConfigDir()) {
       const source = path.join(repoRoot, mapping.source)
       if (!existsSync(source)) continue
       for (const rel of await listFiles(source)) {
-        if (!shouldCopyManagedRelative(mapping.source, rel)) continue
+        if (!(await shouldCopyManagedRelative(mapping.source, rel))) continue
         const override = managedBuiltSourceOverride(mapping.source, rel)
         const from = override ?? (rel ? path.join(source, rel) : source)
         const targetRel = rel ? path.join(mapping.target, rel) : mapping.target
@@ -612,7 +616,7 @@ export async function upgradeManagedFiles(configDir, previousManifest) {
       const source = path.join(repoRoot, mapping.source)
       if (!existsSync(source)) continue
       for (const rel of await listFiles(source)) {
-        if (!shouldCopyManagedRelative(mapping.source, rel)) continue
+        if (!(await shouldCopyManagedRelative(mapping.source, rel))) continue
         const override = managedBuiltSourceOverride(mapping.source, rel)
         const from = override ?? (rel ? path.join(source, rel) : source)
         const targetRel = rel ? path.join(mapping.target, rel) : mapping.target

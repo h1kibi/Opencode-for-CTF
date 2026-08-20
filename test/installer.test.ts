@@ -15,6 +15,7 @@ const {
   configPath,
   copyManagedFiles,
   installedSkillDirs,
+  managedFileHash,
   probeInstalledPluginRuntime,
   readJsonc,
   removeManagedFiles,
@@ -73,6 +74,8 @@ describe.sequential("managed installer", () => {
     expect(existsSync(path.join(configDir, "commands", "ctf-help.md"))).toBe(false)
     expect(existsSync(path.join(configDir, "commands", "resume.md"))).toBe(true)
     expect(existsSync(path.join(configDir, "commands", "ctf-resume.md"))).toBe(false)
+    expect(existsSync(path.join(configDir, "commands", "ctf-web.md"))).toBe(false)
+    expect(existsSync(path.join(configDir, "commands", "ctf-pwn.md"))).toBe(false)
     expect(resources.copied.some((entry: { path: string }) => entry.path === path.join("commands", "help.md"))).toBe(
       true,
     )
@@ -175,6 +178,58 @@ describe.sequential("managed installer", () => {
     expect(await readFile(modified, "utf8")).toBe("user customization\n")
     await result.commit()
   }, 60_000)
+
+  it("removes unchanged hidden category commands and preserves user-modified legacy commands during upgrade", async () => {
+    const configDir = await temporaryDir("ctf-installer-hidden-command-upgrade-")
+    const initial = await copyManagedFiles(configDir)
+    const specialistCommands = ["ctf-web.md", "ctf-pwn.md", "ctf-rev.md", "ctf-crypto.md", "ctf-forensics.md", "ctf-misc.md"]
+    const copied = [...initial.copied]
+
+    for (const command of specialistCommands) {
+      const target = path.join(configDir, "commands", command)
+      await writeFile(target, `legacy managed ${command}\n`)
+      copied.push({ path: path.join("commands", command), sha256: await managedFileHash(target) })
+    }
+
+    const modified = path.join(configDir, "commands", "ctf-web.md")
+    await writeFile(modified, "user customization\n")
+
+    const result = await upgradeManagedFiles(configDir, { ...initial, copied })
+    expect(result.preserved).toContain(path.join("commands", "ctf-web.md"))
+    expect(await readFile(modified, "utf8")).toBe("user customization\n")
+    for (const command of specialistCommands.filter((command) => command !== "ctf-web.md")) {
+      expect(existsSync(path.join(configDir, "commands", command)), command).toBe(false)
+    }
+    await result.commit()
+  }, 60_000)
+
+  it("legacy setup removes hidden category commands after preserving backups", async () => {
+    const configDir = await temporaryDir("ctf-legacy-setup-hidden-command-")
+    const outputPath = path.join(configDir, "generated", "opencode.json")
+    const specialistCommands = ["ctf-web.md", "ctf-pwn.md", "ctf-rev.md", "ctf-crypto.md", "ctf-forensics.md", "ctf-misc.md"]
+    await mkdir(path.join(configDir, "commands"), { recursive: true })
+    for (const command of specialistCommands) {
+      await writeFile(path.join(configDir, "commands", command), `legacy setup ${command}\n`)
+    }
+
+    const result = spawnSync(process.execPath, [path.resolve("scripts/setup.mjs")], {
+      cwd: path.resolve("."),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        OPENCODE_CONFIG_DIR: configDir,
+        OPENCODE_SETUP_OUTPUT: outputPath,
+        PLUGIN_DIR: path.resolve("."),
+        WORKSPACE_DIR: configDir,
+      },
+    })
+    expect(result.status, result.stderr).toBe(0)
+    for (const command of specialistCommands) {
+      const target = path.join(configDir, "commands", command)
+      expect(existsSync(target), command).toBe(false)
+      expect(await readFile(`${target}.bak-opencode-for-ctf`, "utf8"), command).toBe(`legacy setup ${command}\n`)
+    }
+  })
 
   it("refreshes modified plugin bundle files during upgrade", async () => {
     const configDir = await temporaryDir("ctf-installer-plugin-refresh-")

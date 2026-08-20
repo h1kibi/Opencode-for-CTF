@@ -34,7 +34,7 @@ $ARGUMENTS
 
 - **Main entry**: `/ctf`
 - **Core modes**: `/ctf-fast`, `/ctf-expert`, `/resume`
-- **Category specialists**: `/ctf-web`, `/ctf-pwn`, `/ctf-rev`, `/ctf-crypto`, `/ctf-forensics`, `/ctf-misc`
+- **Internal specialists**: Web/Pwn/Rev/Crypto/Forensics/Misc/AI-security agents are hidden and dispatched by `ctf-expert`.
 - **Public help**: `/help`
 
 ## Mode guide
@@ -62,5 +62,5 @@ $ARGUMENTS
 - Force fast: `/ctf-fast ...`
 - Force expert: `/ctf-expert ...`
 - Resume: `/resume ...`
-- Known category: `/ctf-web|pwn|rev|crypto|forensics|misc ...`
+- Known category: mention it in `/ctf ...` or use `/ctf-expert ...`; the expert lane dispatches the specialist internally.
 - Help: `/help`

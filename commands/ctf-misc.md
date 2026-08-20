@@ -2,6 +2,7 @@
 description: Start a structured miscellaneous CTF solve
 agent: ctf-misc
 subtask: false
+hidden: true
 ---
 
 Use `ctf-common`, `ctf-terminal`, and `ctf-misc` skills.

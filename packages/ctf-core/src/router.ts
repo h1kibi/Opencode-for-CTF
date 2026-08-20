@@ -452,15 +452,8 @@ export const COMMAND_SURFACE = {
     { command: "/ctf-expert", purpose: "Force evidence-driven expert lane" },
     { command: "/resume", purpose: "Resume an existing evidence branch" },
   ],
-  L1: [
-    { command: "/ctf-web", purpose: "Web specialist" },
-    { command: "/ctf-pwn", purpose: "Pwn specialist" },
-    { command: "/ctf-rev", purpose: "Reverse specialist" },
-    { command: "/ctf-crypto", purpose: "Crypto specialist" },
-    { command: "/ctf-forensics", purpose: "Forensics specialist" },
-    { command: "/ctf-misc", purpose: "Misc specialist" },
-  ],
-  note: "Only /ctf, /help, /ctf-fast, /ctf-expert, /resume, and the family specialist commands are installed as slash-command entrypoints. Advanced flows are reached through /ctf, /ctf-expert, tools, and skills.",
+  L1: [],
+  note: "Only /ctf, /help, /ctf-fast, /ctf-expert, and /resume are public slash-command entrypoints. Family specialists remain hidden subagents reached through /ctf and /ctf-expert.",
 } as const
 
 /** Format a route decision for agent prompts or tool output. */
