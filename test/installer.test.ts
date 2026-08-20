@@ -182,7 +182,14 @@ describe.sequential("managed installer", () => {
   it("removes unchanged hidden category commands and preserves user-modified legacy commands during upgrade", async () => {
     const configDir = await temporaryDir("ctf-installer-hidden-command-upgrade-")
     const initial = await copyManagedFiles(configDir)
-    const specialistCommands = ["ctf-web.md", "ctf-pwn.md", "ctf-rev.md", "ctf-crypto.md", "ctf-forensics.md", "ctf-misc.md"]
+    const specialistCommands = [
+      "ctf-web.md",
+      "ctf-pwn.md",
+      "ctf-rev.md",
+      "ctf-crypto.md",
+      "ctf-forensics.md",
+      "ctf-misc.md",
+    ]
     const copied = [...initial.copied]
 
     for (const command of specialistCommands) {
@@ -206,7 +213,14 @@ describe.sequential("managed installer", () => {
   it("legacy setup removes hidden category commands after preserving backups", async () => {
     const configDir = await temporaryDir("ctf-legacy-setup-hidden-command-")
     const outputPath = path.join(configDir, "generated", "opencode.json")
-    const specialistCommands = ["ctf-web.md", "ctf-pwn.md", "ctf-rev.md", "ctf-crypto.md", "ctf-forensics.md", "ctf-misc.md"]
+    const specialistCommands = [
+      "ctf-web.md",
+      "ctf-pwn.md",
+      "ctf-rev.md",
+      "ctf-crypto.md",
+      "ctf-forensics.md",
+      "ctf-misc.md",
+    ]
     await mkdir(path.join(configDir, "commands"), { recursive: true })
     for (const command of specialistCommands) {
       await writeFile(path.join(configDir, "commands", command), `legacy setup ${command}\n`)
@@ -316,6 +330,8 @@ describe.sequential("managed installer", () => {
 
     const install = run("install.mjs")
     expect(install.status, install.stderr).toBe(0)
+    expect(install.stdout).toContain("user-selectable CTF agents: ctf-fast, ctf-expert")
+    expect(install.stdout).toContain("hidden internal subagents")
     expect(existsSync(path.join(configDir, "opencode-for-ctf.manifest.json"))).toBe(true)
     const healthFile = path.join(configDir, "opencode-for-ctf.plugin-health.json")
     expect(existsSync(healthFile)).toBe(true)

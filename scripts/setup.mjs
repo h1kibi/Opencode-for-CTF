@@ -153,8 +153,12 @@ console.log(`[setup] Generated ${OUTPUT_PATH}`)
 console.log(`[setup] Plugin dir : ${pluginDir}`)
 console.log(`[setup] Workspace   : ${workspaceDir}`)
 console.log(`[setup] OpenCode config dir: ${CONFIG_DIR}`)
-console.log(`[setup] Installed ${installedAgents.length} agents and ${installedCommands.length} commands`)
-if (removedHiddenCommands.length) console.log(`[setup] Removed ${removedHiddenCommands.length} retired hidden commands (backups preserved).`)
+const userSelectableAgents = ["ctf-fast", "ctf-expert"]
+console.log(
+  `[setup] Installed/updated ${installedAgents.length} agent definitions and ${installedCommands.length} commands. User-selectable CTF agents: ${userSelectableAgents.join(", ")}; other installed agent definitions are hidden internal subagents for delegation.`,
+)
+if (removedHiddenCommands.length)
+  console.log(`[setup] Removed ${removedHiddenCommands.length} retired hidden commands (backups preserved).`)
 console.log("")
 console.log("[setup] Next steps:")
 console.log("  1. Copy or symlink this opencode.json to your OpenCode config directory:")

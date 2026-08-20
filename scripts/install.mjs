@@ -80,7 +80,16 @@ try {
 console.log(`OpenCode for CTF installed with the ${profile} profile.`)
 console.log(`config: ${file}`)
 if (backup) console.log(`backup: ${backup}`)
+const installedAgentDefinitions = resources.copied.filter((entry) => {
+  const relative = typeof entry === "string" ? entry : entry.path
+  return String(relative).replaceAll("\\", "/").startsWith("agents/") && String(relative).endsWith(".md")
+}).length
+const userSelectableAgents = ["ctf-fast", "ctf-expert"]
+
 console.log(`copied: ${resources.copied.length} managed files`)
+console.log(
+  `CTF agent definitions: ${installedAgentDefinitions} (${userSelectableAgents.length} user-selectable CTF agents: ${userSelectableAgents.join(", ")}; ${Math.max(0, installedAgentDefinitions - userSelectableAgents.length)} hidden internal subagents for delegation)`,
+)
 console.log(`config entries added: ${configOperations.length}`)
 if (resources.backups.length) console.log(`file backups: ${resources.backups.length}`)
 console.log("")

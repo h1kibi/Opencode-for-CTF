@@ -317,7 +317,7 @@
     "{env:CTF_WORKSPACE}\\**": "allow"
   "ctf-file-triage": "allow"
   "ctf-flag-grep": "allow"
-  "ctf-flag-verify": "allow",
+  "ctf-flag-verify": "allow"
   "ctf-safe-extract": "allow"
   "ctf-web-source-map": "allow"
   "ctf-whitebox-audit": "allow"

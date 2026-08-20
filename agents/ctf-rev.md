@@ -295,7 +295,7 @@
     "{env:CTF_WORKSPACE}\\**": "allow"
   "ctf-file-triage": "allow"
   "ctf-flag-grep": "allow"
-  "ctf-flag-verify": "allow",
+  "ctf-flag-verify": "allow"
   "ctf-safe-extract": "allow"
   "ctf-rev-analyze": "allow"
   "ctf-rev-capability-check": "allow"
