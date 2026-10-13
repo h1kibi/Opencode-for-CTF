@@ -23,16 +23,10 @@ describe("problem fixes integration", () => {
     expect(toolAllowedForAgent("ctf-team-dispatch", "ctf-fast")).toBe(false)
   })
 
-  it("2. fast allowlist is strict; handoff and evidence init are on allowlist", () => {
-    expect(FAST_TOOL_ALLOWLIST.has("ctf-handoff")).toBe(true)
+  it("2. fast allowlist is strict; evidence init is on allowlist and cross-lane handoff is gone", () => {
+    expect(FAST_TOOL_ALLOWLIST.has("ctf-handoff")).toBe(false)
     expect(FAST_TOOL_ALLOWLIST.has("ctf-evidence-board")).toBe(true)
     expect(FAST_TOOL_ALLOWLIST.has("ctf-route-plan")).toBe(true)
     expect(FAST_TOOL_ALLOWLIST.has("ctf-team-dispatch")).toBe(false)
-  })
-
-  it("3/4. team route ids are documented constants via session surface independence", () => {
-    // routeId validation is in team-runtime schema; smoke that expert surface allows team tools
-    expect(toolAllowedForAgent("ctf-team-dispatch", "ctf-expert")).toBe(true)
-    expect(toolAllowedForAgent("ctf-mcp-control", "ctf-expert")).toBe(true)
   })
 })

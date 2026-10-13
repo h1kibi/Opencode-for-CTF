@@ -144,23 +144,6 @@ function main() {
     })
   }
 
-  const lessonIndexScript = resolve("scripts", "check-lesson-index-readiness.ts")
-  if (existsSync(lessonIndexScript)) {
-    const res = run("node", [lessonIndexScript], cwd)
-    writeFileSync(join(outDir, "check-lesson-index-readiness.txt"), `${res.stdout || ""}${res.stderr || ""}`)
-    results.push({
-      name: "check-lesson-index-readiness",
-      status: res.status === 0 ? "PASS" : "FAIL",
-      detail: "lesson index readiness audit completed",
-    })
-  } else {
-    results.push({
-      name: "check-lesson-index-readiness",
-      status: "SKIP",
-      detail: "script missing",
-    })
-  }
-
   const initEvidenceScript = resolve("scripts", "init-ctf-evidence.ts")
   if (existsSync(initEvidenceScript)) {
     const res = run("node", [initEvidenceScript, "qa-evidence-init"], cwd)
@@ -250,69 +233,6 @@ function main() {
   } else {
     results.push({
       name: "read-rev-team-memory",
-      status: "SKIP",
-      detail: "script missing",
-    })
-  }
-
-  const routeWriter = resolve("scripts", "write-route-state.ts")
-  if (existsSync(routeWriter)) {
-    const res = run(
-      "node",
-      [routeWriter, "qa-evidence-init", "primary_owner=misc,first_safe_tool=ctf-one-shot-triage"],
-      cwd,
-    )
-    writeFileSync(join(outDir, "write-route-state.txt"), `${res.stdout || ""}${res.stderr || ""}`)
-    results.push({
-      name: "write-route-state",
-      status: res.status === 0 ? "PASS" : "FAIL",
-      detail: "route state writer executed",
-    })
-  } else {
-    results.push({
-      name: "write-route-state",
-      status: "SKIP",
-      detail: "script missing",
-    })
-  }
-
-  const primitiveWriter = resolve("scripts", "write-primitive-state.ts")
-  if (existsSync(primitiveWriter)) {
-    const res = run("node", [primitiveWriter, "qa-evidence-init", "primitive=source_leak,closure_owner=web"], cwd)
-    writeFileSync(join(outDir, "write-primitive-state.txt"), `${res.stdout || ""}${res.stderr || ""}`)
-    results.push({
-      name: "write-primitive-state",
-      status: res.status === 0 ? "PASS" : "FAIL",
-      detail: "primitive state writer executed",
-    })
-  } else {
-    results.push({
-      name: "write-primitive-state",
-      status: "SKIP",
-      detail: "script missing",
-    })
-  }
-
-  const closureWriter = resolve("scripts", "write-closure-state.ts")
-  if (existsSync(closureWriter)) {
-    const res = run(
-      "node",
-      [
-        closureWriter,
-        "qa-evidence-init",
-        "current_primitive=source_leak,closure_owner=web,top_closure_probe=read config path",
-      ],
-      cwd,
-    )
-    writeFileSync(join(outDir, "write-closure-state.txt"), `${res.stdout || ""}${res.stderr || ""}`)
-    results.push({
-      name: "write-closure-state",
-      status: res.status === 0 ? "PASS" : "FAIL",
-      detail: "closure state writer executed",
-    })
-  } else {
-    results.push({
-      name: "write-closure-state",
       status: "SKIP",
       detail: "script missing",
     })
@@ -524,14 +444,12 @@ function main() {
       "# CTF Practical Readiness",
       "",
       `- manifest_present: ${existsSync(manifestPath) ? "yes" : "no"}`,
-      `- lesson_index_present: ${existsSync(resolve("knowledge", "lessons", "lessons.index.json")) ? "yes" : "no"}`,
-      `- lesson_index_readiness_pass: ${results.find((r) => r.name === "check-lesson-index-readiness")?.status === "PASS" ? "yes" : "no"}`,
       `- command_contracts_pass: ${results.find((r) => r.name === "check-command-helper-contracts")?.status === "PASS" ? "yes" : "no"}`,
       `- evidence_bootstrap_pass: ${results.find((r) => r.name === "init-ctf-evidence")?.status === "PASS" ? "yes" : "no"}`,
       `- benchmark_smoke_pass: ${results.find((r) => r.name === "check-hard-regression")?.status === "PASS" ? "yes" : "no"}`,
       "",
       "verdict_logic:",
-      "- READY requires manifest, lesson index, command contracts, evidence bootstrap, and benchmark smoke to all pass.",
+      "- READY requires manifest, command contracts, evidence bootstrap, and benchmark smoke to all pass.",
       "- PARTIAL means the core config works but one or more readiness gates are weak or skipped.",
       "- BLOCKED means a core readiness gate failed.",
     ]

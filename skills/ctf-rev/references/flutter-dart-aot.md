@@ -67,7 +67,7 @@ After automated recovery:
 ## Stop Rules
 
 - After Blutter output exists, do NOT re-run Blutter without `--rebuild` unless Dart version changed.
-- Do NOT manually disassemble libapp.so in IDA/Ghidra expecting meaningful cross-references without Blutter symbols.
+- Do NOT manually disassemble libapp.so in Ghidra expecting meaningful cross-references without Blutter symbols.
 - If Blutter fails to build for a specific Dart version, fall back to strings + dynamic analysis rather than fighting the build chain.
 
 ## Verification

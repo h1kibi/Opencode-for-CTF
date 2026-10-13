@@ -1,10 +1,9 @@
+import { packForTool, type ToolPackId } from "../tool-packs.ts"
 import {
-  packForTool,
   toolAllowedForAgent,
   toolAllowedForSubagent,
   isCtfSubagent,
-  type ToolPackId,
-} from "../tool-packs.ts"
+} from "../agent-equipment-policy.ts"
 
 export type ToolVisibilityCategory =
   "visible" | "pack_not_enabled" | "tool_not_in_process_registry" | "fast_surface_blocked" | "subagent_gate_blocked"
@@ -53,17 +52,28 @@ export function explainToolVisibility(args: {
     }
   }
 
+  // Subagent heavy tool gate: block cross-family tools, but allow same-family
+  // tools to show as visible (they need expert approval, but they're not blocked
+  // from visibility - the subagent can request them via ctf-dynamic-mcp-advisor)
   if (
     args.agentName &&
     isCtfSubagent(args.agentName) &&
     !toolAllowedForSubagent(args.toolName, args.agentName, args.enabledPacks)
   ) {
-    reasons.push(`${args.toolName} is outside the lightweight tool surface for subagent ${args.agentName}.`)
-    return {
-      visible: false,
-      category: "subagent_gate_blocked",
-      reasons,
+    // Check if tool belongs to the same family as the subagent
+    const toolFamily = args.toolName.match(/^ctf-([^-]+)-/)?.[1]
+    const agentFamily = args.agentName.replace(/^ctf-/, '')
+    const isSameFamily = toolFamily === agentFamily
+    
+    if (!isSameFamily) {
+      reasons.push(`${args.toolName} is outside the lightweight tool surface for subagent ${args.agentName}.`)
+      return {
+        visible: false,
+        category: "subagent_gate_blocked",
+        reasons,
+      }
     }
+    // Same-family heavy tools fall through to visible
   }
 
   reasons.push(`${args.toolName} is exported and allowed for the current surface.`)

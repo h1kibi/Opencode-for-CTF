@@ -1,5 +1,4 @@
 import { existsSync } from "node:fs"
-import { spawn } from "node:child_process"
 import path from "node:path"
 import {
   revRuntimeValueSha256,
@@ -25,7 +24,7 @@ type DoctorSpec = {
   requirement: RevRuntimeDoctorRequirement
   command: string
   args: string[]
-  probe?: "command" | "path" | "mcp-stdio"
+  probe?: "command" | "path"
   pathCandidates?: string[]
   fallbacks?: DoctorFallback[]
   okWhen?: RegExp
@@ -71,20 +70,6 @@ function needsWindowsShell(command: string) {
   if (process.platform !== "win32" || path.extname(command)) return false
   return Boolean(pathOnPath(`${command}.cmd`) || pathOnPath(`${command}.bat`))
 }
-
-const idaBinaryCandidates = uniquePaths([
-  ...envPath("IDA_PATH", "ida.exe", "ida64.exe"),
-  ...envPath("IDADIR", "ida.exe", "ida64.exe"),
-  win("C:\\Tools", "IDA Professional 9.2", "ida.exe"),
-  win("C:\\Tools", "IDA Professional 9.2", "ida64.exe"),
-  win("C:\\Tools", "ida92", "portable", "ida.exe"),
-])
-
-const idaPluginCandidates = uniquePaths([
-  ...envPath("IDA_PLUGIN_DIR", "ida_mcp.py"),
-  win(process.env.APPDATA ?? "", "Hex-Rays", "IDA Pro", "plugins", "ida_mcp.py"),
-  win(process.env.USERPROFILE ?? "", "AppData", "Roaming", "Hex-Rays", "IDA Pro", "plugins", "ida_mcp.py"),
-])
 
 const ghidraHeadlessCandidates = uniquePaths([
   pathOnPath("analyzeHeadless.bat"),
@@ -172,7 +157,6 @@ const DOCTOR_SPECS: DoctorSpec[] = [
     // Java startup is noticeably slower than ordinary CLI probes on Windows.
     timeoutMs: 10000,
   },
-  { id: "jadx", requirement: "optional", command: "jadx", args: ["--version"] },
   { id: "frida", requirement: "optional", command: "frida", args: ["--version"] },
   { id: "apktool", requirement: "optional", command: "apktool", args: ["--version"] },
   {
@@ -184,41 +168,6 @@ const DOCTOR_SPECS: DoctorSpec[] = [
     okWhen: /mcp-reva\s+\d/i,
   },
 
-  // IDA is intentionally split into installation, plugin, and transport.
-  // A path hit alone is not reported as an active IDA analysis backend.
-  {
-    id: "ida-pro-binary",
-    requirement: "optional",
-    command: "path-probe",
-    args: [],
-    probe: "path",
-    pathCandidates: idaBinaryCandidates,
-  },
-  {
-    id: "ida-pro-plugin",
-    requirement: "optional",
-    command: "path-probe",
-    args: [],
-    probe: "path",
-    pathCandidates: idaPluginCandidates,
-  },
-  {
-    id: "ida-pro-mcp-stdio",
-    requirement: "optional",
-    command: "ida-pro-mcp",
-    args: [],
-    probe: "mcp-stdio",
-  },
-  {
-    // A stdio supervisor needs an input binary to create an IDB. The doctor
-    // intentionally never accepts challenge paths, so its fixed probe checks
-    // installation/help only; live IDB health is verified by the runtime lane.
-    id: "idalib-mcp-installed",
-    requirement: "optional",
-    command: "idalib-mcp",
-    args: ["--help"],
-    okWhen: /usage:\s*idalib-mcp/i,
-  },
   // Debugger entries are deliberately capability labels, not claims of
   // headless automation. x64dbg/WinDbg GUI presence is path/version only.
   {
@@ -281,82 +230,6 @@ async function runCommand(spec: DoctorSpec, options: RevRuntimeDoctorOptions): P
   return last
 }
 
-async function runMcpStdio(spec: DoctorSpec, options: RevRuntimeDoctorOptions): Promise<ProbeResult> {
-  const timeoutMs = Math.min(Math.max(options.timeoutMs ?? 1500, 250), 5000)
-  const request =
-    JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "initialize",
-      params: {
-        protocolVersion: "2024-11-05",
-        capabilities: {},
-        clientInfo: { name: "ctf-rev-runtime-doctor", version: "1.0" },
-      },
-    }) + "\n"
-  return await new Promise<ProbeResult>((resolve) => {
-    let settled = false
-    let stdout = ""
-    let stderr = ""
-    const child = spawn(spec.command, spec.args, {
-      cwd: options.cwd,
-      stdio: ["pipe", "pipe", "pipe"],
-      windowsHide: true,
-    })
-    const finish = (result: ProbeResult) => {
-      if (settled) return
-      settled = true
-      clearTimeout(timer)
-      try {
-        child.kill()
-      } catch {
-        /* already exited */
-      }
-      resolve(result)
-    }
-    const timer = setTimeout(
-      () =>
-        finish({
-          output: `${stdout}\n[stderr]\n${stderr}`.trim() || "<failed: MCP handshake timeout>",
-          ok: false,
-          exitCode: null,
-        }),
-      timeoutMs,
-    )
-    child.on("error", (error) => finish({ output: `<failed: ${error.message}>`, ok: false, exitCode: null }))
-    child.stdout.on("data", (chunk: Buffer | string) => {
-      stdout += String(chunk)
-      for (const line of stdout.split(/\r?\n/)) {
-        try {
-          const parsed = JSON.parse(line) as { result?: { serverInfo?: { version?: string } } }
-          if (parsed.result?.serverInfo) {
-            finish({
-              output: `${stderr ? `[stderr]\n${stderr}\n` : ""}${line}`.trim(),
-              ok: true,
-              exitCode: 0,
-            })
-            return
-          }
-        } catch {
-          // Wait for a complete JSON line.
-        }
-      }
-    })
-    child.stderr.on("data", (chunk: Buffer | string) => {
-      stderr += String(chunk)
-    })
-    child.on("close", (code) =>
-      finish({
-        output: `${stdout}\n[stderr]\n${stderr}`.trim() || `<failed: exit ${code ?? "unknown"}>`,
-        ok: false,
-        exitCode: typeof code === "number" ? code : null,
-      }),
-    )
-    child.stdin.write(request)
-    child.stdin.end()
-  })
-}
-
 async function runCheck(spec: DoctorSpec, options: RevRuntimeDoctorOptions): Promise<RevRuntimeDoctorCheck> {
   if (spec.probe === "path") {
     const found = spec.pathCandidates?.find((candidate) => existsSync(candidate))
@@ -372,7 +245,7 @@ async function runCheck(spec: DoctorSpec, options: RevRuntimeDoctorOptions): Pro
       detail: found ?? "no configured candidate path exists",
     }
   }
-  const result = spec.probe === "mcp-stdio" ? await runMcpStdio(spec, options) : await runCommand(spec, options)
+  const result = await runCommand(spec, options)
   const { status } = classify(result, spec.okWhen)
   return {
     id: spec.id,
@@ -380,12 +253,7 @@ async function runCheck(spec: DoctorSpec, options: RevRuntimeDoctorOptions): Pro
     command: spec.command,
     args: [...spec.args],
     status,
-    version:
-      status === "available"
-        ? spec.probe === "mcp-stdio"
-          ? (result.output.match(/"serverInfo"\s*:\s*\{[^}]*"version"\s*:\s*"([^"]+)/)?.[1] ?? firstLine(result.output))
-          : firstLine(result.output)
-        : null,
+    version: status === "available" ? firstLine(result.output) : null,
     output_sha256: result.output ? revRuntimeValueSha256(result.output) : null,
     detail: result.output.slice(0, 240),
   }
@@ -400,10 +268,6 @@ export async function runRevRuntimeDoctor(options: RevRuntimeDoctorOptions = {})
     ...requiredFailures.map((check) => `required capability check failed: ${check.id} (${check.status})`),
     ...optionalFailures.map((check) => `optional capability unavailable: ${check.id} (${check.status})`),
   ]
-  const idaMcp = checks.find((check) => check.id === "ida-pro-mcp-stdio")
-  if (idaMcp?.status === "available" && /No IDA instances discovered/i.test(idaMcp.detail ?? "")) {
-    issues.push("ida-pro MCP transport is available, but no live IDA instance is registered")
-  }
   const capabilities: string[] = []
   if (available.has("file") && available.has("objdump")) capabilities.push("native-static")
   if (available.has("file") && available.has("readelf") && available.has("objdump")) capabilities.push("elf-static")
@@ -411,21 +275,9 @@ export async function runRevRuntimeDoctor(options: RevRuntimeDoctorOptions = {})
   if (available.has("radare2")) capabilities.push("radare2")
   if (available.has("rizin")) capabilities.push("rizin")
   if (available.has("ghidra-headless")) capabilities.push("ghidra-headless")
-  if (available.has("jadx")) capabilities.push("jadx")
   if (available.has("frida")) capabilities.push("frida")
   if (available.has("apktool")) capabilities.push("apktool")
   if (available.has("mcp-reva")) capabilities.push("reva-mcp")
-  if (available.has("ida-pro-binary") && available.has("ida-pro-plugin")) capabilities.push("ida-pro-installed")
-  if (available.has("ida-pro-mcp-stdio")) capabilities.push("ida-pro-mcp-stdio")
-  if (available.has("idalib-mcp-installed")) capabilities.push("idalib-mcp-installed")
-  if (
-    available.has("ida-pro-binary") &&
-    available.has("ida-pro-plugin") &&
-    available.has("ida-pro-mcp-stdio") &&
-    !/No IDA instances discovered/i.test(idaMcp?.detail ?? "")
-  ) {
-    capabilities.push("ida-pro-live")
-  }
   if (available.has("x64dbg-gui")) capabilities.push("x64dbg-gui")
   if (available.has("windbgx")) capabilities.push("windbgx-gui")
   if (available.has("docker")) capabilities.push("docker")

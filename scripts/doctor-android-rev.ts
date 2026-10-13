@@ -13,7 +13,6 @@ const ANDROID_TOOL_NAMES = [
   "aapt2",
   "apkanalyzer",
   "adb",
-  "jadx",
   "apktool",
   "baksmali",
   "smali",

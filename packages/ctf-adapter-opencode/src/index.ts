@@ -29,20 +29,13 @@ export {
   type ToolPack,
 }
 
-/** Config filenames searched by the plugin (closest wins). */
-export const OPENCODE_CTF_CONFIG_NAMES = ["opencode-for-ctf.jsonc", "opencode-for-ctf.json"] as const
 
 /** Primary agents exposed as the product surface. */
 export const PRIMARY_AGENTS = ["ctf-fast", "ctf-expert"] as const
 
-/** Historical names that must keep working but are not product modes. */
-export const COMPAT_AGENTS = [] as const
-
 /** Default slash entry for new users. */
 export const DEFAULT_ENTRY_COMMAND = "/ctf"
 
-/** Public help command for the reduced surface. */
-export const HELP_ENTRY_COMMAND = "/help"
 
 /** Map route mode → primary agent name for OpenCode session switches. */
 export function agentForMode(mode: "fast" | "expert" | "resume"): "ctf-fast" | "ctf-expert" {

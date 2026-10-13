@@ -43,7 +43,7 @@ Use this file as the top-level trigger map for `skills/ctf-misc/references/`. Ke
 - AI/ML model and agent challenge boundaries
   - `../../ctf-misc-ai-ml/SKILL.md`
 - games, VMs, RF/SDR, DNS, and other external playbooks
-  - `skills-external/secknowledge-skill/ (root SKILL.md + references/)`
+  - retrieve with `ctf_rag` using the shape-specific technical anchors
 
 ## Classifier Output Map
 

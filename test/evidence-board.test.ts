@@ -256,4 +256,30 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
       process.chdir(prev)
     }
   })
+  it("rejects unsafe explicit board and Markdown paths", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ctf-ev-paths-"))
+    const mod = await import("../tools/core/ctf-evidence-board.ts")
+    const tool = mod.default as unknown as { execute: (args: Record<string, unknown>, context?: unknown) => Promise<string> }
+    const cases = [
+      { board: "work/ctf-evidence/web-case/.ctf-evidence-board.json", evidenceMd: "work/ctf-evidence/web-case/nested/Evidence.md" },
+      { board: "../outside/.ctf-evidence-board.json", evidenceMd: "work/ctf-evidence/web-case/Evidence.md" },
+      { board: "work/ctf-evidence/Web Case/.ctf-evidence-board.json", evidenceMd: "work/ctf-evidence/Web Case/Evidence.md" },
+      { board: "work/ctf-evidence/web-case/.ctf-evidence-board.json", evidenceMd: "work/ctf-evidence/other-case/Evidence.md" },
+    ]
+    for (const paths of cases) {
+      const out = await tool.execute({ command: "summary", ...paths }, { directory: dir, worktree: dir } as never)
+      expect(out).toMatch(/^ERROR:/)
+    }
+  })
+  it("escapes challenge and route text in rendered Markdown", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ctf-ev-escape-"))
+    const mod = await import("../tools/core/ctf-evidence-board.ts")
+    const tool = mod.default as unknown as { execute: (args: Record<string, unknown>, context?: unknown) => Promise<string> }
+    await tool.execute({ command: "init", challengeName: "name | [x]\n# heading", category: "web", target: "http://target" }, { directory: dir, worktree: dir } as never)
+    await tool.execute({ command: "set-routes", routesJson: JSON.stringify([{ name: "route [x]", whyNow: "*bold*", verifyMethod: "`code`", expected: "# heading" }, { name: "two", whyNow: "", verifyMethod: "", expected: "" }, { name: "three", whyNow: "", verifyMethod: "", expected: "" }]) }, { directory: dir, worktree: dir } as never)
+    const md = readFileSync(join(dir, "work", "ctf-evidence", "web-name-x-heading", "Evidence.md"), "utf8")
+    expect(md).toContain("\\|")
+    expect(md).toContain("\\[")
+    expect(md).not.toContain("\n# heading")
+  })
 })

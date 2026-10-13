@@ -12,6 +12,11 @@ const routeRuntimePath = resolve("src", "route-runtime.ts")
 const manifestPath = resolve("ctf-agent.manifest.json")
 const readmePath = resolve("README.md")
 
+// Retired local-retrieval helpers (lesson/retro/pattern-card/skill-repo/imported
+// knowledge tooling). Local recall now runs exclusively through the external
+// `ctf_rag` MCP server, so no expert surface may name one of these again.
+const RETIRED_RETRIEVAL_TOOL = /ctf-(?:lesson|retro|pattern|skill-repo|imported-knowledge)[a-z-]*/i
+
 function read(file: string) {
   return readFileSync(file, "utf8")
 }
@@ -37,7 +42,7 @@ describe("expert contract consistency", () => {
     }
 
     expect(ctfCommand).toMatch(/BINDING/i)
-    expect(ctfCommand).toMatch(/ctf-handoff lane=expert/i)
+    expect(ctfCommand).toMatch(/does not switch automatically/i)
     expect(ctfCommand).toMatch(/Evidence\.md/i)
     expect(ctfCommand).toMatch(/exactly\s+3/i)
 
@@ -52,10 +57,17 @@ describe("expert contract consistency", () => {
     const command = read(commandPath)
 
     for (const text of [skill, agent, command]) {
-      expect(text).toMatch(/ctf-lesson-search/i)
-      expect(text).toMatch(/ctf-retro-search/i)
-      expect(text).toMatch(/ctf-pattern-card-search/i)
-      expect(text).toMatch(/ctf-pattern-to-hypothesis/i)
+      // Local recall is served by the external `ctf_rag` MCP server.
+      expect(text).toMatch(/ctf_rag/i)
+      // The recall step is mandatory...
+      expect(text).toMatch(/mandatory/i)
+      // ...and an unavailable backend / no-hit result must be recorded, not
+      // silently skipped.
+      expect(text).toMatch(/no-hit/i)
+      expect(text).toMatch(/evidence decision log/i)
+      expect(text).toMatch(/(?:silently skipping[^.]*\bis not\b|never (?:be )?(?:silently )?skipped)/i)
+      // Retired local-retrieval helpers must not reappear on any surface.
+      expect(text).not.toMatch(RETIRED_RETRIEVAL_TOOL)
     }
   })
 

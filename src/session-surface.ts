@@ -12,6 +12,8 @@ export type SessionToolSurface = "ctf-fast" | "ctf-expert"
 
 type PersistedSurface = {
   surface: SessionToolSurface
+  source?: "explicit" | "route" | "explicit-fast" | "legacy"
+  version?: 2
   updatedAt: string
 }
 
@@ -33,26 +35,37 @@ export function rememberSessionSurface(sessionID: string | undefined | null, sur
   sessionToolSurface.set(sessionID, surface)
 }
 
-/** Restore surfaces after a plugin restart so routed /ctf sessions keep Expert tools. */
+/** Restore only provenance-backed surfaces; legacy Expert records are demoted. */
 export async function restoreSessionSurfaces(worktree: string): Promise<void> {
-  const stored = await loadJsonFile<PersistedSurfaces>(surfacesFile(worktree), {})
+  const file = surfacesFile(worktree)
+  const stored = await loadJsonFile<PersistedSurfaces>(file, {})
+  let changed = false
   const entries = Object.entries(stored)
-    .filter(([, value]) => value?.surface === "ctf-fast" || value?.surface === "ctf-expert")
+    .map(([sessionID, value]) => {
+      if (!value || (value.surface !== "ctf-fast" && value.surface !== "ctf-expert")) return undefined
+      if (value.version !== 2 || value.source === "legacy" || (value.surface === "ctf-expert" && value.source !== "explicit" && value.source !== "route")) {
+        stored[sessionID] = { ...value, surface: "ctf-fast", source: "legacy", version: 2 }
+        changed = true
+      }
+      return [sessionID, stored[sessionID]] as const
+    })
+    .filter((entry): entry is readonly [string, PersistedSurface] => Boolean(entry))
     .sort((a, b) => String(a[1].updatedAt).localeCompare(String(b[1].updatedAt)))
     .slice(-SESSION_SURFACE_MAX)
-
   for (const [sessionID, value] of entries) rememberSessionSurface(sessionID, value.surface)
+  if (changed) await atomicUpdateJsonFile<PersistedSurfaces>(file, {}, () => stored)
 }
 
 export async function persistSessionSurface(
   worktree: string,
   sessionID: string | undefined | null,
   surface: SessionToolSurface,
+  source: "explicit" | "route" | "explicit-fast" = surface === "ctf-expert" ? "explicit" : "explicit-fast",
 ): Promise<void> {
   if (!sessionID) return
   await atomicUpdateJsonFile<PersistedSurfaces>(surfacesFile(worktree), {}, (current) => ({
     ...current,
-    [sessionID]: { surface, updatedAt: new Date().toISOString() },
+    [sessionID]: { surface, source, version: 2, updatedAt: new Date().toISOString() },
   }))
 }
 

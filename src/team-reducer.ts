@@ -3,7 +3,7 @@ import type { TeamJobStatus, TeamRunStatus } from "./team-runtime.ts"
 const TERMINAL_JOB_STATES = new Set<TeamJobStatus>(["completed", "failed", "cancelled", "cancel_failed", "interrupted", "orphaned"])
 
 const JOB_TRANSITIONS: Record<TeamJobStatus, readonly TeamJobStatus[]> = {
-  queued: ["starting", "cancelled", "failed"],
+  queued: ["starting", "cancelled", "cancel_failed", "failed"],
   starting: ["running", "failed", "cancelled", "cancel_failed"],
   running: ["retrying", "completed", "failed", "cancelled", "cancel_failed", "interrupted"],
   retrying: ["running", "completed", "failed", "cancelled", "cancel_failed", "interrupted"],
@@ -79,5 +79,10 @@ export function deriveTeamRunStatus(jobs: Array<{ status: TeamJobStatus }>, curr
   if (jobs.some((job) => !isTerminalTeamJob(job.status))) {
     return jobs.some((job) => job.status === "queued" || job.status === "starting") ? "dispatching" : "running"
   }
+  // Every worker was cancelled and none completed: that is a cancellation, not
+  // a degraded run. The state normalizer relied on this rule before the
+  // derivation was unified, so keeping it here preserves the behavior both
+  // call sites had.
+  if (jobs.length > 0 && jobs.every((job) => job.status === "cancelled")) return "cancelled"
   return jobs.some((job) => job.status === "completed") ? "ready_for_synthesis" : "degraded"
 }

@@ -1,4 +1,4 @@
-﻿import { mkdtempSync, writeFileSync } from "node:fs"
+﻿﻿import { existsSync, mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
@@ -23,5 +23,16 @@ describe("ctf-route-plan context", () => {
     } finally {
       process.chdir(prev)
     }
+  })
+  it("does not persist session surfaces for a category worker", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "ctf-route-worker-"))
+    const mod = await import("../tools/core/ctf-route-plan.ts")
+    await mod.default.execute({ text: "simple xor cipher", mode: "auto" }, {
+      directory: workspace,
+      worktree: workspace,
+      sessionID: "worker-route-session",
+      agent: "ctf-web",
+    } as never)
+    expect(existsSync(join(workspace, "runtime", "state", "session-surfaces.json"))).toBe(false)
   })
 })

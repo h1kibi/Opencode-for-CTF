@@ -2,10 +2,7 @@
 
 Use when evidence contains threads, signals, `pthread`, `fork` servers, timers, `userfaultfd`, TOCTOU, shared global state, reference counters, async GC, callbacks, `sleep/usleep`, large `copy_from_user`, or repeated nondeterministic success/failure.
 
-Imported references:
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\kernel-techniques.md`
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\advanced-exploits-4.md`
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\heap-fsop.md`
+Deep technique notes: retrieve with `ctf_rag` using the concurrency and race primitives above.
 
 ## Route Gate
 

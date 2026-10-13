@@ -5,7 +5,7 @@ Use this reference before longer route docs when the question is about runtime l
 ## Highest Priority Cards
 
 - `pwn-mode-boundary.md`
-  - trigger: fast lane or rigorous, controller versus executor, handoff threshold
+  - trigger: fast lane or rigorous, controller versus executor, lane-choice threshold
   - first safe check: classify whether the next best action is exploit iteration or branch control
 
 - `pwn-runtime-trigger-matrix.md`

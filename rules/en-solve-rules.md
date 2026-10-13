@@ -52,7 +52,7 @@ When user-facing progress is necessary, keep it concise and decision-relevant. O
 
 When source, bytecode, config, API specs, Docker files, dependency manifests, or partial leaks are available, prefer source-guided solving and apply the `ctf-whitebox-audit` evidence gate:
 
-- Scanner, RAG, SecKB, pattern-card, or model-only hits are hypotheses, not confirmed findings.
+- Scanner, `ctf_rag`, or model-only hits are hypotheses, not confirmed findings.
 - A source-derived finding needs real file/symbol/line evidence plus controllability/reachability and a sink/condition before it can drive exploitation.
 - If full service boot is expensive, use local harness verification: extract the smallest target function/class/handler, mock dependencies, test payload families, and record the success oracle.
 - Once a primitive is confirmed, stop broad scanning and prioritize primitive-to-flag closure.

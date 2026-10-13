@@ -149,32 +149,6 @@ describe("context-aware CTF file tools", () => {
     expect(execSpy.mock.calls[0][2]).toBe(dirname(target))
   })
 
-  it("ctf-jadx-targeted-slice uses worktree for slice artifacts and not process cwd", async () => {
-    const workspace = mkdtempSync(join(tmpdir(), "ctf-jadx-workspace-"))
-    const challenge = join(workspace, "challenge")
-    const other = mkdtempSync(join(tmpdir(), "ctf-jadx-other-"))
-    const srcDir = join(workspace, "jadx-out", "sources", "com", "example")
-    mkdirSync(srcDir, { recursive: true })
-    mkdirSync(challenge, { recursive: true })
-    writeFileSync(join(srcDir, "MainActivity.java"), "class MainActivity { boolean check(){ return true; } }", "utf8")
-
-    const prev = process.cwd()
-    process.chdir(other)
-    try {
-      const mod = await import("../tools/android/ctf-jadx-targeted-slice.ts")
-      const out = await mod.default.execute({ target: "../jadx-out", patterns: "check", jsonOnly: true }, {
-        directory: challenge,
-        worktree: workspace,
-      } as never)
-      const payload = JSON.parse(String(out))
-      expect(payload.sourceDir).toBe(join(workspace, "jadx-out"))
-      expect(payload.hits[0].file.replace(/\\/g, "/")).toBe("../jadx-out/sources/com/example/MainActivity.java")
-      expect(existsSync(join(workspace, "work", "jadx-slices", "jadx-out.json"))).toBe(true)
-    } finally {
-      process.chdir(prev)
-    }
-  })
-
   it("ctf-background-job status uses context.worktree when directory is absent", async () => {
     const workspace = mkdtempSync(join(tmpdir(), "ctf-bg-workspace-"))
     const other = mkdtempSync(join(tmpdir(), "ctf-bg-other-"))

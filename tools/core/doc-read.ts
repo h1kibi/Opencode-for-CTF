@@ -42,7 +42,6 @@ export default tool({
     const candidateRoots = Array.from(new Set([workspace, directory].filter(Boolean) as string[]))
     const candidateScripts = candidateRoots.flatMap((root) => [
       path.join(root, ".opencode/tools/document_extract.py"),
-      path.join(root, "tools/document_extract.py"),
       path.join(root, "tools/core/document_extract.py"),
     ])
     const script = candidateScripts.find((item) => existsSync(item))

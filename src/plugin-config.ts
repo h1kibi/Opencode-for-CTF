@@ -31,7 +31,6 @@ export type PluginUserConfig = {
   ctf_fast_budget: {
     enabled: boolean
     soft_minutes: number
-    escalate_on_expiry: boolean
   }
   /** When false, Read/Edit hash tags are not injected/verified. */
   hashline: {
@@ -67,7 +66,6 @@ export const DEFAULT_PLUGIN_CONFIG: PluginUserConfig = {
   ctf_fast_budget: {
     enabled: true,
     soft_minutes: 15,
-    escalate_on_expiry: true,
   },
   hashline: {
     enabled: true,
@@ -124,9 +122,6 @@ export function mergePluginConfig(partial: unknown): PluginUserConfig {
     }
     if (typeof partial.ctf_fast_budget.soft_minutes === "number" && partial.ctf_fast_budget.soft_minutes > 0) {
       base.ctf_fast_budget.soft_minutes = Math.min(120, Math.max(5, Math.floor(partial.ctf_fast_budget.soft_minutes)))
-    }
-    if (typeof partial.ctf_fast_budget.escalate_on_expiry === "boolean") {
-      base.ctf_fast_budget.escalate_on_expiry = partial.ctf_fast_budget.escalate_on_expiry
     }
   }
   if (isRecord(partial.hashline) && typeof partial.hashline.enabled === "boolean") {

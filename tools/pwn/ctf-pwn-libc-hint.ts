@@ -105,7 +105,7 @@ export default tool({
       fallback_action:
         "if local and remote bases diverge, re-check the libc/ld pair and the exact leaked symbol before changing exploit family",
       stop_if:
-        "the same leak produces inconsistent bases or the bundled libc does not match the runtime; ESCALATE: ctf-expert",
+        "the same leak produces inconsistent bases or the bundled libc does not match the runtime; stop and report the blocker",
     }
 
     if (args.jsonOnly) return JSON.stringify(payload, null, 2)

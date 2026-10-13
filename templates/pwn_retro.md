@@ -12,7 +12,7 @@ Use after every solved or failed PWN challenge. Keep sanitized: no private crede
 | difficulty guess | easy / medium / hard |
 | local artifacts | ELF / libc / ld / Docker / source / none |
 | remote | host:port / none |
-| final status | solved / unsolved / blocked / escalated |
+| final status | solved / unsolved / blocked / stopped |
 | flag verified | yes / no |
 | exploit file | exploit.py / solve.py / work/last_attempt.py / none |
 

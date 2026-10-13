@@ -93,7 +93,7 @@ const CATEGORY_PATTERNS: Record<CtfCategory, Array<{ re: RegExp; weight: number;
   ],
   rev: [
     {
-      re: /\b(ghidra|ida|binary.?ninja|angr|unicorn|frida|jadx|apktool|ilspy|dnspy)\b/i,
+      re: /\b(ghidra|binary.?ninja|angr|unicorn|frida|apktool|ilspy|dnspy)\b/i,
       weight: 16,
       reason: "rev tooling",
     },
@@ -141,7 +141,7 @@ const CATEGORY_PATTERNS: Record<CtfCategory, Array<{ re: RegExp; weight: number;
 }
 
 const SPECIALIST_PACK_PATTERNS: Array<{ re: RegExp; packs: ToolPack[]; reason: string }> = [
-  { re: /\b(android|apk|dex|smali|jadx|frida)\b|\.apk\b/i, packs: ["android"], reason: "android overlay" },
+  { re: /\b(android|apk|dex|smali|frida)\b|\.apk\b/i, packs: ["android"], reason: "android overlay" },
   { re: /\b(godot|gdscript|gdc|pck)\b|\.(pck|gdc)\b/i, packs: ["godot"], reason: "godot overlay" },
   {
     re: /\b(java|spring|jar|class|bytecode|deseriali[sz]ation)\b|\.(jar|war|class)\b/i,

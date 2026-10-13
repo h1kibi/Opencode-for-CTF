@@ -60,7 +60,7 @@ describe("tool metadata", () => {
       category: "web-heavy",
       tier: "advanced",
     })
-    expect(toolMetadata("ctf-pattern-feedback")).toMatchObject({
+    expect(toolMetadata("ctf-runtime-selftest")).toMatchObject({
       category: "maintenance",
       tier: "maintenance",
     })

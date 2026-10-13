@@ -675,10 +675,6 @@ function historyDistanceFromLastGate(state: State, gate: string) {
   return null
 }
 
-function lastHistoryItem(state: State, kind: string, family = "") {
-  return [...state.history].reverse().find((x) => x.kind === kind && (!family || String(x.family ?? "") === family)) as
-    AnyRecord | undefined
-}
 
 function hasSourcePressure(state: State) {
   return (
@@ -793,7 +789,7 @@ function gateCheck(state: State, gate: string, gateJson: AnyRecord) {
     const hadKnowledgeGate = state.history.some((x) => x.kind === "gate" && x.gate === "knowledge" && x.pass === true)
     if (gateJson.knowledgeChecked !== true && !hadKnowledgeGate) {
       failures.push(
-        "knowledge gate not satisfied; run SecKB segment/chain matching and pass gate=knowledge before depth",
+        "knowledge gate not satisfied; run the Phase ② ctf_rag recall and pass gate=knowledge before depth",
       )
     }
     if (primitiveLockedActive(state) && gateJson.closureJustification !== true) {
@@ -808,7 +804,7 @@ function gateCheck(state: State, gate: string, gateJson: AnyRecord) {
     }
   } else if (g === "knowledge") {
     failures.push(...requiredKeys(gateJson, ["queryRun", "matchedSegments"]).map((k) => `missing ${k}`))
-    if (gateJson.queryRun !== true) failures.push("queryRun must be true after actual SecKB retrieval/segment matching")
+    if (gateJson.queryRun !== true) failures.push("queryRun must be true after actual ctf_rag retrieval/segment matching")
     const knowledgeMode = String(gateJson.knowledgeMode ?? "").toLowerCase()
     const matched = Array.isArray(gateJson.matchedSegments)
       ? gateJson.matchedSegments.length
@@ -841,7 +837,7 @@ function gateCheck(state: State, gate: string, gateJson: AnyRecord) {
       if (!modeAllowsZeroHit) failures.push(`knowledgeMode '${knowledgeMode}' is inconsistent with matchedSegments = 0`)
       if (!(nonWeb && (unfamiliar || externalChecked))) {
         failures.push(
-          "must have queried SecKB and found at least one matching segment before entering depth phase, unless this is a non-Web unfamiliar/novel type with zero-hit evidence recorded",
+          "must have queried ctf_rag and found at least one matching segment before entering depth phase, unless this is a non-Web unfamiliar/novel type with zero-hit evidence recorded",
         )
       }
       if (!noMatchReason) failures.push("zero-hit knowledge gate requires noMatchReason")

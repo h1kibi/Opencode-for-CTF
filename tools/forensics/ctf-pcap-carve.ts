@@ -3,7 +3,7 @@ import { lstat, open, readFile } from "node:fs/promises"
 import { createDecipheriv, createCipheriv } from "node:crypto"
 import path from "node:path"
 import { resolveAllowedPath } from "../lib/path-policy.ts"
-import { extractFlagCandidates, type FlagCandidate } from "../lib/flag-utils.ts"
+import { extractFlagCandidates, type FlagCandidate } from "../../packages/ctf-core/src/flag-rules.ts"
 
 function decodeHexOrAscii(input: string): Buffer {
   const v = input.trim()

@@ -165,7 +165,7 @@ If the branch is likely to pause, switch owner, or survive interruption, prefer 
 
 ## Restart Artifact Priority
 
-When resuming or handing control between `ctf-fast`, `ctf-expert`, or category specialists, prefer structured restart artifacts over broad note rereads.
+When resuming a solve or handing control between `ctf-expert` and its category specialists, prefer structured restart artifacts over broad note rereads.
 
 Preferred human-readable restart order under `work/ctf-evidence/<challenge-slug>/`:
 
@@ -216,7 +216,7 @@ Rules:
 - `agent_flag.txt` is for the exact verified flag only.
 - Do not store reusable live secrets, raw cookies, private keys, or challenge credentials in reusable lesson artifacts.
 - If local and remote behavior diverge, keep a compact local/remote transcript or summary before mutating the payload family.
-- If a pattern card materially influenced the branch, record feedback before final retro ends.
+- If a `ctf_rag` hit materially influenced the branch, record that evidence before the final retro ends.
 
 ## Flag Identification
 

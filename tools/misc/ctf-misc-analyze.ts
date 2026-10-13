@@ -224,7 +224,7 @@ function classifyMiscShape(parsed: ParsedTriage, contextText: string, service?: 
   if (/\b(dns|dns record|txt record|mx record|nameserver|zone transfer|\bdig\b|dns clue)\b/i.test(text)) {
     return {
       shape: "dns",
-      reference: "skills-external/ctf-skills/ctf-misc/dns.md",
+      reference: "(external reference corpus, no longer bundled) dns.md",
       firstProbe:
         "Normalize the domain and query only the record types implied by the clue; preserve exact answers and TTL/source context.",
       nextTool: "ctf-dns-probe",
@@ -252,7 +252,7 @@ function classifyMiscShape(parsed: ParsedTriage, contextText: string, service?: 
   if (/\b(rf|sdr|hackrf|gnu radio|gnuradio|iq samples?|frequency|modulation|spectrum)\b/i.test(text)) {
     return {
       shape: "rf_sdr",
-      reference: "skills-external/ctf-skills/ctf-misc/rf-sdr.md",
+      reference: "(external reference corpus, no longer bundled) rf-sdr.md",
       firstProbe:
         "Fingerprint the sample format and sampling parameters, then inspect the narrowest plausible signal band before decoding.",
       nextTool: "ctf-file-triage",
@@ -280,7 +280,7 @@ function classifyMiscShape(parsed: ParsedTriage, contextText: string, service?: 
   if (/\b(game|pygame|godot|state machine|board|level|moves?|esolang|virtual machine)\b/i.test(text)) {
     return {
       shape: "game_state_machine",
-      reference: "skills-external/ctf-skills/ctf-misc/games-and-vms.md",
+      reference: "(external reference corpus, no longer bundled) games-and-vms.md",
       firstProbe:
         "Model states, legal transitions, win condition, and reset behavior; automate only after one manual transition is understood.",
       nextTool: "ctf-python-inline",

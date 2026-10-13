@@ -13,7 +13,7 @@ const currentCommandRules: Rule[] = [
     checks: [
       { name: "ctf binding route", pattern: /BINDING route/i },
       { name: "ctf route planner", pattern: /ctf-route-plan/i },
-      { name: "ctf hard handoff", pattern: /ctf-handoff lane=expert/i },
+      { name: "ctf independent lanes", pattern: /lane does not switch automatically/i },
       { name: "ctf public help", pattern: /Help: `\/help`/i },
     ],
   },
@@ -72,7 +72,7 @@ const currentCommandRules: Rule[] = [
     ],
   },
   {
-    file: resolve("tools", "ctf-evidence-board.ts"),
+    file: resolve("tools", "core", "ctf-evidence-board.ts"),
     checks: [
       { name: "evidence board owns evidence markdown", pattern: /Evidence\.md/i },
       { name: "evidence board owns closure state", pattern: /closure/i },

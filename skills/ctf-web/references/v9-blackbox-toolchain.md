@@ -43,4 +43,4 @@ A black-box probe is progress only if it updates at least one of:
 
 Payload strings or wordlist volume without new differential are not progress.
 
-When `ctf-web-blackbox-map`, `ctf-web-template-check`, `ctf-web-reflection-map`, `ctf-web-state-machine-map`, or a pattern card outputs a first safe check, the next action must be exactly one such check or a `ctf-decision-state probe` contract.
+When `ctf-web-blackbox-map`, `ctf-web-template-check`, `ctf-web-reflection-map`, `ctf-web-state-machine-map`, or a `ctf_rag` hit outputs a first safe check, the next action must be exactly one such check or a `ctf-decision-state probe` contract.

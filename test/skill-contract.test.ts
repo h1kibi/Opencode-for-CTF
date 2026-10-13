@@ -40,8 +40,6 @@ describe("skill layer contract", () => {
           "ctf-artifact-analysis",
           "ctf-oob-discipline",
           "ctf-whitebox-audit",
-          "ctf-seckb",
-          "ctf-skill-repo-knowledge",
           "anysearch",
         ].includes(value),
     )

@@ -305,10 +305,10 @@ describe("evaluateFastBudget", () => {
     const result = evaluateFastBudget(
       state,
       { total: 1, pending: 0, inProgress: 1, highOpen: 0 },
-      { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+      { enabled: true, soft_minutes: 15 },
     )
     expect(result.status).toBe("active")
-    expect(result.shouldEscalate).toBe(false)
+    expect(result.shouldPromptReview).toBe(false)
   })
 
   it("prompts review near expiry once", () => {
@@ -320,7 +320,7 @@ describe("evaluateFastBudget", () => {
     const result = evaluateFastBudget(
       state,
       { total: 1, pending: 0, inProgress: 0, highOpen: 0 },
-      { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+      { enabled: true, soft_minutes: 15 },
     )
     expect(result.status).toBe("review")
     expect(result.shouldPromptReview).toBe(true)
@@ -328,13 +328,13 @@ describe("evaluateFastBudget", () => {
     const followUp = evaluateFastBudget(
       { ...state, fastBudgetStatus: "review" },
       { total: 1, pending: 0, inProgress: 0, highOpen: 0 },
-      { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+      { enabled: true, soft_minutes: 15 },
     )
     expect(followUp.shouldPromptReview).toBe(false)
     expect(followUp.status).toBe("review")
   })
 
-  it("escalates after expiry when configured", () => {
+  it("asks for review after expiry and never escalates the lane", () => {
     const state = freshState({
       lastAgent: "ctf-fast",
       fastBudgetDeadlineAt: new Date(Date.now() - 30_000).toISOString(),
@@ -344,36 +344,36 @@ describe("evaluateFastBudget", () => {
     const result = evaluateFastBudget(
       state,
       { total: 1, pending: 0, inProgress: 0, highOpen: 0 },
-      { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
-    )
-    expect(result.status).toBe("escalated")
-    expect(result.shouldEscalate).toBe(true)
-    expect(result.handoffSummary).toContain("ESCALATE: ctf-expert")
-  })
-
-  it("uses review status after expiry when auto-escalation is disabled", () => {
-    const state = freshState({
-      lastAgent: "ctf-fast",
-      fastBudgetDeadlineAt: new Date(Date.now() - 30_000).toISOString(),
-      lastTodoSummary: "pending=0,in_progress=0,high_open=0",
-      lastSessionStatus: "idle",
-    })
-    const result = evaluateFastBudget(
-      state,
-      { total: 1, pending: 0, inProgress: 0, highOpen: 0 },
-      { enabled: true, soft_minutes: 15, escalate_on_expiry: false },
+      { enabled: true, soft_minutes: 15 },
     )
     expect(result.status).toBe("review")
-    expect(result.shouldEscalate).toBe(false)
     expect(result.shouldPromptReview).toBe(true)
+    expect(result.reviewSummary).toContain("independent lane")
+  })
+
+  it("does not re-prompt after a review was already sent", () => {
+    const state = freshState({
+      lastAgent: "ctf-fast",
+      fastBudgetDeadlineAt: new Date(Date.now() - 30_000).toISOString(),
+      fastBudgetStatus: "review",
+      lastTodoSummary: "pending=0,in_progress=0,high_open=0",
+      lastSessionStatus: "idle",
+    })
+    const result = evaluateFastBudget(
+      state,
+      { total: 1, pending: 0, inProgress: 0, highOpen: 0 },
+      { enabled: true, soft_minutes: 15 },
+    )
+    expect(result.status).toBe("review")
+    expect(result.shouldPromptReview).toBe(false)
   })
 })
 
 describe("applyFastBudgetAction", () => {
-  it("prompts ctf-expert when expired escalation is configured", async () => {
+  it("prompts a fast-lane review on expiry and keeps the session on ctf-fast", async () => {
     const dir = tempPath("ctf-test-budget-")
     const worktree = tempPath("ctf-test-worktree-")
-    const sessionID = "budget-escalate"
+    const sessionID = "budget-review"
     const state = await loadContinuationState(worktree, sessionID, dir)
     state.mode = "ctf"
     state.lastAgent = "ctf-fast"
@@ -381,7 +381,7 @@ describe("applyFastBudgetAction", () => {
     state.fastBudgetDeadlineAt = new Date(Date.now() - 30_000).toISOString()
     state.fastBudgetStatus = "active"
     await saveContinuationState(worktree, state)
-    const promptCalls: unknown[] = []
+    const promptCalls: any[] = []
     const client = {
       session: {
         todo: async () => ({ data: [] }),
@@ -397,16 +397,17 @@ describe("applyFastBudgetAction", () => {
       worktree,
       sessionID,
       directory: dir,
-      policy: { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+      policy: { enabled: true, soft_minutes: 15 },
     })
 
     expect(result.prompted).toBe(true)
     expect(promptCalls).toHaveLength(1)
-    expect(JSON.stringify(promptCalls[0])).toContain("ctf-expert")
-    expect(result.prompt).toContain("ESCALATE: ctf-expert")
+    expect(promptCalls[0].body.agent).toBe("ctf-fast")
+    expect(result.prompt).toContain("review required")
+    expect(result.prompt).toContain("never switch lanes automatically")
     const saved = await loadContinuationState(worktree, sessionID, dir)
-    expect(saved.fastBudgetStatus).toBe("escalated")
-    expect(saved.fastBudgetDeadlineAt).toBeUndefined()
+    expect(saved.fastBudgetStatus).toBe("review")
+    expect(saved.fastBudgetDeadlineAt).toBe(state.fastBudgetDeadlineAt)
   })
 
   it("records prompt failure backoff", async () => {
@@ -432,7 +433,7 @@ describe("applyFastBudgetAction", () => {
       worktree,
       sessionID,
       directory: dir,
-      policy: { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+      policy: { enabled: true, soft_minutes: 15 },
     })
 
     expect(result.prompted).toBe(false)
@@ -504,7 +505,7 @@ describe("noteContinuationSessionStatus", () => {
 
     const updated = await noteContinuationSessionStatus(worktree, "test-session", dir, "busy", {
       agent: "ctf-fast",
-      fastBudget: { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+      fastBudget: { enabled: true, soft_minutes: 15 },
     })
 
     expect(updated.fastBudgetStartedAt).toBeDefined()
@@ -521,17 +522,17 @@ describe("noteContinuationSessionStatus", () => {
     state.fastBudgetStartedAt = new Date(Date.now() - 20 * 60_000).toISOString()
     state.fastBudgetDeadlineAt = new Date(Date.now() + 30_000).toISOString()
     state.fastBudgetStatus = "review"
-    state.fastBudgetSummary = "old handoff"
+    state.fastBudgetSummary = "old review"
     state.fastBudgetReviewSentAt = nowIso()
     await saveContinuationState(worktree, state)
 
     const updated = await noteContinuationSessionStatus(worktree, "test-session", dir, "busy", {
       agent: "ctf-fast",
-      fastBudget: { enabled: true, soft_minutes: 15, escalate_on_expiry: true },
+      fastBudget: { enabled: true, soft_minutes: 15 },
     })
 
     expect(updated.fastBudgetDeadlineAt).toBe(state.fastBudgetDeadlineAt)
-    expect(updated.fastBudgetSummary).toBe("old handoff")
+    expect(updated.fastBudgetSummary).toBe("old review")
   })
 })
 

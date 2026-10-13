@@ -589,7 +589,7 @@ export default tool({
         ? "- Hard mode: preserve alternative routes as pivots, but still run one variable per probe."
         : "- Escalate to hard mode only when two strong routes fail or the target is clearly multi-stage.",
       "- Convert the route into one confirm/falsify probe; do not execute multiple routes in parallel.",
-      "- If the route stalls, use its next_pattern_query with ctf-pattern-card-search category=pwn.",
+      "- If the route stalls, query ctf_rag with the route's next_pattern_query terms plus category=pwn anchors.",
     ].join("\n")
   },
 })

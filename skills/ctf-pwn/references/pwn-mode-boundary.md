@@ -1,6 +1,6 @@
 # PWN Mode Boundary
 
-Use this reference when deciding whether a branch should stay in `ctf-fast`, escalate to `ctf-expert`, or be executed by `ctf-pwn` under an expert controller.
+Use this reference when deciding whether a branch belongs to `ctf-fast` or `ctf-expert`, or should be executed by `ctf-pwn` under an expert controller. `ctf-fast` and `ctf-expert` are independent user-selected lanes; the lane never switches automatically.
 
 ## Role Split
 
@@ -16,7 +16,7 @@ Use this reference when deciding whether a branch should stay in `ctf-fast`, esc
 - the leak class is stable enough for one closure family;
 - the branch does not need repeated gdb, allocator theory, or competing top routes.
 
-## Escalate to `ctf-expert` When
+## Choose `ctf-expert` When
 
 - allocator or glibc versioning determines whether the branch is real;
 - leak class or base math is unstable, contested, or unknown;
@@ -45,7 +45,9 @@ When `ctf-pwn` returns control to an expert branch, it should return only:
 - stable versus unstable leaks or calibration blockers;
 - one best next PWN-specific probe with oracle and falsify condition.
 
-## Fast-to-Expert Handoff Minimum
+## Fast-Lane Stop Report Minimum
+
+When `ctf-fast` stops, report the blocker + strongest evidence + best next direction with at least:
 
 - exploit artifact path;
 - binary/libc/ld/runtime summary;

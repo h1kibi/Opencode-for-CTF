@@ -23,10 +23,6 @@ const MAINTENANCE_TOOLS = new Set([
   "archive-safe-extract",
   "ctf-background-job",
   "ctf-python-parallel",
-  "ctf-lesson-index-audit",
-  "ctf-lesson-modifier-plan",
-  "ctf-pattern-curation-report",
-  "ctf-pattern-feedback",
   "ctf-runtime-selftest",
   "ctf-skill-mcp-lifecycle",
 ])
@@ -81,7 +77,6 @@ const LIGHT_TOOLS = new Set([
   "ctf-dynamic-mcp-advisor",
   "ctf-env-check",
   "ctf-artifact-analyze",
-  "ctf-handoff",
   "ctf-memstr",
   "ctf-pe-unpack",
   "ctf-pe-hybrid-rebuild",
@@ -172,14 +167,13 @@ const TOOL_REQUIRES: Record<string, string[]> = {
   "doc-read": ["python"],
   "image-file-info": ["file?", "exiftool?"],
   "ctf-android-dynamic-macro": ["adb", "aapt?", "frida-ps?"],
-  "ctf-android-analyze": ["aapt?", "apkanalyzer?", "apkid?", "readelf?", "nm?", "jadx?", "apktool?", "adb?"],
+  "ctf-android-analyze": ["aapt?", "apkanalyzer?", "apkid?", "readelf?", "nm?", "apktool?", "adb?"],
   "ctf-android-runtime-check": ["adb", "frida-ps?"],
   "ctf-android-runtime-doctor": ["adb"],
   "ctf-android-native-triage": ["unzip", "readelf", "nm"],
   "ctf-apk-resource-read": ["aapt?", "apkanalyzer?"],
   "ctf-apk-triage": ["aapt?", "apkanalyzer?", "apkid?"],
   "ctf-dex-patch-map": ["node"],
-  "ctf-jadx-targeted-slice": ["jadx?", "apktool?"],
   "ctf-go-pclntool": ["go?", "docker?"],
   "ctf-rev-pe-slice": ["objdump"],
   "ctf-rev-pe-recovery": ["node", "objdump?"],
@@ -192,7 +186,7 @@ const TOOL_REQUIRES: Record<string, string[]> = {
   "ctf-windows-gui-inspect": ["powershell"],
   "ctf-java-archive-map": ["jar|unzip"],
   "ctf-java-bytecode-hints": ["javap"],
-  "ctf-java-decompile-targets": ["cfr|jadx|javap"],
+  "ctf-java-decompile-targets": ["cfr|fernflower|javap"],
   "ctf-java-jdk-env": ["java"],
   "ctf-godot-decompile": ["gdre_tools"],
   "ctf-godot-gdc-scan": ["node"],
@@ -231,7 +225,7 @@ export function toolTier(toolName: string): ToolTier {
 export function toolEffects(toolName: string): ToolEffect[] {
   const effects: ToolEffect[] = ["read"]
   if (
-    /runner|runbox|snapshot|probe|extract|open|triage|doctor|check|env|pclntool|decompile|jadx|apk|pcap|stego|image|media|java-jdk|dump|unpack|debug|disasm|recovery|rebuild/.test(
+    /runner|runbox|snapshot|probe|extract|open|triage|doctor|check|env|pclntool|decompile|apk|pcap|stego|image|media|java-jdk|dump|unpack|debug|disasm|recovery|rebuild/.test(
       toolName,
     )
   ) {

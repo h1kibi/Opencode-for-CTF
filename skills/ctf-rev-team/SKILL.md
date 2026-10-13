@@ -32,9 +32,9 @@ Do not enter Team Mode for plaintext flags, one-function checkers, obvious XOR/b
 
 Default team size is 2-3 members; hard maximum is 4 unless attachments are fully independent.
 
-- Static/checker analyst: file type, arch, sections, strings/imports, success/failure xrefs, checker boundary, constants/tables, IDA/ReVa/slice evidence.
+- Static/checker analyst: file type, arch, sections, strings/imports, success/failure xrefs, checker boundary, constants/tables, Ghidra/ReVa/slice evidence.
 - Runtime/unpack/emulation analyst: packer, self-decrypt, live dump marker/range, Windows memory PE (`ctf-pe-unpack`/`ctf-runtime-dump`/`ctf-rev-pe-recovery`), anti-debug/anti-VM, Unicorn/Qiling/Capstone/replay feasibility.
-- Knowledge analyst: `ctf-pattern-card-search category="reverse"`, `ctf-skill-repo-search category="reverse"`, `ctf-lesson-search`, anti-patterns, first probe pressure.
+- Knowledge analyst: `ctf_rag` recall with reverse-engineering anchors, anti-patterns, first probe pressure.
 - Oracle/verifier reviewer: overtrusted assumptions, semantic mismatch, duplicated work, route demotion, shortest closure candidate.
 
 APK/JNI teams should split Java/Kotlin/assets, native/JNI `.so`, runtime/Frida bridge, and knowledge/oracle. VM/Unicorn teams should split dispatcher/opcode state, runtime dump/replay, constraints/solver, and knowledge/oracle.
@@ -86,10 +86,7 @@ The lead merges only high-confidence facts, useful signals, falsified routes, cl
 
 Before promoting any complex rev route, run local recall after meaningful triage:
 
-1. `ctf-pattern-card-search` with `category="reverse"`
-2. `ctf-skill-repo-search` with `category="reverse"`
-3. `ctf-lesson-search` with evidence-based query
-4. `ctf-pattern-to-hypothesis` only for the selected card
+1. one `ctf_rag` query with 2–4 reverse-engineering anchors (architecture, packer, checker boundary, VM/runtime signal, error text)
 
 Trigger recall after triage reveals clear signals, route fanout exceeds two, same-family attempts fail twice, VM/Unicorn/self-decrypt/anti-debug appears, or a complex route is about to be promoted.
 

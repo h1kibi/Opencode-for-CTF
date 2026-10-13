@@ -79,7 +79,7 @@ describe("packForTool stability", () => {
   })
 
   it("classifies maintenance tools outside the default solve surface", () => {
-    expect(packForTool("ctf-pattern-feedback")).toBe("maintenance")
+    expect(packForTool("ctf-background-job")).toBe("maintenance")
     expect(packForTool("ctf-runtime-selftest")).toBe("maintenance")
   })
 })

@@ -28,29 +28,6 @@ const GITHUB_READONLY_REMOTE: RuntimeMcpConfig = {
   },
 }
 
-const SECKB_LOCAL: RuntimeMcpConfig = {
-  type: "local",
-  command: ["{env:SECKB_PYTHON}", "{env:SECKB_MCP_SERVER}"],
-  environment: {
-    SECKB_ROOT: "{env:SECKB_ROOT}",
-    SECKB_CONFIG: "{env:SECKB_CONFIG}",
-    PYTHONUTF8: "1",
-    PYTHONIOENCODING: "utf-8",
-  },
-  timeout: 60000,
-}
-
-const CVEKB_LOCAL: RuntimeMcpConfig = {
-  type: "local",
-  command: ["{env:SECKB_PYTHON}", "{env:CVEKB_MCP_SERVER}"],
-  environment: {
-    CVEKB_ROOT: "{env:CVEKB_ROOT}",
-    PYTHONUTF8: "1",
-    PYTHONIOENCODING: "utf-8",
-  },
-  timeout: 60000,
-}
-
 const ANYSEARCH_REMOTE: RuntimeMcpConfig = {
   type: "remote",
   url: "https://api.anysearch.com/mcp",
@@ -74,24 +51,6 @@ export const SKILL_MCP_BINDINGS: SkillMcpBinding[] = [
     skillName: "ctf-whitebox-audit",
     serverName: "runtime_github_readonly",
     config: GITHUB_READONLY_REMOTE,
-    disconnectWhenIdle: true,
-  },
-  {
-    skillName: "ctf-whitebox-audit",
-    serverName: "runtime_seckb_local",
-    config: SECKB_LOCAL,
-    disconnectWhenIdle: true,
-  },
-  {
-    skillName: "ctf-seckb",
-    serverName: "runtime_seckb_local",
-    config: SECKB_LOCAL,
-    disconnectWhenIdle: true,
-  },
-  {
-    skillName: "ctf-seckb",
-    serverName: "runtime_cvekb_local",
-    config: CVEKB_LOCAL,
     disconnectWhenIdle: true,
   },
   {

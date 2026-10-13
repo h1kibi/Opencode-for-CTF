@@ -17,8 +17,7 @@ Rules:
 - Treat `Evidence.md` and resume packets as human-readable views of canonical state, not independent sources of truth.
 - Do not restart broad recon by default.
 - Prefer `templates/ctf_resume_packet.md`-style content first when it exists.
-- If the solve came from `ctf-fast`, prefer `templates/ctf_fast_handoff.md`-style content before falling back to freeform notes.
-- Budget-driven `ctf-fast` escalations should resume from the saved fast handoff / evidence packet rather than restarting broad recon.
+- If the saved state came from a `ctf-fast` session, prefer `templates/ctf_fast_handoff.md`-style content before falling back to freeform notes; this is a fast-lane restart package, not an expert continuation.
 - Prefer `ctf:evidence-doctor <challenge-slug>` or `node scripts/ctf-evidence-doctor.ts <challenge-slug>` when the slug is known but the restart packet quality is uncertain.
 - Prefer a fixed `CTF Resume Block` in `notes.md` when available:
   ```markdown

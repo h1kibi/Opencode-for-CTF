@@ -1,9 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
-import { lookupMcpServer, envPrerequisitesSatisfied } from "../../src/mcp-server-registry.ts"
-import { getAgentDefaults } from "../../src/agent-mcp-profiles.ts"
+import { envPrerequisitesSatisfied } from "../../src/mcp-server-registry.ts"
 import {
   getAgentMcpState,
-  listPendingRequests,
   listRecentActivationIssues,
   requestMcp,
 } from "../../src/dynamic-mcp-manager.ts"
@@ -51,7 +49,7 @@ export default tool({
     }
 
     if (args.action === "list-available") {
-      const { MCP_SERVER_REGISTRY, serversByWeight } = await import("../../src/mcp-server-registry.ts")
+      const { MCP_SERVER_REGISTRY } = await import("../../src/mcp-server-registry.ts")
       const lines: string[] = ["available_servers:"]
       for (const s of MCP_SERVER_REGISTRY) {
         const prereq = envPrerequisitesSatisfied(s)

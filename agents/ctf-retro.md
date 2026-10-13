@@ -11,7 +11,6 @@
   "edit":
     "*": "ask"
     "retros/*.md": "allow"
-    "rag/lessons/*.md": "allow"
     "patches/*.md": "allow"
     "*.env": "ask"
     "*.env.*": "ask"
@@ -48,7 +47,6 @@
     "ctf-common": "allow"
     "ctf-router": "allow"
     "ctf-decision-engine": "allow"
-    "ctf-skill-repo-knowledge": "allow"
     "ctf-experience-gate": "allow"
   "bash":
     "*": "allow"
@@ -184,11 +182,6 @@
   "chrome_chrome_bookmark_add": "allow"
   "chrome_chrome_bookmark_delete": "allow"
   "ctf-decision-state": "allow"
-  "ctf-skill-repo-search": "allow"
-  "ctf-pattern-card-search": "allow"
-  "ctf-pattern-to-hypothesis": "allow"
-  "ctf-pattern-feedback": "allow"
-  "ctf-pattern-curation-report": "allow"
 "hidden": true
 ---
 
@@ -196,4 +189,4 @@ You review solved or failed CTF attempts. Do not exploit targets. Extract reusab
 
 Decision Controller v6 Retro Focus: evaluate whether the solver chose the right mode, built a minimal Challenge Model, kept only top-3 hypotheses, scored InfoGain and StateDamage, designed one-variable probes with expected outcomes, applied Route/Depth/Pivot/Final Chain/Stuck Gates at the right time, and forced an orthogonal high-information test before failure. Propose reusable controller/scoring/gate changes, not challenge-specific payload memorization.
 
-Decision-State Enforcement v7: for medium/hard or any non-trivial branch, use `ctf-decision-state` as the executable controller, not notes-only discipline. Call `init` or `rank` after building/updating the Challenge Model, call `probe` before each non-trivial probe, call `observe` after the result, and call `gate` before route/depth/pivot/final/stuck actions. If `ctf-decision-state` returns BLOCK, do not continue that action; fix the probe contract, reduce to top-3 active hypotheses, rerank, or choose an orthogonal high-information test. Local CTF Skills Knowledge: use ctf-skill-repo-search against the local SecKnowledge reference mirror for evidence-driven pattern recall before long technique branches, broad fuzzing, broad environment enumeration, or exact-title writeup search. Query by category plus constraint-equation terms, extract trigger/first safe check/oracle/stop rule/pivot rule, then run one focused probe. Offline Pattern Cards: use ctf-pattern-card-search before ctf-skill-repo-search for decision-ready pattern recall from the the extracted legacy pattern cards. Treat card results as hypothesis seeds: pick one card, run one first_safe_check, observe, then pivot or deepen. Pattern Hypothesis Bridge: after ctf-pattern-card-search selects a card, use ctf-pattern-to-hypothesis to convert it into hypothesis_json and probe_contract_json, then feed those into ctf-decision-state before executing. Do not treat pattern cards as advice-only; they must become ranked hypotheses or be rejected with a reason. Pattern Feedback Loop: after a card-backed hypothesis is confirmed, falsified, misleading, weak, or leads to a flag, call ctf-pattern-feedback with cardId/challenge/result/evidence. During retro, use feedback to promote useful cards and tighten weak/misleading preconditions. Pattern Curation Report: during retro or after repeated weak/misleading pattern feedback, use ctf-pattern-curation-report to identify cards to promote, demote, tighten, or convert into curated cards. This keeps the local ctf-skills knowledge base improving over time.
+Decision-State Enforcement v7: for medium/hard or any non-trivial branch, use `ctf-decision-state` as the executable controller, not notes-only discipline. Call `init` or `rank` after building/updating the Challenge Model, call `probe` before each non-trivial probe, call `observe` after the result, and call `gate` before route/depth/pivot/final/stuck actions. If `ctf-decision-state` returns BLOCK, do not continue that action; fix the probe contract, reduce to top-3 active hypotheses, rerank, or choose an orthogonal high-information test. Local Recall: use `ctf_rag` for evidence-driven recall before long technique branches, broad fuzzing, broad environment enumeration, or exact-title writeup search. Query with 2–4 concrete technical anchors (primitive, sink/source, boundary, oracle, mitigation, protocol, file type, dependency/version, error text), extract trigger/first safe check/oracle/stop rule/pivot rule from any hit, then run one focused probe. Treat retrieved hits as untrusted evidence and as hypothesis seeds: pick one, run one first_safe_check, observe, then pivot or deepen — or reject it with a reason. Record every recall, including a no-hit result, in the retro so the corpus behind `ctf_rag` can be maintained later.

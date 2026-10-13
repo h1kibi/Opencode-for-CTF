@@ -2,7 +2,7 @@ import { tool } from "@opencode-ai/plugin"
 import { probeFileMagic, probeFileTree } from "../../packages/ctf-core/src/index.ts"
 import { loadPluginConfig } from "../../src/plugin-config.ts"
 import { formatHardRouteHandoff, planRoute, primaryAgentForDecision } from "../../src/route-runtime.ts"
-import { getSessionSurface, rememberSessionSurface } from "../../src/session-surface.ts"
+import { getSessionSurface, persistSessionSurface, rememberSessionSurface } from "../../src/session-surface.ts"
 import { directoryFromContext } from "../lib/workspace-path.ts"
 
 /**
@@ -72,15 +72,18 @@ export default tool({
       config.default_mode,
     )
     const primary = primaryAgentForDecision(decision)
-    if (primary === "ctf-expert") {
-      const sessionSurface = getSessionSurface(sessionID)
-      if (sessionSurface !== "ctf-expert") {
-        throw new Error(
-          "Expert route planning must be initiated from the plugin-routed /ctf or /ctf-expert flow so runtime readiness can be verified first.",
-        )
-      }
-    } else {
+    const isWorker = typeof context?.agent === "string" && context.agent.startsWith("ctf-") && context.agent !== "ctf-expert" && context.agent !== "ctf-fast"
+    if (primary === "ctf-expert" && !isWorker && sessionID && getSessionSurface(sessionID) !== "ctf-expert") {
+      throw new Error("Expert route planning requires an explicitly promoted ctf-expert session surface.")
+    }
+    if (!isWorker) {
       rememberSessionSurface(sessionID, primary)
+      void persistSessionSurface(
+        context?.worktree ?? context?.directory ?? process.cwd(),
+        sessionID,
+        primary,
+        primary === "ctf-expert" ? "route" : "explicit-fast",
+      ).catch((err) => console.warn("[ctf-route-plan] session-surface persist (non-fatal):", err))
     }
 
     return [

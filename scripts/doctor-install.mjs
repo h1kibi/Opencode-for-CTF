@@ -54,7 +54,6 @@ const result = {
   openCode: commandExists("opencode", ["--version"]),
   nodeModules: existsSync(path.join(repoRoot, "node_modules")),
   pluginBundle: existsSync(path.join(repoRoot, "dist", "plugin", "index.js")),
-  idaMcpAvailable: commandExists("ida-pro-mcp", ["--help"]),
   configError,
   currentVersion,
   installedVersion,
@@ -110,12 +109,5 @@ else {
   }
   console.log("\nOptional tools are only required for challenge paths that use them.")
   console.log(`WireMCP backend: ${wireMcp.label}`)
-  console.log(
-    `IDA MCP backend: ${
-      result.idaMcpAvailable
-        ? "available (run `ida-pro-mcp`; stdio is the default transport)"
-        : "missing - install mrexodia/ida-pro-mcp so `ida-pro-mcp` is available for the ida-pro slot"
-    }`,
-  )
 }
 if (strict && unhealthy) process.exitCode = 1

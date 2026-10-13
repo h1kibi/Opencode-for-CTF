@@ -6,7 +6,6 @@ import os from "node:os"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { applyEdits, modify, parse } from "jsonc-parser"
-import { isKnowledgeInstallIncluded } from "./publish-assets.mjs"
 import {
   INSTALLER_PROFILES,
   JSON_FORMATTING,
@@ -92,7 +91,6 @@ function localCommandFallbacks(command) {
     dirsearch: [pythonScript(winTool("dirsearch", "dirsearch.py"), ["--version"])],
     sqlmap: [pythonScript(winTool("sqlmap", "sqlmap.py"), ["--version"])],
     nmap: [localCommand(winTool("nmap", "nmap.exe"), ["--version"])],
-    jadx: [localCommand(winTool("Jadx", "jadx.exe"), ["--version"])],
     r2: [
       localCommand(winTool("radare2", "radare2-6.1.4-w64", "bin", "r2.bat"), ["-v"], { shell: true }),
       localCommand(winTool("radare2", "radare2-6.1.4-w64", "bin", "radare2.exe"), ["-v"]),
@@ -156,9 +154,9 @@ export async function probeInstalledPluginRuntime(configDir = opencodeConfigDir(
 }
 
 export function installedSkillDirs(configDir) {
-  // External SecKnowledge is a reference corpus, not an active skill path.
-  // Keeping it out of skills.paths prevents broad trigger/shadowing conflicts;
-  // ctf-skill-repo-search loads it explicitly when evidence warrants recall.
+  // Only bundled skills are published as an active skill path. Withdrawn
+  // external corpus snapshots (SecKnowledge) are retired: retrieval now goes
+  // through the external `ctf_rag` MCP server instead.
   return [path.join(configDir, "opencode-for-ctf", "skills")]
 }
 
@@ -286,11 +284,7 @@ async function exportedPluginToolNames() {
     .map((entry) => entry.name.slice(0, -3))
     .filter(
       (name) =>
-        name.startsWith("ctf-") ||
-        name.startsWith("archive-") ||
-        name.startsWith("seckb_") ||
-        name.startsWith("cvekb_") ||
-        name.startsWith("anysearch_"),
+        name.startsWith("ctf-") || name.startsWith("archive-") || name.startsWith("anysearch_") || name.startsWith("ctf_rag"),
     )
     .sort()
 }
@@ -494,20 +488,10 @@ export async function managedFileHash(file) {
 }
 
 async function shouldCopyManagedRelative(mappingSource, rel) {
-  // Slim knowledge: skip intermediate pattern-card history and generator scripts.
-  // Source checkouts may still contain v2-v8 for rebuild; install must not re-bloat.
+  // The local knowledge corpus is retired (retrieval is the external ctf_rag MCP),
+  // so only hidden category commands need filtering now.
   const source = mappingSource.replace(/\\/g, "/")
   const posixRel = rel.replace(/\\/g, "/")
-  if (source === "knowledge") {
-    return isKnowledgeInstallIncluded(rel)
-  }
-  if (source === "rag") {
-    if (posixRel === "knowledge" || posixRel.startsWith("knowledge/")) {
-      return isKnowledgeInstallIncluded(posixRel.slice("knowledge/".length))
-    }
-    if (posixRel === "lessons" || posixRel.startsWith("lessons/")) return true
-    return false
-  }
   if (source === "commands" && posixRel.endsWith(".md")) {
     const definition = await readFile(path.join(repoRoot, mappingSource, rel), "utf8")
     return !/^hidden:\s*["']?true["']?\s*$/m.test(definition)
@@ -560,8 +544,7 @@ export async function copyManagedFiles(configDir = opencodeConfigDir()) {
   const copied = []
   const backups = []
   try {
-    const includeExternalSkills = process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS === "1"
-    for (const mapping of managedAssetMappings(includeExternalSkills)) {
+    for (const mapping of managedAssetMappings()) {
       const source = path.join(repoRoot, mapping.source)
       if (!existsSync(source)) continue
       for (const rel of await listFiles(source)) {
@@ -612,7 +595,7 @@ export async function upgradeManagedFiles(configDir, previousManifest) {
   const sourceTargets = new Set()
 
   try {
-    for (const mapping of managedAssetMappings(process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS === "1")) {
+    for (const mapping of managedAssetMappings()) {
       const source = path.join(repoRoot, mapping.source)
       if (!existsSync(source)) continue
       for (const rel of await listFiles(source)) {

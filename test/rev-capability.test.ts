@@ -37,7 +37,7 @@ describe("ctf-rev-capability-check tool", () => {
     const names = payload.tools.map((item: { name: string }) => item.name)
 
     expect(payload.family).toBe("dex")
-    expect(names).toEqual(expect.arrayContaining(["jadx", "baksmali", "aapt", "adb"]))
+    expect(names).toEqual(expect.arrayContaining(["baksmali", "aapt", "adb"]))
     expect(payload.packs.android).toHaveProperty("requiredPack", "android")
     expect(payload.packs.android.internalTools).toEqual(
       expect.arrayContaining([

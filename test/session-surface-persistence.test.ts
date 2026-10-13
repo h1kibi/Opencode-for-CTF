@@ -36,4 +36,23 @@ describe("persisted session surfaces", () => {
       clearSessionSurface(sessionID)
     }
   })
+  it("demotes legacy expert records without provenance", async () => {
+    const worktree = await mkdtemp(path.join(os.tmpdir(), "ctf-session-surface-legacy-"))
+    const sessionID = `legacy-${Date.now()}-${Math.random()}`
+    try {
+      const statePath = path.join(worktree, "runtime", "state", "session-surfaces.json")
+      await persistSessionSurface(worktree, sessionID, "ctf-expert")
+      const stored = JSON.parse(await readFile(statePath, "utf8"))
+      stored[sessionID] = { surface: "ctf-expert", updatedAt: "2026-01-01T00:00:00.000Z" }
+      const { writeFile } = await import("node:fs/promises")
+      await writeFile(statePath, JSON.stringify(stored), "utf8")
+      clearSessionSurface(sessionID)
+      await restoreSessionSurfaces(worktree)
+      expect(getSessionSurface(sessionID)).toBe("ctf-fast")
+      expect(JSON.parse(await readFile(statePath, "utf8"))[sessionID].source).toBe("legacy")
+    } finally {
+      await rm(worktree, { recursive: true, force: true })
+      clearSessionSurface(sessionID)
+    }
+  })
 })

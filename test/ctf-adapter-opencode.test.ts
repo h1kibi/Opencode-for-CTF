@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
   agentForMode,
-  COMPAT_AGENTS,
   DEFAULT_ENTRY_COMMAND,
   effectiveSolveMode,
   isL0Command,
@@ -13,7 +12,6 @@ describe("ctf-adapter-opencode", () => {
   it("exposes the default /ctf entry and two primaries", () => {
     expect(DEFAULT_ENTRY_COMMAND).toBe("/ctf")
     expect(PRIMARY_AGENTS).toEqual(["ctf-fast", "ctf-expert"])
-    expect(COMPAT_AGENTS).toEqual([])
   })
 
   it("maps modes to primary agents", () => {

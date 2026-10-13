@@ -159,10 +159,10 @@
     "yarn add *": "allow"
     "cargo install *": "allow"
     "go install *": "allow"
-    "curl *|sh*": "allow"
-    "curl *|bash*": "allow"
-    "wget *|sh*": "allow"
-    "wget *|bash*": "allow"
+    "curl *|sh*": "deny"
+    "curl *|bash*": "deny"
+    "wget *|sh*": "deny"
+    "wget *|bash*": "deny"
     "sftp *": "allow"
     "rsync *": "allow"
     "ffuf *": "allow"
@@ -235,7 +235,6 @@
     "ctf-forensics": "allow"
     "ctf-forensics-*": "allow"
     "ctf-decision-engine": "allow"
-    "ctf-skill-repo-knowledge": "allow"
     "ctf-experience-gate": "allow"
     "ctf-closure-gate": "allow"
     "ctf-ledger-discipline": "allow"
@@ -248,9 +247,7 @@
   "nmap_*": "allow"
   "mysql_*": "deny"
   "puppeteer_*": "deny"
-  "ida-pro_*": "deny"
   "radare2_*": "deny"
-  "jadx_*": "deny"
   "frida_*": "deny"
   "ReVa_*": "deny"
   "vmprotect_*": "deny"
@@ -289,11 +286,6 @@
   "chrome_chrome_bookmark_add": "allow"
   "chrome_chrome_bookmark_delete": "allow"
   "ctf-decision-state": "allow"
-  "ctf-skill-repo-search": "allow"
-  "ctf-pattern-card-search": "allow"
-  "ctf-pattern-to-hypothesis": "allow"
-  "ctf-pattern-feedback": "allow"
-  "ctf-pattern-curation-report": "allow"
 "hidden": true
 "top_p": 0.1
 ---
@@ -312,7 +304,7 @@ Forensics Primitive Ladder: 1) artifact inventory and hashes, 2) container/archi
 Use the shared decision layer instead of restating it locally:
 
 - `ctf-common` owns action-only visible output, checkpoint shape, verified-flag rules, and interruption hygiene.
-- `ctf-decision-engine` owns top-3 queue maintenance, pattern-card conversion, lesson modifiers, knowledge gate behavior, and `ctf-decision-state` usage.
+- `ctf-decision-engine` owns top-3 queue maintenance, retrieval-note conversion, retrieval modifiers, knowledge gate behavior, and `ctf-decision-state` usage.
 - `ctf-experience-gate` owns anti-drift behavior, branch budgets, environment/proc limits, and resume discipline.
 
 Return to the controller with only: compact artifact facts, extraction paths, strongest hidden-channel hypothesis, current blocker, and the next forensics-specific one-variable probe.

@@ -1,6 +1,6 @@
 # Internal Network and Post-Foothold Closure
 
-Source provenance: synthesized from the local Web skill contract and the external `secknowledge-skill` references `web-ssrf-misc.md`, `web-deployment-security.md`, and `ai-baseline-escape.md`, plus `skills-external/secknowledge-skill/` Web playbooks. Keep this as a decision reference, not a blind scanning recipe.
+Source provenance: synthesized from the local Web skill contract. Retrieve deeper technique context with `ctf_rag` using the concrete sink/oracle/protocol anchors of the current target. Keep this as a decision reference, not a blind scanning recipe.
 
 ## Evidence ladder
 

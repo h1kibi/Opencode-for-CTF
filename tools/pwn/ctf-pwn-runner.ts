@@ -5,7 +5,7 @@ import { safeExecWithStreams } from "../lib/exec-utils.ts"
 import { objectToStringRecord, parseJsonObjectArg } from "../lib/json-args.ts"
 import { resolveAllowedPath } from "../lib/path-policy.ts"
 import { directoryFromContext, resolveInsideWorkspace, workspaceRootFromContext } from "../lib/workspace-path.ts"
-import { extractFlagCandidates } from "../lib/flag-utils.ts"
+import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
 import {
   classifySolverOutcome,
   successClassFrom,
@@ -331,7 +331,7 @@ export default tool({
       fallback_action:
         "if local and remote behavior diverge, run ctf-pwn-remote-fingerprint with the same payload shape",
       stop_if:
-        "runner repeatedly times out or crashes without new oracle evidence; ESCALATE: ctf-expert if runtime/protocol effects dominate",
+        "runner repeatedly times out or crashes without new oracle evidence; stop and report the blocker if runtime/protocol effects dominate",
       exit_code: exitCode,
       flags_found: flags,
       flag_candidates: flagCandidates,

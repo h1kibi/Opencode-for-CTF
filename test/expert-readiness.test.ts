@@ -8,35 +8,45 @@ import {
   formatExpertRecoverySteps,
   extractResumeHints,
   EXPERT_REQUIRED_TOOLS,
+  EXPERT_RAG_ENV_VARS,
+  EXPERT_RAG_SERVER_ID,
   EXPERT_SOFT_DEPENDENCIES,
+  EXPERT_SUPPORT_TOOLS,
   EXPERT_TEAM_RUNTIME_TOOLS,
   EXPERT_CORE_WORKFLOW_TOOLS,
 } from "../src/expert-readiness.js"
 
+// Retired local-retrieval helpers (lesson/retro/pattern-card/skill-repo/imported
+// knowledge tooling). They were deleted together with the bundled corpus; local
+// recall is served by the external `ctf_rag` MCP server alone.
+const RETIRED_RETRIEVAL_TOOL_SHAPE = /^ctf-(?:lesson|retro|pattern|skill-repo|imported-knowledge)[a-z-]*$/
+
 function allRequiredTools(): string[] {
   return [...EXPERT_REQUIRED_TOOLS]
+}
+
+/** Run `fn` with a temporary environment overlay, restoring prior values. */
+function withEnv<T>(values: Record<string, string | undefined>, fn: () => T): T {
+  const saved = new Map<string, string | undefined>()
+  for (const [key, value] of Object.entries(values)) {
+    saved.set(key, process.env[key])
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+  try {
+    return fn()
+  } finally {
+    for (const [key, value] of saved) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  }
 }
 
 function asSet(items: string[]) {
   return new Set(items)
 }
 
-function makeReadyReport(overrides?: Partial<ExpertReadinessReport>): ExpertReadinessReport {
-  return {
-    ready: true,
-    status: "ready",
-    reasons: [],
-    checks: [],
-    missingTools: [],
-    missingSupportTools: [],
-    configPath: "/home/user/.config/opencode/opencode-for-ctf.jsonc",
-    teamModeEnabled: true,
-    maxWorkers: 8,
-    toolPacks: ["core", "web", "pwn"],
-    expertToolPacks: [],
-    ...overrides,
-  }
-}
 
 function makeUnreadyReport(overrides?: Partial<ExpertReadinessReport>): ExpertReadinessReport {
   return {
@@ -45,7 +55,7 @@ function makeUnreadyReport(overrides?: Partial<ExpertReadinessReport>): ExpertRe
     reasons: ["missing required tools"],
     checks: [],
     missingTools: ["ctf-team-dispatch", "ctf-evidence-board"],
-    missingSupportTools: ["ctf-handoff"],
+    missingSupportTools: ["ctf-tool-packs"],
     configPath: "/home/user/.config/opencode/opencode-for-ctf.jsonc",
     teamModeEnabled: true,
     maxWorkers: 8,
@@ -147,8 +157,40 @@ describe("evaluateExpertReadiness", () => {
       maxWorkers: 8,
     })
     expect(report.ready).toBe(true)
-    // ctf-handoff, ctf-tool-packs, ctf-team-mode should be present in core pack
+    // ctf-tool-packs and ctf-team-mode should be present in core pack
     expect(report.missingSupportTools).toBeDefined()
+  })
+
+  it("treats the ctf_rag backend as a non-blocking check that degrades, never blocks", () => {
+    const completeRegistry = asSet([...EXPERT_REQUIRED_TOOLS, ...EXPERT_SUPPORT_TOOLS])
+    const evaluate = () =>
+      evaluateExpertReadiness({ registeredTools: completeRegistry, teamModeEnabled: true, maxWorkers: 8 })
+    const unsetRagEnv: Record<string, string | undefined> = {}
+    const configuredRagEnv: Record<string, string> = {}
+    for (const name of EXPERT_RAG_ENV_VARS) {
+      unsetRagEnv[name] = undefined
+      configuredRagEnv[name] = "configured"
+    }
+
+    const missingBackend = withEnv(unsetRagEnv, evaluate)
+    expect(missingBackend.ready).toBe(true)
+    expect(missingBackend.status).toBe("degraded")
+    expect(missingBackend.checks.find((entry) => entry.id === `mcp:${EXPERT_RAG_SERVER_ID}`)).toMatchObject({
+      required: false,
+      ok: false,
+    })
+    expect(missingBackend.reasons.join(" ")).toMatch(/retrieval backend unavailable/)
+
+    const configuredBackend = withEnv(configuredRagEnv, evaluate)
+    expect(configuredBackend.status).toBe("ready")
+    expect(configuredBackend.checks.find((entry) => entry.id === `mcp:${EXPERT_RAG_SERVER_ID}`)?.ok).toBe(true)
+  })
+
+  it("keeps only live Team/Evidence tools in the hard-required Expert set", () => {
+    expect([...EXPERT_REQUIRED_TOOLS]).toEqual([...EXPERT_TEAM_RUNTIME_TOOLS, ...EXPERT_CORE_WORKFLOW_TOOLS])
+    for (const tool of EXPERT_REQUIRED_TOOLS) {
+      expect(tool, `${tool} is a retired local-retrieval helper`).not.toMatch(RETIRED_RETRIEVAL_TOOL_SHAPE)
+    }
   })
 
   it("keeps manifest expert readiness lists and structural expert contract metadata in sync", () => {
@@ -173,27 +215,15 @@ describe("evaluateExpertReadiness", () => {
     expect(manifest.routing.tool).toBe("ctf-route-plan")
     expect(manifest.routing.skill).toBe("ctf-router")
     expect(manifest.routing.core_module).toBe("packages/ctf-core/src/router.ts")
-    expect(manifest.required_tools).toEqual(
-      expect.arrayContaining(["ctf-pattern-card-search", "ctf-pattern-to-hypothesis"]),
-    )
-    expect(manifest.optional_pack_tools).toEqual(
-      expect.arrayContaining([
-        "ctf-lesson-search",
-        "ctf-retro-search",
-        "ctf-skill-repo-search",
-        "ctf-imported-knowledge-search",
-      ]),
-    )
-    expect(manifest.required_indexes).toEqual(
-      expect.arrayContaining([
-        "rag/knowledge/lessons/lessons.index.json",
-        "rag/knowledge/retros/retros.index.json",
-        "rag/knowledge/pattern-cards/des-ctf/des-ctf.cards.v1.json",
-        "rag/knowledge/sources/des-ctf-knowledge.manifest.json",
-      ]),
-    )
-    for (const rel of [...manifest.required_scripts, ...manifest.required_indexes]) {
-      expect(readFileSync(resolve(rel), rel.includes(".json") ? "utf8" : "utf8")).toBeDefined()
+    // The manifest may not advertise a retired local-retrieval helper.
+    for (const tool of [...manifest.required_tools, ...manifest.optional_pack_tools]) {
+      expect(tool, `${tool} is a retired local-retrieval helper`).not.toMatch(RETIRED_RETRIEVAL_TOOL_SHAPE)
+    }
+    // ABSENT-BY-DESIGN: local retrieval moved to the external `ctf_rag` MCP
+    // server, so no bundled `rag/...` index may be listed as required.
+    expect(manifest.required_indexes.filter((rel) => rel.startsWith("rag/"))).toEqual([])
+    for (const rel of manifest.required_scripts) {
+      expect(readFileSync(resolve(rel), "utf8")).toBeDefined()
     }
     expect(manifest.readiness_gate.expert_required_tools).toEqual([...EXPERT_REQUIRED_TOOLS])
     expect(manifest.readiness_gate.expert_soft_dependencies).toEqual([...EXPERT_SOFT_DEPENDENCIES])

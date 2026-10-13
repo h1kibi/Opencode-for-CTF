@@ -9,7 +9,7 @@ This document defines the stable contract for the bundled CTF skills. `SKILL.md`
 | Control | `ctf-common`, `ctf-router`, `ctf-lead`, `ctf-decision-engine`, `ctf-experience-gate`, `ctf-ledger-discipline`, `ctf-closure-gate` | Scope, routing, phase ownership, ranking, state, closure | Category payloads or long exploit recipes |
 | Orchestrator | `ctf-web`, `ctf-pwn`, `ctf-rev`, `ctf-crypto`, `ctf-forensics`, `ctf-misc` | One category's phase machine, dispatch, evidence, pivot, and final handoff | Global ranking/state doctrine or every vulnerability detail |
 | Focused | `ctf-web-*`, `ctf-forensics-*`, `ctf-rev-*`, and other leaf skills | One technique, artifact, or bounded sub-discipline | Re-routing the entire challenge or redefining closure rules |
-| Support / policy | `ctf-terminal`, `ctf-artifact-analysis`, `ctf-oob-discipline`, `ctf-whitebox-audit`, `ctf-seckb`, `ctf-skill-repo-knowledge`, `anysearch` | Tool safety, artifact interpretation, retrieval, or cross-cutting policy | Becoming the default category orchestrator |
+| Support / policy | `ctf-terminal`, `ctf-artifact-analysis`, `ctf-oob-discipline`, `ctf-whitebox-audit`, `anysearch` | Tool safety, artifact interpretation, retrieval, or cross-cutting policy | Becoming the default category orchestrator |
 | Reference | `references/*.md` | Detailed recipes, matrices, and fallback knowledge loaded on demand | Acting as an independently dispatched skill |
 
 ### Ownership rules

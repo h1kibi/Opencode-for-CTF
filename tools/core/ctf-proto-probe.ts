@@ -171,7 +171,7 @@ print(json.dumps(rows, ensure_ascii=False))
       fallback_action:
         "if baseline responses drift across connections, compare one harmless baseline and one mutant payload with ctf-pwn-remote-fingerprint",
       stop_if:
-        "multi-state protocol behavior dominates or no stable response shape appears after a few bounded probes; ESCALATE: ctf-expert",
+        "multi-state protocol behavior dominates or no stable response shape appears after a few bounded probes; stop and report the blocker",
       attempts_detail: parsed.map((row) => ({
         attempt: row.attempt,
         status: row.status,

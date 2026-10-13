@@ -2,10 +2,7 @@
 
 Use when evidence contains QEMU device models, PCI/MMIO/PIO regions, virtio, hypercalls, KVM, VMM, guest-to-host escape, custom kernel/hypervisor layers, port I/O (`in`/`out`), or device state-machine bugs.
 
-Imported references:
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\kernel.md`
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\kernel-techniques.md`
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\advanced.md`
+Deep technique notes: retrieve with `ctf_rag` using the QEMU/device/hypervisor primitives above.
 
 ## Route Gate
 

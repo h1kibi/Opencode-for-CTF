@@ -12,7 +12,7 @@ export function renderRun(run: TeamRun, includeResults = false) {
   ]
   for (const job of run.jobs) {
     lines.push(
-      `- ${job.id} | ${job.orphaned?.originalAgent ?? job.agent} | route=${job.routeId ?? "?"} | ${job.concurrency ?? "independent"} | ${job.status}${job.orphaned ? ` (${job.orphaned.reason})` : ""} | ${job.title}`,
+      `- ${job.id} | intent=${job.intentId ?? "(legacy)"} | ${job.orphaned?.originalAgent ?? job.agent} | route=${job.routeId ?? "?"} | ${job.concurrency ?? "independent"} | ${job.status}${job.orphaned ? ` (${job.orphaned.reason})` : ""} | ${job.title}`,
     )
     if (job.deadlineAt) {
       const deadlineNote =
@@ -31,6 +31,23 @@ export function renderRun(run: TeamRun, includeResults = false) {
     }
     if (includeResults && job.result) lines.push(`  result:\n${job.result}`)
   }
+  if (run.facts?.length) {
+    lines.push("facts:")
+    for (const fact of run.facts.slice(-10)) {
+      lines.push(`- ${fact.id} | ${fact.status}/${fact.confidence} | route=${fact.routeId} | ${fact.statement}`)
+      lines.push(`  source: ${fact.sourceJobId}/${fact.sourceSessionId}`)
+    }
+  }
+  if (run.intents?.length) {
+    lines.push("intents:")
+    for (const intent of run.intents.slice(-8)) {
+      lines.push(
+        `- ${intent.id} | ${intent.status} | route=${intent.routeId} | ${intent.concurrency} | ` +
+          `attempts=${intent.attempts}/${intent.maxAttempts} | basis=${intent.basedOnFactIds.length} | ${intent.title}`,
+      )
+      if (intent.resultSummary) lines.push(`  result: ${intent.resultSummary}`)
+    }
+  }
   return lines.join("\n").slice(0, MAX_COLLECT_OUTPUT)
 }
 
@@ -46,8 +63,8 @@ export function summarizeTeamState(state: TeamState, sessionID?: string) {
       title: r.title,
       status: r.status,
       jobs: r.jobs.map((j) => ({
+        intentId: j.intentId,
         id: j.id,
-        title: j.title,
         agent: j.orphaned?.originalAgent ?? j.agent,
         orphaned: j.orphaned,
         routeId: j.routeId,

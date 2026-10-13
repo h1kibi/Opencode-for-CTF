@@ -20,7 +20,6 @@ for (const tool of [
   "ctf-android-dynamic-macro.ts",
   "ctf-dex-patch-map.ts",
   "ctf-android-packed-closure-helper.ts",
-  "ctf-jadx-targeted-slice.ts",
   "ctf-artifact-page.ts",
 ]) {
   const file = join(root, "tools", tool)
@@ -53,7 +52,7 @@ for (const tmpl of [
 }
 
 const ctfRev = join(root, "agents", "ctf-rev.md")
-for (const term of ["ctf-apk-triage", "ctf-android-native-triage", "ctf-jadx-targeted-slice", "APK Fast Path"]) {
+for (const term of ["ctf-apk-triage", "ctf-android-native-triage", "APK Fast Path"]) {
   checks.push({
     name: `ctf-rev references ${term}`,
     ok: has(ctfRev, new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))),
@@ -62,7 +61,7 @@ for (const term of ["ctf-apk-triage", "ctf-android-native-triage", "ctf-jadx-tar
 }
 
 const ctfFast = join(root, "agents", "ctf-fast.md")
-for (const term of ["ctf-apk-triage", "ctf-android-native-triage", "ctf-jadx-targeted-slice"]) {
+for (const term of ["ctf-apk-triage", "ctf-android-native-triage"]) {
   checks.push({
     name: `ctf-fast references ${term}`,
     ok: has(ctfFast, new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))),
@@ -70,34 +69,9 @@ for (const term of ["ctf-apk-triage", "ctf-android-native-triage", "ctf-jadx-tar
   })
 }
 
-for (const doc of [
-  "apk-fast-triage.md",
-  "android-native-jni-routing.md",
-  "jadx-targeted-workflow.md",
-  "frida-first-probes.md",
-  "apk-packer-signals.md",
-  "android-assets-decryption.md",
-  "runtime-equivalence-and-packed-closure.md",
-]) {
-  const file = join(root, "knowledge", "rev", "android", doc)
-  checks.push({ name: `knowledge:${doc}`, ok: existsSync(file), detail: file })
-}
-
-for (const term of [
-  "ctf-android-runtime-doctor",
-  "ctf-dex-patch-map",
-  "ctf-android-dynamic-macro",
-  "ctf-android-packed-closure-helper",
-]) {
-  checks.push({
-    name: `knowledge:runtime-equivalence mentions ${term}`,
-    ok: has(
-      join(root, "knowledge", "rev", "android", "runtime-equivalence-and-packed-closure.md"),
-      new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-    ),
-    detail: join(root, "knowledge", "rev", "android", "runtime-equivalence-and-packed-closure.md"),
-  })
-}
+// Corpus checks were removed with the bundled knowledge trees: REV/Android
+// technique notes now live in the external `ctf_rag` index, which this offline
+// audit cannot inspect. Only the tool-surface checks below remain.
 
 const failures = checks.filter((c) => !c.ok)
 console.log("# REV Android Readiness Audit")

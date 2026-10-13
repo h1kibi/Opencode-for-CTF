@@ -42,7 +42,7 @@ describe("ctf-pwn-remote-check contract", () => {
       expect(parsed.one_variable_probe).toBeTruthy()
       expect(parsed.recommended_next_action).toBeTruthy()
       expect(parsed.fallback_action).toBeTruthy()
-      expect(parsed.stop_if).toContain("ESCALATE")
+      expect(parsed.stop_if).toContain("stop and report the blocker")
     } finally {
       spy.mockRestore()
     }

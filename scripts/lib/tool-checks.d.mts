@@ -27,4 +27,4 @@ export function toolCheckExists(check: ToolCheck): boolean
 
 export function runToolChecks(checks?: ToolCheck[]): Map<string, { found: string[]; missing: string[] }>
 
-export function runToolChecksDetailed(checks?: ToolCheck[], opts?: { env?: Record<string, string> }): ToolCheckResult[]
+export function runToolChecksDetailed(checks?: ToolCheck[]): ToolCheckResult[]

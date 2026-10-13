@@ -206,7 +206,6 @@
     "solve.js": "allow"
     "agent_flag.txt": "allow"
     "retros/*.md": "allow"
-    "rag/lessons/*.md": "allow"
     "patches/*.md": "allow"
     "solve.sage": "allow"
     "exploit.py": "allow"
@@ -254,7 +253,6 @@
     "ctf-experience-gate": "allow"
     "ctf-ledger-discipline": "allow"
     "ctf-closure-gate": "allow"
-    "ctf-skill-repo-knowledge": "allow"
   "filesystem_*": "allow"
   "git_*": "allow"
   "puppeteer_*": "allow"
@@ -290,9 +288,7 @@
   "ctf-file-write-matrix": "allow"
   "ctf-web-pattern-search": "allow"
   "shodan_*": "allow"
-  "ida-pro_*": "deny"
   "radare2_*": "deny"
-  "jadx_*": "deny"
   "frida_*": "deny"
   "ReVa_*": "deny"
   "vmprotect_*": "deny"
@@ -335,11 +331,6 @@
   "ctf-web-fuzz-plan": "allow"
   "ctf-web-url-corpus": "allow"
   "ctf-web-template-check": "allow"
-  "ctf-skill-repo-search": "allow"
-  "ctf-pattern-card-search": "allow"
-  "ctf-pattern-to-hypothesis": "allow"
-  "ctf-pattern-feedback": "allow"
-  "ctf-pattern-curation-report": "allow"
 "hidden": true
 "top_p": 0.1
 ---
@@ -399,7 +390,7 @@ For medium/hard branches, follow `ctf-decision-engine` and `ctf-experience-gate`
 evidence -> hypothesis -> one-variable probe -> observation -> rerank/pivot/final
 ```
 
-Never call `ctf-decision-state` with empty or placeholder fields. If not ready, build one minimal hypothesis or convert one pattern card.
+Never call `ctf-decision-state` with empty or placeholder fields. If not ready, build one minimal hypothesis or convert one `ctf_rag` hit.
 
 Before another same-family probe, write or update the Web constraint equation:
 
@@ -412,7 +403,7 @@ A changed payload string is not a changed hypothesis. Only a changed route, pars
 Use the shared decision layer instead of expanding local doctrine:
 
 - `ctf-common` owns action-only visible output, interruption hygiene, verified-flag rules, and compact checkpoint shape.
-- `ctf-decision-engine` owns top-3 queue maintenance, pattern-card conversion, lesson modifiers, probe contracts, knowledge gate behavior, and `ctf-decision-state` usage.
+- `ctf-decision-engine` owns top-3 queue maintenance, retrieval-note conversion, retrieval modifiers, probe contracts, knowledge gate behavior, and `ctf-decision-state` usage.
 - `ctf-experience-gate` owns anti-drift behavior, Web constraint-equation pressure, semantic mismatch promotion, and environment/proc budget caps.
 
 When returning control to `ctf-expert` or another controller, report only:
@@ -454,7 +445,7 @@ When handing control back to `ctf-expert`, prefer `ctf_handoff.md`, `ctf_evidenc
 
 ## Output style
 
-Visible output before a Web tool/probe must be at most one sentence. Do not output `Exploring`, `Considering`, or `Clarifying` sections. Do not narrate payload alternatives. After `ctf-pattern-card-search`, immediately call `ctf-pattern-to-hypothesis` or `ctf-decision-state`.
+Visible output before a Web tool/probe must be at most one sentence. Do not output `Exploring`, `Considering`, or `Clarifying` sections. Do not narrate payload alternatives. After a `ctf_rag` recall, immediately call `ctf-decision-state` or execute the first safe check it implies.
 
 If no tool/probe is appropriate, output only `PIVOT`, `FINAL`, or `NEED_INFO` with one sentence.
 

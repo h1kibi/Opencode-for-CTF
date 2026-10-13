@@ -71,7 +71,7 @@ For anti-debug, anti-VM, timing checks, ptrace, IsDebuggerPresent, or Frida dete
 
 For packed, self-modifying, or runtime-unpacked binaries, load `references/packed-unpack-trace.md`.
 
-For Windows PE files that are packed, memory-rebuilt, entry-outside-.text, or blocked by an invalid IDA license, load `references/windows-packed-pe-rebuild.md`.
+For Windows PE files that are packed, memory-rebuilt, or have entry code outside `.text` that Ghidra/ReVa recover poorly, load `references/windows-packed-pe-rebuild.md`.
 
 For `.pyc`, PyInstaller, marshal, or Python bytecode artifacts, load `references/python-pyc-pyinstaller.md`.
 
@@ -108,7 +108,7 @@ For native REV work, treat the prepared Docker lab as the default runtime substr
 3. Prefer challenge Docker/compose when present and runnable. Otherwise choose `revlab:ubuntu22.04` for native ELF/PE reversing, cross-arch emulation, network/artifact tools, unpacking, angr/qiling/unicorn, and scripted solver verification.
 4. Lock the chosen substrate (`challenge-docker`, `revlab-docker`, `host`, `android-emulator`, `remote-only`) before dynamic testing or long tool runs. Record image/service, `/work` mount, why it matches the target, and the unlock condition.
 5. Keep runtime traces, unpacking, emulation, dynamic checker probes, solver verification, and repeated tool invocations inside the locked container. Do not alternate host/WSL/Docker because one shell command or quote form failed.
-6. Switch to host only for GUI-heavy IDA/Ghidra workflows, hardware/device/emulator requirements, or cheap static reads already available there. Switch to remote only for final service-specific validation or proven local/remote drift.
+6. Switch to host only for GUI-heavy Ghidra workflows, hardware/device/emulator requirements, or cheap static reads already available there. Switch to remote only for final service-specific validation or proven local/remote drift.
 7. Before any substrate switch, write: `Switching substrate because: <current substrate blocker>; <new substrate evidence/goal>`.
 
 ## Workflow
@@ -126,14 +126,14 @@ For native REV work, treat the prepared Docker lab as the default runtime substr
    - ctf-rev-live-memory-dump, ctf-rev-unicorn-helper, and ctf-rev-unicorn-replay-builder are
      ev-heavy generators. They produce a controlled dump plan, helper, or replay skeleton and do not execute unknown targets or establish final correctness.
    - For live dump target arguments, use rgvJson as a JSON string array. Legacy whitespace rgv is compatibility-only; never use eval or shell interpolation for untrusted arguments.
-   - For APKs, run `ctf-android-analyze` before full JADX. Route from its summary to Java checker, native JNI, assets decode, packed/dynamic loader, or runtime confirmation.
+   - For APKs, run `ctf-android-analyze` before broad decompilation. Route from its summary to Java checker, native JNI, assets decode, packed/dynamic loader, or runtime confirmation.
    - If an APK has arm64-only native libraries or the expected device profile matters, run `ctf-android-runtime-doctor` before trusting emulator dynamic results.
    - If packed/native APK evidence mentions `extract.dat`, code_item patching, classloader swaps, `libshell.so`, decompiler failures, or `libndk_translation`, run `ctf-android-packed-closure-helper` to pick the shortest next probe.
-   - If patch records target `classes.dex` offsets, run `ctf-dex-patch-map` to map offsets to class/method code_item owners before broad JADX/apktool browsing.
+   - If patch records target `classes.dex` offsets, run `ctf-dex-patch-map` to map offsets to class/method code_item owners before broad apktool browsing.
    - Use `ctf-android-dynamic-macro` for approved adb/logcat/run-as/frida collection after runtime equivalence is understood.
    - If APK native/JNI signals appear, run `ctf-android-native-triage` before broad Java reading.
-   - Use `ctf-jadx-targeted-slice` for focused Java/Kotlin snippets; reserve full JADX output for route-gated follow-up.
-   - Flutter/Dart AOT signals (libapp.so + libflutter.so present, Dart snapshot header, Flutter engine strings): run `flutter_aot_triage` first, then `flutter_aot_recover`. Do not attempt manual libapp.so reverse engineering with IDA/Ghidra alone.
+   - For a Java/Kotlin checker route, read only the reported entry classes and checker method slices (smali plus `javap` on extracted JARs) instead of a full decompile.
+   - Flutter/Dart AOT signals (libapp.so + libflutter.so present, Dart snapshot header, Flutter engine strings): run `flutter_aot_triage` first, then `flutter_aot_recover`. Do not attempt manual libapp.so reverse engineering with Ghidra alone.
 3. Run strong-signal routing before algorithm guessing:
    - exception/unwind-heavy behavior, suspicious register staging not consumed in normal `.text`, or hints like `patch` / `frame` / `unwind` / `debug` -> inspect `.eh_frame`, `.debug_frame`, `.gcc_except_table`, `DW_CFA_val_expression`, and `DW_OP_*` before declaring the checker absent.
    - `clflush` + `rdtsc/rdtscp`, `mfence/lfence`, `prefetch`, or repeated timing-threshold checks -> enter `MICROARCH_CIRCUIT` and load `references/microarch-generated-circuit.md`.
@@ -145,7 +145,7 @@ For native REV work, treat the prepared Docker lab as the default runtime substr
    - .NET/IL/Unity managed metadata -> load `references/dotnet-il-rev.md` before reading GUI/framework boilerplate.
    - Go/Rust runtime-heavy binary -> load `references/go-rust-binary-rev.md` and filter runtime noise via strings/xrefs.
    - packed/self-modifying/runtime-unpacked clues -> load `references/packed-unpack-trace.md` before long static review.
-   - Windows PE with renamed packer sections, memory-only code, invalid IDA license, or a rebuilt image with too few functions -> load `references/windows-packed-pe-rebuild.md` before broad decompilation.
+   - Windows PE with renamed packer sections, memory-only code, or a rebuilt image with too few functions -> load `references/windows-packed-pe-rebuild.md` before broad decompilation.
    - anti-debug/anti-VM/timing/pseudo-environment barriers -> load `references/anti-debug-anti-vm.md` and separate bypass from checker semantics.
    - crypto constants, S-boxes, block rounds, hash tables, or TEA/AES/RC4/SM4 clues -> load `references/crypto-constants-recognition.md` for one focused primitive recognition pass.
    - known success/failure addresses plus branch-heavy bounded input -> consider `references/angr-symbolic-exec.md`.
@@ -265,7 +265,7 @@ When a reverse probe stalls, load `references/rev-fallback-matrix.md` and choose
 - `unicorn-qiling-emulation.md`: isolated checker rehosting, runtime-bound native code, targeted compare/output hooks.
 - `anti-debug-anti-vm.md`: ptrace, IsDebuggerPresent, timing, CPUID, Frida detection, emulator checks.
 - `packed-unpack-trace.md`: packed/self-modifying/runtime-unpacked binaries, high entropy sections, tiny imports.
-- `windows-packed-pe-rebuild.md`: Windows PE runtime dump/rebuild, `.pdata` function recovery, memory strings, IDA license fallback, cdb/x64dbg automation.
+- `windows-packed-pe-rebuild.md`: Windows PE runtime dump/rebuild, `.pdata` function recovery, memory strings, Ghidra/ReVa function recovery, cdb/x64dbg automation.
 - `python-pyc-pyinstaller.md`: `.pyc`, PyInstaller, marshal blobs, Python bytecode validators.
 - `wasm-rev.md`: `.wasm`, WAT, WebAssembly exports/imports, linear-memory validation.
 - `android-jni-frida.md`: APK JNI/native bridge, reflection, dynamic loading, targeted Frida hooks.
@@ -305,23 +305,23 @@ Look for these in order:
 
 ## Pattern Search Discipline
 
-For local pattern cards, query `ctf-pattern-card-search` with `category="reverse"` rather than `rev`. Use evidence-shaped terms such as `custom vm opcode dispatcher`, `angr find avoid`, `pyinstaller pyc marshal`, `wasm linear memory`, `android JNI RegisterNatives`, `dotnet IL resources`, `go gopclntab string xref`, `rust panic validation`, `crypto constants TEA AES`, `anti debug ptrace timing`, `packed runtime dump`, `windows memory dump pe rebuild`, `RUNTIME_FUNCTION pdata function recovery`, `ida license fallback`, or `eh_frame dwarf unwind hidden consumer`. Convert a selected card with `ctf-pattern-to-hypothesis` before deepening the branch.
+For local pattern recall, query `ctf_rag` with evidence-shaped terms such as `custom vm opcode dispatcher`, `angr find avoid`, `pyinstaller pyc marshal`, `wasm linear memory`, `android JNI RegisterNatives`, `dotnet IL resources`, `go gopclntab string xref`, `rust panic validation`, `crypto constants TEA AES`, `anti debug ptrace timing`, `packed runtime dump`, `windows memory dump pe rebuild`, `RUNTIME_FUNCTION pdata function recovery`, `ghidra pdata function seeds`, or `eh_frame dwarf unwind hidden consumer`, and keep only the hits that change the first safe check before deepening the branch.
 
 If static analysis stalls, use dynamic analysis to confirm one specific hypothesis at a time.
 
 ## Tool Discipline
 
 - Prefer static analysis first.
-- For Android, prefer manifest/dex/native/assets high-signal triage over full decompilation. Avoid waiting for cold JADX when `aapt`/zip/dex strings can choose the route.
+- For Android, prefer manifest/dex/native/assets high-signal triage over full decompilation. Avoid a cold full decompile when `aapt`/zip/dex strings can choose the route.
 - For arm64-only native APKs, treat x86_64 emulator success/failure as non-equivalent until `ctf-android-runtime-doctor` says otherwise.
 - For DEX hot-patch shelling, resolve patch ownership first with `ctf-dex-patch-map`; decompile only the owner methods and patch writer boundary.
 - For dynamic Android work, use the macro flow to collect device props, focused logcat, `run-as` listing, tombstone hints, and Frida attach suggestions instead of hand-assembling adb commands.
-- Page long generated artifacts with `ctf-artifact-page`; do not dump full JADX/apktool/native strings output into the transcript.
+- Page long generated artifacts with `ctf-artifact-page`; do not dump full apktool/native strings output into the transcript.
 - Use decompilers for structure and disassembly for exact semantics.
 - For Windows packed PE, run `ctf-pe-unpack`/`ctf-runtime-dump` to rebuild from memory before long static analysis; then use `ctf-memstr` for ASCII/UTF-16 strings and `ctf-rev-pe-recovery` for `.pdata` function seeds and batched linear disassembly.
 - When a pure memory rebuild gives poor ReVa/Ghidra function recovery, run `ctf-pe-hybrid-rebuild` to keep original imports/resources and replace runtime-unpacked executable sections.
 - For unstable Windows console checkers, use `ctf-windows-expect-runner` instead of Python `subprocess` for stdin/file input, timeout kill, and output capture.
-- If `ctf-env-check` reports an invalid IDA license, do not retry IDA; use the rebuilt PE in Ghidra/ReVa/objdump and `ctf-windows-debug-helper` for cdb/WinDbg automation.
+- For a rebuilt PE, analyse it in Ghidra/ReVa or with bounded `objdump` ranges, and use `ctf-windows-debug-helper` for cdb/WinDbg automation.
 - Avoid running unknown binaries outside a controlled environment.
 - Treat generated live-dump and Unicorn files as reviewable artifacts: run them only inside the locked substrate, record the exact arch/mode and payload provenance, and validate a concrete input/output before trusting the replay.
 - Do not over-trust decompiler output; verify arithmetic, signedness, and pointer behavior.

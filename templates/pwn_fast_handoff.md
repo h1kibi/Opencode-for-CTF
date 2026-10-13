@@ -1,6 +1,6 @@
 # PWN Fast Handoff
 
-Use this when a fast PWN branch escalates to `ctf-expert`. The goal is to let expert continue from the last-known-good probe without repeating triage.
+Use this when a fast PWN branch stops and the state must be preserved for a later session. The goal is to restart from the last-known-good probe without repeating triage.
 
 ## target_runtime
 - challenge name / slug:
@@ -126,7 +126,7 @@ Use this when a fast PWN branch escalates to `ctf-expert`. The goal is to let ex
 - if no, what should be demoted:
 
 ## contest_meta
-- fast_outcome: solved | near_closure_template_lock | escalated | deprioritized
+- fast_outcome: solved | near_closure_template_lock | stopped | deprioritized
 - continue_probability_next_5m: high | medium | low
 - continue_probability_next_10m_under_rigorous: high | medium | low
 - resume_cost: low | medium | high

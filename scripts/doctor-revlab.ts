@@ -1,4 +1,4 @@
-﻿import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 
 // 自查:确认所有新增文件、字符、钩子都已落地
@@ -89,7 +89,6 @@ checkContains("tools/rev/ctf-go-pclntool.ts", "go tool objdump")
 checkContains("tools/rev/ctf-go-pclntool.ts", "revlab:ubuntu22.04")
 checkContains("tools/rev/ctf-go-pclntool.ts", "rename_")
 checkContains("tools/rev/ctf-go-pclntool.ts", "emitRenameScript")
-checkContains("tools/rev/ctf-go-pclntool.ts", "ida")
 
 // Phase C
 checkContains("tools/forensics/ctf-pcap-probe.ts", "probe_backend")
@@ -109,18 +108,7 @@ checkContains("templates/rev-network-replay.md", "ctf-pcap-carve")
 checkContains("templates/rev-network-replay.md", "ctf-go-pclntool")
 checkContains("templates/rev-network-replay.md", "build-revlab.ps1")
 
-checkFile("commands/ctf-rev-network.md")
-checkContains("commands/ctf-rev-network.md", "rev-network-replay")
-checkContains("commands/ctf-rev-network.md", "revlab:ubuntu22.04")
-
 // Phase 扩展检查: REV knowledge / closure-ladder / oob-discipline / AES / mirror / permissions
-checkFile("rag/knowledge/rev/elf-pe/elf-checker-slice.md")
-checkFile("rag/knowledge/rev/elf-pe/pe-malware-rev-workflow.md")
-checkFile("rag/knowledge/rev/vm-bytecode/vm-bytecode-workflow.md")
-checkFile("rag/knowledge/rev/emulation/unicorn-qiling-workflow.md")
-checkFile("rag/knowledge/rev/packed/packed-unpack-workflow.md")
-checkFile("rag/knowledge/rev/anti-analysis/anti-debug-bypass-workflow.md")
-checkFile("rag/knowledge/rev/closure/rev-closure-ladder.md")
 checkFile("tools/rev/ctf-rev-closure-ladder.ts")
 checkContains("tools/rev/ctf-rev-closure-ladder.ts", "REV_CLOSURE_LADDER")
 checkContains("tools/rev/ctf-rev-closure-ladder.ts", "rankCandidates")

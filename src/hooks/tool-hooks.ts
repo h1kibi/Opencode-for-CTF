@@ -1,14 +1,11 @@
-import { activateAgentDefaults, clearMcpActivationIssues, recordMcpActivationIssue } from "../dynamic-mcp-manager.ts"
-import { getAgentDefaults } from "../agent-mcp-profiles.ts"
-import { lookupMcpServer } from "../mcp-server-registry.ts"
-import { ensureSkillMcpLeases } from "../skill-mcp-manager.ts"
-import { bindingsForSkill } from "../skill-mcp-registry.ts"
+import { activateSkillMcps } from "../mcp/mcp-activation-coordinator.ts"
+import { recordMcpActivationIssue } from "../dynamic-mcp-manager.ts"
+ import { bindingsForSkill } from "../skill-mcp-registry.ts"
 import {
+  activateAgentDefaultsOnce,
   clearFileCache,
   extractHashTags,
   getCachedFile,
-  hasActivatedDefaults,
-  markActivatedDefaults,
   propString,
   quickHash,
   skillToAgent,
@@ -124,7 +121,7 @@ export async function handleToolExecuteBefore(args: {
   if (toolName && !toolAllowedForAgent(toolName, agentName)) {
     throw new Error(
       `FastToolSurface: category=fast_surface_blocked tool="${toolName}" surface="${agentName}" ` +
-        `remedy="Use a lightweight alternative, escalate to /ctf-expert, or stay within the fast allowlist (triage, fingerprint, probe, flag-grep, python-inline, pwn-runner, …)."`,
+        `remedy="Use a lightweight alternative, stay within the fast allowlist (triage, fingerprint, probe, flag-grep, python-inline, pwn-runner, …), or start the expert lane explicitly with /ctf-expert."`,
     )
   }
 
@@ -139,42 +136,57 @@ export async function handleToolExecuteBefore(args: {
     )
   }
 
+  /**
+   * Activate the default MCP profile for whichever agent owns this call.
+   *
+   * Skill-driven activation alone is not enough: `skillToAgent` resolves only
+   * category and meta skills, so the two primary lanes — which load `ctf-common`
+   * / `ctf-router` instead of a lane-named skill — would never activate their
+   * profile. Every tool call therefore also checks the resolved agent surface.
+   * `activateAgentDefaultsOnce` is idempotent per session+agent, so the extra
+   * call is a set lookup once the profile is done.
+   */
+  const activateDefaultProfile = async (requested: string | undefined | null) => {
+    const agent = (requested ?? "").trim()
+    if (!sessionKey || !agent) return
+    if (agent === "ctf-common" || agent === "ctf-terminal") return
+    const result = await activateAgentDefaultsOnce({
+      client: args.input.client,
+      worktree: args.input.worktree,
+      directory: args.input.directory,
+      sessionID: sessionKey,
+      agentName: agent,
+    })
+    if (result.activated.length > 0) {
+      console.log(
+        `[plugin] agent-defaults: ${agent} session=${sessionKey.slice(0, 12)} activated=[${result.activated.join(", ")}]`,
+      )
+    }
+  }
+
+
   if (toolName === "skill") {
     const skillName = firstNonEmptyString(propString(toolArgs, "name"), propString(toolArgs, "skillName"))
     if (!skillName) return
 
     if (args.isHookEnabled("skill_mcp")) {
       try {
-        const result = await ensureSkillMcpLeases({
+        const result = await activateSkillMcps({
           client: args.input.client,
           worktree: args.input.worktree,
           directory: args.input.directory,
           sessionID: sessionKey,
+          agentName: agentName || rawAgent || "unknown",
+          mode: "skill",
           skillName,
         })
-        const successfulServers = [...new Set([...result.activated, ...result.shared])]
-        if (successfulServers.length) {
-          await clearMcpActivationIssues({
-            worktree: args.input.worktree,
-            sessionID: sessionKey,
-            agentName: agentName || rawAgent || "unknown",
-            serverNames: successfulServers,
-            phase: "skill",
-          })
-        }
-        for (const failure of result.failed) {
-          await recordMcpActivationIssue({
-            worktree: args.input.worktree,
-            sessionID: sessionKey,
-            agentName: agentName || rawAgent || "unknown",
-            serverName: failure.serverName,
-            phase: "skill",
-            error: failure.message,
-          })
+        if (result.failed.length > 0) {
+          const msg = result.failed.map((f) => `${f.serverName}: ${f.message}`).join("; ")
+          console.warn(`[plugin] activateSkillMcps partial failure for skill "${skillName}": ${msg}`)
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
-        console.warn(`[plugin] ensureSkillMcpLeases failed for skill "${skillName}" (non-fatal): ${msg}`)
+        console.warn(`[plugin] activateSkillMcps failed for skill "${skillName}" (non-fatal): ${msg}`)
         for (const binding of bindingsForSkill(skillName)) {
           await recordMcpActivationIssue({
             worktree: args.input.worktree,
@@ -188,6 +200,7 @@ export async function handleToolExecuteBefore(args: {
       }
     }
 
+
     if (skillName === "ctf-expert") {
       const agent = surfaceAgentForTools(sessionKey, rawAgent)
       const readied = args.expertReadinessReport()
@@ -196,61 +209,11 @@ export async function handleToolExecuteBefore(args: {
       }
     }
 
-    if (!hasActivatedDefaults(sessionKey)) {
-      const agent = skillToAgent(skillName)
-      if (agent && agent !== "ctf-common" && agent !== "ctf-terminal") {
-        try {
-          let defaultActivationFailedCount = 0
-          const defaults = getAgentDefaults(agent)
-          if (defaults.length > 0) {
-            const result = await activateAgentDefaults({
-              client: args.input.client,
-              worktree: args.input.worktree,
-              directory: args.input.directory,
-              sessionID: sessionKey,
-              agentName: agent,
-            })
-            if (result.activated.length > 0) {
-              console.log(
-                `[plugin] agent-defaults: ${agent} session=${String(sessionKey).slice(0, 12)} activated=[${result.activated.join(", ")}]`,
-              )
-            }
-            if (result.activated.length > 0) {
-              await clearMcpActivationIssues({
-                worktree: args.input.worktree,
-                sessionID: sessionKey,
-                agentName: agent,
-                serverNames: result.activated,
-                phase: "agent_default",
-              })
-            }
-            defaultActivationFailedCount = result.failed?.length ?? 0
-          }
-          if (defaultActivationFailedCount === 0) {
-            markActivatedDefaults(sessionKey)
-          }
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err)
-          console.warn(`[plugin] activateAgentDefaults failed for agent "${agent}" (non-fatal): ${msg}`)
-          for (const serverName of getAgentDefaults(agent).filter(
-            (name) => lookupMcpServer(name)?.weight !== "heavy",
-          )) {
-            await recordMcpActivationIssue({
-              worktree: args.input.worktree,
-              sessionID: sessionKey,
-              agentName: agent,
-              serverName,
-              phase: "agent_default",
-              error: err,
-            })
-          }
-        }
-      } else {
-        markActivatedDefaults(sessionKey)
-      }
-    }
+    await activateDefaultProfile(skillToAgent(skillName))
     return
   }
+
+  await activateDefaultProfile(agentName || rawAgent)
 
   if (toolName === "edit" && args.isHookEnabled("hashline")) {
     const filePath = propString(args.output.args, "file_path")

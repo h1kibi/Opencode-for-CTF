@@ -11,7 +11,7 @@ import {
   resolveInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-import { extractFlagCandidates, FLAG_REGEX } from "../lib/flag-utils.ts"
+import { extractFlagCandidates, FLAG_REGEX } from "../../packages/ctf-core/src/flag-rules.ts"
 const FLAG_RE = FLAG_REGEX
 
 function collectFlagCandidates(text: string, customPattern?: string) {

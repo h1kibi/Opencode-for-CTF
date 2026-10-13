@@ -80,11 +80,21 @@ export function leaseIsConnected(lease: SkillMcpLease): boolean {
 /** Stale window before a `connecting` lease may be taken over (owner crashed). */
 const CONNECTING_STALE_MS = 15_000
 
+/** Stale window before a `disconnecting` lease may be taken over (disconnect hung). */
+const DISCONNECTING_STALE_MS = 30_000
+
 function isFreshConnecting(lease: SkillMcpLease): boolean {
   if (lease.status !== "connecting") return false
   if (!lease.transitionAt) return true
   const age = Date.now() - Date.parse(lease.transitionAt)
   return Number.isFinite(age) && age < CONNECTING_STALE_MS
+}
+
+function isFreshDisconnecting(lease: SkillMcpLease): boolean {
+  if (lease.status !== "disconnecting") return false
+  if (!lease.transitionAt) return false
+  const age = Date.now() - Date.parse(lease.transitionAt)
+  return Number.isFinite(age) && age < DISCONNECTING_STALE_MS
 }
 
 /** Mutate a lease's lifecycle status and keep the legacy boolean in sync. */
@@ -150,11 +160,24 @@ async function claimServerLease(
   const path = statePath(worktree)
   const ownerToken = randomUUID().slice(0, 8)
 
-  // Phase 1 — decide + persist the transition (single lock, no nesting).
   const decision = await withFileLock(path, async () => {
     const state = await loadState(worktree)
     const own = state.leases.find((lease) => sameLease(lease, args))
     if (own && leaseIsConnected(own)) return "connected" as const
+
+    // A disconnect is an external destructive operation. Do not let a new
+    // claimant start while any matching disconnect is in flight: the delayed
+    // mcp.disconnect would tear down the new claimant's connection after its
+    // lease was finalized. Keep both the same-session retry and other-session
+    // claimant pending until the disconnect finalizer records a safe state.
+    const disconnecting = state.leases.some(
+      (lease) => lease.serverName === args.serverName && lease.status === "disconnecting" && isFreshDisconnecting(lease),
+    )
+    if (disconnecting) {
+      if (!own) state.leases.push(makeLease(args, "pending"))
+      await saveJsonFile(path, state)
+      return "pending" as const
+    }
 
     const otherActive = state.leases.some(
       (lease) => lease.serverName === args.serverName && !sameLease(lease, args) && leaseIsConnected(lease),
@@ -297,7 +320,7 @@ async function addAndConnect(client: OpencodeClient, directory: string, serverNa
   }
 }
 
-async function ensureSkillBindingLease(args: {
+export async function ensureSkillBindingLease(args: {
   client: OpencodeClient
   worktree: string
   directory: string

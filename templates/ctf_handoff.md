@@ -1,6 +1,6 @@
 # CTF Handoff
 
-Use this template for fast -> rigorous escalation, owner handoff, interruption recovery, or branch transfer.
+Use this template for owner handoff between category specialists, interruption recovery, or branch transfer.
 
 ## Scope
 - Target:

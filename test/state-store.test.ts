@@ -158,7 +158,7 @@ describe("atomicUpdateJsonFile", () => {
   it("serialises concurrent mutations to the same file", async () => {
     const { file } = tmpState({ counter: 0 })
 
-    const tasks = Array.from({ length: 10 }, (_: unknown, i: number) =>
+    const tasks = Array.from({ length: 10 }, (_: unknown, _i: number) =>
       atomicUpdateJsonFile<{ counter: number }>(file, { counter: 0 }, (s: { counter: number }) => {
         s.counter++
         return s

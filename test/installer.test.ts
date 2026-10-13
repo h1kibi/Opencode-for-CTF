@@ -8,6 +8,10 @@ import { afterEach, describe, expect, it } from "vitest"
 // The installer is intentionally plain ESM so the published CLI runs without tsx.
 // @ts-expect-error The runtime module does not ship TypeScript declarations.
 import * as installerModule from "../scripts/lib/opencode-ctf-install.mjs"
+// @ts-expect-error The runtime module does not ship TypeScript declarations.
+import { MCP_DEFAULTS, PROFILE_MCP } from "../scripts/lib/install-defaults.mjs"
+import { MCP_SERVER_REGISTRY } from "../src/mcp-server-registry.ts"
+import { metaToRuntimeConfig } from "../src/mcp/mcp-runtime-adapter.ts"
 
 const {
   applyConfigOperations,
@@ -36,6 +40,24 @@ afterEach(async () => {
   delete process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS
   await Promise.all(temporaryDirs.splice(0).map((directory) => rm(directory, { recursive: true, force: true })))
 })
+
+/** Run `fn` with a temporary environment overlay, restoring prior values. */
+function withEnv<T>(values: Record<string, string | undefined>, fn: () => T): T {
+  const saved = new Map<string, string | undefined>()
+  for (const [key, value] of Object.entries(values)) {
+    saved.set(key, process.env[key])
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+  try {
+    return fn()
+  } finally {
+    for (const [key, value] of saved) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  }
+}
 
 describe.sequential("managed installer", () => {
   it("maps the new assets, preserves JSONC comments, and restores prior files", async () => {
@@ -145,15 +167,64 @@ describe.sequential("managed installer", () => {
     expect(valueAt(full, ["mcp", "ctfd-mcp"])?.enabled).toBe(false)
     expect(valueAt(full, ["mcp", "cyberchef-mcp"])?.command).toEqual(["{env:CYBERCHEF_MCP_COMMAND}"])
     expect(valueAt(full, ["mcp", "ctfd-mcp"])?.command).toEqual(["npx", "-y", "ctfd-mcp-server"])
-    expect(valueAt(full, ["mcp", "ida-pro"])?.command).toEqual(["ida-pro-mcp"])
-    for (const name of ["ida-pro", "jadx-mcp", "gdb-mcp", "mysql-mcp", "x64dbg-mcp", "ssh-mcp"]) {
+    for (const name of ["gdb-mcp", "mysql-mcp", "x64dbg-mcp", "ssh-mcp"]) {
       expect(valueAt(full, ["mcp", name])?.enabled).toBe(false)
     }
-    expect(valueAt(full, ["mcp", "jadx-mcp"])?.command).toEqual(["{env:JADX_MCP_COMMAND}"])
     expect(valueAt(full, ["mcp", "gdb-mcp"])?.command).toEqual(["{env:GDB_MCP_COMMAND}"])
     expect(valueAt(full, ["mcp", "mysql-mcp"])?.command).toEqual(["{env:MYSQL_MCP_COMMAND}"])
     expect(valueAt(full, ["mcp", "x64dbg-mcp"])?.command).toEqual(["{env:X64DBG_MCP_COMMAND}"])
     expect(valueAt(full, ["mcp", "ssh-mcp"])?.command).toEqual(["{env:SSH_MCP_COMMAND}"])
+  })
+
+  it("keeps every installable MCP stub backed by a definition", () => {
+    // A profile entry without a definition installs no stub at all, which would
+    // silently drop a backend from the profile instead of failing loudly.
+    const profiles = PROFILE_MCP as Record<string, string[]>
+    const defaults = MCP_DEFAULTS as Record<string, unknown>
+    for (const [profile, names] of Object.entries(profiles)) {
+      for (const name of names) {
+        expect(defaults[name], `${profile} profile references undefined MCP default ${name}`).toBeDefined()
+      }
+    }
+  })
+
+  it("never puts ctf_rag back into the installed config", async () => {
+    // Regression (OpenCode desktop failed to boot, "Failed to load sessions"):
+    //   InvalidEscapeCharacter at line 197, 202, 205
+    // The host expands `{env:VAR}` into the config TEXT before parsing it, so a
+    // stub whose placeholders resolve to Windows paths (`C:\...`) injects raw
+    // backslashes and makes the whole config unparseable. ctf_rag is the one
+    // server this plugin ships whose every value is a machine-specific path, so
+    // it must be activated from the runtime registry (a real config object over
+    // the API) and never declared in opencode.jsonc.
+    const configDir = await temporaryDir("ctf-rag-stub-")
+    for (const profile of ["safe", "web", "full"]) {
+      const operations = await buildConfigOperations({}, profile, configDir)
+      expect(
+        operations.some((entry: { path: string[] }) => entry.path[0] === "mcp" && entry.path[1] === "ctf_rag"),
+        `${profile} profile must not install a ctf_rag stub`,
+      ).toBe(false)
+    }
+    expect(MCP_DEFAULTS as Record<string, unknown>).not.toHaveProperty("ctf_rag")
+    // ...while the runtime registry still owns it, so activation keeps working.
+    expect(MCP_SERVER_REGISTRY.some((entry) => entry.id === "ctf_rag")).toBe(true)
+  })
+
+  it("expands the runtime ctf_rag config without leaking placeholders", () => {
+    // The runtime path passes a real object to the API, so it — not the config
+    // file — is what must resolve env placeholders. A leftover `{env:` here would
+    // reach the host as a literal filename.
+    const server = MCP_SERVER_REGISTRY.find((entry: { id: string }) => entry.id === "ctf_rag")!
+    const config = withEnv(
+      {
+        CTF_RAG_PYTHON: "C:\\rag\\.venv\\Scripts\\python.exe",
+        CTF_RAG_ROOT: "C:\\rag",
+        CTF_RAG_KB_ROOT: "C:\\rag-data\\kb",
+      },
+      () => metaToRuntimeConfig(server),
+    )
+    expect(config?.command?.join(" ")).not.toContain("{env:")
+    expect(config?.environment?.PYTHONPATH).toBe("C:\\rag")
   })
 
   it("defaults managed installation to the full disabled-MCP profile", () => {
@@ -262,58 +333,33 @@ describe.sequential("managed installer", () => {
     await result.commit()
   }, 60_000)
 
-  it("keeps the external reference corpus out of active skill paths", async () => {
+  it("keeps the retired external reference corpus out of active skill paths", async () => {
     const configDir = await temporaryDir("ctf-installer-skill-paths-")
     const paths = installedSkillDirs(configDir).map((entry: string) => entry.replace(/\\/g, "/"))
     expect(paths).toEqual([`${configDir.replace(/\\/g, "/")}/opencode-for-ctf/skills`])
+    // ABSENT-BY-DESIGN: the external skills tree was deleted from the repo.
     expect(paths.join(" ")).not.toContain("skills-external/secknowledge-skill")
   })
 
-  it("only installs external skills when explicitly requested", async () => {
-    const configDir = await temporaryDir("ctf-installer-external-")
-    const initial = await copyManagedFiles(configDir)
-    expect(initial.copied.some((entry: { path: string }) => entry.path.includes(`skills-external${path.sep}`))).toBe(
-      false,
-    )
-    await removeManagedFiles(configDir, initial)
+  it("copies no retired corpus, with or without the external-skills switch", async () => {
+    const configDir = await temporaryDir("ctf-installer-no-retired-corpus-")
+    delete process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS
+    const installed = await copyManagedFiles(configDir)
+    const installedPaths = installed.copied.map((entry: { path: string }) => String(entry.path).replace(/\\/g, "/"))
+    // ABSENT-BY-DESIGN: `rag/` and `skills-external/` are retired trees; a
+    // managed install must never copy them back.
+    expect(installedPaths.filter((rel: string) => rel.includes("skills-external"))).toEqual([])
+    await removeManagedFiles(configDir, installed)
 
+    // ABSENT-BY-DESIGN: the opt-in switch maps nothing, so the copied set is
+    // unchanged and still contains no retired corpus.
     process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS = "1"
-    const withExternal = await copyManagedFiles(configDir)
-    const externalSourceExists = existsSync(path.resolve("skills-external", "secknowledge-skill"))
-    expect(
-      withExternal.copied.some((entry: { path: string }) =>
-        entry.path.includes(path.join("skills-external", "secknowledge-skill") + path.sep),
-      ),
-    ).toBe(externalSourceExists)
+    const withSwitch = await copyManagedFiles(configDir)
+    const switchedPaths = withSwitch.copied.map((entry: { path: string }) => String(entry.path).replace(/\\/g, "/"))
+    expect(switchedPaths.filter((rel: string) => rel.includes("skills-external"))).toEqual([])
+    expect([...switchedPaths].sort()).toEqual([...installedPaths].sort())
+    expect(existsSync(path.join(configDir, "opencode-for-ctf", "rag"))).toBe(false)
   }, 60_000)
-
-  it("installs slim knowledge without intermediate pattern-card history", async () => {
-    const configDir = await temporaryDir("ctf-installer-slim-knowledge-")
-    const resources = await copyManagedFiles(configDir)
-    const patternDir = path.join(configDir, "opencode-for-ctf", "rag", "knowledge", "pattern-cards")
-    expect(existsSync(path.join(patternDir, "ljagiello-ctf-skills.cards.v9.json"))).toBe(true)
-    expect(existsSync(path.join(patternDir, "synonyms.json"))).toBe(true)
-    expect(existsSync(path.join(patternDir, "pwn-curated.cards.v1.json"))).toBe(true)
-    expect(existsSync(path.join(patternDir, "des-ctf", "des-ctf.cards.v1.json"))).toBe(true)
-    expect(
-      existsSync(path.join(configDir, "opencode-for-ctf", "rag", "knowledge", "retros", "retros.index.json")),
-    ).toBe(true)
-    expect(
-      existsSync(
-        path.join(configDir, "opencode-for-ctf", "rag", "knowledge", "sources", "des-ctf-knowledge.manifest.json"),
-      ),
-    ).toBe(true)
-    expect(existsSync(path.join(patternDir, "ljagiello-ctf-skills.cards.v8.json"))).toBe(false)
-    expect(existsSync(path.join(patternDir, "ljagiello-ctf-skills.cards.json"))).toBe(false)
-    expect(existsSync(path.join(configDir, "opencode-for-ctf", "rag", "knowledge", "imported"))).toBe(false)
-    expect(existsSync(path.join(configDir, "opencode-for-ctf", "rag", "Des-CTF-Knowledge"))).toBe(false)
-    expect(existsSync(path.join(patternDir, "curation-candidates.json"))).toBe(false)
-    expect(
-      resources.copied.some((entry: { path: string }) =>
-        String(entry.path).replace(/\\/g, "/").includes("ljagiello-ctf-skills.cards.v8.json"),
-      ),
-    ).toBe(false)
-  }, 30_000)
 
   it("runs the managed CLI lifecycle in an isolated config directory", async () => {
     const configDir = await temporaryDir("ctf-installer-cli-")

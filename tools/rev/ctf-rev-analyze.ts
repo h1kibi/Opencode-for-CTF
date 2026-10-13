@@ -230,7 +230,7 @@ export default tool({
 
     let nextToolHint =
       decision.route === "apk"
-        ? "Enable android pack and run ctf-android-analyze; avoid full JADX until the facade selects Java/native/assets/runtime."
+        ? "Enable android pack and run ctf-android-analyze; follow its selected native/assets/packed/runtime route."
         : decision.route === "java"
           ? "Run ctf-java-analyze for JVM archive/class/source routing before decompiler-wide reading."
           : decision.route === "dex"

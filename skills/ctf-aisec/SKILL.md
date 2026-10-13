@@ -120,7 +120,7 @@ Stop when the independent oracle verifies the flag, the metric is met, the model
 2. Run the safe action sequence and classify the decisive boundary as model, agent, data, wrapper, runtime, or unknown.
 3. Establish a benign baseline and preserve exact transcripts/hashes.
 4. Load `ctf-misc-ai-ml`; select one attack family and one falsifiable hypothesis.
-5. Change one variable per attempt; use lessons, retros, and pattern cards instead of payload roulette.
+5. Change one variable per attempt; use `ctf_rag` recall instead of payload roulette.
 6. Verify success independently and return the smallest actionable packet to `ctf-expert`.
 
 Do not dispatch or await `researcher`; post-solve maintenance is a manual controller follow-up.

@@ -1,5 +1,4 @@
 import { buildCtfEntryInjection } from "../route-runtime.ts"
-import { loadContinuationState } from "../continuation-manager.ts"
 import type { PluginUserConfig } from "../plugin-config.ts"
 import { propString } from "../plugin-support.ts"
 
@@ -16,8 +15,8 @@ export async function handleCommandExecuteBefore(args: {
   expertReadinessReport: () => { ready: boolean }
   expertReadinessFailureText: (userText?: string, sessionNote?: string) => string
   requireExpertReadiness: (userText?: string, sessionNote?: string) => void
-  promoteExpertSurface: (sessionID?: string | null) => void
-  promoteFastSurface: (sessionID?: string | null) => void
+  promoteExpertSurface: (sessionID?: string | null, source?: "explicit" | "route") => void
+  promoteFastSurface: (sessionID?: string | null, source?: "explicit-fast") => void
 }) {
   const cmd = typeof args.meta.command === "string" ? args.meta.command : ""
 
@@ -59,12 +58,12 @@ export async function handleCommandExecuteBefore(args: {
       } catch {
         // harness may ignore
       }
-      args.promoteExpertSurface(typeof args.meta.sessionID === "string" ? args.meta.sessionID : undefined)
+      args.promoteExpertSurface(typeof args.meta.sessionID === "string" ? args.meta.sessionID : undefined, "route")
       injection += [
         "",
         "",
         "⚠️ COMMAND AGENT MAY STILL BE LABELLED ctf-fast — IGNORE THAT LABEL.",
-        "If available, call tool `ctf-handoff` with lane=expert; otherwise follow the expert contract without delay.",
+        "Follow the expert contract immediately — the runtime already switched this session's tool surface.",
         "Authoritative contract: commands/ctf-expert.md + skill `ctf-expert` — do not use the ctf-fast intuition-only workflow.",
       ].join("\n")
     }
@@ -89,7 +88,7 @@ export async function handleCommandExecuteBefore(args: {
     if (!readied.ready) {
       throw new Error(args.expertReadinessFailureText(userText, "command agent via /resume"))
     }
-    args.promoteExpertSurface(typeof args.meta.sessionID === "string" ? args.meta.sessionID : undefined)
+    args.promoteExpertSurface(typeof args.meta.sessionID === "string" ? args.meta.sessionID : undefined, "explicit")
     args.output.parts = args.output.parts || []
     args.output.parts.push({
       id: "",
@@ -114,20 +113,7 @@ export async function handleCommandExecuteBefore(args: {
     if (!readied.ready) {
       throw new Error(args.expertReadinessFailureText(userText, "command agent via /ctf-expert"))
     }
-    let fastBudgetHandoff = ""
-    try {
-      const contState = await loadContinuationState(
-        args.worktree,
-        typeof args.meta.sessionID === "string" ? args.meta.sessionID : "",
-        args.directory,
-      )
-      if (contState.fastBudgetStatus === "escalated" && contState.fastBudgetSummary) {
-        fastBudgetHandoff = `\n\n🔁 FAST BUDGET HANDOFF — resume from saved fast-lane state:\n${contState.fastBudgetSummary}`
-      }
-    } catch {
-      // non-fatal
-    }
-    args.promoteExpertSurface(typeof args.meta.sessionID === "string" ? args.meta.sessionID : undefined)
+    args.promoteExpertSurface(typeof args.meta.sessionID === "string" ? args.meta.sessionID : undefined, "explicit")
     args.output.parts = args.output.parts || []
     args.output.parts.push({
       id: "",
@@ -136,15 +122,17 @@ export async function handleCommandExecuteBefore(args: {
       type: "text",
       text: `🔴 CTF EXPERT MODE — Binding contract:
 - Authoritative contract: commands/ctf-expert.md + skill \`ctf-expert\` (load it).
-- Runtime gates enforce: Evidence.md via ctf-evidence-board (exactly 3 routes; blocked≠dead), Phase ② local-recall order, Team Mode orchestration, heavy-MCP approval via ctf-mcp-control.
+- Runtime gates enforce: Evidence.md via ctf-evidence-board (exactly 3 routes; blocked≠dead), Team Mode orchestration, and heavy-MCP approval via ctf-mcp-control.
+- The Phase ② local-recall order (lessons → retros → pattern cards) is a contract you must follow; it is not runtime-enforced.
 - Flag → return directly and stop active exploitation (no mandatory flag file); mention manual researcher post-solve maintenance with the evidence path, but do not dispatch or await it.
-- Optional: ctf-route-plan mode=expert for category hints.${fastBudgetHandoff}`,
+- Independent lane: the ctf-fast and ctf-expert lanes never switch automatically.
+- Optional: ctf-route-plan mode=expert for category hints.`,
     })
     return
   }
 
   if (cmd === "ctf-fast") {
-    args.promoteFastSurface(typeof args.meta.sessionID === "string" ? args.meta.sessionID : undefined)
+    args.promoteFastSurface(typeof args.meta.sessionID === "string" ? args.meta.sessionID : undefined, "explicit-fast")
     args.output.parts = args.output.parts || []
     args.output.parts.push({
       id: "",
@@ -154,7 +142,8 @@ export async function handleCommandExecuteBefore(args: {
       text: `🔴 CTF FAST MODE — Lightweight allowlist only (runtime-enforced).
 - Authoritative contract: commands/ctf-fast.md.
 - No Team Mode, no Evidence.md ceremony, no expert-only tools.
-- Shortest path to flag; on collapse output ESCALATE: ctf-expert with clues.`,
+- Independent lane: stay on ctf-fast as long as you want; it never switches automatically.
+- Shortest path to flag; when the challenge exceeds this lane, report the blocker, strongest evidence, and best next direction, then stop.`,
     })
   }
 }

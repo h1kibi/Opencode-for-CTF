@@ -64,15 +64,15 @@ describe("ctf-go-pclntool", () => {
         worktree: workspace,
       } as never)
       const payload = JSON.parse(String(out))
-      const renamePath = join(workspace, "work", "rev-go-pclntool", "rename_ida.py")
+      const renamePath = join(workspace, "work", "rev-go-pclntool", "rename_reva.jsonl")
 
       expect(payload.backend).toBe("docker")
       expect(payload.target).toBe(target)
-      expect(payload.rename_script_path).toBe("../work/rev-go-pclntool/rename_ida.py")
+      expect(payload.rename_script_path).toBe("../work/rev-go-pclntool/rename_reva.jsonl")
       expect(payload.user_priority_top60).toContain("0x0049f140\tmain.main")
-      expect(payload.recommended_next.join("\n")).toContain("apply rename script ../work/rev-go-pclntool/rename_ida.py")
+      expect(payload.recommended_next.join("\n")).toContain("apply rename script ../work/rev-go-pclntool/rename_reva.jsonl")
       expect(existsSync(renamePath)).toBe(true)
-      expect(readFileSync(renamePath, "utf8")).toContain("main_main")
+      expect(readFileSync(renamePath, "utf8")).toContain('"name":"main.main"')
     } finally {
       process.chdir(prev)
     }

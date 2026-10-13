@@ -178,7 +178,7 @@ export default tool({
               primary.exportedJni[0] ||
               primary.jniStrings.find((s) => /Java_|JNI_OnLoad|RegisterNatives/i.test(s)) ||
               "unknown",
-            nextTool: "ctf-elf-slice or IDA/ReVa focused on exported JNI/check/flag strings",
+            nextTool: "ctf-elf-slice or ReVa focused on exported JNI/check/flag strings",
             nextProbe: primary.hasRegisterNatives
               ? "recover RegisterNatives table and Java native method mapping"
               : "xref JNI/exported Java_* function and compare/check strings",

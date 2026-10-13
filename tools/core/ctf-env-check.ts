@@ -1,5 +1,5 @@
 import { tool } from "@opencode-ai/plugin"
-import { safeExec, safeExecWithStreams } from "../lib/exec-utils.ts"
+import { safeExec } from "../lib/exec-utils.ts"
 import { DOCKER_IMAGES } from "../lib/docker-config.ts"
 import path from "node:path"
 import { existsSync, readFileSync } from "node:fs"
@@ -176,43 +176,6 @@ function detectWslHost(): boolean {
   }
 }
 
-async function checkIdaLicense(): Promise<{ ok: boolean; detail: string }> {
-  const candidates = [
-    process.env.IDA_DIR ? path.join(process.env.IDA_DIR, "idat.exe") : "",
-    process.env.IDADIR ? path.join(process.env.IDADIR, "idat.exe") : "",
-    process.env.IDADIR ? path.join(process.env.IDADIR, "idat64.exe") : "",
-    winTool("IDA Professional 9.2", "idat.exe"),
-    winTool("IDA Professional 9.2", "idat64.exe"),
-    winTool("ida92", "portable", "idat.exe"),
-    winTool("ida92", "portable", "idat64.exe"),
-  ].filter((p): p is string => Boolean(p))
-
-  for (const candidate of candidates) {
-    if (!existsSync(candidate)) continue
-    const res = await safeExecWithStreams(candidate, ["-h"], {
-      timeoutMs: 8000,
-      env: { ...process.env, PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8" },
-    })
-    const text = `${res.stdout}${res.stderr}`.trim().slice(0, 300)
-    if (/Cannot continue without a valid license/i.test(text)) {
-      return { ok: false, detail: `${candidate}: IDA installed but license is invalid (${text})` }
-    }
-    if (res.ok) return { ok: true, detail: `${candidate}: license probe passed` }
-    return { ok: false, detail: `${candidate}: license probe failed (${text || `exit ${res.exitCode}`})` }
-  }
-
-  const pathProbe = await safeExecWithStreams("idat.exe", ["-h"], {
-    timeoutMs: 8000,
-    env: { ...process.env, PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8" },
-  })
-  const text = `${pathProbe.stdout}${pathProbe.stderr}`.trim().slice(0, 300)
-  if (/Cannot continue without a valid license/i.test(text)) {
-    return { ok: false, detail: `idat.exe: IDA installed but license is invalid (${text})` }
-  }
-  if (pathProbe.ok) return { ok: true, detail: `idat.exe: license probe passed` }
-  return { ok: false, detail: "idat.exe not found; IDA license cannot be verified" }
-}
-
 export default tool({
   description:
     "CTF environment check: verify Docker daemon, pwnlab/revlab images, Android Studio/ADB/AVD, MCP backends, C:\\Tools local CLIs, and core tools by CTF category. Run before starting a challenge.",
@@ -233,12 +196,10 @@ export default tool({
 
     // Kick off independent slow probes up front so they overlap with the CLI loops.
     const wantCyberchef = category === "crypto" || category === "forensics" || category === "misc" || category === "all"
-    const wantIda = category === "rev" || category === "pwn" || category === "all"
     const wantDocker = category === "pwn" || category === "rev" || category === "all"
     const wantRev = category === "rev" || category === "all"
     const shellNameP = detectShellName()
     const cyberchefP = wantCyberchef ? check("cyberchef-mcp", ["--help"], 8000) : undefined
-    const idaP = wantIda ? check("ida-pro-mcp", ["--help"], 8000) : undefined
     const dockerInfoP = wantDocker ? dockerDaemonRunning() : undefined
     const adbDeviceP = wantRev ? adbDeviceConnected() : undefined
     const adbCliP = wantRev ? check("adb", ["--version"]) : undefined
@@ -618,31 +579,6 @@ export default tool({
       return { results, probes }
     }
 
-    const idaBranch = async () => {
-      const results: EnvCheckResult[] = []
-      const probes: Record<string, EnvironmentProbeResult> = {}
-      if (category === "rev" || category === "pwn" || category === "all") {
-        const ida = await idaP!
-        results.push({
-          name: "mcp:ida-pro-mcp",
-          ok: ida.ok,
-          required: false,
-          category: "mcp-rev",
-          detail: ida.ok ? `ida-pro-mcp available: ${ida.output}` : "ida-pro-mcp command not found on PATH",
-          hint: ida.ok
-            ? ""
-            : "Install mrexodia/ida-pro-mcp so `ida-pro-mcp --stdio` is available for the ida-pro heavy MCP slot.",
-        })
-        probes["env:ida-pro-mcp"] = {
-          ok: ida.ok,
-          executed: true,
-          detail: ida.ok ? "ida-pro-mcp command available" : "ida-pro-mcp command not found on PATH",
-          behaviorOk: ida.ok,
-        }
-      }
-      return { results, probes }
-    }
-
     // -- Docker daemon (always check if any docker test is needed) --
     const dockerBranch = async () => {
       const results: EnvCheckResult[] = []
@@ -908,14 +844,6 @@ export default tool({
         })
         const revLocalCLI: Array<{ name: string; probes: Array<ExecProbe | undefined>; hint: string }> = [
           {
-            name: "jadx",
-            probes: [
-              probe("jadx", ["--version"], { shell: process.platform === "win32" }),
-              probe(winTool("Jadx", "jadx.exe"), ["--version"]),
-            ],
-            hint: "Install jadx on PATH or keep C:\\Tools\\Jadx\\jadx.exe.",
-          },
-          {
             name: "radare2",
             probes: [
               probe("r2", ["-v"], { shell: process.platform === "win32" }),
@@ -925,13 +853,6 @@ export default tool({
               probe(winTool("radare2", "radare2-6.1.4-w64", "bin", "radare2.exe"), ["-v"]),
             ],
             hint: "Install r2/radare2 on PATH or keep C:\\Tools\\radare2\\radare2-6.1.4-w64.",
-          },
-          {
-            name: "ida-pro-local",
-            probes: [
-              probePathOnly(winTool("IDA Professional 9.2", "ida.exe"), "C:\\Tools\\IDA Professional 9.2\\ida.exe"),
-            ],
-            hint: "Keep IDA Professional at C:\\Tools\\IDA Professional 9.2 or configure ida-pro-mcp.",
           },
           {
             name: "x64dbg",
@@ -970,23 +891,6 @@ export default tool({
             hint: r.ok ? "" : cli.hint,
           })
         })
-        const idaLicense = await checkIdaLicense()
-        results.push({
-          name: "cli:ida-license",
-          ok: idaLicense.ok,
-          required: false,
-          category: "rev-cli",
-          detail: idaLicense.detail,
-          hint: idaLicense.ok
-            ? ""
-            : "IDA license is unusable; fall back to Ghidra/ReVa/objdump or request IDA license fix before relying on IDA analysis.",
-        })
-        probes["env:ida-license"] = {
-          ok: idaLicense.ok,
-          executed: true,
-          detail: idaLicense.detail,
-          behaviorOk: idaLicense.ok,
-        }
         probes["env:rev-local-tools"] = {
           ok: foundRevLocal > 0,
           executed: true,
@@ -1004,7 +908,6 @@ export default tool({
       cyberchefBranch(),
       forensicsBranch(),
       cryptoBranch(),
-      idaBranch(),
       dockerBranch(),
       pwnBranch(),
       revBranch(),

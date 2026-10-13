@@ -111,7 +111,7 @@ export function formatHardRouteHandoff(
         ? `3. Prefer category angle: **${decision.category}** (still on fast tools; no Team Mode).`
         : "3. Cheap triage then shortest path to flag.",
       "4. Initialize a lightweight evidence case before active solving: `ctf-evidence-board command=init category=<direction> challengeName=<name-if-known> target=<target>`. This creates `work/ctf-evidence/<direction-name|direction-MMDDHHmmss>/` for notes/handoff; do not use Team Mode or heavy Evidence ceremony.",
-      "5. If 6–8 meaningful actions fail or challenge is source-rich/multi-service/heap/kernel → output `ESCALATE: ctf-expert` with clue summary.",
+      "5. Stay on this lane. The soft budget is a self-review horizon only; when the challenge exceeds the fast lane, report the blocker, strongest evidence, and best next direction, then stop — the user decides whether to start the expert lane.",
       "6. Flag → return directly and stop.",
     )
   }
@@ -119,6 +119,7 @@ export function formatHardRouteHandoff(
   lines.push(
     "",
     "This decision is binding for this turn. Do not invent a third mode.",
+    "Lanes are independent: this session never switches lane automatically.",
     "═══════════════════════════════════",
   )
   return lines.join("\n")
@@ -150,7 +151,7 @@ export function buildCtfEntryInjection(args: {
     "",
     "If you have not called `ctf-route-plan` yet, you may call it to refresh signals,",
     "but you must still obey the binding decision above unless new evidence clearly flips mode.",
-    "Report only on: flag found | all routes confirmed dead | need user resource | ESCALATE: ctf-expert.",
+    "Report only on: flag found | all routes confirmed dead | need user resource | lane exceeded (blocker + evidence + next direction).",
   ].join("\n")
   return { text, decision, primary }
 }

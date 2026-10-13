@@ -2,12 +2,7 @@
 
 Use when evidence contains JavaScript engine, browser runtime, JIT compiler, wasm, bytecode VM, interpreter type tags, addrof/fakeobj, OOB array, RWX JIT pages, GC, slices/views/aliases, dispatch tables, or emulator/sandbox language primitives.
 
-Imported references:
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\advanced-exploits.md`
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\advanced-exploits-2.md`
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\advanced-exploits-3.md`
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\advanced-exploits-4.md`
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\sandbox-escape.md`
+Deep technique notes: retrieve with `ctf_rag` using the engine/JIT/VM primitives above.
 
 ## Route Gate
 

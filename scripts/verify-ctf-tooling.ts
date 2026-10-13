@@ -130,22 +130,6 @@ const checks: Check[] = [
   { group: "rev", name: "file", command: "file", args: ["--version"] },
   {
     group: "rev",
-    name: "jadx",
-    command: "jadx",
-    args: ["--version"],
-    localWindows: [localCommand(winTool("Jadx", "jadx.exe"), ["--version"])].filter(Boolean) as Check["localWindows"],
-  },
-  {
-    group: "rev",
-    name: "ida-pro-local",
-    command: "__opencode_ctf_ida_path_only__",
-    args: ["--version"],
-    localWindows: [
-      localPath(winTool("IDA Professional 9.2", "ida.exe"), "C:\\Tools\\IDA Professional 9.2\\ida.exe"),
-    ].filter(Boolean) as Check["localWindows"],
-  },
-  {
-    group: "rev",
     name: "dnspy",
     command: "__opencode_ctf_dnspy_path_only__",
     args: ["--version"],

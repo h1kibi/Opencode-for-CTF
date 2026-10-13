@@ -112,7 +112,7 @@ APK fetches DEX/JNI/asset from network:
 2. ctf-android-runtime-doctor to confirm runtime equivalence
 3. Run app in container/emulator with proxy (mitmproxy on :8080)
 4. Capture downloaded payload
-5. Decompile with ctf-jadx-targeted-slice on captured payload
+5. Triage the captured payload with ctf-android-analyze to pick the Java/Kotlin, native, assets, or packed-loader route
 6. If JNI library is downloaded: ctf-android-native-triage on .so
 ```
 
@@ -168,7 +168,7 @@ Once OOB capability is established and payload is captured:
 
 - `skills/ctf-oob-discipline` (original web/crypto OOB)
 - `knowledge/rev/closure/rev-closure-ladder.md`
-- `commands/ctf-rev-network.md` (one-shot workflow)
+- `templates/rev-network-replay.md` (one-shot workflow template)
 
 ## Load When
 

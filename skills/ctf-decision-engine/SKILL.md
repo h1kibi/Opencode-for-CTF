@@ -38,7 +38,7 @@ Category agents should not duplicate this full decision doctrine in their own pr
 - probe contracts with confirm/falsify/oracle/one-variable checks
 - `ctf-decision-state` rank/probe/observe/gate/report usage
 - owner handoff pressure and closure owner tracking
-- anti-pattern penalties, lesson modifiers, and branch budget pressure
+- anti-pattern penalties, retrieval modifiers, and branch budget pressure
 
 When a category agent has domain evidence but controller state is missing, build the smallest valid hypothesis and probe contract first; do not call `ctf-decision-state` with empty placeholders.
 
@@ -46,11 +46,11 @@ Keep this skill decision-centric. Domain exploit ladders, parser families, PWN r
 
 ## Mandatory gates
 
-- After meaningful recon and before deep exploitation, run local knowledge retrieval/segment matching/chain composition.
+- After meaningful recon and before deep exploitation, run local knowledge retrieval through `ctf_rag`.
 - Then call `ctf-decision-state` with `operation="gate"`, `gate="knowledge"`, and evidence in one of these modes:
 
 ```json
-{"queryRun": true, "matchedSegments": ["segment-id-or-title"], "knowledgeMode": "matched", "notes": "which SecKB tools were called"}
+{"queryRun": true, "matchedSegments": ["segment-id-or-title"], "knowledgeMode": "matched", "notes": "which ctf_rag query/anchors were used"}
 ```
 
 ```json
@@ -71,7 +71,7 @@ Keep this skill decision-centric. Domain exploit ladders, parser families, PWN r
 
 ## Top-3 admission discipline
 
-- `knowledgeMode="matched"`: top-3 should keep at least one KB-supported hypothesis unless all KB chains are falsified, unsafe, or lack a flag path.
+- `knowledgeMode="matched"`: top-3 should keep at least one KB-supported hypothesis unless all KB hits are falsified, unsafe, or lack a flag path.
 - `knowledgeMode="weak_match"`: top-3 should include at least one model/hybrid hypothesis that better explains live evidence.
 - `knowledgeMode="no_match_explained"`: top-3 may be model/hybrid-heavy; do not keep a KB-only queue after documented zero-hit.
 - These are admission warnings, not absolute kills. Live evidence, oracle quality, and flag proximity still override prior source.
@@ -164,27 +164,27 @@ If a branch matches a documented anti-pattern, record:
 - promotion trigger
 - next non-anti-pattern probe
 
-## Lesson-modifier integration
+## Retrieval-modifier integration
 
-When local lesson evidence is strong, do not leave it as freeform commentary. Convert it into a compact modifier plan before final ranking or control decisions.
+When a `ctf_rag` hit is strong, do not leave it as freeform commentary. Convert it into a compact modifier note before final ranking or control decisions.
 
 Preferred workflow:
 
-1. Run `ctf-lesson-search` or identify a strong matching lesson from closure/owner/failure/anti-pattern families.
-2. Run `ctf-lesson-modifier-plan` with the current evidence and matching family.
+1. Query `ctf_rag` with 2–4 concrete technical anchors, or identify a strong matching clause in the retrieved evidence (closure, owner, failure, anti-pattern).
+2. Derive the modifiers from that evidence and the current case.
 3. Feed the resulting modifiers into ranking, owner assessment, closure-first bias, or branch budget notes before the next probe.
 
-At minimum, lesson-hit modifiers should influence:
+At minimum, retrieval-hit modifiers should influence:
 
 - control action preference
 - branch budget / penalty notes
 - owner handoff pressure
 - closure owner summary
-- pattern-card fallback query selection
+- fallback query selection
 
 Hard rule:
 
-- If a branch strongly matches a lesson family and the next action ignores its modifier plan, explicitly justify why live evidence overrides the lesson.
+- If a branch strongly matches retrieved evidence and the next action ignores its modifiers, explicitly justify why live evidence overrides it.
 
 ## Probe discipline
 

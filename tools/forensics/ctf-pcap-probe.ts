@@ -8,7 +8,7 @@ import {
   resolveFromDirectoryInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-import { extractFlagCandidates } from "../lib/flag-utils.ts"
+import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
 
 async function dockerImageExists(image: string, cwd: string): Promise<boolean> {
   const { ok, output } = await safeExec("docker", ["image", "inspect", image, "--format", "{{.Id}}"], cwd, 5000)

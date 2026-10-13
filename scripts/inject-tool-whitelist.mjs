@@ -10,7 +10,7 @@
  *   node scripts/inject-tool-whitelist.mjs
  *
  * The script reads the current config, computes the tool list from the plugin
- * loader, merges ctf-* / archive-* / seckb_* / cvekb_* / anysearch_* tools
+ * loader, merges ctf-* / archive-* / anysearch_* / ctf_rag* tools
  * as `true`, and writes back preserving existing config and JSONC comments.
  */
 
@@ -39,12 +39,7 @@ async function exportedPluginToolNames() {
   const enabledPacks = resolveEnabledPacks()
   const tools = await loadCtfTools({ packs: [...enabledPacks] })
   return Object.keys(tools).filter(
-    (name) =>
-      name.startsWith("ctf-") ||
-      name.startsWith("archive-") ||
-      name.startsWith("seckb_") ||
-      name.startsWith("cvekb_") ||
-      name.startsWith("anysearch_"),
+    (name) => name.startsWith("ctf-") || name.startsWith("archive-") || name.startsWith("anysearch_") || name.startsWith("ctf_rag"),
   )
 }
 

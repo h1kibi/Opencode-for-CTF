@@ -1,7 +1,7 @@
 ﻿import { tool } from "@opencode-ai/plugin"
-import { access, lstat, mkdir, readFile, writeFile } from "node:fs/promises"
-import { safeExec, execFile } from "../lib/exec-utils.ts"
-import { extractFlagCandidates } from "../lib/flag-utils.ts"
+import { lstat, mkdir, readFile, writeFile } from "node:fs/promises"
+import { safeExec } from "../lib/exec-utils.ts"
+import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
 import path from "node:path"
 import { inflateRawSync } from "node:zlib"
 import crypto from "node:crypto"
@@ -25,19 +25,6 @@ const HIGH_SIGNAL =
 const PACKER_SIGNAL =
   /(jiagu|bangcle|ijiami|qihoo|tencent|legu|secneo|baiduprotect|sophix|tinker|protect|packer|DexClassLoader|PathClassLoader|loadDex|payload|libshell|stub|shell)/i
 
-async function exists(cmd: string) {
-  try {
-    await execFile(cmd, ["--version"], { timeout: 2500, maxBuffer: 128 * 1024, shell: process.platform === "win32" })
-    return true
-  } catch {
-    try {
-      await execFile(cmd, [], { timeout: 2500, maxBuffer: 128 * 1024, shell: process.platform === "win32" })
-      return true
-    } catch {
-      return false
-    }
-  }
-}
 
 function u16(buf: Buffer, off: number) {
   return off + 2 <= buf.length ? buf.readUInt16LE(off) : 0
@@ -144,34 +131,35 @@ function route(primarySignals: {
     return {
       primaryRoute: "packed_or_dynamic_loader",
       confidence: "medium",
-      firstProbe: "use adb/logcat/frida or inspect loader classes/assets before full jadx",
-      fallbackProbe: "apktool no-src + targeted jadx loader package",
+      firstProbe: "use adb/logcat/frida or inspect loader classes/assets before static expansion",
+      fallbackProbe: "apktool no-src plus targeted loader-class and asset inspection",
     }
   if (primarySignals.assets)
     return {
       primaryRoute: "assets_or_resource_decode",
       confidence: "medium",
       firstProbe: "extract suspicious assets and scan/decode them",
-      fallbackProbe: "targeted jadx for asset open/read/decrypt references",
+      fallbackProbe: "inspect asset open/read/decrypt references in bytecode or smali",
     }
   if (primarySignals.java)
     return {
       primaryRoute: "java_kotlin_checker",
       confidence: "medium",
-      firstProbe: "run ctf-jadx-targeted-slice for check|verify|flag|success|failure",
-      fallbackProbe: "apktool smali grep before full jadx",
+      firstProbe: "run ctf-java-analyze and inspect only check|verify|flag|success|failure targets",
+      fallbackProbe: "use apktool smali output and ctf-dex-patch-map for focused owner methods",
     }
   return {
     primaryRoute: "unknown_apk_static",
     confidence: "low",
-    firstProbe: "targeted dex strings + manifest components, avoid full jadx until route-gated",
+    firstProbe: "targeted dex strings + manifest components, then choose a route-specific analyzer",
     fallbackProbe: "ctf-rev-team if packed/native/multilayer signals grow",
   }
 }
 
+
 export default tool({
   description:
-    "CTF Android APK quick triage: package/launch activity/permissions, dex/native/assets/packer/JNI high-signal summary and route recommendation without full JADX.",
+    "CTF Android APK quick triage: package/launch activity/permissions, dex/native/assets/packer/JNI high-signal summary and route recommendation.",
   args: {
     target: tool.schema.string().describe("Workspace-relative APK path"),
     maxStrings: tool.schema.number().optional().describe("Maximum high-signal strings to return. Default 120."),

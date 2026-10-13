@@ -37,8 +37,6 @@ export const PROFILE_MCP = {
     "context7",
     "github",
     "ReVa",
-    "ida-pro",
-    "jadx-mcp",
     "gdb-mcp",
     "mysql-mcp",
     "x64dbg-mcp",
@@ -46,8 +44,6 @@ export const PROFILE_MCP = {
     "wireshark-mcp",
     "cyberchef-mcp",
     "ctfd-mcp",
-    "seckb",
-    "cvekb",
   ],
 }
 
@@ -75,19 +71,6 @@ export const MCP_DEFAULTS = {
   ReVa: {
     type: "local",
     command: ["mcp-reva"],
-    timeout: 120000,
-  },
-  "ida-pro": {
-    type: "local",
-    command: ["ida-pro-mcp"],
-    timeout: 120000,
-  },
-  "jadx-mcp": {
-    type: "local",
-    command: ["{env:JADX_MCP_COMMAND}"],
-    environment: {
-      JADX_HOME: "{env:JADX_HOME}",
-    },
     timeout: 120000,
   },
   "gdb-mcp": {
@@ -141,38 +124,21 @@ export const MCP_DEFAULTS = {
     type: "local",
     command: ["npx", "-y", "ctfd-mcp-server"],
   },
-  seckb: {
-    type: "local",
-    command: ["{env:SECKB_PYTHON}", "{env:SECKB_MCP_SERVER}"],
-    environment: {
-      SECKB_ROOT: "{env:SECKB_ROOT}",
-      SECKB_CONFIG: "{env:SECKB_CONFIG}",
-    },
-  },
-  cvekb: {
-    type: "local",
-    command: ["{env:SECKB_PYTHON}", "{env:CVEKB_MCP_SERVER}"],
-    environment: { CVEKB_ROOT: "{env:CVEKB_ROOT}" },
-  },
 }
 
-export function managedAssetMappings(includeExternalSkills = false) {
-  const mappings = [
+export function managedAssetMappings() {
+  // Local knowledge retrieval is served by the external `ctf_rag` MCP server, so
+  // no corpus is copied into the managed install any more. The external
+  // SecKnowledge snapshot is retired with it (the OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS
+  // switch is accepted for backwards compatibility but no longer maps anything).
+  return [
     { source: "agents", target: "agents" },
     { source: "commands", target: "commands" },
     { source: "skills", target: path.join("opencode-for-ctf", "skills") },
     { source: "rules", target: path.join("opencode-for-ctf", "rules") },
     { source: "templates", target: path.join("opencode-for-ctf", "templates") },
-    { source: "rag", target: path.join("opencode-for-ctf", "rag") },
     { source: "runtime", target: path.join("opencode-for-ctf", "runtime") },
     { source: "mcp-server", target: path.join("opencode-for-ctf", "mcp-server") },
     { source: path.join("dist", "plugin"), target: path.join("opencode-for-ctf", "plugin") },
   ]
-  if (includeExternalSkills) {
-    mappings.push({
-      source: path.join("skills-external", "secknowledge-skill"),
-      target: path.join("opencode-for-ctf", "skills-external", "secknowledge-skill"),
-    })
-  }
-  return mappings
 }

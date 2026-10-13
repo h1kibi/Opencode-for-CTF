@@ -218,11 +218,11 @@ describe("loadCtfTools packs", () => {
 
   it("loads maintenance helpers only when maintenance is enabled", async () => {
     const defaultTools = await loadCtfTools({ packs: DEFAULT_TOOL_PACKS })
-    expect(defaultTools["ctf-pattern-feedback"]).toBeUndefined()
+    expect(defaultTools["ctf-background-job"]).toBeUndefined()
     expect(defaultTools["ctf-runtime-selftest"]).toBeUndefined()
 
     const maintenanceTools = await loadCtfTools({ packs: ["core", "maintenance"] })
-    expect(maintenanceTools["ctf-pattern-feedback"]).toBeDefined()
+    expect(maintenanceTools["ctf-background-job"]).toBeDefined()
     expect(maintenanceTools["ctf-runtime-selftest"]).toBeDefined()
   }, 60_000)
 

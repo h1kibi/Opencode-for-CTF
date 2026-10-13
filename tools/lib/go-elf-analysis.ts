@@ -31,7 +31,7 @@ export type GoHelperChain = {
 }
 
 export type GoExecutionPlanStep = {
-  tool: "reva" | "ida" | "slice"
+  tool: "reva" | "slice"
   target: string
   note: string
 }
@@ -276,7 +276,6 @@ export function buildGoPivotHints(functions: GoPclnFunction[]): GoPivotHints {
   const priorityFunctions = pickPriorityGoFunctions(functions, 8)
   const pivotLines: string[] = []
   for (const fn of priorityFunctions) {
-    pivotLines.push(`ida-pro_decompile addr=${fn.entry}  # ${fn.name}`)
     pivotLines.push(`ReVa_get-decompilation functionNameOrAddress=${fn.entry}  # ${fn.name}`)
     pivotLines.push(`ctf-elf-slice address=${fn.entry.replace(/^0x/i, "")}  # ${fn.name}`)
   }
@@ -385,7 +384,6 @@ export function buildGoExecutionPlan(functions: GoPclnFunction[], bestFirstTarge
     const fn = byName.get(name)
     if (!fn) continue
     steps.push({ tool: "reva", target: fn.entry, note: `${name} decompile first in ReVa` })
-    steps.push({ tool: "ida", target: fn.entry, note: `${name} decompile in ida-pro if ReVa output is ambiguous` })
     steps.push({
       tool: "slice",
       target: fn.entry.replace(/^0x/i, ""),

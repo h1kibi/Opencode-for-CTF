@@ -19,7 +19,7 @@ async function exists(cmd: string) {
 
 export default tool({
   description:
-    "CTF Java selective decompile: decompile only selected .class targets from bytecode hints using cfr/jadx/fernflower when available, otherwise javap fallback, and summarize output files/snippets.",
+    "CTF Java selective decompile: decompile only selected .class targets from bytecode hints using cfr or fernflower when available, otherwise javap fallback, and summarize output files/snippets.",
   args: {
     root: tool.schema.string().describe("Extracted class root such as BOOT-INF/classes or WEB-INF/classes"),
     targets: tool.schema
@@ -40,7 +40,7 @@ export default tool({
       .filter(Boolean)
       .slice(0, 40)
     const haveCfr = await exists("cfr")
-    const haveJadx = await exists("jadx")
+    const haveFernflower = await exists("fernflower")
     const results: string[] = []
 
     for (const t of targets) {
@@ -52,14 +52,14 @@ export default tool({
       let output = ""
       if (haveCfr) {
         output = (await safeExec("cfr", [abs, "--outputdir", dest], root, 15000)).output
-      } else if (haveJadx) {
-        output = (await safeExec("jadx", ["-d", dest, abs], root, 15000)).output
+      } else if (haveFernflower) {
+        output = (await safeExec("fernflower", [abs, dest], root, 15000)).output
       } else {
         output = (await safeExec("javap", ["-c", "-p", "-v", abs], root, 15000)).output
         await fs.writeFile(path.join(dest, `${path.basename(clean)}.javap.txt`), output, "utf8")
       }
       results.push(
-        `target: ${clean}\nout: ${path.relative(directory, dest)}\nmethod: ${haveCfr ? "cfr" : haveJadx ? "jadx" : "javap"}\n${output.split(/\r?\n/).slice(0, 30).join("\n")}`,
+        `target: ${clean}\nout: ${path.relative(directory, dest)}\nmethod: ${haveCfr ? "cfr" : haveFernflower ? "fernflower" : "javap"}\n${output.split(/\r?\n/).slice(0, 30).join("\n")}`,
       )
     }
 

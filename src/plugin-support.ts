@@ -1,6 +1,11 @@
 import { existsSync, readdirSync } from "node:fs"
 import path from "node:path"
+import type { OpencodeClient } from "@opencode-ai/sdk"
 import { PLUGIN_ROOT } from "./asset-paths.ts"
+import { getAgentDefaults } from "./agent-mcp-profiles.ts"
+import { activateAgentDefaults } from "./dynamic-mcp-manager.ts"
+import { recordMcpActivationIssue } from "./dynamic-mcp-manager.ts"
+import { lookupMcpServer } from "./mcp-server-registry.ts"
 import { explainToolVisibility } from "./capabilities/tool-visibility.ts"
 import { toolMetadata } from "./tool-metadata.ts"
 import { packForTool, toolAllowedForAgent, type ToolPackId } from "./tool-packs.ts"
@@ -15,7 +20,7 @@ const HASH_TAG_RE = /^(\d+)#([0-9A-Za-z]{1,8})\|\s?/gm
 const FILE_CACHE_MAX = 30
 const FILE_CACHE_TTL_MS = 60_000
 const fileReadCache = new Map<string, { lines: string[]; mtime: number }>()
-const PLUGIN_TOOL_PREFIXES = ["ctf-", "archive-", "seckb_", "cvekb_", "anysearch_"]
+const PLUGIN_TOOL_PREFIXES = ["ctf-", "archive-", "anysearch_", "ctf_rag_", "ctf_rag"]
 
 /**
  * Read-only commands that are safe to auto-allow WITHOUT inspecting argv.
@@ -104,8 +109,14 @@ const DESTRUCTIVE_RISK_PREFIXES = [
   "chown",
   "mkfs.",
 ]
+/**
+ * Default MCP profiles already activated, keyed by session *and* agent: a
+ * session promoted from the fast lane to the expert lane still needs the expert
+ * profile, so a bare per-session flag would suppress it.
+ */
 const activatedDefaults = new Set<string>()
 const ACTIVATED_DEFAULTS_MAX = 100
+const activatedDefaultsKey = (sessionID: string, agentName?: string) => `${sessionID}\u0000${agentName ?? "*"}`
 
 export type RuntimeToolRegistrySummary = {
   configPath: string | null
@@ -222,7 +233,10 @@ export function propObject<T>(obj: unknown, key: string): T | undefined {
 }
 
 export function clearActivatedDefaults(sessionID: string): void {
-  activatedDefaults.delete(sessionID)
+  const prefix = `${sessionID}\u0000`
+  for (const key of [...activatedDefaults]) {
+    if (key.startsWith(prefix)) activatedDefaults.delete(key)
+  }
 }
 
 export function trimActivatedDefaults(max = ACTIVATED_DEFAULTS_MAX): void {
@@ -231,12 +245,85 @@ export function trimActivatedDefaults(max = ACTIVATED_DEFAULTS_MAX): void {
   for (const id of toDelete) activatedDefaults.delete(id)
 }
 
-export function hasActivatedDefaults(sessionID: string): boolean {
-  return activatedDefaults.has(sessionID)
+/** Without an agent name, reports whether any profile was activated for the session. */
+export function hasActivatedDefaults(sessionID: string, agentName?: string): boolean {
+  if (activatedDefaults.has(activatedDefaultsKey(sessionID, agentName))) return true
+  if (agentName !== undefined) return false
+  const prefix = `${sessionID}\u0000`
+  for (const key of activatedDefaults) {
+    if (key.startsWith(prefix)) return true
+  }
+  return false
 }
 
-export function markActivatedDefaults(sessionID: string): void {
-  activatedDefaults.add(sessionID)
+export function markActivatedDefaults(sessionID: string, agentName?: string): void {
+  activatedDefaults.add(activatedDefaultsKey(sessionID, agentName))
+}
+
+export type DefaultActivationResult = {
+  activated: string[]
+  skipped: string[]
+  failed: Array<{ serverName: string; message: string }>
+  attempted: boolean
+}
+
+/**
+ * Activate an agent's default MCP profile at most once per session.
+ *
+ * Both primary lanes reach their profile through this path, because neither has
+ * a skill of its own (`skillToAgent` resolves only category and meta skills).
+ * A partial or failed activation stays unmarked so the next call retries, and
+ * failures are recorded as activation issues instead of thrown: a missing
+ * retrieval or browser backend must never block a solve.
+ */
+export async function activateAgentDefaultsOnce(args: {
+  client: OpencodeClient
+  worktree: string
+  directory: string
+  sessionID: string
+  agentName: string
+}): Promise<DefaultActivationResult> {
+  const skippedRun: DefaultActivationResult = { activated: [], skipped: [], failed: [], attempted: false }
+  if (!args.sessionID || hasActivatedDefaults(args.sessionID, args.agentName)) return skippedRun
+
+  try {
+    const result = await activateAgentDefaults({
+      client: args.client,
+      worktree: args.worktree,
+      directory: args.directory,
+      sessionID: args.sessionID,
+      agentName: args.agentName,
+    })
+    const failed = result.failed ?? []
+    
+    // Record issues for any failures
+    for (const failure of failed) {
+      await recordMcpActivationIssue({
+        worktree: args.worktree,
+        sessionID: args.sessionID,
+        agentName: args.agentName,
+        serverName: failure.serverName,
+        phase: "agent_default",
+        error: failure.message,
+      })
+    }
+    
+    if (failed.length === 0) markActivatedDefaults(args.sessionID, args.agentName)
+    return { activated: result.activated, skipped: result.skipped, failed, attempted: true }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    for (const serverName of getAgentDefaults(args.agentName).filter((name) => lookupMcpServer(name)?.weight !== "heavy")) {
+      await recordMcpActivationIssue({
+        worktree: args.worktree,
+        sessionID: args.sessionID,
+        agentName: args.agentName,
+        serverName,
+        phase: "agent_default",
+        error,
+      })
+    }
+    return { activated: [], skipped: [], failed: [{ serverName: "", message }], attempted: true }
+  }
 }
 
 export function skillToAgent(skillName: string): string | undefined {
@@ -456,7 +543,7 @@ export function diagnoseToolVisibility(input: {
             ? "Inspect loadCtfTools import warnings, manifest/build outputs, and plugin startup export wiring."
             : explanation.category === "subagent_gate_blocked"
               ? "Have the subagent request approval through ctf-dynamic-mcp-advisor, then let ctf-expert run the heavy tool or adjust the subagent allowlist intentionally."
-              : "Use a fast-allowed alternative, switch to /ctf-expert, or inspect the current session surface/tool policy.",
+              : "Use a fast-allowed alternative, inspect the current session surface/tool policy, or ask the user to start the expert lane with /ctf-expert.",
     }
   }
 

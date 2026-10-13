@@ -38,7 +38,11 @@ function categoryAgents() {
 }
 
 function hiddenSubagents() {
-  return [...new Set([...(manifest().category_subagents ?? []), ...(manifest().meta_subagents ?? []), "ctf-pwn-fast"])]
+  const allAgents = readdirSync(agentsDir)
+    .filter((file) => file.endsWith(".md"))
+    .map((file) => file.replace(/\.md$/, ""))
+  const primaryAgents = manifest().primary_agents ?? []
+  return allAgents.filter((agent) => !primaryAgents.includes(agent))
 }
 
 describe("agent visibility", () => {

@@ -6,25 +6,6 @@
  * runtime policy and activation details evolve behind the façade.
  */
 
-import type { OpencodeClient } from "@opencode-ai/sdk"
-import {
-  agentNameToCategory,
-  approveRequest,
-  denyRequest,
-  getAgentMcpState,
-  isInMemoryApproved,
-  clearMcpActivationIssues,
-  listAllRequests,
-  listRecentActivationIssues,
-  listPendingRequests,
-  processPendingRequests,
-  recordMcpActivationIssue,
-  releaseSessionMcps,
-  requestMcp,
-  activateAgentDefaults,
-  pruneInMemoryApproved,
-  metaToRuntimeConfig,
-} from "./mcp/mcp-runtime-adapter.ts"
 
 export {
   activateAgentDefaults,
@@ -44,13 +25,3 @@ export {
   releaseSessionMcps,
   requestMcp,
 } from "./mcp/mcp-runtime-adapter.ts"
-
-export async function activateAgentDefaultsForSession(args: {
-  client: OpencodeClient
-  worktree: string
-  directory: string
-  sessionID: string
-  agentName: string
-}) {
-  return activateAgentDefaults(args)
-}

@@ -9,7 +9,7 @@ import {
   resolveInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-import { extractFlagCandidates } from "../lib/flag-utils.ts"
+import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
 function collectFlagCandidates(text: string, customPattern?: string) {
   if (customPattern) {
     const regex = new RegExp(customPattern, "g")

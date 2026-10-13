@@ -24,7 +24,6 @@ const needles = [
   "shortest_logic_chain",
   "best_first_targets",
   "preferred_reva_targets",
-  "preferred_ida_targets",
   "preferred_slice_targets",
   "go_execution_plan",
   "execution_plan_steps",

@@ -37,10 +37,20 @@
   // Recommended MCP backend notes:
   // - browser uses @playwright/mcp by default.
   // - wireshark-mcp uses the bundled WireMCP server copied by the managed installer.
-  // - ida-pro expects mrexodia/ida-pro-mcp installed as `ida-pro-mcp` on PATH (stdio is the default transport).
-  // - jadx-mcp / gdb-mcp / mysql-mcp / x64dbg-mcp / ssh-mcp use env-backed command wrappers.
+  // - gdb-mcp / mysql-mcp / x64dbg-mcp / ssh-mcp use env-backed command wrappers.
   // - cyberchef-mcp uses {env:CYBERCHEF_MCP_COMMAND}; there is no official npm package, so it is disabled by default.
   // - ctfd-mcp uses `npx -y ctfd-mcp-server` and is disabled by default.
+  // - ctf_rag is the RAG-Agent local corpus index. It is part of the ctf-fast
+  //   default MCP profile (read-only retrieval, no shell/target access) and the
+  //   plugin activates it per session from its own registry, passing a real
+  //   config object over the API.
+  //   Do NOT add a static `mcp.ctf_rag` entry here: its values are
+  //   machine-specific absolute paths, and this host expands `{env:VAR}` into
+  //   the config TEXT before parsing it, so a placeholder that resolves to a
+  //   Windows path (`C:\...`) injects raw backslashes and makes the whole config
+  //   unparseable. Set the environment variables below instead (see .env.example).
+  //   The server declares its tool as `ctf_rag`; hosts that namespace MCP tools
+  //   expose `ctf_rag_ctf_rag`. The fast-lane allowlist permits both.
 
   // Example disabled MCP stubs for workspace-level opencode.jsonc:
   // "mcp": {
@@ -52,17 +62,6 @@
   //   "wireshark-mcp": {
   //     "type": "local",
   //     "command": ["node", "/absolute/path/to/opencode-for-ctf/mcp-server/vendor/WireMCP/index.js"],
-  //     "enabled": false
-  //   },
-  //   "ida-pro": {
-  //     "type": "local",
-  //     "command": ["ida-pro-mcp"],
-  //     "enabled": false
-  //   },
-  //   "jadx-mcp": {
-  //     "type": "local",
-  //     "command": ["{env:JADX_MCP_COMMAND}"],
-  //     "environment": { "JADX_HOME": "{env:JADX_HOME}" },
   //     "enabled": false
   //   },
   //   "gdb-mcp": {

@@ -140,7 +140,7 @@ const REV_CLOSURE_LADDER: ClosureCandidate[] = [
     falsifyCondition: "patch changes semantics; flag is computed from input, not stored",
     estimatedCost: "low",
     stateIndependence: "high",
-    recommendedTool: "pwntools patch / IDA patch",
+    recommendedTool: "pwntools patch",
   },
 ]
 

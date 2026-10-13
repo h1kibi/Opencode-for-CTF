@@ -27,7 +27,6 @@ describe("ctf-env-check startup summary", () => {
     expect(parsed.environment_probes["env:wsl"]?.executed).toBe(true)
     expect(parsed.environment_probes["env:wiremcp-launcher"]?.executed).toBe(true)
     expect(parsed.environment_probes["env:cyberchef-mcp"]?.executed).toBe(true)
-    expect(parsed.environment_probes["env:ida-pro-mcp"]?.executed).toBe(true)
     expect(parsed.environment_probes["env:pwntools"]?.executed).toBe(true)
     expect(parsed.environment_probes["env:revlab-image"]?.executed).toBe(true)
     expect(parsed.environment_probes["env:hashcat"]?.executed).toBe(true)

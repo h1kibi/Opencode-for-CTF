@@ -27,6 +27,12 @@ const TEAM_CONTROL_TOOLS = new Set([
   "ctf-team-close",
   "ctf-team-recover",
   "ctf-team-adopt",
+  "ctf-team-facts",
+  "ctf-team-intent",
+  // Repair is the documented remedy for a stale/corrupt run, so it must be
+  // reachable in exactly the states it exists to fix: before any wave, and
+  // while a wave is stuck, degraded, or owned by a previous parent session.
+  "ctf-team-repair",
 ])
 
 /** Tools that are explicitly allowed before the first Team Mode wave. */
@@ -41,18 +47,8 @@ const PRE_TEAM_TOOLS = new Set([
   "ctf-route-plan",
   "ctf-evidence-board",
   "ctf-decompose-task",
-  "ctf-lesson-search",
-  "ctf-lesson-index-audit",
-  "ctf-retro-search",
-  "ctf-pattern-card-search",
-  "ctf-pattern-curation-report",
-  "ctf-pattern-feedback",
-  "ctf-pattern-to-hypothesis",
-  "ctf-skill-repo-search",
-  "ctf-imported-knowledge-search",
   "ctf-tool-packs",
   "ctf-runtime-selftest",
-  "ctf-handoff",
   "ctf-mcp-control",
   "ctf-dynamic-mcp-advisor",
   ...TEAM_CONTROL_TOOLS,

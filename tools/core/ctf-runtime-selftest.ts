@@ -5,6 +5,7 @@ import { buildRuntimeCapabilitySummary } from "../../src/capabilities/runtime-ca
 import { diagnoseToolVisibility, summarizeRuntimeToolRegistry } from "../../src/plugin-support.ts"
 import { readPluginHealthSummary } from "../../src/plugin-health.ts"
 import { resolveEnabledPacks } from "../../src/tool-packs.ts"
+import { EXPERT_RAG_ENV_VARS, EXPERT_RAG_SERVER_ID } from "../../src/expert-readiness.ts"
 
 export default tool({
   description:
@@ -69,19 +70,16 @@ export default tool({
     const expectedFastSentinels = ["ctf-route-plan", "ctf-web-probe", "ctf-python-inline"]
     const missingFastSentinels = expectedFastSentinels.filter((name) => !exportedNames.includes(name))
     const fastVisibleNames = summary.fastVisibleToolNames
-    const knowledgeWorkflow = [
-      { tool: "ctf-lesson-search", fallback: "ctf-pattern-card-search" },
-      { tool: "ctf-lesson-modifier-plan", fallback: "ctf-pattern-card-search" },
-      { tool: "ctf-retro-search", fallback: "ctf-pattern-card-search" },
-      { tool: "ctf-pattern-card-search", fallback: undefined },
-    ].map((item) => ({
-      tool: item.tool,
-      available: exportedNames.includes(item.tool),
-      ...(item.fallback ? { fallback: item.fallback } : {}),
-      ...(exportedNames.includes(item.tool)
-        ? {}
-        : { reason: "not_registered" }),
-    }))
+    // Phase ② retrieval is an external MCP server now, so self-test reports
+    // whether its environment is configured instead of probing plugin tools
+    // that no longer exist.
+    const retrievalBackend = {
+      server: EXPERT_RAG_SERVER_ID,
+      envRequired: [...EXPERT_RAG_ENV_VARS],
+      envConfigured: EXPERT_RAG_ENV_VARS.filter((name) => process.env[name]),
+      envMissing: EXPERT_RAG_ENV_VARS.filter((name) => !process.env[name]),
+      active: EXPERT_RAG_ENV_VARS.every((name) => Boolean(process.env[name])),
+    }
     const liveAgentNames = (agents.data ?? []).map((agent) => agent.name)
     const sentinelDiagnoses = Object.fromEntries(
       expectedFastSentinels.map((toolName) => [
@@ -121,7 +119,7 @@ export default tool({
       liveAgentNames,
       pluginHealth,
       sentinelDiagnoses,
-      knowledgeWorkflow,
+      retrievalBackend,
       hostSchemaInspection: "not_available_repo_local",
       likelyCause,
       likelyNextAction,
@@ -171,8 +169,11 @@ export default tool({
           `readyFamilies: ${payload.capabilitySummary.readyFamilies.join(", ") || "none"}`,
           `degradedFamilies: ${payload.capabilitySummary.degradedFamilies.join(", ") || "none"}`,
           `blockedFamilies: ${payload.capabilitySummary.blockedFamilies.join(", ") || "none"}`,
-          "knowledgeWorkflow:",
-          ...payload.knowledgeWorkflow.map((item) => `  - ${item.tool}: available=${item.available}${"fallback" in item ? ` fallback=${item.fallback}` : ""}${"reason" in item ? ` reason=${item.reason}` : ""}`),
+          "retrievalBackend: ",
+          `  - mcp=${payload.retrievalBackend.server} active=${payload.retrievalBackend.active ? "yes" : "no"}`,
+          ...(payload.retrievalBackend.envMissing.length
+            ? [`    unset: ${payload.retrievalBackend.envMissing.join(", ")}`]
+            : []),
           "sentinelDiagnoses:",
           ...Object.entries(payload.sentinelDiagnoses).flatMap(([toolName, diagnosis]) => [
             `  - ${toolName}: ${diagnosis.category}`,

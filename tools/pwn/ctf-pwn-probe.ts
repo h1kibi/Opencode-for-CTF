@@ -263,11 +263,11 @@ print(json.dumps(out, ensure_ascii=False))
       fallback_action:
         remoteSummary && !remoteSummary.binaryProtocolLikely
           ? "if remote transcript drifts, run ctf-pwn-remote-fingerprint with baseline/mutant payloads before changing exploit family"
-          : "if no fast closure family stays plausible after a few bounded probes, escalate instead of widening tools",
-      escalate_if:
+          : "if no fast closure family stays plausible after a few bounded probes, stop and report the blocker instead of widening tools",
+      stop_if:
         route === "heap-simple" || remoteSummary?.binaryProtocolLikely
-          ? "protocol/allocator complexity dominates or no stable oracle appears after a few bounded probes; ESCALATE: ctf-expert"
-          : "no new crash/leak/control evidence after 2-3 focused probes; ESCALATE: ctf-expert",
+          ? "protocol/allocator complexity dominates or no stable oracle appears after a few bounded probes; stop and report the blocker"
+          : "no new crash/leak/control evidence after 2-3 focused probes; stop and report the blocker",
     }
 
     if (args.jsonOnly) return JSON.stringify(payload, null, 2)
@@ -290,7 +290,7 @@ print(json.dumps(out, ensure_ascii=False))
       `one_variable_probe: ${payload.one_variable_probe}`,
       `recommended_next_action: ${payload.recommended_next_action}`,
       `fallback_action: ${payload.fallback_action}`,
-      `escalate_if: ${payload.escalate_if}`,
+      `stop_if: ${payload.stop_if}`,
       ...(payload.remote_behavior
         ? [
             `remote_transport: ${payload.remote_behavior.transport}`,

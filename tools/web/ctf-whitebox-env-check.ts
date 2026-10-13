@@ -115,16 +115,6 @@ function checksFor(profile: string): Check[] {
       fallback: "use ctf-java-bytecode-hints or decompiler",
       hint: "Install a JDK and ensure javap is on PATH.",
     },
-    {
-      name: "jadx",
-      command: "jadx",
-      args: ["--version"],
-      required: false,
-      category: "java",
-      purpose: "APK/Java bytecode decompilation",
-      fallback: "use CFR/fernflower/javap or ctf-java-decompile-targets",
-      hint: "Install jadx and ensure jadx is on PATH.",
-    },
   ]
   const full: Check[] = [
     {

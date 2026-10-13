@@ -88,7 +88,7 @@ describe("decideRoute", () => {
   })
 
   it("adds specialist packs as overlays for expert routes", () => {
-    const android = decideRoute({ text: "Android APK with classes.dex and jadx", mode: "expert" })
+    const android = decideRoute({ text: "Android APK with classes.dex and apktool", mode: "expert" })
     expect(android.toolPacks).toContain("android")
     expect(android.reasons).toContain("android overlay")
 

@@ -172,34 +172,49 @@ describe("describeMcpActivationError", () => {
 })
 
 describe("ensureSkillMcpLeases", () => {
-  it("persists successful bindings even when a later binding fails", async () => {
+  it("records a successful skill binding and never persists a failed one", async () => {
     const worktree = mkdtempSync(join(tmpdir(), "ctf-skill-mcp-"))
+    let fail = true
     const client = {
       mcp: {
         add: async () => undefined,
         connect: async ({ path }: { path: { name: string } }) => {
-          if (path.name === "runtime_cvekb_local") {
+          if (path.name === "runtime_context7_java" && fail) {
             throw new Error("HTTP 429 Too Many Requests: quota exceeded")
           }
         },
       },
     }
 
-    const result = await ensureSkillMcpLeases({
+    const failed = await ensureSkillMcpLeases({
       client: client as never,
       worktree,
       directory: worktree,
       sessionID: "session-1",
-      skillName: "ctf-seckb",
+      skillName: "ctf-web-java",
     })
 
-    expect(result.activated).toContain("runtime_seckb_local")
-    expect(result.failed).toHaveLength(1)
-    expect(result.failed[0].serverName).toBe("runtime_cvekb_local")
+    expect(failed.activated).toEqual([])
+    expect(failed.failed).toHaveLength(1)
+    expect(failed.failed[0].serverName).toBe("runtime_context7_java")
+    expect(failed.failed[0].message).toMatch(/rate-limited/i)
+    // A failed binding must not be recorded as an active lease.
+    expect(loadLeases(worktree).filter((lease) => leaseIsConnected(lease))).toEqual([])
 
-    const state = JSON.parse(readFileSync(skillMcpStateFile(worktree), "utf8")) as SkillMcpState
-    expect(state.leases.map((lease) => lease.serverName)).toContain("runtime_seckb_local")
-    expect(state.leases.map((lease) => lease.serverName)).not.toContain("runtime_cvekb_local")
+    fail = false
+    const activated = await ensureSkillMcpLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-1",
+      skillName: "ctf-web-java",
+    })
+
+    expect(activated.activated).toContain("runtime_context7_java")
+    expect(activated.failed).toEqual([])
+    const leases = loadLeases(worktree).filter((lease) => leaseIsConnected(lease))
+    expect(leases.map((lease) => lease.serverName)).toEqual(["runtime_context7_java"])
+    expect(leases[0].skillName).toBe("ctf-web-java")
   })
 })
 
@@ -434,5 +449,29 @@ describe("lease lifecycle state machine", () => {
     expect(second.released).toEqual(["runtime_test_server"])
     expect(second.disconnectFailed).toEqual([])
     expect(leaseIsConnected(loadLeases(worktree)[0])).toBe(false)
+  })
+  it("blocks reacquisition while a prior disconnect is in flight", async () => {
+    const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-disconnect-race-"))
+    let resolveDisconnectStarted!: () => void
+    let resolveDisconnectGate!: () => void
+    const disconnectStarted = new Promise<void>((resolve) => { resolveDisconnectStarted = resolve })
+    const disconnectGate = new Promise<void>((resolve) => { resolveDisconnectGate = resolve })
+    const { client, connects } = makeClient({
+      disconnect: async () => {
+        resolveDisconnectStarted()
+        await disconnectGate
+      },
+    })
+    await ensureNamedServerLeases({ client: client as never, worktree, directory: worktree, sessionID: "session-a", skillName: "agent-default:ctf-web", servers: [SERVER] })
+    releaseSkillMcpLeases({ client: client as never, worktree, directory: worktree, sessionID: "session-a", skillName: "agent-default:ctf-web" })
+    await disconnectStarted
+    expect(loadLeases(worktree).some((lease) => lease.status === "disconnecting")).toBe(true)
+    const acquiring = await ensureNamedServerLeases({ client: client as never, worktree, directory: worktree, sessionID: "session-b", skillName: "agent-default:ctf-web", servers: [SERVER] })
+    expect(acquiring.activated).toEqual([])
+    expect(acquiring.shared).toContain("runtime_test_server")
+    expect(connects).toHaveLength(1)
+    resolveDisconnectGate()
+    const after = loadLeases(worktree)
+    expect(after.find((lease) => lease.sessionID === "session-b")?.status).toBe("pending")
   })
 })

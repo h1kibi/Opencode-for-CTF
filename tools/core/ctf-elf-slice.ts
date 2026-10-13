@@ -145,84 +145,16 @@ function collectFunctionLabels(lines: string[], preferred: string[], max = 12) {
   return out
 }
 
-function parseStackLayoutHints(lines: string[]) {
-  const frameMap = new Map<string, { tags: Set<string>; examples: string[] }>()
-  let currentFunction = ""
-  let lastAddressTakenOffset = ""
-  let lastAddressTakenLine = -100
-
-  const ensure = (offset: string) => {
-    if (!frameMap.has(offset)) frameMap.set(offset, { tags: new Set<string>(), examples: [] })
-    return frameMap.get(offset)!
-  }
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const fn = line.match(/^([0-9a-f]+)\s+<([^>]+)>:$/i)
-    if (fn) {
-      currentFunction = fn[2]
-      continue
-    }
-    const refs = Array.from(line.matchAll(/\[(?:r|e)bp([+-])0x([0-9a-f]+)(?:[^\]]*)\]/gi))
-    if (!refs.length) continue
-    for (const ref of refs) {
-      const offset = `${ref[1]}0x${ref[2].toLowerCase()}`
-      const slot = ensure(offset)
-      if (slot.examples.length < 3) slot.examples.push(`${currentFunction || "?"}: ${line.trim()}`)
-      if (/lea\s+\w+,\s*\[(?:r|e)bp-0x/i.test(line)) {
-        slot.tags.add("address-taken")
-        lastAddressTakenOffset = offset
-        lastAddressTakenLine = i
-      }
-      if (/mov\s+byte ptr\s+\[(?:r|e)bp-0x[0-9a-f]+\],0x0/i.test(line)) slot.tags.add("null-terminator-write")
-      if (/(cmp|add|sub|inc|dec)\s+(?:dword|qword|byte)?\s*ptr\s+\[(?:r|e)bp-0x/i.test(line))
-        slot.tags.add("counter-or-state")
-      if (/mov\s+byte ptr\s+\[(?:r|e)bp[^\]]*\+[^\]]*\],/i.test(line)) slot.tags.add("indexed-byte-write")
-    }
-    if (
-      /call\s+.*<(read|recv|gets|fgets)@plt>/i.test(line) &&
-      lastAddressTakenOffset &&
-      i - lastAddressTakenLine <= 6
-    ) {
-      ensure(lastAddressTakenOffset).tags.add("input-buffer")
-    }
-  }
-
-  const summary = Array.from(frameMap.entries())
-    .filter(([offset]) => offset.startsWith("-"))
-    .sort((a, b) => parseInt(b[0].slice(3), 16) - parseInt(a[0].slice(3), 16))
-    .slice(0, 12)
-    .map(([offset, info]) => {
-      const tags = Array.from(info.tags)
-      const role = tags.includes("input-buffer")
-        ? "likely input buffer"
-        : tags.includes("indexed-byte-write")
-          ? "indexed write target"
-          : tags.includes("counter-or-state")
-            ? "likely loop/state variable"
-            : tags.includes("address-taken")
-              ? "address-taken local"
-              : "stack local"
-      return `${offset}: ${role}${tags.length ? `; tags=${tags.join(",")}` : ""}`
-    })
-
-  if (summary.length) {
-    summary.push("+0x0: saved rbp / frame-pointer boundary")
-    summary.push("+0x8: return address boundary")
-  }
-  return summary
-}
 
 function addrToLineTarget(name: string, functions: Array<{ name: string; entry: string }>) {
   const hit = functions.find((f) => f.name === name)
   return hit ? hit.entry.replace(/^0x/i, "") : ""
 }
 
-function toTargetHint(name: string, functions: Array<{ name: string; entry: string }>, mode: "reva" | "ida" | "slice") {
+function toTargetHint(name: string, functions: Array<{ name: string; entry: string }>, mode: "reva" | "slice") {
   const hit = functions.find((f) => f.name === name)
   if (!hit) return ""
   if (mode === "reva") return `ReVa_get-decompilation functionNameOrAddress=${hit.entry}  # ${name}`
-  if (mode === "ida") return `ida-pro_decompile addr=${hit.entry}  # ${name}`
   return `ctf-elf-slice address=${hit.entry.replace(/^0x/i, "")}  # ${name}`
 }
 
@@ -406,9 +338,6 @@ export default tool({
       preferred_reva_targets: goChains.bestFirstTargets
         .map((name) => toTargetHint(name, pcln.functions, "reva"))
         .filter(Boolean),
-      preferred_ida_targets: goChains.bestFirstTargets
-        .map((name) => toTargetHint(name, pcln.functions, "ida"))
-        .filter(Boolean),
       preferred_slice_targets: goChains.bestFirstTargets
         .map((name) => toTargetHint(name, pcln.functions, "slice"))
         .filter(Boolean),
@@ -484,10 +413,6 @@ export default tool({
       "preferred_reva_targets:",
       ...(
         goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "reva")).filter(Boolean) as string[]
-      ).map((x) => `- ${x}`),
-      "preferred_ida_targets:",
-      ...(
-        goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "ida")).filter(Boolean) as string[]
       ).map((x) => `- ${x}`),
       "preferred_slice_targets:",
       ...(

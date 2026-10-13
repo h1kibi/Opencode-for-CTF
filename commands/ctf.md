@@ -9,9 +9,10 @@ subtask: false
 **This is the only command most users need.**
 
 > **Agent note:** Frontmatter `agent: ctf-fast` is the OpenCode default shell only.
-> The plugin injects a **BINDING** route. If `primary_session_agent` is `ctf-expert`,
-> call `ctf-handoff lane=expert` when available; otherwise follow the expert contract directly.
-> Session tool surface is already switched; Team Mode is allowed after handoff/contract binding.
+> The plugin injects a **BINDING** route that selects the solving lane at entry. If
+> `primary_session_agent` is `ctf-expert`, follow the expert contract directly and load skill `ctf-expert`.
+> Session tool surface is already switched; Team Mode is allowed after contract binding.
+> Once bound, the lane does not switch automatically.
 
 Challenge info:
 $ARGUMENTS
@@ -20,15 +21,15 @@ $ARGUMENTS
 
 1. **Authorize** — only authorized CTF / lab / local targets.
 2. **Read the injected ROUTE DECISION** (plugin hook). It applied `opencode-for-ctf.jsonc` → `default_mode`.
-3. **Hard handoff if needed**
-   - `primary_session_agent: ctf-expert` (or mode expert/resume) → call **`ctf-handoff lane=expert`** when available; otherwise follow the expert contract directly, then load skill `ctf-expert`.
-   - `primary_session_agent: ctf-fast` → stay on fast allowlist; optional `ctf-handoff lane=fast` to lock surface.
+3. **Bind the lane**
+   - `primary_session_agent: ctf-expert` (or mode expert/resume) → follow the expert contract directly, then load skill `ctf-expert`.
+   - `primary_session_agent: ctf-fast` → stay on the fast allowlist.
+   - The selected lane stays fixed for the session; it does not switch automatically.
 4. **Optional refresh** — `ctf-route-plan` if new signals (`hasEvidenceBranch=true` when evidence branch exists).
 5. **Execute the lane**
    - **fast** → lightweight allowlist, intuition-first, no Team Mode / Evidence ceremony.
    - **expert** → Evidence.md, exactly 3 routes, concurrent workers with `routeId`, dynamic MCP approve.
-6. **Solve** — flag, exhausted routes, or blocked on user resource.
-7. **Escalate** — from fast only: `ESCALATE: ctf-expert` then `ctf-handoff lane=expert`.
+6. **Solve** — flag, exhausted routes, or blocked on user resource. If the fast lane cannot close, stop and report the blocker, strongest evidence, and best next direction; the user decides whether to switch to `ctf-expert`.
 
 ## Entry taxonomy
 
@@ -41,7 +42,7 @@ $ARGUMENTS
 
 | Route result | Meaning |
 | --- | --- |
-| `fast` | Intuition-first, minimal tooling, 15-minute soft budget |
+| `fast` | Intuition-first, minimal tooling, 15-minute soft self-review horizon; usable indefinitely |
 | `expert` | Evidence.md, 3-route plan, Team Mode concurrency |
 | `resume` | Continue existing evidence branch (expert) |
 
@@ -53,7 +54,7 @@ $ARGUMENTS
 
 ## Do not
 
-- Do not ignore the BINDING route block or skip expert handoff/contract when primary is expert.
+- Do not ignore the BINDING route block, and do not switch lanes automatically once bound.
 - Do not re-run broad triage when an evidence branch already answers the question.
 - Do not invent flags or attack out-of-scope systems.
 

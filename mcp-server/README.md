@@ -8,7 +8,6 @@ This directory holds repo-managed MCP server assets and launchers.
 - `launchers/browser.cmd` — stable wrapper for `@playwright/mcp`
 - `launchers/cyberchef-mcp.cmd` — wrapper for a user-supplied CyberChef MCP backend (`CYBERCHEF_MCP_COMMAND`); no official npm package exists
 - `launchers/ctfd-mcp.cmd` — stable wrapper for `ctfd-mcp-server`
-- `launchers/ida-pro.cmd` — stable wrapper for `ida-pro-mcp` (stdio is the default transport)
 - `launchers/wiremcp.cmd` — stable wrapper for vendored local WireMCP startup (`mcp-server/vendor/WireMCP/`)
 
 ## Why this directory exists
@@ -42,11 +41,6 @@ absolute paths or ad-hoc scripts. This makes:
   "wireshark-mcp": {
     "type": "local",
     "command": ["C:/Projects/Agent-projects/Opencode-for-CTF/mcp-server/launchers/wiremcp.cmd"],
-    "enabled": true
-  },
-  "ida-pro": {
-    "type": "local",
-    "command": ["C:/Projects/Agent-projects/Opencode-for-CTF/mcp-server/launchers/ida-pro.cmd"],
     "enabled": true
   },
   "ctfd-mcp": {

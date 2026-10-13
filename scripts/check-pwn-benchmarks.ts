@@ -178,11 +178,11 @@ const rules: BenchmarkRule[] = [
     },
   },
   {
-    name: "handoff includes closure and next probe quality",
+    name: "stop report includes closure and next probe quality",
     check(output) {
-      const hasHandoff =
-        /handoff|ctf_fast_handoff|ctf_resume_packet|escalated|why this is no longer a fast-lane target/i.test(output)
-      if (!hasHandoff) return "N/A"
+      const hasStopReport =
+        /stop report|blocker|ctf_fast_handoff|ctf_resume_packet|lane exceeded|outgrew the fast lane/i.test(output)
+      if (!hasStopReport) return "N/A"
       const hasQuality = /shortest closure family|best next rigorous probe|oracle|falsify|same-family attempts/i.test(
         output,
       )
@@ -197,7 +197,7 @@ const rules: BenchmarkRule[] = [
           output,
         )
       if (!hasDriftSignal) return "N/A"
-      const hasResponse = /handoff|rerank|shortest closure family|fast-lane target|ctf-expert/i.test(output)
+      const hasResponse = /stop report|blocker|rerank|shortest closure family|fast-lane target|ctf-expert/i.test(output)
       return hasResponse ? "PASS" : "FAIL"
     },
   },

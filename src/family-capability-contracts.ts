@@ -60,8 +60,8 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     requiredTools: ["ctf-web-analyze"],
     supportTools: ["ctf-web-fingerprint", "ctf-web-blackbox-map", "ctf-api-map"],
     softDependencies: ["browser"],
-    defaultMcps: ["filesystem", "context7", "github", "markitdown", "browser", "jadx-mcp", "mysql-mcp", "ssh-mcp"],
-    requestableHeavyMcps: ["jadx-mcp", "mysql-mcp", "ssh-mcp", "anysearch", "cvekb"],
+    defaultMcps: ["filesystem", "context7", "github", "markitdown", "browser", "mysql-mcp", "ssh-mcp"],
+    requestableHeavyMcps: ["mysql-mcp", "ssh-mcp", "anysearch"],
     fallbackModes: [
       {
         id: "web:blackbox-first",
@@ -115,9 +115,9 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     expectedToolPacks: ["core", "pwn"],
     requiredTools: ["ctf-pwn-analyze", "ctf-pwn-runner"],
     supportTools: ["ctf-binary-probe", "ctf-pwn-probe", "ctf-pwn-remote-fingerprint", "ctf-pwn-libc-hint"],
-    softDependencies: ["docker", "gdb", "ghidra", "ida"],
-    defaultMcps: ["filesystem", "context7", "github", "markitdown", "gdb-mcp", "ida-pro", "ssh-mcp"],
-    requestableHeavyMcps: ["ida-pro", "gdb-mcp", "ssh-mcp"],
+    softDependencies: ["docker", "gdb", "ghidra"],
+    defaultMcps: ["filesystem", "context7", "github", "markitdown", "gdb-mcp", "ssh-mcp"],
+    requestableHeavyMcps: ["gdb-mcp", "ssh-mcp"],
     fallbackModes: [
       {
         id: "pwn:local-substrate-lock",
@@ -196,20 +196,18 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
       "ctf-windows-expect-runner",
       "ctf-windows-debug-helper",
     ],
-    softDependencies: ["ReVa", "ghidra", "ida", "jadx", "frida", "apktool"],
+    softDependencies: ["ReVa", "ghidra", "frida", "apktool"],
     defaultMcps: [
       "filesystem",
       "context7",
       "github",
       "markitdown",
       "ReVa",
-      "ida-pro",
-      "jadx-mcp",
       "gdb-mcp",
       "x64dbg-mcp",
       "ssh-mcp",
     ],
-    requestableHeavyMcps: ["ida-pro", "jadx-mcp", "gdb-mcp", "x64dbg-mcp", "ssh-mcp", "flutter-aot"],
+    requestableHeavyMcps: ["gdb-mcp", "x64dbg-mcp", "ssh-mcp", "flutter-aot"],
     fallbackModes: [
       {
         id: "rev:static-first",
@@ -283,10 +281,10 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     family: "crypto",
     expectedToolPacks: ["core", "crypto"],
     requiredTools: ["ctf-crypto-analyze"],
-    supportTools: ["ctf-rsa-probe", "ctf-python-inline", "ctf-pattern-to-hypothesis"],
+    supportTools: ["ctf-rsa-probe", "ctf-python-inline"],
     softDependencies: ["sage", "python", "cyberchef-mcp"],
     defaultMcps: ["filesystem", "context7", "github", "markitdown", "cyberchef-mcp"],
-    requestableHeavyMcps: ["anysearch", "cvekb"],
+    requestableHeavyMcps: ["anysearch"],
     fallbackModes: [
       {
         id: "crypto:parameter-inventory",
@@ -423,7 +421,7 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
     family: "misc",
     expectedToolPacks: ["core", "misc"],
     requiredTools: ["ctf-misc-analyze"],
-    supportTools: ["ctf-one-shot-triage", "ctf-file-triage", "ctf-flag-grep", "ctf-pattern-to-hypothesis"],
+    supportTools: ["ctf-one-shot-triage", "ctf-file-triage", "ctf-flag-grep"],
     softDependencies: ["browser", "wireshark-mcp", "flutter-aot", "cyberchef-mcp"],
     defaultMcps: [
       "filesystem",

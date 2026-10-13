@@ -140,7 +140,7 @@ RUN set +e; \
       fi; \
       rm -rf /var/lib/apt/lists/*; \
     fi; \
-    command -v r2 && r2 -v | head -1 || echo "WARN: radare2 not installed (rizin/lief/IDA still available)"
+    command -v r2 && r2 -v | head -1 || echo "WARN: radare2 not installed (rizin/lief still available)"
 
 # rizin: Ubuntu 22.04 官方仓库通常无包,优先尝试 RizinOrg 的 OBS 仓库
 RUN set +e; \

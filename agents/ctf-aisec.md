@@ -44,7 +44,6 @@
     "ctf-router": "allow"
     "ctf-decision-engine": "allow"
     "ctf-experience-gate": "allow"
-    "ctf-skill-repo-knowledge": "allow"
     "ctf-closure-gate": "allow"
     "ctf-ledger-discipline": "allow"
   "browser_*": "deny"
@@ -89,7 +88,7 @@ ATTACK FAMILIES:
 - Model-logic puzzles where the challenge oracle is the primary success signal.
 
 TOOLS AND RECALL:
-Use the dedicated `ctf-aisec-*` tools for read-only environment checks, static artifact inspection, and bounded local inference baselines. Use `ctf-python-inline`, `ctf-proto-probe`, and the shared triage tools as fallbacks. Use `ctf-lesson-search`, `ctf-retro-search`, `ctf-pattern-card-search`, and `ctf-pattern-to-hypothesis` to derive one falsifiable next step from observed evidence. Do not perform blind jailbreak or payload roulette.
+Use the dedicated `ctf-aisec-*` tools for read-only environment checks, static artifact inspection, and bounded local inference baselines. Use `ctf-python-inline`, `ctf-proto-probe`, and the shared triage tools as fallbacks. Use `ctf_rag` recall with concrete technical anchors to derive one falsifiable next step from observed evidence. Do not perform blind jailbreak or payload roulette.
 
 SAFETY ESCALATION:
 - `pip install`, model downloads, GPU/Docker runtimes, unsafe deserialization, remote model services, and broad probes require expert approval.

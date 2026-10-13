@@ -14,12 +14,6 @@ docs/
 *.tsbuildinfo
 opencode.json
 opencode.jsonc
-CLAUDE.md
-AGENTS.md
-CONTRIBUTING.md
-CODE_OF_CONDUCT.md
-ROADMAP.md
-RELEASE_CHECKLIST.md
 CTF_WORKSPACE_OPENCODE_TEMPLATE.jsonc
 eslint.config.*
 prettier.config.*

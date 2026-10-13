@@ -46,7 +46,7 @@ describe("resolvePluginRoot layout detection", () => {
 
   it("defaults to the real module directory and resolves to the repo root in source runs", () => {
     // Default argument is SRC_DIR (this repo's src/), so the source layout
-    // must resolve to the repository root where rag/ lives.
+    // must resolve to the repository root (the parent directory of src/).
     expect(path.basename(resolvePluginRoot())).not.toBe("src")
     expect(path.basename(resolvePluginRoot())).not.toBe("chunks")
     expect(path.basename(resolvePluginRoot())).not.toBe("plugin")

@@ -226,7 +226,6 @@
     "ctf-terminal": "allow"
     "ctf-crypto": "allow"
     "ctf-decision-engine": "allow"
-    "ctf-skill-repo-knowledge": "allow"
     "ctf-experience-gate": "allow"
     "ctf-closure-gate": "allow"
     "ctf-ledger-discipline": "allow"
@@ -236,9 +235,7 @@
   "nmap_*": "allow"
   "mysql_*": "deny"
   "puppeteer_*": "deny"
-  "ida-pro_*": "deny"
   "radare2_*": "deny"
-  "jadx_*": "deny"
   "frida_*": "deny"
   "ReVa_*": "deny"
   "vmprotect_*": "deny"
@@ -277,11 +274,6 @@
   "chrome_chrome_bookmark_add": "deny"
   "chrome_chrome_bookmark_delete": "deny"
   "ctf-decision-state": "allow"
-  "ctf-skill-repo-search": "allow"
-  "ctf-pattern-card-search": "allow"
-  "ctf-pattern-to-hypothesis": "allow"
-  "ctf-pattern-feedback": "allow"
-  "ctf-pattern-curation-report": "allow"
 "hidden": true
 "top_p": 0.1
 ---
@@ -300,7 +292,7 @@ Crypto Primitive Ladder: 1) parameter inventory, 2) scheme identification, 3) or
 Use the shared decision layer instead of restating it locally:
 
 - `ctf-common` owns action-only visible output, same-family limits, checkpointing, verified-flag rules, and interruption hygiene.
-- `ctf-decision-engine` owns top-3 queue maintenance, knowledge gate behavior, probe contracts, `ctf-decision-state` invocation rules, pattern-card conversion, and lesson-modifier pressure.
+- `ctf-decision-engine` owns top-3 queue maintenance, knowledge gate behavior, probe contracts, `ctf-decision-state` invocation rules, retrieval-note conversion, and retrieval-modifier pressure.
 - `ctf-experience-gate` owns anti-drift behavior, constraint equations, semantic mismatch promotion, environment/proc budget caps, and resume discipline.
 
 Return to the controller with only: compact parameter inventory, current crypto family, strongest assumption/bound, solver path, and the next crypto-specific one-variable probe.

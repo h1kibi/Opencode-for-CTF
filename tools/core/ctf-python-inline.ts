@@ -93,7 +93,9 @@ export default tool({
     const py = await choosePython()
     const timeoutMs = Math.max(1000, Math.min(args.timeoutMs ?? 12000, 120000))
     const argv = args.argv || []
-    const shell_flag = process.platform === "win32"
+    // No shell hop: the interpreter and script path are explicit, and
+    // `shell: true` made every argv entry shell command text on Windows.
+    const shell_flag = false
     const python_env = { ...process.env, PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8" }
     const { stdout, stderr, ok, exitCode } = await safeExecWithStreams(py.cmd, [...py.baseArgs, scriptPath, ...argv], {
       cwd: workdir,

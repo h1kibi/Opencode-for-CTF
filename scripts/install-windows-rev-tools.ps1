@@ -21,7 +21,6 @@
 # Tier 2 (recommended for advanced REV):
 #   ILSpy               Alternative .NET decompiler
 #   010Editor           Hex editor with binary templates (trial)
-#   IDA-Free            (NOTE: skip, user already has IDA Pro 9.2)
 #   PE-bear             (manual, GitHub release)
 #   d2j-dex2jar         (manual, dex->jar for APK reading)
 #
@@ -78,7 +77,7 @@ $manualTools = @(
     @{ Tier=1; Name='dex2jar';
        Url='https://github.com/pxb1988/dex2jar/releases/latest';
        Path='dex2jar';
-       Note='dex->jar conversion (use with jadx)' }
+       Note='dex->jar conversion for APK reading' }
     @{ Tier=2; Name='CFF Explorer';
        Url='https://www.ntcore.com/?page_id=388';
        Path='CFF-Explorer';

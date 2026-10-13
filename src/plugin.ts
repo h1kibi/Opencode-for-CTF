@@ -6,7 +6,6 @@ import { isHookEnabled, loadPluginConfigWithPath, type PluginUserConfig } from "
 import { resolveEnabledPacks } from "./tool-packs.ts"
 import { persistSessionSurface, rememberSessionSurface, restoreSessionSurfaces } from "./session-surface.ts"
 import { evaluateExpertReadiness, extractResumeHints, formatExpertReadinessFailure } from "./expert-readiness.ts"
-import { evaluateAllFamilyReadiness, formatFamilyReadinessSummary } from "./family-readiness.ts"
 import { listExpectedSkillNames, summarizeRuntimeToolRegistry } from "./plugin-support.ts"
 import { runtimeStateRoot } from "./paths.ts"
 import { saveJsonFile } from "./state-store.ts"
@@ -150,18 +149,7 @@ const RuntimePlugin: Plugin = async (input, _options) => {
     })
   }
 
-  function familyReadinessReports() {
-    return evaluateAllFamilyReadiness({
-      registeredTools: registeredToolNames,
-      enabledToolPacks: [...enabledPacks],
-    })
-  }
 
-  function familyReadinessSummaryText() {
-    return familyReadinessReports()
-      .map((report) => formatFamilyReadinessSummary(report))
-      .join("\n\n")
-  }
 
   function teamEventsEnabled() {
     return pluginConfig.team_mode.enabled && isHookEnabled(pluginConfig, "team_events")
@@ -172,16 +160,16 @@ const RuntimePlugin: Plugin = async (input, _options) => {
     if (!report.ready) throw new Error(expertReadinessFailureText(userText, sessionNote))
   }
 
-  function promoteExpertSurface(sessionID: string | undefined | null) {
+  function promoteExpertSurface(sessionID: string | undefined | null, source: "explicit" | "route" = "explicit") {
     rememberSessionSurface(sessionID ?? undefined, "ctf-expert")
-    void persistSessionSurface(input.worktree || input.directory, sessionID, "ctf-expert").catch((err) =>
+    void persistSessionSurface(input.worktree || input.directory, sessionID, "ctf-expert", source).catch((err) =>
       console.warn("[plugin] session-surface persist (non-fatal):", err),
     )
   }
 
-  function promoteFastSurface(sessionID: string | undefined | null) {
+  function promoteFastSurface(sessionID: string | undefined | null, source: "explicit-fast" = "explicit-fast") {
     rememberSessionSurface(sessionID ?? undefined, "ctf-fast")
-    void persistSessionSurface(input.worktree || input.directory, sessionID, "ctf-fast").catch((err) =>
+    void persistSessionSurface(input.worktree || input.directory, sessionID, "ctf-fast", source).catch((err) =>
       console.warn("[plugin] session-surface persist (non-fatal):", err),
     )
   }
@@ -194,7 +182,6 @@ const RuntimePlugin: Plugin = async (input, _options) => {
         input,
         isHookEnabled: (hook) => isHookEnabled(pluginConfig, hook),
         teamEventsEnabled,
-        promoteExpertSurface,
       })
     }),
     "chat.message": safeHook("chat.message", async (meta) => {

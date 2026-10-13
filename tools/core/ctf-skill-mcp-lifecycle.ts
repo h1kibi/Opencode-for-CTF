@@ -10,7 +10,7 @@ export default tool({
     skillName: tool.schema
       .string()
       .optional()
-      .describe("Skill name for activate/release, e.g. ctf-web-java or ctf-seckb."),
+      .describe("Skill name for activate/release, e.g. ctf-web-java or anysearch."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args, context) {

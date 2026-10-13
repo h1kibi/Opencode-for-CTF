@@ -2,10 +2,7 @@
 
 Use when evidence contains `bzImage`, `vmlinux`, `initramfs`, `rootfs.cpio`, `*.ko`, `/dev/*` challenge devices, ioctl handlers, QEMU launch scripts, SMEP/SMAP/KPTI/KASLR, `commit_creds`, `prepare_kernel_cred`, `modprobe_path`, `core_pattern`, eBPF, or kernel heap/race terms.
 
-Imported long-form references:
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\kernel.md`
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\kernel-techniques.md`
-- `{env:OPENCODE_CONFIG_DIR}\skills-external\ctf-skills\ctf-pwn\kernel-bypass.md`
+Deep technique notes: retrieve with `ctf_rag` using the kernel primitives and terms above.
 
 ## First Route Gate
 

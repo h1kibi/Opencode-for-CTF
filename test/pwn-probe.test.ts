@@ -20,7 +20,7 @@ describe("ctf-pwn-probe tool", () => {
     expect(parsed.one_variable_probe).toBeTruthy()
     expect(parsed.recommended_next_action).toBeTruthy()
     expect(parsed.fallback_action).toBeTruthy()
-    expect(parsed.escalate_if).toContain("ESCALATE")
+    expect(parsed.stop_if).toContain("stop and report the blocker")
   })
 
   it("returns remote behavior fields when host and port are supplied", async () => {

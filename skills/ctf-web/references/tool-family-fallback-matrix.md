@@ -74,7 +74,7 @@ Fallback order:
 2. `ctf-web-fingerprint`
 3. `ctf-web-blackbox-map mode=light`
 4. one browser check if browser/runtime evidence is specifically missing
-5. `ctf-skill-repo-search` or `ctf-pattern-card-search` when you need pattern recall rather than target discovery
+5. `ctf_rag` when you need technique recall rather than target discovery
 
 Do not:
 - force a state-machine or template-family interpretation without enough evidence
@@ -82,9 +82,7 @@ Do not:
 ## Family D — Source / sink / pattern tools
 
 Tools:
-- `ctf-pattern-card-search`
-- `ctf-pattern-to-hypothesis`
-- `ctf-skill-repo-search`
+- `ctf_rag`
 - `ctf-web-source-map`
 
 Typical failures:
@@ -95,11 +93,11 @@ Typical failures:
 Fallback order:
 1. tighten the query with exact sink/function/framework names
 2. use one stronger evidence phrase from source/error/JS/header
-3. convert one top card only
-4. if no good card exists, return to constraint equation and write one minimal hypothesis manually
+3. keep one top retrieved hit only
+4. if no good hit exists, return to constraint equation and write one minimal hypothesis manually
 
 Do not:
-- chain multiple cards without evidence
+- chain multiple retrieved hits without evidence
 - call `ctf-decision-state` before you have a non-empty hypothesis
 
 ## Family E — Browser / runtime checks
@@ -134,6 +132,5 @@ Never call `ctf-decision-state` with:
 - empty `observationJson` for `observe`
 
 If not ready:
-- build one minimal hypothesis
-- or run `ctf-pattern-to-hypothesis`
+- build one minimal hypothesis from current evidence
 - or write the smallest valid queue from evidence

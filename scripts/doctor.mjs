@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { runToolChecks, TOOL_CHECK_GROUPS, toolCheckExists } from "./lib/tool-checks.mjs"
+import { runToolChecks, TOOL_CHECK_GROUPS } from "./lib/tool-checks.mjs"
 import { wireMcpBackendStatus } from "./lib/wiremcp-status.mjs"
 
 // Toolchain doctor: checks the smallest useful toolchain per challenge family.
@@ -20,10 +20,3 @@ for (const group of TOOL_CHECK_GROUPS) {
 
 console.log("\nUse missing tools only when the selected challenge path requires them.")
 console.log(`WireMCP backend: ${wireMcp.label}`)
-console.log(
-  `IDA MCP backend: ${
-    toolCheckExists({ name: "ida-pro-mcp", command: "ida-pro-mcp", args: ["--help"] })
-      ? "available (run `ida-pro-mcp`; stdio is the default transport)"
-      : "missing - install mrexodia/ida-pro-mcp so `ida-pro-mcp` is available for the ida-pro slot"
-  }`,
-)

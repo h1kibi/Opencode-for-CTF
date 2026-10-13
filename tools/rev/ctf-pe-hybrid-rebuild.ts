@@ -79,7 +79,7 @@ export default tool({
       next_actions: [
         "Run ctf-rev-pe-recovery on the hybrid PE for .pdata/prologue function seeds and batched linear disassembly.",
         "Run ctf-memstr on the hybrid PE if runtime-only strings are still relevant.",
-        "Open the hybrid PE in IDA/ReVa/Ghidra; prefer it over the pure memory rebuild.",
+        "Open the hybrid PE with Ghidra or ReVa; prefer it over the pure memory rebuild.",
       ],
     }
 

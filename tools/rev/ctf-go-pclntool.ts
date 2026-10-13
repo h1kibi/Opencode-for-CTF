@@ -89,19 +89,8 @@ function parseGoNm(text: string): GoSymbol[] {
   return out
 }
 
-function emitRenameScript(symbols: GoSymbol[], maxRenames = 200, format: "ida" | "reva" | "ghidra" = "ida") {
+function emitRenameScript(symbols: GoSymbol[], maxRenames = 200, format: "reva" | "ghidra" = "reva") {
   const want = symbols.filter((s) => ["main", "user", "init"].includes(s.category)).slice(0, maxRenames)
-  if (format === "ida") {
-    const lines = ["# IDA Python: rename Go functions from go-pclntool", "import idc, idaapi", "for ea, name in ["]
-    for (const s of want) {
-      const sanitized = s.name.replace(/[^A-Za-z0-9_]/g, "_").slice(0, 220)
-      lines.push(`    (${s.addr}, "${sanitized}"),`)
-    }
-    lines.push("]:")
-    lines.push("    if ea and idc.set_name(ea, name, idc.SN_NOWARN | idc.SN_FORCE):")
-    lines.push("        print(f'renamed {ea:#x} -> {name}')")
-    return lines.join("\n") + "\n"
-  }
   if (format === "reva") {
     const lines = ["# ReVa MCP rename batch (jsonl)"]
     for (const s of want) {
@@ -109,7 +98,6 @@ function emitRenameScript(symbols: GoSymbol[], maxRenames = 200, format: "ida" |
     }
     return lines.join("\n") + "\n"
   }
-  // ghidra python
   const lines = [
     "# Ghidra Python: rename Go functions from go-pclntool",
     "from ghidra.program.model.symbol import SourceType",
@@ -121,7 +109,7 @@ function emitRenameScript(symbols: GoSymbol[], maxRenames = 200, format: "ida" |
     const sanitized = s.name.replace(/[^A-Za-z0-9_.]/g, "_").slice(0, 220)
     lines.push(`    ("${s.addr}", "${sanitized}"),`)
   }
-  lines.push("]:")
+  lines.push("]:" )
   lines.push("    addr = toAddr(addr_str)")
   lines.push("    fn = fm.getFunctionAt(addr)")
   lines.push("    if fn:")
@@ -130,9 +118,10 @@ function emitRenameScript(symbols: GoSymbol[], maxRenames = 200, format: "ida" |
   return lines.join("\n") + "\n"
 }
 
+
 export default tool({
   description:
-    "CTF Go pclntool: run go tool nm / go tool objdump (host or revlab docker) for Go-built ELFs, classify symbols (main/user/runtime/stdlib/type), and emit IDA/ReVa/Ghidra rename scripts to stabilize Go function name recovery beyond static pclntab parsing.",
+    "CTF Go pclntool: run go tool nm / go tool objdump (host or revlab docker) for Go-built ELFs, classify symbols (main/user/runtime/stdlib/type), and emit ReVa/Ghidra rename scripts to stabilize Go function name recovery beyond static pclntab parsing.",
   args: {
     target: tool.schema.string().describe("Workspace-relative Go-built binary path."),
     backend: tool.schema
@@ -151,7 +140,7 @@ export default tool({
       ),
     maxObjdumpFunctions: tool.schema.number().optional().describe("Max functions to objdump. Default 6."),
     maxObjdumpLines: tool.schema.number().optional().describe("Max disasm lines per function. Default 200."),
-    renameFormat: tool.schema.string().optional().describe("ida | reva | ghidra. Default ida."),
+    renameFormat: tool.schema.string().optional().describe("reva | ghidra. Default reva."),
     maxRenames: tool.schema.number().optional().describe("Max symbols in rename script. Default 200."),
     outDir: tool.schema
       .string()
@@ -174,11 +163,10 @@ export default tool({
     const objdumpFilters = objdumpFiltersRaw
       .split(",")
       .map((s) => s.trim())
-      .filter(Boolean)
+    const renameFormat = (["reva", "ghidra"].includes(args.renameFormat || "") ? args.renameFormat : "reva") as
+      "reva" | "ghidra"
     const maxObjdumpFunctions = Math.max(1, Math.min(20, args.maxObjdumpFunctions ?? 6))
     const maxObjdumpLines = Math.max(40, Math.min(2000, args.maxObjdumpLines ?? 200))
-    const renameFormat = (["ida", "reva", "ghidra"].includes(args.renameFormat || "") ? args.renameFormat : "ida") as
-      "ida" | "reva" | "ghidra"
     const maxRenames = Math.max(10, Math.min(2000, args.maxRenames ?? 200))
     const outDir = resolveInsideWorkspace(workspace, args.outDir || "work/rev-go-pclntool")
     const timeoutMs = Math.max(8000, Math.min(180000, args.timeoutMs ?? 30000))
@@ -315,7 +303,7 @@ export default tool({
     const renamePath = path.join(outDir, `rename_${renameFormat}.${renameFormat === "reva" ? "jsonl" : "py"}`)
     await writeFile(renamePath, renameScript, "utf8")
 
-    // Primary user-code function address list for IDA/ReVa pivots.
+    // Primary user-code function address list for ReVa/Ghidra pivots.
     const userPriority = symbols
       .filter((s) => ["main", "user", "init"].includes(s.category))
       .slice(0, 60)
@@ -345,7 +333,7 @@ export default tool({
       )
     else {
       payload.recommended_next.push(`apply rename script ${payload.rename_script_path} in your decompiler`)
-      payload.recommended_next.push("pivot to top user-code addresses in ReVa or ida-pro_decompile")
+      payload.recommended_next.push("pivot to top user-code addresses in ReVa or Ghidra")
     }
     if (objdumpResults.some((r) => r.ok))
       payload.recommended_next.push(

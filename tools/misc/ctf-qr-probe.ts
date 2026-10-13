@@ -1,7 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
 import { lstat } from "node:fs/promises"
 import { safeExec } from "../lib/exec-utils.ts"
-import { extractFlagCandidates } from "../lib/flag-utils.ts"
+import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
 import {
   directoryFromContext,
   resolveFromDirectoryInsideWorkspace,

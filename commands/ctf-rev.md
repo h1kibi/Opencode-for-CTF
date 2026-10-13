@@ -26,7 +26,7 @@ Rules:
 - ctf-rev-live-memory-dump, ctf-rev-unicorn-helper, and ctf-rev-unicorn-replay-builder require
   ev-heavy; they generate controlled helpers/replay skeletons and are not automatic executors.
 - For live dump targets, pass arguments through rgvJson as a JSON string array; never use eval or embed untrusted shell fragments.
-- For APKs, start with `ctf-android-analyze` when the android pack is enabled; reserve direct JADX/native/runtime tools for the selected route.
+- For APKs, start with `ctf-android-analyze` when the android pack is enabled; then use only the native/runtime tools the selected route actually needs.
 - Route by artifact family first: native checker, VM, packed/runtime-unpacked, Flutter, Android/JNI, WASM, Python bytecode, .NET, Go/Rust, crypto-like constants, or hardware-backed checker.
 - Extract validation logic into a reproducible solver.
 - Verify recovered input or flag against program behavior when possible.

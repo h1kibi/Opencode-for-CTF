@@ -21,7 +21,7 @@ const checks: Check[] = [
   },
   {
     file: "commands/ctf-expert.md",
-    needles: ["ctf-evidence-board", "ctf-team-dispatch", "ctf-mcp-control", "ctf-pattern-card-search"],
+    needles: ["ctf-evidence-board", "ctf-team-dispatch", "ctf-mcp-control", "ctf_rag"],
   },
   {
     file: "commands/help.md",
@@ -74,14 +74,6 @@ const checks: Check[] = [
   {
     file: "skills/ctf-pwn/references/pwn-runtime-trigger-matrix.md",
     needles: ["# PWN Runtime Trigger Matrix", "ctf-pwn-libc-runtime-doctor", "ctf-pwn-menu-contract-probe"],
-  },
-  {
-    file: "rag/knowledge/pwn/README.md",
-    needles: ["PWN Knowledge Index", "bundled-libc-first.md", "glibc-version-route-map.md", "exact-read-contracts.md"],
-  },
-  {
-    file: "rag/knowledge/pattern-cards/pwn-curated.cards.v1.json",
-    needles: ["pwn-runtime-bundled-libc-first", '"curated": true'],
   },
   {
     file: "templates/solve_pwn.py",

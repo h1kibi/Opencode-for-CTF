@@ -3,7 +3,6 @@ import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
 const root = process.cwd()
-const webRoot = join(root, "skills", "ctf-web")
 
 const read = (relative: string) => readFileSync(join(root, relative), "utf8")
 

@@ -257,7 +257,6 @@
     "ctf-terminal": "allow"
     "ctf-pwn": "allow"
     "ctf-decision-engine": "allow"
-    "ctf-skill-repo-knowledge": "allow"
     "ctf-experience-gate": "allow"
     "ctf-closure-gate": "allow"
     "ctf-ledger-discipline": "allow"
@@ -268,8 +267,6 @@
   "shodan_*": "allow"
   "puppeteer_*": "deny"
   "mysql_*": "deny"
-  "ida-pro_*": "deny"
-  "jadx_*": "deny"
   "frida_*": "deny"
   "ReVa_*": "deny"
   "vmprotect_*": "deny"
@@ -308,11 +305,6 @@
   "chrome_chrome_bookmark_add": "deny"
   "chrome_chrome_bookmark_delete": "deny"
   "ctf-decision-state": "allow"
-  "ctf-skill-repo-search": "allow"
-  "ctf-pattern-card-search": "allow"
-  "ctf-pattern-to-hypothesis": "allow"
-  "ctf-pattern-feedback": "allow"
-  "ctf-pattern-curation-report": "allow"
   "ctf-pwn-runner": "allow"
   "ctf-pwn-docker-harness": "allow"
   "ctf-pwn-docker-runner": "allow"
@@ -397,7 +389,7 @@ This agent is also the authoritative home for:
 Use the shared decision layer instead of restating it locally:
 
 - `ctf-common` owns action-only visible output, interruption hygiene, verified-flag rules, checkpoint shape, and same-family attempt limits.
-- `ctf-decision-engine` owns top-3 queue maintenance, pattern-card conversion, lesson modifiers, probe contracts, and `ctf-decision-state` usage.
+- `ctf-decision-engine` owns top-3 queue maintenance, retrieval-note conversion, retrieval modifiers, probe contracts, and `ctf-decision-state` usage.
 - `ctf-experience-gate` owns anti-drift behavior, constraint-equation pressure, semantic mismatch promotion, environment/proc budget caps, and resume discipline.
 
 Focused references for closure and runtime discipline:
@@ -717,7 +709,7 @@ REMOTE DRIFT DISCIPLINE:
 When local works but remote fails, check libc/ld mismatch, ASLR/PIE assumptions, forking behavior, buffering, timeout, prompt synchronization, newline/null handling, and environment differences. Do not brute-force remote variants without a changed hypothesis. When the branch is menu-driven or pacing-sensitive, prefer `ctf-pwn-expect-runner` over ad hoc send/recv loops so the prompt contract stays explicit. When the suspected blocker is fixed-length read, short payload, or local-pipe versus remote-socket framing drift, run `ctf-pwn-io-diff-check` before changing the exploit family.
 
 PWN PLAYBOOK ROUTER:
-After `ctf-pwn-analyze`, use `ctf-pwn-playbook-router` for non-trivial targets to convert the mitigation matrix and evidence into top-3 pwn strategy seeds. Pick at most one next route/probe unless using `ctf-decision-state` to rank the top-3. If a route stalls, use its `next_pattern_query` with `ctf-pattern-card-search category=pwn`; keep the query evidence-shaped (mitigations, primitive, allocator/libc/version, leak/write oracle, read contract), never challenge-title `writeup`/`flag`/`solution`.
+After `ctf-pwn-analyze`, use `ctf-pwn-playbook-router` for non-trivial targets to convert the mitigation matrix and evidence into top-3 pwn strategy seeds. Pick at most one next route/probe unless using `ctf-decision-state` to rank the top-3. If a route stalls, use its `next_pattern_query` with `ctf_rag`; keep the query evidence-shaped (mitigations, primitive, allocator/libc/version, leak/write oracle, read contract), never challenge-title `writeup`/`flag`/`solution`.
 If writable global/`.bss`/heap-state/parser-buffer evidence appears, run `ctf-pwn-adjacency-audit` before broad shell/ROP/file-write drift.
 For fast-lane simple routes, use `ctf-pwn-fast-skeleton-hints` to accelerate exploit-template-first execution as soon as the route family is known.
 If a route now depends on repeated experiment packets rather than fresh route debate, append to `ctf-pwn-experiment-ledger` before another prose-heavy state refresh.

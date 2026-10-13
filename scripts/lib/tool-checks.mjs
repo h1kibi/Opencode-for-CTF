@@ -107,21 +107,6 @@ export const TOOL_CHECKS = [
     ]),
   },
   { group: "rev", name: "file", command: "file", args: ["--version"] },
-  {
-    group: "rev",
-    name: "jadx",
-    command: "jadx",
-    args: ["--version"],
-    note: "Java/Kotlin decompiler",
-    localWindows: defined([localCommand(winTool("Jadx", "jadx.exe"), ["--version"])]),
-  },
-  {
-    group: "rev",
-    name: "ida-pro-local",
-    command: "__opencode_ctf_ida_path_only__",
-    args: ["--version"],
-    localWindows: defined([localPath(winTool("IDA Professional 9.2", "ida.exe"))]),
-  },
   { group: "forensics", name: "tshark", command: "tshark", args: ["--version"] },
   {
     group: "forensics",
@@ -130,7 +115,6 @@ export const TOOL_CHECKS = [
     args: ["-ver"],
     localWindows: defined([localCommand(winTool("exiftool", "exiftool.exe"), ["-ver"])]),
   },
-  { group: "forensics", name: "ida-pro-mcp", command: "ida-pro-mcp", args: ["--help"] },
   { group: "crypto", name: "openssl", command: "openssl", args: ["version"] },
   { group: "crypto", name: "sage", command: "sage", args: ["--version"] },
   {
@@ -140,7 +124,7 @@ export const TOOL_CHECKS = [
     args: ["--version"],
     localWindows: defined([localCommand(winTool("hashcat-7.1.2", "hashcat.exe"), ["--version"])]),
   },
-  // REV toolchain (beyond file/gdb/jadx/ida-pro-mcp above)
+  // REV toolchain (beyond file/gdb above)
   { group: "rev", name: "strings", command: "strings", args: ["--version"] },
   { group: "rev", name: "objdump", command: "objdump", args: ["--version"] },
   { group: "rev", name: "readelf", command: "readelf", args: ["--version"] },
@@ -151,7 +135,6 @@ export const TOOL_CHECKS = [
   { group: "rev", name: "ghidraRun", command: "ghidraRun", args: [] },
   { group: "rev", name: "analyzeHeadless", command: "analyzeHeadless", args: ["-h"], okWhen: /Headless Analyzer Usage/i },
   { group: "rev", name: "mcp-reva", command: "mcp-reva", args: ["--version"] },
-  { group: "rev", name: "idalib-mcp", command: "idalib-mcp", args: ["--help"] },
   // Android REV toolchain
   {
     group: "android",
@@ -159,7 +142,7 @@ export const TOOL_CHECKS = [
     command: "java",
     args: ["-version"],
     required: true,
-    note: "required by jadx/apktool/baksmali",
+    note: "required by apktool/baksmali",
   },
   {
     group: "android",
@@ -341,14 +324,12 @@ export function runToolChecks(checks = TOOL_CHECKS) {
  * Tries PATH first, then Windows local fallbacks; `okWhen` lets a check pass
  * on a usage-style preview even when the command exits non-zero.
  */
-export function runToolChecksDetailed(checks = TOOL_CHECKS, opts = {}) {
-  const env = { ...process.env, ...(opts.env ?? {}) }
+export function runToolChecksDetailed(checks = TOOL_CHECKS) {
   const spawn = (command, args, shell) =>
     spawnSync(command, args ?? [], {
       shell: shell ?? process.platform === "win32",
       encoding: "utf8",
       timeout: 7000,
-      env,
     })
   return checks.map((check) => {
     const previewOf = (res) => `${res.stdout || ""}${res.stderr || ""}`.split(/\r?\n/).slice(0, 2).join(" | ").trim()

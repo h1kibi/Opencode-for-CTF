@@ -12,7 +12,6 @@
 
 import { teamStateFile } from "./paths.ts"
 import { atomicUpdateJsonFile, loadJsonFile, nowIso } from "./state-store.ts"
-import { withFileLock } from "./file-lock.ts"
 import type { TeamMember, TeamMessage, TeamState, TeamTask, TeamTaskStatus } from "./types.ts"
 import type { OpencodeClient } from "@opencode-ai/sdk"
 import { randomUUID } from "node:crypto"
@@ -188,19 +187,13 @@ export async function createMemberTask(args: {
 
   // Build explicit tool-enablement map for plugin tools.
   // The host may only inject built-in tools into subagent sessions by default;
-  // plugin tools (ctf-*, archive-*, seckb_*, cvekb_*, anysearch_*) need to be
+  // plugin tools (ctf-*, archive-*, anysearch_*, ctf_rag*) need to be
   // explicitly listed as `true` in the `tools` parameter.
   const childTools: Record<string, boolean> = {}
   const exported = args.runtimeVisibility?.exportedToolNames
   if (exported && exported.length > 0) {
     for (const name of exported) {
-      if (
-        name.startsWith("ctf-") ||
-        name.startsWith("archive-") ||
-        name.startsWith("seckb_") ||
-        name.startsWith("cvekb_") ||
-        name.startsWith("anysearch_")
-      ) {
+      if (name.startsWith("ctf-") || name.startsWith("archive-") || name.startsWith("anysearch_") || name.startsWith("ctf_rag")) {
         childTools[name] = true
       }
     }

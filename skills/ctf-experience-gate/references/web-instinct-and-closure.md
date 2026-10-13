@@ -59,7 +59,7 @@ Do not let generic black-box methodology override strong challenge-provided clue
 Hard rules:
 
 - Before broad mechanism hunting, write a Clue Ledger: exact clue string, where it appears, possible role, implied structure, controlled inputs it relates to, and cheapest confirmation oracle.
-- Exhaust a small, bounded clue-first budget before generic branches: usually 3-6 targeted variants, or 1-2 pattern-card/hypothesis conversions if the clue maps to a known family.
+- Exhaust a small, bounded clue-first budget before generic branches: usually 3-6 targeted variants, or 1-2 `ctf_rag`-backed hypothesis conversions if the clue maps to a known family.
 - For credential-shaped clues, do not stop after the literal value fails. Interpret masks and repetition as structure hints: prefix/suffix, fixed padding, username-derived password, leetspeak/date/common suffix, hidden length, wildcard/star placeholders, or normalization/case hints.
 - A strong visible clue outranks generic black-box differentials unless clue-first probes are falsified or the clue is confirmed decoy/noise.
 - After clue-first budget fails, explicitly record why the clue is exhausted before moving to login differential, source extension probing, content-type confusion, or unrelated route discovery.
@@ -72,10 +72,10 @@ Hard rules:
 
 - Sink-first closure: once a sink/gadget is known, write a Primitive Ledger before looking for new routes/parameters: controlled data, controlled path/name, transform/prefix/suffix, trigger, execution context, oracle, and blockers.
 - Composition before discovery: do not search for hidden routes, extra parameters, more protocols, or internal enumeration until the top two chain-closure probes for the existing primitive have failed or been falsified.
-- Pattern recall by sink: immediately query local pattern cards using the concrete sink/function/class/protocol names, not only the broad bug family. Examples: `file_put_contents php filter write base64 prefix`, `file_get_contents include data scheme parser mismatch`, `__toString hasaki file_put_contents php unserialize`.
+- Pattern recall by sink: immediately query `ctf_rag` using the concrete sink/function/class/protocol names, not only the broad bug family. Examples: `file_put_contents php filter write base64 prefix`, `file_get_contents include data scheme parser mismatch`, `__toString hasaki file_put_contents php unserialize`.
 - Chain shape thinking: convert primitive -> required capability -> adapter pattern. Examples: file write -> executable write via wrapper/filter; precheck read + include sink -> parser differential; SSRF source read -> source-guided gadget closure; upload write -> include/render/static serve; deserialization gadget -> sink adapter.
 - New-surface budget: after a strong primitive is found, at most one cheap new-surface check is allowed before chain closure. More discovery requires evidence that the primitive is unreachable, untriggerable, or non-composable.
-- If a known sink maps to a curated pattern card, the next step must be `ctf-pattern-to-hypothesis` or a one-variable probe from that card.
+- If a known sink maps to a retrieved technique note, the next step must be a one-variable probe derived from it.
 
 ## PHP Chain-Closure Patterns
 

@@ -1,6 +1,6 @@
 # CTF Fast Handoff
 
-Use this when `ctf-fast` stops and needs an expert continuation package.
+Use this when a `ctf-fast` session stops and its state should be packaged as a restart/state package for a later `ctf-fast` session. It is not an expert continuation package.
 
 ## FAST_HANDOFF
 - Target:

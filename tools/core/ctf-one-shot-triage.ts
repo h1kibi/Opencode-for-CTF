@@ -6,7 +6,7 @@ import {
   resolveFromDirectoryInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-import { DEFAULT_FLAG_REGEX } from "../lib/flag-utils.ts"
+import { DEFAULT_FLAG_REGEX } from "../../packages/ctf-core/src/flag-rules.ts"
 
 const SAMPLE_BYTES = 192 * 1024
 const FULL_TEXT_BYTES = 768 * 1024

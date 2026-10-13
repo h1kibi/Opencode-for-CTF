@@ -12,15 +12,17 @@ const FAST_BUDGET_WARNING_WINDOW_MS = 60_000
 export type FastBudgetPolicy = {
   enabled: boolean
   soft_minutes: number
-  escalate_on_expiry: boolean
 }
 
+/**
+ * Fast-lane soft-budget outcome. Expiry only asks the lane to self-review:
+ * `ctf-fast` and `ctf-expert` are independent lanes and never auto-switch.
+ */
 export type FastBudgetEvaluation = {
-  shouldEscalate: boolean
   shouldPromptReview: boolean
-  status: "active" | "review" | "escalated" | "blocked"
+  status: "active" | "review" | "blocked"
   reason?: string
-  handoffSummary?: string
+  reviewSummary?: string
 }
 
 function defaultState(sessionID: string, directory: string): ContinuationState {
@@ -159,7 +161,14 @@ export async function noteContinuationSessionStatus(
   return state
 }
 
-export function summarizeTodos(todos: Todo[]) {
+export type TodoSummary = {
+  total: number
+  pending: number
+  inProgress: number
+  highOpen: number
+}
+
+export function summarizeTodos(todos: Todo[]): TodoSummary {
   const pending = todos.filter((todo) => todo.status === "pending")
   const inProgress = todos.filter((todo) => todo.status === "in_progress")
   const high = todos.filter(
@@ -173,18 +182,15 @@ export function summarizeTodos(todos: Todo[]) {
   }
 }
 
-export function buildFastBudgetHandoff(
-  state: ContinuationState,
-  summary: ReturnType<typeof summarizeTodos>,
-  reason?: string,
-) {
+export function buildFastBudgetReview(state: ContinuationState, summary: TodoSummary, reason?: string) {
   const confirmedFacts: string[] = []
   const blockedPaths: string[] = []
   const topHypotheses: string[] = []
-  const nextProbe =
+  const expired =
     reason === "soft_budget_expired_no_promising_progress" || reason === "soft_budget_expired_review_required"
-      ? "Switch to ctf-expert and continue from the saved evidence packet"
-      : "Run the best remaining one-variable probe before the 15-minute budget expires"
+  const nextProbe = expired
+    ? "Keep going on the ctf-fast lane with the best remaining one-variable probe, or save this state and stop"
+    : "Run the best remaining one-variable probe before the soft budget expires"
 
   if (state.lastTodoSummary) confirmedFacts.push(`todo_summary: ${state.lastTodoSummary}`)
   confirmedFacts.push(`last_session_status: ${state.lastSessionStatus ?? "unknown"}`)
@@ -196,10 +202,14 @@ export function buildFastBudgetHandoff(
   if (state.fastBudgetSummary) confirmedFacts.push(`budget_summary: ${state.fastBudgetSummary}`)
   if (summary.inProgress === 0 && summary.highOpen === 0)
     blockedPaths.push("fast-lane stalled / no active high-signal branch")
-  topHypotheses.push(state.lastAgent === "ctf-fast" ? "fast lane exhausted; expert lane should continue" : "unknown")
+  topHypotheses.push(
+    state.lastAgent === "ctf-fast"
+      ? "fast lane stalled; the user decides whether to keep this lane or start the expert lane"
+      : "unknown",
+  )
 
   return [
-    "## CTF Fast Handoff Block",
+    "## CTF Fast Budget Review",
     "Target:",
     `- ${state.directory}`,
     "Flag format:",
@@ -218,8 +228,8 @@ export function buildFastBudgetHandoff(
     "- see session.todo and the latest evidence packet",
     "Next probe:",
     `- ${nextProbe}`,
-    "Escalation:",
-    "- ESCALATE: ctf-expert",
+    "Mode:",
+    "- ctf-fast (independent lane; never switches automatically)",
     "Candidate flag:",
     "- unknown",
     "Files:",
@@ -231,56 +241,41 @@ export function buildFastBudgetHandoff(
 
 export function evaluateFastBudget(
   state: ContinuationState,
-  summary: ReturnType<typeof summarizeTodos>,
+  summary: TodoSummary,
   policy?: FastBudgetPolicy,
 ): FastBudgetEvaluation {
-  if (!policy?.enabled) return { shouldEscalate: false, shouldPromptReview: false, status: "active" }
-  if (state.mode !== "ctf") return { shouldEscalate: false, shouldPromptReview: false, status: "active" }
-  if (state.lastAgent !== "ctf-fast") return { shouldEscalate: false, shouldPromptReview: false, status: "active" }
-  if (state.pausedByUser)
-    return { shouldEscalate: false, shouldPromptReview: false, status: "blocked", reason: "paused_by_user" }
+  if (!policy?.enabled) return { shouldPromptReview: false, status: "active" }
+  if (state.mode !== "ctf") return { shouldPromptReview: false, status: "active" }
+  if (state.lastAgent !== "ctf-fast") return { shouldPromptReview: false, status: "active" }
+  if (state.pausedByUser) return { shouldPromptReview: false, status: "blocked", reason: "paused_by_user" }
   if (isFutureIso(state.suppressUntil)) {
     return {
-      shouldEscalate: false,
       shouldPromptReview: false,
       status: "blocked",
       reason: state.lastFailureReason ? "prompt_failure_backoff" : "cooldown",
     }
   }
-  if (!state.fastBudgetDeadlineAt) return { shouldEscalate: false, shouldPromptReview: false, status: "active" }
+  if (!state.fastBudgetDeadlineAt) return { shouldPromptReview: false, status: "active" }
   const deadline = Date.parse(state.fastBudgetDeadlineAt)
-  if (Number.isNaN(deadline)) return { shouldEscalate: false, shouldPromptReview: false, status: "active" }
+  if (Number.isNaN(deadline)) return { shouldPromptReview: false, status: "active" }
   const remaining = deadline - Date.now()
   const stalled = summary.inProgress === 0 && summary.highOpen === 0
   if (remaining <= 0) {
-    const shouldEscalate = policy.escalate_on_expiry === true
-    const handoffSummary = buildFastBudgetHandoff(
-      state,
-      summary,
-      stalled ? "soft_budget_expired_no_promising_progress" : "soft_budget_expired_review_required",
-    )
-    return {
-      shouldEscalate,
-      shouldPromptReview: !shouldEscalate,
-      status: shouldEscalate ? "escalated" : "review",
-      reason: stalled ? "soft_budget_expired_no_promising_progress" : "soft_budget_expired_review_required",
-      handoffSummary,
-    }
+    const reason = stalled ? "soft_budget_expired_no_promising_progress" : "soft_budget_expired_review_required"
+    if (state.fastBudgetStatus === "review") return { shouldPromptReview: false, status: "review", reason }
+    return { shouldPromptReview: true, status: "review", reason, reviewSummary: buildFastBudgetReview(state, summary, reason) }
   }
   if (remaining <= FAST_BUDGET_WARNING_WINDOW_MS) {
-    if (state.fastBudgetStatus === "review") {
-      return { shouldEscalate: false, shouldPromptReview: false, status: "review" }
-    }
+    if (state.fastBudgetStatus === "review") return { shouldPromptReview: false, status: "review" }
     const reason = stalled ? "soft_budget_near_expiry_stalled" : "soft_budget_near_expiry_review"
     return {
-      shouldEscalate: false,
       shouldPromptReview: true,
       status: "review",
       reason,
-      handoffSummary: buildFastBudgetHandoff(state, summary, reason),
+      reviewSummary: buildFastBudgetReview(state, summary, reason),
     }
   }
-  return { shouldEscalate: false, shouldPromptReview: false, status: "active" }
+  return { shouldPromptReview: false, status: "active" }
 }
 
 export async function applyFastBudgetAction(args: {
@@ -289,16 +284,17 @@ export async function applyFastBudgetAction(args: {
   sessionID: string
   directory: string
   policy?: FastBudgetPolicy
-  summary?: ReturnType<typeof summarizeTodos>
+  summary?: TodoSummary
 }) {
   const state = await loadContinuationState(args.worktree, args.sessionID, args.directory)
   const suppression = fastBudgetSuppressionReason(state)
   if (suppression) {
     await saveContinuationState(args.worktree, state)
+    const blockedBudget: FastBudgetEvaluation = { shouldPromptReview: false, status: "blocked", reason: suppression }
     return {
       prompted: false,
       summary: args.summary ?? summarizeTodos([]),
-      budget: { shouldEscalate: false, shouldPromptReview: false, status: "blocked", reason: suppression },
+      budget: blockedBudget,
     }
   }
   const summary =
@@ -309,33 +305,26 @@ export async function applyFastBudgetAction(args: {
     )
   state.lastTodoSummary = `pending=${summary.pending},in_progress=${summary.inProgress},high_open=${summary.highOpen}`
   const budget = evaluateFastBudget(state, summary, args.policy)
-  if (!budget.shouldEscalate && !budget.shouldPromptReview) {
+  if (!budget.shouldPromptReview) {
     await saveContinuationState(args.worktree, state)
     return { prompted: false, summary, budget }
   }
 
-  const prompt = budget.shouldEscalate
-    ? [
-        "ESCALATE: ctf-expert",
-        "",
-        "ctf-fast soft budget expired. Switch to ctf-expert now, resume from the saved handoff below, and do not restart broad recon.",
-        "",
-        budget.handoffSummary ?? buildFastBudgetHandoff(state, summary, budget.reason),
-      ].join("\n")
-    : [
-        "CTF fast-budget review required.",
-        "",
-        "Judge whether the current fast lane is clearly closing on a flag. If not, save state and escalate to ctf-expert.",
-        "",
-        budget.handoffSummary ?? buildFastBudgetHandoff(state, summary, budget.reason),
-      ].join("\n")
+  const prompt = [
+    "CTF fast-budget review required.",
+    "",
+    "Judge whether the current ctf-fast lane is still closing on a flag. If it is, continue on this lane. If it is not, save state and stop with the blocker, strongest evidence, and best next direction.",
+    "The ctf-fast and ctf-expert lanes are independent: never switch lanes automatically. The user decides whether to start the expert lane (/ctf-expert or /resume).",
+    "",
+    budget.reviewSummary ?? buildFastBudgetReview(state, summary, budget.reason),
+  ].join("\n")
 
   try {
     await args.client.session.promptAsync({
       path: { id: args.sessionID },
       query: { directory: args.directory },
       body: {
-        agent: budget.shouldEscalate ? "ctf-expert" : state.lastAgent,
+        agent: state.lastAgent,
         parts: [
           {
             type: "text",
@@ -359,8 +348,7 @@ export async function applyFastBudgetAction(args: {
   }
 
   state.fastBudgetStatus = budget.status
-  state.fastBudgetSummary = budget.handoffSummary ?? budget.reason
-  if (budget.shouldEscalate) state.fastBudgetDeadlineAt = undefined
+  state.fastBudgetSummary = budget.reviewSummary ?? budget.reason
   if (budget.status === "review") state.fastBudgetReviewSentAt = nowIso()
   state.lastFailureAt = undefined
   state.lastFailureReason = undefined
@@ -369,12 +357,12 @@ export async function applyFastBudgetAction(args: {
 }
 
 /** @visibleForTesting */
-export function buildNudgeKey(summary: ReturnType<typeof summarizeTodos>, state: ContinuationState) {
+export function buildNudgeKey(summary: TodoSummary, state: ContinuationState) {
   return [state.lastMessageID ?? "nomsg", summary.pending, summary.inProgress, summary.highOpen].join("|")
 }
 
 /** @visibleForTesting */
-export function needsContinuationPrompt(summary: ReturnType<typeof summarizeTodos>, state: ContinuationState) {
+export function needsContinuationPrompt(summary: TodoSummary, state: ContinuationState) {
   if (!state.enabled) return false
   if (state.mode !== "ctf") return false
   if (state.lastAgent !== CONTINUATION_AGENT) return false

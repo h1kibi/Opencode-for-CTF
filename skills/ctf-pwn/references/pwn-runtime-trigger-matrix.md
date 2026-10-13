@@ -21,7 +21,7 @@ Use this reference to decide which runtime helper or probe should run before mor
 
 - Helper choice is routing pressure, not proof.
 - If a helper identifies a blocking uncertainty, fix that uncertainty before spending more same-family exploit attempts.
-- If two helper-guided probes still produce no new oracle, escalate from fast mode or pivot to a genuinely different family.
+- If two helper-guided probes still produce no new oracle, stop and report the blocker; pivot to a genuinely different family or let the user decide to start the expert lane.
 
 ## Related References
 

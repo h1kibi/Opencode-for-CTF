@@ -131,51 +131,53 @@ export const MCP_SERVER_REGISTRY: McpServerMeta[] = [
     envRequired: ["CYBERCHEF_MCP_COMMAND"],
   },
   {
-    id: "seckb",
-    description: "Local security knowledge base — curated CTF technique database.",
+    /**
+     * RAG-Agent's `ctf_rag` stdio server: read-only retrieval over a local
+     * cybersecurity corpus (CTF writeups, CVE/technique notes) backed by a faiss
+     * index plus a local Ollama embedding model.
+     *
+     * Portability: the server is a Python module inside the RAG-Agent checkout,
+     * and an MCP client cannot pass a working directory, so `PYTHONPATH` takes
+     * the place of `cwd`. The id is `ctf_rag` (underscore) because MCP tools are
+     * namespaced as `<serverId>_<toolName>`; the exposed tool is also `ctf_rag`,
+     * so the fast-lane prefix rule in tool-packs.ts stays stable.
+     */
+    id: "ctf_rag",
+    description:
+      "Local cybersec RAG index (RAG-Agent ctf_rag) — cited evidence retrieval over CTF writeups, CVE and technique corpora.",
     weight: "medium",
     group: "knowledge",
     categories: ["web", "pwn", "rev", "crypto", "forensics", "misc"],
     config: {
       type: "local",
-      command: ["{env:SECKB_PYTHON}", "{env:SECKB_MCP_SERVER}"],
+      command: ["{env:CTF_RAG_PYTHON}", "-m", "rag_service.mcp_server"],
       environment: {
-        SECKB_ROOT: "{env:SECKB_ROOT}",
-        SECKB_CONFIG: "{env:SECKB_CONFIG}",
+        PYTHONPATH: "{env:CTF_RAG_ROOT}",
         PYTHONUTF8: "1",
         PYTHONIOENCODING: "utf-8",
+        RAG_KB_ROOT: "{env:CTF_RAG_KB_ROOT}",
+        // Literals, not placeholders: an unset placeholder expands to "" and
+        // would silently point the service at the wrong corpus/model.
+        RAG_ALLOWED_KNOWLEDGE_BASES: "cybersec",
+        RAG_DEFAULT_KNOWLEDGE_BASE: "cybersec",
+        RAG_EMBEDDING_MODEL: "bge-m3",
+        RAG_OLLAMA_BASE_URL: "http://127.0.0.1:11434",
+        // A dead embedding provider must degrade to lexical-only retrieval with
+        // an explicit DEGRADED banner instead of failing the query.
+        RAG_LEXICAL_FALLBACK: "1",
+        RAG_DEFAULT_SCORE_THRESHOLD: "0.45",
+        RAG_LEXICAL_WEIGHT: "0.35",
+        RAG_SNIPPET_CHARS: "800",
       },
+      // Cold start loads the faiss index before the first query.
+      timeout: 120_000,
     },
-    envRequired: ["SECKB_PYTHON", "SECKB_MCP_SERVER", "SECKB_ROOT"],
+    envRequired: ["CTF_RAG_PYTHON", "CTF_RAG_ROOT", "CTF_RAG_KB_ROOT"],
   },
 
   // ====================================================================
   // HEAVY — Resource-intensive or niche tools (request required)
   // ====================================================================
-  {
-    id: "ida-pro",
-    description: "IDA Pro / mrexodia ida-pro-mcp backend - advanced static analysis, decompilation, script execution.",
-    weight: "heavy",
-    group: "analysis",
-    categories: ["rev", "pwn"],
-    config: {
-      type: "local",
-      command: ["ida-pro-mcp"],
-    },
-  },
-  {
-    id: "jadx-mcp",
-    description: "JADX MCP backend - Android APK/DEX decompilation, class lookup, and targeted source slicing.",
-    weight: "heavy",
-    group: "analysis",
-    categories: ["rev", "misc"],
-    config: {
-      type: "local",
-      command: ["{env:JADX_MCP_COMMAND}"],
-      environment: { JADX_HOME: "{env:JADX_HOME}" },
-    },
-    envRequired: ["JADX_MCP_COMMAND"],
-  },
   {
     id: "gdb-mcp",
     description: "GDB MCP backend - debugger automation for pwn/rev, breakpoints, memory/register inspection.",
@@ -250,23 +252,6 @@ export const MCP_SERVER_REGISTRY: McpServerMeta[] = [
     },
     envRequired: ["FLUTTER_AOT_MCP_SERVER"],
     timeout: 3_600_000,
-  },
-  {
-    id: "cvekb",
-    description: "Local CVE knowledge base — query CVE entries and exploit intelligence.",
-    weight: "heavy",
-    group: "knowledge",
-    categories: ["web", "pwn", "rev", "crypto", "forensics", "misc"],
-    config: {
-      type: "local",
-      command: ["{env:SECKB_PYTHON}", "{env:CVEKB_MCP_SERVER}"],
-      environment: {
-        CVEKB_ROOT: "{env:CVEKB_ROOT}",
-        PYTHONUTF8: "1",
-        PYTHONIOENCODING: "utf-8",
-      },
-    },
-    envRequired: ["SECKB_PYTHON", "CVEKB_MCP_SERVER", "CVEKB_ROOT"],
   },
   {
     id: "ctfd-mcp",

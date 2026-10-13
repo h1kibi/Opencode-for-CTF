@@ -1,6 +1,6 @@
 ﻿import { tool } from "@opencode-ai/plugin"
 import { fetchWithTimeout, normalizeUrl, parseHeadersJson, readTextCapped, unique } from "../lib/web-http.ts"
-import { extractFlagCandidates, FLAG_REGEX_ONCE } from "../lib/flag-utils.ts"
+import { extractFlagCandidates, FLAG_REGEX_ONCE } from "../../packages/ctf-core/src/flag-rules.ts"
 
 function safeMode(mode?: string) {
   const m = (mode || "light").trim().toLowerCase()

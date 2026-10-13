@@ -6,7 +6,7 @@ Use when APK reversing involves Java/Kotlin entrypoints, JNI/native libraries, r
 
 - APK with `lib/*.so`, `System.loadLibrary`, `JNI_OnLoad`, `RegisterNatives`, reflection, encrypted assets.
 - Java validation calls native method or native code calls back into Java.
-- Static JADX output shows target method but runtime values are hidden.
+- Static Java/Kotlin decompilation shows the target method but runtime values are hidden.
 
 ## First Safe Checks
 

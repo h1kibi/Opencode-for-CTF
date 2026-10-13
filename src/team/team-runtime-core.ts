@@ -1,9 +1,11 @@
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import { randomUUID } from "node:crypto"
+import { appendCaseEvent } from "../case-state.ts"
 import { activateAgentDefaults } from "../dynamic-mcp-manager.ts"
 import { listPendingRequests } from "../dynamic-mcp-manager.ts"
 import { getSessionSurface } from "../session-surface.ts"
 import { canTransitionTeamJob, deriveTeamRunStatus, transitionTeamJob } from "../team-reducer.ts"
+import { readCurrentEvidenceSlug } from "../../scripts/evidence-helper.ts"
 import {
   findJobBySession,
   findRun,
@@ -17,12 +19,14 @@ import {
   updateTeamState,
 } from "./team-state.ts"
 import { renderRun, summarizeTeamState } from "./team-render.ts"
+import { parseWorkerPackets } from "./team-worker-packet.ts"
 import { cancelRunsForDeletedParent } from "./parent-session-guard.ts"
+import { findWorkerContext } from "../worker-policy.ts"
 import { hasOpenTeamWorker, probeSessionPresence } from "./session-liveness.ts"
 import {
   buildRunId,
   DEFAULT_JOB_TIMEOUT_MINUTES,
-  DEFAULT_MAX_JOBS,
+  MAX_FACTS_PER_RUN,
   MAX_JOB_RESULT,
   resolveMaxJobAttempts,
   TEAM_AGENT,
@@ -38,7 +42,10 @@ import {
   type TeamJobErrorType,
   type TeamModel,
   type TeamParentAdoption,
+  type TeamEvent,
+  type TeamEventType,
   type TeamJob,
+  type TeamIntent,
   type TeamRun,
   type TeamRouteId,
 } from "./team-types.ts"
@@ -181,7 +188,7 @@ function buildTeamJobError(
     message,
     phase: opts.phase,
     agent: job.orphaned?.originalAgent ?? job.originalAgent ?? job.agent,
-    parentSessionID: run.parentSessionID,
+    parentSessionID: run.parentSessionID ?? "",
     ...(job.sessionID ? { childSessionID: job.sessionID } : {}),
     jobID: job.id,
     retryable: errorType === "provider_policy" || errorType === "parent_model" ? false : (opts.retryable ?? false),
@@ -216,32 +223,30 @@ function buildChildSessionTools(
   exportedNames: string[] | undefined,
   overrides: Record<string, boolean> = {},
 ): Record<string, boolean> {
-  const tools: Record<string, boolean> = {
-    // promptAsync.tools is a replacement map on current OpenCode hosts; keep
-    // the worker's read-only substrate available alongside plugin tools.
-    read: true,
-    glob: true,
-    grep: true,
-    bash: true,
-    skill: true,
+  const readOnlyCore = new Set(["read", "glob", "grep", "skill"])
+  const readOnlyCtf = new Set([
+    "ctf-binary-probe",
+    "ctf-crypto-analyze",
+    "ctf-elf-slice",
+    "ctf-memstr",
+    "ctf-rev-pe-slice",
+    "ctf-web-analyze",
+    "ctf-web-blackbox-map",
+    "ctf-web-fingerprint",
+  ])
+  const tools: Record<string, boolean> = {}
+  for (const name of exportedNames ?? []) {
+    if (readOnlyCore.has(name) || readOnlyCtf.has(name)) tools[name] = true
   }
-  if (exportedNames && exportedNames.length > 0) {
-    for (const name of exportedNames) {
-      if (
-        name.startsWith("ctf-") ||
-        name.startsWith("archive-") ||
-        name.startsWith("seckb_") ||
-        name.startsWith("cvekb_") ||
-        name.startsWith("anysearch_")
-      ) {
-        tools[name] = true
-      }
-    }
+  for (const name of readOnlyCore) tools[name] = true
+  // Only the generated worker self-claim endpoint may be explicitly enabled;
+  // every other override is a deny-only fence. This prevents a future caller
+  // from re-exposing a filesystem writer through a prompt-local override.
+  if (overrides["ctf-team-claim"] === true) tools["ctf-team-claim"] = true
+  for (const [name, enabled] of Object.entries(overrides)) {
+    if (!enabled) tools[name] = false
   }
-  if (Object.keys(tools).length === 0 && Object.keys(overrides).length > 0) {
-    return { ...overrides }
-  }
-  return Object.assign(tools, overrides)
+  return tools
 }
 
 function workerPrompt(
@@ -275,42 +280,141 @@ function workerPrompt(
     "unless the assignment explicitly requires an isolated artifact.",
     "Use low-risk local analysis first and obey the challenge risk budget.",
     "If actual visible tools/skills differ materially from the expected runtime surface above, report that mismatch explicitly in FINDINGS before continuing.",
-    "Finish with this concise structure:",
-    "STATUS: completed | blocked | failed",
     "ROUTE: " + job.routeId,
+    "INTENT: " + (job.intentId ?? "none"),
     "FINDINGS: evidence-backed observations",
     "PRIMITIVES: confirmed capabilities only",
     "ARTIFACTS: paths or reproducible snippets",
     "NEXT: best follow-up action",
+    "For each evidence-backed observation, also emit one fenced JSON packet using protocol ctf.team.worker.v1 with type fact, routeId, statement, kind, confidence (observed|probable|speculative), and non-empty evidence [{type,value}]. Never claim confidence=confirmed; the Expert must review facts.",
+    "When the assignment is complete, emit a fenced JSON packet with protocol ctf.team.worker.v1, type intent_result, status, summary, factIds, and artifacts.",
   ]
     .filter(Boolean)
     .join("\n")
 }
-
 function extractResult(
   messages: Array<{
-    info: { role: string; error?: unknown }
+    info: { role: string; error?: unknown; id?: string; messageID?: string }
     parts: Array<{ type: string; text?: string }>
   }>,
 ) {
-  const assistant = [...messages].reverse().find((m) => m.info.role === "assistant")
-  if (!assistant) return { result: "Worker reached idle without an assistant result." }
-  if (assistant.info.error) return { error: assistant.info.error }
+  const validAssistants = messages.filter((message) => message.info.role === "assistant" && !message.info.error)
+  const assistant = [...validAssistants].reverse()[0]
+  if (!assistant) {
+    const failed = [...messages].reverse().find((message) => message.info.role === "assistant" && message.info.error)
+    return { result: "", error: failed?.info.error ?? "Worker reached idle without an assistant result.", packets: [], lastMessageID: undefined }
+  }
   const text = assistant.parts
     .filter((p) => p.type === "text" && typeof p.text === "string")
     .map((p) => p.text)
     .join("\n")
     .trim()
-  return { result: (text || "Worker completed without a textual result.").slice(0, MAX_JOB_RESULT) }
+  const result = (text || "Worker completed without a textual result.").slice(0, MAX_JOB_RESULT)
+  const packetText = validAssistants
+    .flatMap((message) => message.parts)
+    .filter((part) => part.type === "text" && typeof part.text === "string")
+    .map((part) => part.text as string)
+    .join("\n")
+  const packets = parseWorkerPackets(packetText || text)
+  const lastResult = [...packets].reverse().find((packet) => packet.type === "intent_result")
+  const lastMessage = [...validAssistants].reverse().find((message) => message.info.id || message.info.messageID || message.parts.length > 0)
+  const lastMessageID = lastMessage ? messageCursor(lastMessage) : undefined
+  return {
+    result,
+    error: undefined,
+    packets: lastResult ? [...packets.filter((packet) => packet.type !== "intent_result"), lastResult] : packets,
+    lastMessageID,
+  }
+}
+function messageCursor(message: { info: { id?: string; messageID?: string }; parts: Array<{ type: string; text?: string }> }): string {
+  const stable = message.info.id ?? message.info.messageID
+  if (stable) return stable
+  const text = message.parts.filter((part) => part.type === "text" && typeof part.text === "string").map((part) => part.text).join("\n")
+  let hash = 2166136261
+  for (const char of text.slice(0, 4_000)) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619)
+  return `digest-${(hash >>> 0).toString(16)}`
+}
+function normalizeCapabilityToken(value: string): string {
+  return value.trim().toLowerCase().replace(/^ctf-/, "").replace(/-fast$/, "")
 }
 
-function refreshRunStatus(_state: any, run: TeamRun) {
+function isActiveJobStatus(status: TeamJob["status"]): boolean {
+  return status === "queued" || status === "starting" || status === "running" || status === "retrying"
+}
+
+function claimEligibleForAgent(intent: TeamIntent, agent: TeamAgent): boolean {
+  const required = (intent.requiredCapabilities ?? []).map(normalizeCapabilityToken).filter(Boolean)
+  if (required.length === 0) return true
+  const family = normalizeCapabilityToken(agent)
+  const tokens = new Set([family, normalizeCapabilityToken(intent.routeId), normalizeCapabilityToken(agent)])
+  return required.every((capability) => tokens.has(capability))
+}
+
+function routeHasActiveExclusive(run: TeamRun, routeId: TeamRouteId, exceptIntentID?: string): boolean {
+  return (run.intents ?? []).some(
+    (intent) =>
+      intent.id !== exceptIntentID &&
+      intent.routeId === routeId &&
+      intent.concurrency === "exclusive" &&
+      (intent.status === "claimed" || intent.status === "running"),
+  )
+}
+
+/**
+ * Project a job's status onto its bound intent.
+ *
+ * The job is not the only writer: the Expert sets `superseded`, marks
+ * `blocked` (a blocked report outranks the job-level "completed" sync), and
+ * releases an intent back to `open` for another attempt. Those are decisions,
+ * not derivations — a later refresh triggered by any other job in the run must
+ * not silently overwrite them.
+ */
+function syncIntentStatus(run: TeamRun, job: TeamJob, status: TeamJob["status"]) {
+  if (!job.intentId || !run.intents) return
+  const intent = run.intents.find((candidate) => candidate.id === job.intentId)
+  if (!intent) return
+  const statusMap: Partial<Record<TeamJob["status"], TeamIntent["status"]>> = {
+    queued: "claimed",
+    starting: "claimed",
+    running: "running",
+    retrying: "claimed",
+    completed: "completed",
+    failed: "failed",
+    cancelled: "cancelled",
+    cancel_failed: "failed",
+    interrupted: "failed",
+    orphaned: "failed",
+  }
+  const next = statusMap[status]
+  if (!next) return
+  // Superseded is permanent. Blocked is an Expert decision until an explicit
+  // release/rebuild action; a routine worker event must not reopen it.
+  if (intent.status === "superseded" || intent.status === "blocked" || intent.status === "cancelled") return
+  // `open` means awaiting a (re)claim: only an active job may move it forward.
+  if (intent.status === "open" && !isActiveJobStatus(status)) return
+  intent.status = next
+  intent.updatedAt = now()
+  if (next === "claimed" || next === "running") {
+    intent.claimedBy = job.id
+    intent.claimToken = job.ownerToken
+    intent.claimExpiresAt = job.deadlineAt ?? intent.claimExpiresAt
+  } else {
+    intent.claimedBy = undefined
+    intent.claimToken = undefined
+    intent.claimExpiresAt = undefined
+  }
+}
+
+function refreshRunStatus(_state: unknown, run: TeamRun) {
   run.updatedAt = now()
-  if (run.status === "completed" || run.status === "cancelled" || run.status === "cancelling") return
+  if (run.status === "completed" || run.status === "cancelled" || run.status === "cancelling") {
+    for (const job of run.jobs) syncIntentStatus(run, job, job.status)
+    return
+  }
   run.status = deriveTeamRunStatus(run.jobs, run.status)
+  for (const job of run.jobs) syncIntentStatus(run, job, job.status)
   if (run.status === "ready_for_synthesis" || run.status === "degraded") run.notificationPending = true
 }
-
 /** Clear an interrupted replacement reservation once a job becomes terminal. */
 function clearRetryReservation(job: TeamJob) {
   job.retryPending = false
@@ -343,6 +447,113 @@ export function createTeamRuntimeCore(
   const maxJobs = resolveMaxJobs(options.maxWorkers)
   const maxJobAttempts = resolveMaxJobAttempts(options.maxJobAttempts)
   const parentModelCache = new Map<string, TeamModel>()
+
+  function makeTeamEvent(type: TeamEventType, run: TeamRun, extra: Partial<TeamEvent> = {}): TeamEvent {
+    return { id: `tev-${randomUUID().slice(0, 12)}`, type, runId: run.id, at: now(), ...extra }
+  }
+  function clearIntentClaim(intent: TeamIntent) {
+    intent.claimedBy = undefined
+    intent.claimToken = undefined
+    intent.claimExpiresAt = undefined
+  }
+
+  function finalizeFencedReservation(
+    run: TeamRun,
+    job: TeamJob,
+    intent: TeamIntent,
+    reason: string,
+    auditEvents: TeamEvent[],
+  ) {
+    const ownsClaim = intent.claimedBy === job.id && intent.claimToken === job.ownerToken
+    if (!isTerminalJob(job.status)) transitionTeamJob(job, "cancelled", reason)
+    job.finishedAt = job.finishedAt ?? now()
+    job.updatedAt = now()
+    if (ownsClaim) {
+      clearIntentClaim(intent)
+      if (intent.status !== "superseded" && intent.status !== "blocked") {
+        if (run.status === "completed" || run.status === "cancelled" || run.status === "cancelling") {
+          intent.status = "cancelled"
+        } else if (intent.attempts < intent.maxAttempts) {
+          intent.status = "open"
+          auditEvents.push(
+            makeTeamEvent("intent_released", run, {
+              intentId: intent.id,
+              jobId: job.id,
+              data: { reason },
+            }),
+          )
+        } else {
+          intent.status = "failed"
+          auditEvents.push(
+            makeTeamEvent("intent_failed", run, {
+              intentId: intent.id,
+              jobId: job.id,
+              data: { reason },
+            }),
+          )
+        }
+      }
+      intent.updatedAt = now()
+    }
+    refreshRunStatus({}, run)
+  }
+
+  async function abortFencedSession(sessionID: string | undefined, runID: string, jobID: string, reason: string) {
+    if (!sessionID) return
+    let abortError: string | undefined
+    try {
+      const outcome = await client.session.abort({ path: { id: sessionID }, query: { directory } })
+      abortError = outcome?.error ? safeError(outcome.error) : undefined
+    } catch (error) {
+      abortError = safeError(error)
+    }
+    if (!abortError) return
+    await updateTeamState(directory, (draft) => {
+      const run = findRun(draft, runID)
+      const job = run?.jobs.find((candidate) => candidate.id === jobID)
+      if (!run || !job) return
+      if (job.status === "cancelled") transitionTeamJob(job, "cancel_failed", `${reason}; abort failed: ${abortError}`)
+      else if (!isTerminalJob(job.status)) transitionTeamJob(job, "cancel_failed", `${reason}; abort failed: ${abortError}`)
+      job.error = `${reason}; abort failed: ${abortError}`
+      job.finishedAt = job.finishedAt ?? now()
+      job.updatedAt = now()
+      run.status = "degraded"
+      run.notificationPending = true
+      run.notificationSentAt = undefined
+      run.notificationError = undefined
+      draft.activeRunID = run.id
+      syncIntentStatus(run, job, job.status)
+    })
+  }
+
+
+  /**
+   * Best-effort audit: mirror team lifecycle events into the evidence case's
+   * events.jsonl. A missing/inaccessible case must never fail Team Mode, so
+   * every failure is logged and swallowed.
+   */
+  async function appendTeamEvents(events: TeamEvent[]) {
+    if (!events.length) return
+    try {
+      const state = await readTeamState(directory)
+      for (const event of events) {
+        const run = findRun(state, event.runId)
+        // The run's persisted caseId is authoritative. Never route an event
+        // for an existing run through mutable `.current` after a case switch.
+        const caseId = run?.caseId
+        if (!caseId) continue
+        await appendCaseEvent(worktree, caseId, `team.${event.type}`, {
+          runId: event.runId,
+          ...(event.jobId ? { jobId: event.jobId } : {}),
+          ...(event.intentId ? { intentId: event.intentId } : {}),
+          ...(event.factId ? { factId: event.factId } : {}),
+          ...(event.data ?? {}),
+        })
+      }
+    } catch (error) {
+      console.warn("[team-runtime] team event append failed (non-fatal):", safeError(error))
+    }
+  }
 
   async function resolveParentModel(parentSessionID: string | undefined): Promise<TeamModel> {
     if (!parentSessionID) {
@@ -403,39 +614,80 @@ export function createTeamRuntimeCore(
     const located = findJobBySession(state, sessionID)
     if (!located || isTerminalJob(located.job.status) || located.job.retryPending) return
     try {
-      const response = await client.session.messages({
-        path: { id: sessionID },
-        query: { directory, limit: 20 },
-      })
+      const response = await client.session.messages({ path: { id: sessionID }, query: { directory, limit: 20 } })
       const collected = extractResult(responseData(response, `Collect worker ${sessionID}`))
+      const auditEvents: TeamEvent[] = []
+      const droppedFacts: Array<{ jobId: string; index: number; reason: string }> = []
+      const generatedFactIds: string[] = []
       await updateTeamState(directory, (draft) => {
         const current = findJobBySession(draft, sessionID)
         if (!current || isTerminalJob(current.job.status) || current.job.retryPending) return
         current.job.updatedAt = now()
+        if (collected.lastMessageID) current.job.lastCollectedMessageId = collected.lastMessageID
         current.job.finishedAt = now()
+        const resultPacket = [...collected.packets].reverse().find((packet) => packet.type === "intent_result")
+        const factPackets = collected.packets.filter((packet) => packet.type === "fact")
+        const ownIntent = current.run.intents?.find((candidate) => candidate.id === current.job.intentId)
+        const resultIntent = resultPacket && ownIntent && (!resultPacket.intentId || resultPacket.intentId === current.job.intentId) && (!resultPacket.routeId || resultPacket.routeId === current.job.routeId) ? ownIntent : undefined
         if (collected.error) {
-          failTeamJob(current.run, current.job, {
-            phase: "collect",
-            errorType: "worker_runtime",
-            error: collected.error,
-            retryable: false,
-          })
+          failTeamJob(current.run, current.job, { phase: "collect", errorType: "worker_runtime", error: collected.error, retryable: false })
+        } else if (resultPacket?.status === "failed") {
+          failTeamJob(current.run, current.job, { phase: "collect", errorType: "worker_runtime", error: resultPacket.summary || "Worker reported intent failure.", retryable: false })
+          if (resultIntent) {
+            resultIntent.status = "failed"
+            resultIntent.resultSummary = resultPacket.summary
+            resultIntent.resultArtifacts = resultPacket.artifacts
+            resultIntent.updatedAt = now()
+            auditEvents.push(makeTeamEvent("intent_failed", current.run, { intentId: resultIntent.id, jobId: current.job.id, data: { summary: resultIntent.resultSummary } }))
+          }
         } else {
           transitionTeamJob(current.job, "completed")
           current.job.result = collected.result
+          if (resultIntent && resultPacket) {
+            resultIntent.resultSummary = resultPacket.summary
+            resultIntent.resultArtifacts = resultPacket.artifacts
+            resultIntent.updatedAt = now()
+          }
+          if (resultIntent && resultPacket?.status === "completed") auditEvents.push(makeTeamEvent("intent_completed", current.run, { intentId: resultIntent.id, jobId: current.job.id, data: { summary: resultIntent.resultSummary } }))
+        }
+        current.run.facts ??= []
+        for (const [index, packet] of factPackets.entries()) {
+          if (!packet.statement || (packet.kind !== "error" && !packet.evidence?.length)) continue
+          if (packet.routeId && packet.routeId !== current.job.routeId) continue
+          if (packet.intentId && packet.intentId !== current.job.intentId) continue
+          const factID = `${current.job.id}-${sessionID.slice(-8)}-fact-${index + 1}`
+          if (current.run.facts.some((fact) => fact.id === factID)) continue
+          if (current.run.facts.length >= MAX_FACTS_PER_RUN) {
+            droppedFacts.push({ jobId: current.job.id, index, reason: "run_fact_cap" })
+            continue
+          }
+          const submittedAt = now()
+          current.run.facts.push({ id: factID, runId: current.run.id, routeId: packet.routeId ?? current.job.routeId, sourceJobId: current.job.id, sourceSessionId: sessionID, intentId: packet.intentId ?? current.job.intentId, kind: packet.kind ?? "observation", statement: packet.statement, evidence: packet.evidence ?? [], confidence: packet.confidence ?? "observed", status: "pending", createdAt: submittedAt, updatedAt: submittedAt })
+          generatedFactIds.push(factID)
+          auditEvents.push(makeTeamEvent("fact_submitted", current.run, { factId: factID, jobId: current.job.id, data: { routeId: packet.routeId ?? current.job.routeId, statement: packet.statement, confidence: packet.confidence ?? "observed" } }))
+        }
+        if (resultIntent && resultPacket) {
+          const packetFactIds = (resultPacket.factIds ?? []).filter((id) => current.run.facts?.some((fact) => fact.id === id))
+          resultIntent.resultFactIds = [...new Set([...packetFactIds, ...generatedFactIds])]
+          resultIntent.updatedAt = now()
         }
         refreshRunStatus(draft, current.run)
+        if (resultIntent && resultPacket?.status === "blocked" && resultIntent.status !== "failed") {
+          resultIntent.status = "blocked"
+          resultIntent.claimedBy = undefined
+          resultIntent.claimToken = undefined
+          resultIntent.claimExpiresAt = undefined
+          resultIntent.updatedAt = now()
+          auditEvents.push(makeTeamEvent("intent_blocked", current.run, { intentId: resultIntent.id, jobId: current.job.id, data: { summary: resultIntent.resultSummary } }))
+        }
+        for (const dropped of droppedFacts) auditEvents.push(makeTeamEvent("fact_dropped", current.run, { jobId: dropped.jobId, data: { index: dropped.index, reason: dropped.reason } }))
       })
+      await appendTeamEvents(auditEvents)
     } catch (error) {
       await updateTeamState(directory, (draft) => {
         const current = findJobBySession(draft, sessionID)
         if (!current || isTerminalJob(current.job.status) || current.job.retryPending) return
-        failTeamJob(current.run, current.job, {
-          phase: "collect",
-          errorType: "serialization",
-          error,
-          retryable: true,
-        })
+        failTeamJob(current.run, current.job, { phase: "collect", errorType: "serialization", error, retryable: true })
         current.job.updatedAt = now()
         current.job.finishedAt = now()
         refreshRunStatus(draft, current.run)
@@ -684,6 +936,9 @@ export function createTeamRuntimeCore(
             "ctf-team-recover": false,
             "ctf-team-adopt": false,
             "ctf-team-mode": false,
+            "ctf-team-facts": false,
+            "ctf-team-intent": false,
+            "ctf-team-claim": true,
           }),
           parts: [
             {
@@ -874,47 +1129,18 @@ export function createTeamRuntimeCore(
         ),
       )
       const followUps: typeof sessions = []
-      const enqueue = (item: (typeof sessions)[number]) => {
-        if (
-          !followUps.some(
-            (candidate) =>
-              candidate.runID === item.runID && candidate.jobID === item.jobID && candidate.sessionID === item.sessionID,
-          )
-        ) {
-          followUps.push(item)
-        }
-      }
-
+      const enqueue = (item: (typeof sessions)[number]) => followUps.push(item)
       await updateTeamState(directory, (draft) => {
         for (const [index, item] of currentPass.entries()) {
           const run = findRun(draft, item.runID)
           const job = run?.jobs.find((candidate) => candidate.id === item.jobID)
           if (!run || !job) continue
-
-          // A replacement can be promoted while this follow-up abort is in
-          // flight. Keep chasing only sessions newer than the snapshot that
-          // produced this item; do not re-abort the already-handled session.
-          if (
-            job.sessionID &&
-            job.sessionID !== item.sessionID &&
-            job.sessionID !== item.supersedesSessionID
-          ) {
-            enqueue({
-              runID: item.runID,
-              jobID: item.jobID,
-              sessionID: job.sessionID,
-              supersedesSessionID: item.sessionID,
-            })
+          if (job.sessionID && job.sessionID !== item.sessionID && job.sessionID !== item.supersedesSessionID) {
+            enqueue({ runID: item.runID, jobID: item.jobID, sessionID: job.sessionID, supersedesSessionID: item.sessionID })
           }
           if (job.retrySessionID && job.retrySessionID !== item.sessionID) {
-            enqueue({
-              runID: item.runID,
-              jobID: item.jobID,
-              sessionID: job.retrySessionID,
-              supersedesSessionID: job.sessionID,
-            })
+            enqueue({ runID: item.runID, jobID: item.jobID, sessionID: job.retrySessionID, supersedesSessionID: job.sessionID })
           }
-
           const result = aborts[index]
           const abortError =
             result?.status === "fulfilled"
@@ -923,7 +1149,6 @@ export function createTeamRuntimeCore(
                   : undefined)
               : safeError(result?.reason)
           if (!abortError || (job.status !== "cancelled" && job.status !== "cancel_failed")) continue
-
           transitionTeamJob(job, "cancel_failed", `${reason}; replacement abort failed: ${abortError}`)
           clearRetryReservation(job)
           job.finishedAt = now()
@@ -938,8 +1163,6 @@ export function createTeamRuntimeCore(
     }
 
     if (!pending.length) return
-    // A session kept changing while cancellation was being reconciled. Do
-    // not report a clean cancellation when ownership could not converge.
     await updateTeamState(directory, (draft) => {
       for (const item of pending) {
         const run = findRun(draft, item.runID)
@@ -960,18 +1183,23 @@ export function createTeamRuntimeCore(
   async function reconcile(runID?: string, shouldNotify = false) {
     const state = await readTeamState(directory)
     const runs = runID ? ([findRun(state, runID)].filter(Boolean) as TeamRun[]) : state.runs
-    if (!runs.some((r) => r.jobs.some((j) => j.sessionID && !isTerminalJob(j.status)))) {
-      if (shouldNotify) for (const r of runs) await notifyParent(r.id)
+    const hasSessions = runs.some((run) => run.jobs.some((job) => job.sessionID && !isTerminalJob(job.status)))
+    let statuses: Record<string, { type: string; attempt?: number }> = {}
+    if (hasSessions) {
+      const response = await client.session.status({ query: { directory } })
+      statuses = responseData(response, "Read session status") as Record<string, { type: string; attempt?: number }>
+    }
+    await expireStaleClaims(runs, statuses)
+    const refreshed = await readTeamState(directory)
+    const currentRuns = runID ? ([findRun(refreshed, runID)].filter(Boolean) as TeamRun[]) : refreshed.runs
+    if (!currentRuns.some((run) => run.jobs.some((job) => job.sessionID && !isTerminalJob(job.status)))) {
+      if (shouldNotify) for (const run of currentRuns) await notifyParent(run.id)
       return
     }
-    const response = await client.session.status({ query: { directory } })
-    const statuses = responseData(response, "Read session status") as Record<string, { type: string; attempt?: number }>
-    for (const run of runs) {
+    for (const run of currentRuns) {
       for (const job of run.jobs) {
         if (!job.sessionID || isTerminalJob(job.status) || job.retryPending) continue
         const status = statuses[job.sessionID]
-
-        // Supervisor: enforce the worker deadline for stalled sessions.
         const verdict = evaluateJobDeadline(job, Date.now(), maxJobAttempts)
         if (verdict.action !== "none") {
           if (verdict.action === "interrupt") {
@@ -979,10 +1207,7 @@ export function createTeamRuntimeCore(
           } else {
             let abortError: string | undefined
             try {
-              const abortOutcome = await client.session.abort({
-                path: { id: job.sessionID },
-                query: { directory },
-              })
+              const abortOutcome = await client.session.abort({ path: { id: job.sessionID }, query: { directory } })
               abortError = abortOutcome?.error ? safeError(abortOutcome.error) : undefined
             } catch (error) {
               abortError = safeError(error)
@@ -1013,9 +1238,6 @@ export function createTeamRuntimeCore(
           }
           continue
         }
-        // Heartbeat: a reconcile poll observing the worker still running is
-        // recorded (throttled to 60s) so status can distinguish "alive" from
-        // "orphaned".
         if (job.status === "running" && status?.type === "running") {
           const last = job.lastHeartbeatAt ? Date.parse(job.lastHeartbeatAt) : 0
           if (!Number.isFinite(last) || Date.now() - last > 60_000) {
@@ -1028,7 +1250,6 @@ export function createTeamRuntimeCore(
           }
           continue
         }
-
         if (!status) {
           const presence = await probeSessionPresence(client, directory, job.sessionID)
           if (presence === "absent") {
@@ -1047,11 +1268,9 @@ export function createTeamRuntimeCore(
               refreshRunStatus(draft, current.run)
             })
           }
-          // An inconclusive presence probe is a transport uncertainty, not a
-          // completed worker. Leave it for the deadline supervisor instead of
-          // converting a missing status entry into a false successful collect.
-        } else if (status.type === "idle") await collectJob(job.sessionID)
-        else if (status.type === "retry") {
+        } else if (status.type === "idle") {
+          await collectJob(job.sessionID)
+        } else if (status.type === "retry") {
           await updateTeamState(directory, (draft) => {
             const current = findJobBySession(draft, job.sessionID!)
             if (!current || isTerminalJob(current.job.status)) return
@@ -1064,6 +1283,102 @@ export function createTeamRuntimeCore(
       }
       if (shouldNotify) await notifyParent(run.id)
     }
+  }
+
+  /**
+   * Reclaim intents whose claim lease outlived its worker.
+   *
+   * Without this the lease was decorative: an intent stayed `claimed`/`running`
+   * forever after a worker died without a job-status transition, and the design
+   * doc's "claim 已过期且 Job 不再 running -> Intent 重新 open" never happened.
+   * A live-but-expired session is aborted first, mirroring the job supervisor's
+   * fail-closed policy; only then is the intent returned to the pool.
+   */
+  async function expireStaleClaims(
+    runs: TeamRun[],
+    statuses: Record<string, { type: string }>,
+  ): Promise<Array<{ runID: string; sessionID: string }>> {
+    const nowMs = Date.now()
+    const expired: Array<{ runID: string; intentID: string; sessionID?: string }> = []
+    for (const run of runs) {
+      if (run.status === "completed" || run.status === "cancelled") continue
+      for (const intent of run.intents ?? []) {
+        if (intent.status !== "claimed" && intent.status !== "running") continue
+        if (!intent.claimExpiresAt) continue
+        const expiresAt = Date.parse(intent.claimExpiresAt)
+        if (Number.isNaN(expiresAt) || expiresAt > nowMs) continue
+        const boundJob = run.jobs.find((job) => job.id === intent.claimedBy)
+        const sessionID = boundJob?.sessionID ?? boundJob?.retrySessionID
+        // A job the supervisor will still act on keeps its lease; the deadline
+        // path owns that transition. Only orphaned claims are reclaimed here.
+        if (boundJob && !isTerminalJob(boundJob.status)) continue
+        expired.push({ runID: run.id, intentID: intent.id, sessionID })
+      }
+    }
+    if (expired.length === 0) return []
+
+    const aborted: Array<{ runID: string; sessionID: string }> = []
+    const abortErrors = new Map<string, string>()
+    for (const claim of expired) {
+      if (!claim.sessionID) continue
+      const status = statuses[claim.sessionID]
+      const presence = status ? "present" : await probeSessionPresence(client, directory, claim.sessionID)
+      if (!status && presence === "absent") {
+        aborted.push({ runID: claim.runID, sessionID: claim.sessionID })
+        continue
+      }
+      try {
+        const outcome = await client.session.abort({ path: { id: claim.sessionID }, query: { directory } })
+        const error = outcome?.error ? safeError(outcome.error) : undefined
+        if (error) abortErrors.set(`${claim.runID}:${claim.intentID}`, error)
+        else aborted.push({ runID: claim.runID, sessionID: claim.sessionID })
+      } catch (error) {
+        const message = safeError(error)
+        abortErrors.set(`${claim.runID}:${claim.intentID}`, message)
+        console.warn(`[team-runtime] stale-claim abort failed for ${claim.sessionID}: ${message}`)
+      }
+    }
+
+    const released: TeamEvent[] = []
+    await updateTeamState(directory, (draft) => {
+      for (const claim of expired) {
+        const run = findRun(draft, claim.runID)
+        const intent = run?.intents?.find((candidate) => candidate.id === claim.intentID)
+        if (!run || !intent || (intent.status !== "claimed" && intent.status !== "running")) continue
+        const boundJob = run.jobs.find((job) => job.id === intent.claimedBy)
+        if (boundJob && !isTerminalJob(boundJob.status)) continue
+        const abortError = claim.sessionID ? abortErrors.get(`${claim.runID}:${claim.intentID}`) : undefined
+        if (abortError) {
+          intent.status = "blocked"
+          intent.updatedAt = now()
+          run.status = "degraded"
+          run.notificationPending = true
+          run.notificationSentAt = undefined
+          run.notificationError = `Expired claim ${intent.id} could not be reclaimed: ${abortError}`
+          draft.activeRunID = run.id
+          released.push(makeTeamEvent("intent_blocked", run, {
+            intentId: intent.id,
+            jobId: boundJob?.id,
+            data: { reason: "claim_lease_abort_failed", error: abortError },
+          }))
+          continue
+        }
+        clearIntentClaim(intent)
+        intent.updatedAt = now()
+        if (intent.attempts < intent.maxAttempts) {
+          intent.status = "open"
+          released.push(makeTeamEvent("intent_released", run, { intentId: intent.id, data: { reason: "claim_lease_expired" } }))
+        } else {
+          intent.status = "failed"
+          released.push(makeTeamEvent("intent_failed", run, { intentId: intent.id, data: { reason: "claim_lease_expired_budget_exhausted" } }))
+        }
+      }
+    })
+    await appendTeamEvents(released)
+    if (expired.length) {
+      console.log(`[team-runtime] reclaimed ${expired.length} expired claim(s); aborted ${aborted.length} live session(s)`)
+    }
+    return aborted
   }
 
   function runCanBeAutoArchived(run: TeamRun): boolean {
@@ -1241,34 +1556,56 @@ export function createTeamRuntimeCore(
         }
         const parentModel = await resolveParentModel(context.sessionID)
         const timeoutMs = Math.min(360, Math.max(1, args.timeoutMinutes ?? DEFAULT_JOB_TIMEOUT_MINUTES)) * 60_000
+        const runID = buildRunId()
+        const createdAt = now()
+        const jobs: TeamJob[] = args.jobs.map((job, index) => ({
+          id: `job-${index + 1}-${job.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32) || "task"}`,
+          title: job.title,
+          objective: job.objective,
+          agent: job.agent as TeamAgent,
+          routeId: job.routeId as TeamRouteId,
+          concurrency: (job.concurrency as "independent" | "shared_state") || "independent",
+          status: "queued",
+          createdAt,
+          updatedAt: createdAt,
+          timeoutMs,
+          attempt: 0,
+          ownerToken: randomUUID().slice(0, 8),
+        }))
+        const intents: TeamIntent[] = jobs.map((job, index) => ({
+          id: `intent-${index + 1}-${randomUUID().slice(0, 8)}`,
+          runId: runID,
+          routeId: job.routeId,
+          title: job.title,
+          objective: job.objective,
+          basedOnFactIds: [],
+          stopCondition: "bounded worker result, blocked report, or failed report",
+          requiredCapabilities: [],
+          concurrency: job.concurrency === "shared_state" ? "exclusive" : "parallel",
+          status: "claimed",
+          claimedBy: job.id,
+          claimToken: job.ownerToken,
+          claimExpiresAt: new Date(Date.parse(createdAt) + timeoutMs).toISOString(),
+          attempts: 1,
+          maxAttempts: maxJobAttempts,
+          createdBy: "expert",
+          createdAt,
+          updatedAt: createdAt,
+        }))
+        jobs.forEach((job, index) => {
+          job.intentId = intents[index].id
+        })
         const run: TeamRun = {
-          id: buildRunId(),
+          id: runID,
           title: args.title,
           parentSessionID: context.sessionID,
+          caseId: readCurrentEvidenceSlug(worktree) ?? undefined,
           status: "dispatching",
-          createdAt: now(),
-          updatedAt: now(),
+          createdAt,
+          updatedAt: createdAt,
+          jobs,
+          intents,
           notificationPending: false,
-          jobs: args.jobs.map((job, index) => ({
-            id: `job-${index + 1}-${
-              job.title
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, "-")
-                .replace(/^-|-$/g, "")
-                .slice(0, 32) || "task"
-            }`,
-            title: job.title,
-            objective: job.objective,
-            agent: job.agent as TeamAgent,
-            routeId: job.routeId as TeamRouteId,
-            concurrency: (job.concurrency as "independent" | "shared_state") || "independent",
-            status: "queued",
-            createdAt: now(),
-            updatedAt: now(),
-            timeoutMs,
-            attempt: 0,
-            ownerToken: randomUUID().slice(0, 8),
-          })),
         }
         await updateTeamState(directory, (state) => {
           const active = findRun(state)
@@ -1278,9 +1615,6 @@ export function createTeamRuntimeCore(
                 (job) => isOrphanedJob(job) && job.orphaned?.recoverable,
               )
               if (recoverableOrphans) {
-                // Isolation must not destroy the explicit adoption path. A
-                // recoverable unknown-agent job can still be adopted later;
-                // clear only the active pointer and keep the run degraded.
                 active.status = "degraded"
                 active.notificationPending = true
                 active.notificationSentAt = undefined
@@ -1301,8 +1635,26 @@ export function createTeamRuntimeCore(
             }
           }
           state.runs.push(run)
+          // Keep only the last 20 runs to prevent unbounded growth
+          if (state.runs.length > 20) {
+            state.runs = state.runs.slice(-20)
+          }
           state.activeRunID = run.id
         })
+
+        await appendTeamEvents(
+          intents.map((intent) =>
+            makeTeamEvent("intent_created", run, {
+              intentId: intent.id,
+              data: {
+                routeId: intent.routeId,
+                title: intent.title,
+                objective: intent.objective,
+                basedOnFactIds: intent.basedOnFactIds,
+              },
+            }),
+          ),
+        )
 
         const creations = await Promise.allSettled(
           run.jobs.map((job) =>
@@ -1404,6 +1756,9 @@ export function createTeamRuntimeCore(
                   "ctf-team-adopt": false,
                   "ctf-team-repair": false,
                   "ctf-team-mode": false,
+                  "ctf-team-facts": false,
+                  "ctf-team-intent": false,
+                  "ctf-team-claim": true,
                 }),
                 parts: [
                   {
@@ -1460,6 +1815,7 @@ export function createTeamRuntimeCore(
         await updateTeamState(directory, (state) => {
           const current = findRun(state, run.id)!
           for (const job of current.jobs) {
+            const intent = current.intents?.find((candidate) => candidate.id === job.intentId)
             if (startedIDs.has(job.id)) {
               transitionTeamJob(job, "running")
               const startedAt = now()
@@ -1467,6 +1823,13 @@ export function createTeamRuntimeCore(
               job.deadlineAt = computeJobDeadlineAt(job.timeoutMs, Date.parse(startedAt))
               job.lastHeartbeatAt = startedAt
               job.updatedAt = startedAt
+              if (intent) {
+                intent.status = "running"
+                intent.claimedBy = job.id
+                intent.claimToken = job.ownerToken
+                intent.claimExpiresAt = job.deadlineAt
+                intent.updatedAt = startedAt
+              }
             } else if (job.status === "starting") {
               const failure = failedStartByJob.get(job.id)
               const startupError = failure?.reason ?? "Worker start failed"
@@ -1547,7 +1910,7 @@ export function createTeamRuntimeCore(
         const run = findRun(state, args.runID)
         if (!run) return "No matching CTF team run."
         const activeJobs = run.jobs.filter(
-          (j) => j.sessionID && (!isTerminalJob(j.status) || j.status === "cancel_failed" || (args.force && isOrphanedJob(j))),
+          (job) => !isTerminalJob(job.status) || job.status === "cancel_failed" || (args.force && isOrphanedJob(job)),
         )
         const orphanedJobs = run.jobs.filter(isOrphanedJob)
         const orphanedWithoutSession = args.force ? orphanedJobs.filter((j) => !j.sessionID) : []
@@ -1555,70 +1918,61 @@ export function createTeamRuntimeCore(
           throw new Error("The run contains orphaned jobs. Retry with force=true or use ctf-team-repair operation=cancel_orphans.")
         }
         const followUpSessions: Array<{ runID: string; jobID: string; sessionID: string; supersedesSessionID?: string }> = []
+        const abortJobs = activeJobs.filter((job) => Boolean(job.sessionID))
         const aborts = await Promise.allSettled(
-          activeJobs.map((job) =>
+          abortJobs.map((job) =>
             client.session.abort({
               path: { id: job.sessionID! },
               query: { directory },
             }),
           ),
         )
+        const abortByJob = new Map<string, PromiseSettledResult<unknown>>(
+          abortJobs.map((job, index) => [job.id, aborts[index]]),
+        )
         await updateTeamState(directory, (draft) => {
           const current = findRun(draft, run.id)!
           let abortFailure = 0
           current.notificationPending = false
-          current.updatedAt = now()
-          for (const [index, job] of activeJobs.entries()) {
-            const cj = current.jobs.find((j) => j.id === job.id)
-            if (
-              !cj ||
-              (
-                isTerminalJob(cj.status) &&
-                cj.status !== "cancel_failed" &&
-                !(args.force && isOrphanedJob(cj))
-              )
-            ) continue
+          for (const job of activeJobs) {
+            const cj = current.jobs.find((candidate) => candidate.id === job.id)
+            if (!cj || (isTerminalJob(cj.status) && cj.status !== "cancel_failed" && !(args.force && isOrphanedJob(cj)))) continue
             for (const candidate of [cj.sessionID, cj.retrySessionID]) {
-              if (
-                candidate &&
-                candidate !== job.sessionID &&
-                !followUpSessions.some((item) => item.jobID === cj.id && item.sessionID === candidate)
-              ) {
+              if (candidate && candidate !== job.sessionID && !followUpSessions.some((item) => item.jobID === cj.id && item.sessionID === candidate)) {
                 followUpSessions.push({ runID: current.id, jobID: cj.id, sessionID: candidate, supersedesSessionID: job.sessionID })
               }
             }
-            const result = aborts[index]
-            if (result?.status === "fulfilled") {
-              const value = result.value as { error?: unknown } | undefined
-              if (value?.error) {
+            const result = abortByJob.get(job.id)
+            if (!job.sessionID) {
+              transitionTeamJob(cj, "cancelled", args.reason)
+            } else if (result?.status === "fulfilled") {
+              const value = result.value
+              const abortError = value && typeof value === "object" && "error" in value && value.error ? safeError(value.error) : undefined
+              if (abortError) {
                 if (args.force && isOrphanedJob(cj)) {
                   cj.status = "cancelled"
-                  cj.error = `${args.reason}; forced orphan cancellation; abort failed: ${safeError(value.error)}`
+                  cj.error = `${args.reason}; forced orphan cancellation; abort failed: ${abortError}`
                   if (cj.orphaned) cj.orphaned.recoverable = false
                 } else {
-                  transitionTeamJob(cj, "cancel_failed", `${args.reason}; abort failed: ${safeError(value.error)}`)
+                  transitionTeamJob(cj, "cancel_failed", `${args.reason}; abort failed: ${abortError}`)
                   abortFailure++
                 }
+              } else if (isOrphanedJob(cj)) {
+                cj.status = "cancelled"
+                cj.error = args.reason
+                if (cj.orphaned) cj.orphaned.recoverable = false
               } else {
-                if (isOrphanedJob(cj)) {
-                  cj.status = "cancelled"
-                  cj.error = args.reason
-                  if (cj.orphaned) cj.orphaned.recoverable = false
-                } else {
-                  transitionTeamJob(cj, "cancelled", args.reason)
-                }
+                transitionTeamJob(cj, "cancelled", args.reason)
               }
-            } else if (args.force && isOrphanedJob(cj)) {
-              cj.status = "cancelled"
-              cj.error = `${args.reason}; forced orphan cancellation; abort failed: ${safeError(result?.reason)}`
-              if (cj.orphaned) cj.orphaned.recoverable = false
             } else {
-              transitionTeamJob(cj, "cancel_failed", `${args.reason}; abort failed: ${safeError(result?.reason)}`)
+              const abortError = result ? safeError(result.reason) : "abort outcome missing"
+              transitionTeamJob(cj, "cancel_failed", `${args.reason}; abort failed: ${abortError}`)
               abortFailure++
             }
             clearRetryReservation(cj)
             cj.finishedAt = now()
             cj.updatedAt = now()
+            syncIntentStatus(current, cj, cj.status)
           }
           for (const orphan of orphanedWithoutSession) {
             const currentJob = current.jobs.find((candidate) => candidate.id === orphan.id)
@@ -1628,6 +1982,7 @@ export function createTeamRuntimeCore(
             currentJob.finishedAt = now()
             currentJob.updatedAt = now()
             if (currentJob.orphaned) currentJob.orphaned.recoverable = false
+            syncIntentStatus(current, currentJob, currentJob.status)
           }
           current.status = abortFailure ? "degraded" : "cancelled"
           if (abortFailure) {
@@ -1660,49 +2015,43 @@ export function createTeamRuntimeCore(
         if (!run) return "No matching CTF team run."
         const reason = args.reason || `route ${args.keepRouteId} is live — cancelling other routes`
         const toCancel = run.jobs.filter(
-          (j) =>
-            j.sessionID && (!isTerminalJob(j.status) || j.status === "cancel_failed") && j.routeId !== args.keepRouteId,
+          (job) => (!isTerminalJob(job.status) || job.status === "cancel_failed") && job.routeId !== args.keepRouteId,
         )
         if (!toCancel.length) {
           return `No active workers to cancel (keepRouteId=${args.keepRouteId}).\n${renderRun(run)}`
         }
         const followUpSessions: Array<{ runID: string; jobID: string; sessionID: string; supersedesSessionID?: string }> = []
+        const abortJobs = toCancel.filter((job) => Boolean(job.sessionID))
         const aborts = await Promise.allSettled(
-          toCancel.map((job) =>
-            client.session.abort({
-              path: { id: job.sessionID! },
-              query: { directory },
-            }),
-          ),
+          abortJobs.map((job) => client.session.abort({ path: { id: job.sessionID! }, query: { directory } })),
+        )
+        const abortByJob = new Map<string, PromiseSettledResult<unknown>>(
+          abortJobs.map((job, index) => [job.id, aborts[index]]),
         )
         await updateTeamState(directory, (draft) => {
           const current = findRun(draft, run.id)!
-          for (const [index, job] of toCancel.entries()) {
-            const cj = current.jobs.find((j) => j.id === job.id)
+          for (const job of toCancel) {
+            const cj = current.jobs.find((candidate) => candidate.id === job.id)
             if (!cj || (isTerminalJob(cj.status) && cj.status !== "cancel_failed")) continue
             for (const candidate of [cj.sessionID, cj.retrySessionID]) {
-              if (
-                candidate &&
-                candidate !== job.sessionID &&
-                !followUpSessions.some((item) => item.jobID === cj.id && item.sessionID === candidate)
-              ) {
+              if (candidate && candidate !== job.sessionID && !followUpSessions.some((item) => item.jobID === cj.id && item.sessionID === candidate)) {
                 followUpSessions.push({ runID: current.id, jobID: cj.id, sessionID: candidate, supersedesSessionID: job.sessionID })
               }
             }
-            const result = aborts[index]
-            if (result?.status === "fulfilled") {
-              const value = result.value as { error?: unknown } | undefined
-              if (value?.error) {
-                transitionTeamJob(cj, "cancel_failed", `${reason}; abort failed: ${safeError(value.error)}`)
-              } else {
-                transitionTeamJob(cj, "cancelled", reason)
-              }
+            const result = abortByJob.get(job.id)
+            if (!job.sessionID) {
+              transitionTeamJob(cj, "cancelled", reason)
+            } else if (result?.status === "fulfilled") {
+              const value = result.value
+              const abortError = value && typeof value === "object" && "error" in value && value.error ? safeError(value.error) : undefined
+              transitionTeamJob(cj, abortError ? "cancel_failed" : "cancelled", abortError ? `${reason}; abort failed: ${abortError}` : reason)
             } else {
-              transitionTeamJob(cj, "cancel_failed", `${reason}; abort failed: ${safeError(result?.reason)}`)
+              transitionTeamJob(cj, "cancel_failed", `${reason}; abort failed: ${result ? safeError(result.reason) : "abort outcome missing"}`)
             }
             clearRetryReservation(cj)
             cj.finishedAt = now()
             cj.updatedAt = now()
+            syncIntentStatus(current, cj, cj.status)
           }
           refreshRunStatus(draft, current)
         })
@@ -1842,6 +2191,7 @@ export function createTeamRuntimeCore(
                   "ctf-team-dispatch": false, "ctf-team-status": false, "ctf-team-collect": false,
                   "ctf-team-cancel": false, "ctf-team-cancel-route": false, "ctf-team-close": false,
                   "ctf-team-recover": false, "ctf-team-adopt": false, "ctf-team-repair": false, "ctf-team-mode": false,
+                  "ctf-team-facts": false, "ctf-team-intent": false, "ctf-team-claim": true,
                 }),
                 parts: [{ type: "text", text: [workerPrompt({ ...run, parentSessionID: context.sessionID! }, adoptedJob!, {
                   surface: options.runtimeVisibility?.surface ?? "ctf-expert",
@@ -1957,6 +2307,696 @@ export function createTeamRuntimeCore(
             previousParentSessionID: oldParentSessionID,
             parentSessionID: context.sessionID,
             run: adopted ? { ...adopted, jobs: adopted.jobs.map((job) => ({ ...job })) } : undefined,
+          },
+          null,
+          2,
+        )
+      },
+    }),
+
+    "ctf-team-facts": tool({
+      description:
+        "Expert review of worker-submitted facts: list-pending | accept | reject | supersede. " +
+        "accept promotes a pending fact to confirmed; supersede requires replacementFactID.",
+      args: {
+        action: tool.schema.enum(["list-pending", "accept", "reject", "supersede"]),
+        runID: tool.schema.string().optional(),
+        factID: tool.schema.string().optional().describe("Required for accept/reject/supersede."),
+        reason: tool.schema.string().max(1_000).optional(),
+        replacementFactID: tool.schema.string().optional().describe("Required for supersede."),
+      },
+      async execute(args, context) {
+        requireExpert(context.agent, context.sessionID)
+        const state = await readTeamState(directory)
+        const run = findRun(state, args.runID)
+        if (!run) return "No matching CTF team run."
+        if (args.action === "list-pending") {
+          const facts = run.facts ?? []
+          return JSON.stringify(
+            {
+              runID: run.id,
+              pending: facts.filter((fact) => fact.status === "pending"),
+              accepted: facts.filter((fact) => fact.status === "accepted"),
+              rejected: facts.filter((fact) => fact.status === "rejected"),
+              superseded: facts.filter((fact) => fact.status === "superseded"),
+            },
+            null,
+            2,
+          )
+        }
+        if (!args.factID) throw new Error(`ctf-team-facts ${args.action} requires factID.`)
+        if (args.action === "reject" && !args.reason?.trim()) {
+          throw new Error("ctf-team-facts reject requires a reason.")
+        }
+        if (args.action === "supersede" && !args.replacementFactID?.trim()) {
+          throw new Error("ctf-team-facts supersede requires replacementFactID.")
+        }
+        const auditEvents: TeamEvent[] = []
+        await updateTeamState(directory, (draft) => {
+          const current = findRun(draft, run.id)
+          if (!current) throw new Error(`Team run ${run.id} disappeared during fact review.`)
+          const fact = current.facts?.find((candidate) => candidate.id === args.factID)
+          if (!fact) throw new Error(`Fact ${args.factID} not found in run ${current.id}.`)
+          if (fact.status !== "pending") {
+            throw new Error(`Fact ${fact.id} is already ${fact.status}; only pending facts can be reviewed.`)
+          }
+          if (args.action === "accept") {
+            fact.status = "accepted"
+            fact.confidence = "confirmed"
+          } else if (args.action === "reject") {
+            fact.status = "rejected"
+          } else {
+            const replacement = current.facts?.find((candidate) => candidate.id === args.replacementFactID)
+            if (!replacement) {
+              throw new Error(`Replacement fact ${args.replacementFactID} not found in run ${current.id}.`)
+            }
+            if (replacement.id === fact.id || replacement.status !== "pending") {
+              throw new Error(`Replacement fact ${replacement.id} must be a different pending fact.`)
+            }
+            replacement.supersedesFactId = fact.id
+            replacement.updatedAt = now()
+            fact.status = "superseded"
+            // §10 phase 4: an intent built on a discredited premise must not
+            // keep consuming worker budget. Any intent that cites this fact is
+            // superseded unless it cites the replacement as well.
+            for (const intent of current.intents ?? []) {
+              if (!intent.basedOnFactIds?.includes(fact.id)) continue
+              if (intent.basedOnFactIds.includes(replacement.id)) continue
+              if (intent.status === "completed" || intent.status === "superseded") continue
+              const boundJob = current.jobs.find((candidate) => candidate.id === intent.claimedBy)
+              if (boundJob && !isTerminalJob(boundJob.status)) {
+                // Do not strand a live worker: it is cancelled by cancel-route,
+                // and the intent is flagged for rebuild rather than silently
+                // closed while its job is still running.
+                intent.status = "blocked"
+              } else {
+                intent.status = "superseded"
+                intent.claimedBy = undefined
+                intent.claimToken = undefined
+                intent.claimExpiresAt = undefined
+              }
+              intent.updatedAt = now()
+              auditEvents.push(
+                makeTeamEvent("intent_superseded", current, {
+                  intentId: intent.id,
+                  data: { reason: `basis fact ${fact.id} superseded`, replacementIntentId: undefined },
+                }),
+              )
+            }
+          }
+          fact.reviewedBy = context.sessionID
+          fact.reviewedAt = now()
+          fact.reviewReason = args.reason
+          fact.updatedAt = now()
+          auditEvents.push(
+            makeTeamEvent(
+              args.action === "accept" ? "fact_accepted" : args.action === "reject" ? "fact_rejected" : "fact_superseded",
+              current,
+              { factId: fact.id, data: { reviewedBy: context.sessionID, reason: args.reason } },
+            ),
+          )
+        })
+        await appendTeamEvents(auditEvents)
+        const updated = findRun(await readTeamState(directory), run.id)
+        return JSON.stringify({ ok: true, action: args.action, factID: args.factID, run: updated ? { id: updated.id, facts: updated.facts } : undefined }, null, 2)
+      },
+    }),
+
+    "ctf-team-intent": tool({
+      description:
+        "Expert intent ledger: create | list | claim-next | release | supersede. " +
+        "create requires accepted fact IDs (or allowUnbased=true); claim-next atomically reserves the oldest open intent and spawns a dedicated worker for it.",
+      args: {
+        action: tool.schema.enum(["create", "list", "claim-next", "release", "supersede"]),
+        runID: tool.schema.string().optional(),
+        title: tool.schema.string().min(1).max(160).optional(),
+        objective: tool.schema.string().min(1).max(8_000).optional(),
+        routeId: tool.schema.enum(TEAM_ROUTE_IDS as unknown as [string, ...string[]]).optional(),
+        basedOnFactIds: tool.schema.array(tool.schema.string()).optional(),
+        allowUnbased: tool.schema.boolean().optional().describe("Permit an intent without fact basis (initial recon only)."),
+        concurrency: tool.schema.enum(["exclusive", "parallel", "speculative"]).optional(),
+        expectedObservation: tool.schema.string().max(2_000).optional(),
+        stopCondition: tool.schema.string().max(2_000).optional(),
+        failureCondition: tool.schema.string().max(2_000).optional(),
+        requiredCapabilities: tool.schema.array(tool.schema.string()).optional(),
+        intentID: tool.schema.string().optional().describe("Required for release/supersede."),
+        agent: tool.schema.enum(TEAM_AGENTS as unknown as [string, ...string[]]).optional().describe("Required for claim-next."),
+        reason: tool.schema.string().max(1_000).optional(),
+      },
+      async execute(args, context) {
+        requireExpert(context.agent, context.sessionID)
+        const state = await readTeamState(directory)
+        const run = findRun(state, args.runID)
+        if (!run) return "No matching CTF team run."
+
+        if (args.action === "list") {
+          return JSON.stringify({ runID: run.id, intents: run.intents ?? [] }, null, 2)
+        }
+
+        if (args.action === "create") {
+          if (!args.title?.trim() || !args.objective?.trim() || !args.routeId) {
+            throw new Error("ctf-team-intent create requires title, objective, and routeId.")
+          }
+          const basedOnFactIds = args.basedOnFactIds ?? []
+          if (!basedOnFactIds.length && !args.allowUnbased) {
+            throw new Error(
+              "Intents must be derived from accepted facts. Pass basedOnFactIds, or allowUnbased=true for the initial recon intent only.",
+            )
+          }
+          // §4.2: an intent without a convergence condition cannot be evaluated
+          // by the Expert and gives the worker no stopping rule.
+          if (!args.expectedObservation?.trim() && !args.stopCondition?.trim()) {
+            throw new Error(
+              "ctf-team-intent create requires expectedObservation or stopCondition so the attempt has a convergence rule.",
+            )
+          }
+          const openCount = (run.intents ?? []).filter((intent) => ["open", "claimed", "running"].includes(intent.status)).length
+          if (openCount >= maxJobs) {
+            throw new Error(`Run ${run.id} already has ${openCount} active intents (max ${maxJobs}); close or supersede one first.`)
+          }
+          const auditEvents: TeamEvent[] = []
+          let createdIntentID: string | undefined
+          await updateTeamState(directory, (draft) => {
+            const current = findRun(draft, run.id)
+            if (!current) throw new Error(`Team run ${run.id} disappeared during intent creation.`)
+            for (const factID of basedOnFactIds) {
+              const fact = current.facts?.find((candidate) => candidate.id === factID)
+              if (!fact) throw new Error(`Fact ${factID} not found in run ${current.id}.`)
+              if (fact.status !== "accepted") {
+                throw new Error(
+                  `Intent basis must be accepted facts; fact ${factID} is ${fact.status}. Review it with ctf-team-facts first.`,
+                )
+              }
+            }
+            const createdAt = now()
+            const intent: TeamIntent = {
+              id: `intent-${(current.intents?.length ?? 0) + 1}-${randomUUID().slice(0, 8)}`,
+              runId: current.id,
+              routeId: args.routeId as TeamRouteId,
+              title: args.title!.trim(),
+              objective: args.objective!.trim(),
+              basedOnFactIds,
+              expectedObservation: args.expectedObservation,
+              stopCondition: args.stopCondition,
+              failureCondition: args.failureCondition,
+              requiredCapabilities: args.requiredCapabilities ?? [],
+              concurrency: args.concurrency ?? "exclusive",
+              status: "open",
+              attempts: 0,
+              maxAttempts: maxJobAttempts,
+              createdBy: "expert",
+              createdAt,
+              updatedAt: createdAt,
+            }
+            current.intents ??= []
+            current.intents.push(intent)
+            current.updatedAt = createdAt
+            createdIntentID = intent.id
+            auditEvents.push(
+              makeTeamEvent("intent_created", current, {
+                intentId: intent.id,
+                data: { routeId: intent.routeId, title: intent.title, basedOnFactIds: intent.basedOnFactIds },
+              }),
+            )
+          })
+          await appendTeamEvents(auditEvents)
+          return JSON.stringify({ ok: true, intentID: createdIntentID }, null, 2)
+        }
+
+        if (args.action === "claim-next") {
+          if (!args.agent) throw new Error("ctf-team-intent claim-next requires agent.")
+          if (!context.sessionID) throw new Error("claim-next requires the Expert parent session ID.")
+          const parentModel = await resolveParentModel(context.sessionID)
+          const timeoutMs = DEFAULT_JOB_TIMEOUT_MINUTES * 60_000
+          let claim: { runID: string; intentID: string; jobID: string; ownerToken: string } | undefined
+          const auditEvents: TeamEvent[] = []
+          await updateTeamState(directory, (draft) => {
+            const current = findRun(draft, run.id)
+            if (!current) throw new Error(`Team run ${run.id} disappeared during claim.`)
+            if (current.jobs.some((candidate) => !isTerminalJob(candidate.status))) {
+              throw new Error(`Run ${current.id} still has active workers; collect or cancel before claiming.`)
+            }
+            const requestedAgent = args.agent! as TeamAgent
+            const intent = (current.intents ?? [])
+              .filter((candidate) => candidate.status === "open")
+              .filter((candidate) => claimEligibleForAgent(candidate, requestedAgent))
+              .filter((candidate) => !(candidate.concurrency === "exclusive" && routeHasActiveExclusive(current, candidate.routeId)))
+              .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))[0]
+            if (!intent) throw new Error(`No open intent to claim in run ${current.id}.`)
+            if (intent.attempts >= intent.maxAttempts) {
+              throw new Error(`Intent ${intent.id} exhausted its retry budget (${intent.maxAttempts}).`)
+            }
+            const createdAt = now()
+            const ownerToken = randomUUID().slice(0, 8)
+            const job: TeamJob = {
+              id: `job-claim-${current.jobs.length + 1}-${intent.id}`,
+              title: intent.title,
+              objective: intent.objective,
+              agent: args.agent! as TeamAgent,
+              routeId: intent.routeId,
+              intentId: intent.id,
+              concurrency: intent.concurrency === "speculative" || intent.concurrency === "parallel" ? "independent" : "shared_state",
+              status: "queued",
+              createdAt,
+              updatedAt: createdAt,
+              timeoutMs,
+              attempt: 0,
+              ownerToken,
+            }
+            current.jobs.push(job)
+            intent.status = "claimed"
+            intent.claimedBy = job.id
+            intent.claimToken = ownerToken
+            intent.claimExpiresAt = new Date(Date.parse(createdAt) + timeoutMs).toISOString()
+            intent.attempts += 1
+            intent.updatedAt = createdAt
+            claim = { runID: current.id, intentID: intent.id, jobID: job.id, ownerToken }
+            auditEvents.push(makeTeamEvent("intent_claimed", current, { intentId: intent.id, jobId: job.id, data: { agent: args.agent } }))
+          })
+          if (!claim) return JSON.stringify({ ok: false, reason: "no claim performed" }, null, 2)
+
+          const spawnRun = findRun(await readTeamState(directory), claim.runID)!
+          const spawnJob = spawnRun.jobs.find((candidate) => candidate.id === claim!.jobID)!
+          let spawnError: string | undefined
+          let sessionID: string | undefined
+          try {
+            const created = responseData(
+              await client.session.create({
+                query: { directory },
+                body: { parentID: context.sessionID, title: `[CTF Team] ${spawnJob.title}` },
+              }),
+              `Create claim worker ${spawnJob.id}`,
+            ) as { id?: unknown }
+            if (typeof created.id !== "string" || !created.id) throw new Error("session.create returned an invalid session id.")
+            sessionID = created.id
+            await activateAgentDefaults({ client, worktree, directory, sessionID, agentName: spawnJob.agent })
+            const response = await client.session.promptAsync({
+              path: { id: sessionID },
+              query: { directory },
+              body: {
+                agent: spawnJob.agent,
+                model: parentModel,
+                tools: buildChildSessionTools(options.runtimeVisibility?.exportedToolNames, {
+                  task: false, edit: false, write: false, apply_patch: false,
+                  "ctf-team-claim": true,
+                  "ctf-team-dispatch": false, "ctf-team-status": false, "ctf-team-collect": false,
+                  "ctf-team-cancel": false, "ctf-team-cancel-route": false, "ctf-team-close": false,
+                  "ctf-team-recover": false, "ctf-team-adopt": false, "ctf-team-repair": false,
+                  "ctf-team-mode": false, "ctf-team-facts": false, "ctf-team-intent": false,
+                }),
+                parts: [
+                  {
+                    type: "text",
+                    text: workerPrompt(spawnRun, spawnJob, {
+                      surface: options.runtimeVisibility?.surface ?? "ctf-expert",
+                      pluginToolCount: options.runtimeVisibility?.pluginToolCount,
+                      expectedSkills: options.runtimeVisibility?.expectedSkills,
+                      externalSkillsEnabled: options.runtimeVisibility?.externalSkillsEnabled,
+                    }),
+                  },
+                ],
+              },
+            })
+            assertAccepted(response, `Start claim worker ${spawnJob.id}`)
+          } catch (error) {
+            spawnError = safeError(error)
+          }
+
+          let fenced = false
+          let sessionToAbort: string | undefined
+          await updateTeamState(directory, (draft) => {
+            const current = findRun(draft, claim!.runID)
+            const job = current?.jobs.find((candidate) => candidate.id === claim!.jobID)
+            const claimedIntent = current?.intents?.find((candidate) => candidate.id === claim!.intentID)
+            if (!current || !job || !claimedIntent) {
+              fenced = true
+              sessionToAbort = sessionID
+              return
+            }
+            const ownsClaim = claimedIntent.claimedBy === job.id && claimedIntent.claimToken === job.ownerToken
+            const closed = ["completed", "cancelled", "cancelling"].includes(current.status)
+            if (spawnError || closed || !ownsClaim || job.status !== "queued" || !sessionID) {
+              fenced = true
+              sessionToAbort = sessionID
+              if (sessionID) job.sessionID = sessionID
+              if (spawnError && !closed && ownsClaim && job.status === "queued") {
+                failTeamJob(current, job, { phase: "session_create", errorType: "child_session_startup", error: spawnError, retryable: true })
+                job.finishedAt = now()
+                clearIntentClaim(claimedIntent)
+                claimedIntent.status = claimedIntent.attempts < claimedIntent.maxAttempts ? "open" : "failed"
+              } else {
+                finalizeFencedReservation(current, job, claimedIntent, `Claim startup lost ownership/cancellation fence (${current.status}/${job.status})`, auditEvents)
+              }
+            } else {
+              job.sessionID = sessionID
+              transitionTeamJob(job, "starting")
+              transitionTeamJob(job, "running")
+              job.startedAt = now()
+              job.deadlineAt = computeJobDeadlineAt(job.timeoutMs, Date.parse(job.startedAt))
+              job.lastHeartbeatAt = job.startedAt
+              job.updatedAt = job.startedAt
+              claimedIntent.status = "running"
+              claimedIntent.claimExpiresAt = job.deadlineAt
+              claimedIntent.updatedAt = job.startedAt
+              auditEvents.push(makeTeamEvent("intent_started", current, { intentId: claimedIntent.id, jobId: job.id }))
+            }
+            refreshRunStatus(draft, current)
+          })
+          if (sessionToAbort) await abortFencedSession(sessionToAbort, claim.runID, claim.jobID, "Claim child session cleanup")
+          await appendTeamEvents(auditEvents)
+          const finalRun = findRun(await readTeamState(directory), claim.runID)
+          return JSON.stringify({ ok: !spawnError && !fenced, intentID: claim.intentID, jobID: claim.jobID, spawnError, fenced, run: finalRun ? { id: finalRun.id, status: finalRun.status, jobs: finalRun.jobs.length } : undefined }, null, 2)
+        }
+
+        // release | supersede
+        if (!args.intentID) throw new Error(`ctf-team-intent ${args.action} requires intentID.`)
+        if (args.action === "supersede" && !args.reason?.trim()) {
+          throw new Error("ctf-team-intent supersede requires a reason.")
+        }
+        const auditEvents: TeamEvent[] = []
+        await updateTeamState(directory, (draft) => {
+          const current = findRun(draft, run.id)
+          if (!current) throw new Error(`Team run ${run.id} disappeared during ${args.action}.`)
+          const intent = current.intents?.find((candidate) => candidate.id === args.intentID)
+          if (!intent) throw new Error(`Intent ${args.intentID} not found in run ${current.id}.`)
+          const boundJob = current.jobs.find((candidate) => candidate.intentId === intent.id)
+          if (boundJob && !isTerminalJob(boundJob.status)) {
+            throw new Error(
+              `Intent ${intent.id} is bound to active worker ${boundJob.id} (${boundJob.status}); cancel the worker first.`,
+            )
+          }
+          intent.status = args.action === "release" ? "open" : "superseded"
+          intent.claimedBy = undefined
+          intent.claimToken = undefined
+          intent.claimExpiresAt = undefined
+          intent.updatedAt = now()
+          auditEvents.push(
+            makeTeamEvent(args.action === "release" ? "intent_released" : "intent_superseded", current, {
+              intentId: intent.id,
+              data: { reason: args.reason },
+            }),
+          )
+        })
+        await appendTeamEvents(auditEvents)
+        return JSON.stringify({ ok: true, action: args.action, intentID: args.intentID }, null, 2)
+      },
+    }),
+
+    "ctf-team-claim": tool({
+      description:
+        "Worker-only self-claim: atomically reserve the oldest eligible open Intent for the calling worker's run, " +
+        "inherit the caller's agent/route/parent session binding, and spawn a dedicated worker session. " +
+        "Identity (run, job, agent, route, parent) is derived solely from the bound worker session; the tool does not accept run/job/agent/route arguments.",
+      args: {
+        action: tool.schema.enum(["claim-next"]).describe("Only claim-next is supported for workers."),
+      },
+      async execute(args, context) {
+        if (!context.sessionID) {
+          throw new Error("ctf-team-claim requires the calling worker session ID.")
+        }
+        // Worker-policy already gates this on verified active context; double-check
+        // at runtime so a stale session cannot escape the hook layer.
+        const worker = await findWorkerContext(directory, context.sessionID)
+        if (!worker) {
+          throw new Error("ctf-team-claim requires a verified Team worker session bound to a persisted job.")
+        }
+        if (worker.retryPending || isTerminalJob(worker.status)) {
+          throw new Error(
+            `ctf-team-claim refused: worker ${worker.jobId} is no longer active (status=${worker.status}` +
+            `${worker.retryPending ? ", retry pending" : ""}).`,
+          )
+        }
+        const timeoutMs = DEFAULT_JOB_TIMEOUT_MINUTES * 60_000
+        let reservation: {
+          runID: string
+          intentID: string
+          jobID: string
+          ownerToken: string
+          parentSessionID: string
+          agent: TeamAgent
+          routeId: TeamRouteId
+        } | undefined
+        await updateTeamState(directory, (draft) => {
+          const run = draft.runs.find((candidate) => candidate.id === worker.runId)
+          if (!run) {
+            throw new Error(`ctf-team-claim: Team run ${worker.runId} not found.`)
+          }
+          const caller = run.jobs.find(
+            (candidate) => candidate.id === worker.jobId && candidate.sessionID === context.sessionID,
+          )
+          if (!caller) {
+            throw new Error("ctf-team-claim: calling worker no longer bound to its Team job.")
+          }
+          if (!isActiveJobStatus(caller.status) || caller.retryPending || isOrphanedJob(caller)) {
+            throw new Error(
+              `ctf-team-claim: caller job ${caller.id} is not active (status=${caller.status}).`,
+            )
+          }
+          // Capacity: caller counts as an active worker; spawning a new child
+          // must keep total active jobs in this run under maxJobs.
+          const activeJobs = run.jobs.filter(
+            (candidate) => isActiveJobStatus(candidate.status) && !candidate.retryPending,
+          )
+          if (activeJobs.length >= maxJobs) {
+            throw new Error(
+              `ctf-team-claim: run ${run.id} already has ${activeJobs.length} active workers (max ${maxJobs}); ` +
+                `collect or cancel one before claiming.`,
+            )
+          }
+          const candidates = (run.intents ?? [])
+            .filter((intent) => intent.status === "open")
+            .filter((intent) => intent.routeId === worker.routeId)
+            .filter((intent) => claimEligibleForAgent(intent, worker.agent as TeamAgent))
+            .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
+          let target: TeamIntent | undefined
+          for (const intent of candidates) {
+            if (intent.attempts >= intent.maxAttempts) continue
+            // A live job already owns this intent. Terminal jobs are history and
+            // may be replaced by a fresh attempt when the budget permits.
+            const boundJob = run.jobs.find((candidate) => candidate.intentId === intent.id)
+            if (boundJob && !isTerminalJob(boundJob.status)) continue
+            if (routeHasActiveExclusive(run, intent.routeId, intent.id)) continue
+            target = intent
+            break
+          }
+          if (!target) {
+            throw new Error(`ctf-team-claim: no eligible open intent in run ${run.id}.`)
+          }
+          const createdAt = now()
+          const job: TeamJob = {
+            id: `job-claim-${run.jobs.length + 1}-${target.id}-${randomUUID().slice(0, 6)}`,
+            title: target.title,
+            objective: target.objective,
+            agent: worker.agent as TeamAgent,
+            routeId: target.routeId,
+            intentId: target.id,
+            concurrency: target.concurrency === "speculative" ? "independent" : target.concurrency === "parallel" ? "independent" : "shared_state",
+            status: "queued",
+            createdAt,
+            updatedAt: createdAt,
+            timeoutMs,
+            attempt: 0,
+            ownerToken: randomUUID().slice(0, 8),
+          }
+          run.jobs.push(job)
+          target.status = "claimed"
+          target.claimedBy = job.id
+          target.claimToken = job.ownerToken
+          target.claimExpiresAt = new Date(Date.parse(createdAt) + timeoutMs).toISOString()
+          target.attempts += 1
+          target.updatedAt = createdAt
+          reservation = {
+            runID: run.id,
+            intentID: target.id,
+            jobID: job.id,
+            ownerToken: job.ownerToken || "",
+            parentSessionID: run.parentSessionID || context.sessionID!,
+            agent: worker.agent as TeamAgent,
+            routeId: target.routeId as TeamRouteId,
+          }
+        })
+        if (!reservation) {
+          return JSON.stringify({ ok: false, reason: "no claim performed" }, null, 2)
+        }
+
+        const parentModel = await resolveParentModel(reservation.parentSessionID)
+        let sessionID: string | undefined
+        let spawnError: string | undefined
+        try {
+          const created = responseData(
+            await client.session.create({
+              query: { directory },
+              body: { parentID: reservation.parentSessionID, title: `[CTF Team Claim] ${reservation.intentID}` },
+            }),
+            `Create claim worker ${reservation.jobID}`,
+          ) as { id?: unknown }
+          if (typeof created.id !== "string" || !created.id) throw new Error("session.create returned an invalid session id.")
+          sessionID = created.id
+          await activateAgentDefaults({
+            client,
+            worktree,
+            directory,
+            sessionID,
+            agentName: reservation.agent,
+          })
+          const response = await client.session.promptAsync({
+            path: { id: sessionID },
+            query: { directory },
+            body: {
+              agent: reservation.agent,
+              model: parentModel,
+              tools: buildChildSessionTools(options.runtimeVisibility?.exportedToolNames, {
+                task: false,
+                edit: false,
+                write: false,
+                apply_patch: false,
+                "ctf-team-dispatch": false,
+                "ctf-team-status": false,
+                "ctf-team-collect": false,
+                "ctf-team-cancel": false,
+                "ctf-team-cancel-route": false,
+                "ctf-team-close": false,
+                "ctf-team-recover": false,
+                "ctf-team-adopt": false,
+                "ctf-team-repair": false,
+                "ctf-team-mode": false,
+                "ctf-team-facts": false,
+                "ctf-team-intent": false,
+                "ctf-team-claim": true,
+              }),
+              parts: [
+                {
+                  type: "text",
+                  text: workerPrompt(
+                    findRun(await readTeamState(directory), reservation!.runID)!,
+                    findRun(await readTeamState(directory), reservation!.runID)!.jobs.find((j) => j.id === reservation!.jobID)!,
+                    {
+                      surface: options.runtimeVisibility?.surface ?? "ctf-expert",
+                      pluginToolCount: options.runtimeVisibility?.pluginToolCount,
+                      expectedSkills: options.runtimeVisibility?.expectedSkills,
+                      externalSkillsEnabled: options.runtimeVisibility?.externalSkillsEnabled,
+                    },
+                  ),
+                },
+              ],
+            },
+          })
+          assertAccepted(response, `Start claim worker ${reservation.jobID}`)
+        } catch (error) {
+          spawnError = safeError(error)
+        }
+
+        const auditEvents: TeamEvent[] = []
+        let fencedSessionID: string | undefined
+        await updateTeamState(directory, (draft) => {
+          const run = findRun(draft, reservation!.runID)
+          if (!run) return
+          const job = run.jobs.find((candidate) => candidate.id === reservation!.jobID)
+          const intent = run.intents?.find((candidate) => candidate.id === reservation!.intentID)
+          if (!job || !intent) return
+          if (intent.claimToken !== job.ownerToken || intent.claimedBy !== job.id) {
+            console.warn(
+              `[team-runtime] ctf-team-claim fenced: token/job mismatch for intent ${intent.id} (job=${job.id}); skipping commit.`,
+            )
+            fencedSessionID = sessionID
+            return
+          }
+          // The reservation is only valid while the run is still open and this
+          // job is still the queued reservation it created. A cancel that
+          // landed while the child session was starting must win: otherwise a
+          // live worker is committed into a closed run and never aborted.
+          if (job.status !== "queued" || run.status === "completed" || run.status === "cancelled" || run.status === "cancelling") {
+            console.warn(
+              `[team-runtime] ctf-team-claim fenced: run ${run.id} is ${run.status} / job ${job.id} is ${job.status}; skipping commit.`,
+            )
+            fencedSessionID = sessionID
+            return
+          }
+          if (spawnError) {
+            failTeamJob(run, job, {
+              phase: "session_create",
+              errorType: "child_session_startup",
+              error: spawnError,
+              retryable: true,
+            })
+            job.finishedAt = now()
+            // Re-open intent so the next claim can pick it up; only mark
+            // failed when the retry budget is exhausted. Run refresh LAST so
+            // syncIntentStatus cannot overwrite the intentional release.
+            if (intent.attempts < intent.maxAttempts) {
+              intent.status = "open"
+              intent.claimedBy = undefined
+              intent.claimToken = undefined
+              intent.claimExpiresAt = undefined
+            } else {
+              intent.status = "failed"
+              intent.claimedBy = undefined
+              intent.claimToken = undefined
+              intent.claimExpiresAt = undefined
+              auditEvents.push(
+                makeTeamEvent("intent_failed", run, {
+                  intentId: intent.id,
+                  jobId: job.id,
+                  data: { reason: spawnError },
+                }),
+              )
+            }
+            intent.updatedAt = now()
+          } else if (sessionID) {
+            job.sessionID = sessionID
+            transitionTeamJob(job, "starting")
+            transitionTeamJob(job, "running")
+            job.startedAt = now()
+            job.deadlineAt = computeJobDeadlineAt(job.timeoutMs, Date.parse(job.startedAt))
+            job.lastHeartbeatAt = job.startedAt
+            job.updatedAt = job.startedAt
+            intent.status = "running"
+            intent.claimedBy = job.id
+            intent.claimToken = job.ownerToken
+            intent.claimExpiresAt = job.deadlineAt
+            intent.updatedAt = job.startedAt
+            auditEvents.push(
+              makeTeamEvent("intent_claimed", run, {
+                intentId: intent.id,
+                jobId: job.id,
+                data: { agent: job.agent },
+              }),
+            )
+            auditEvents.push(
+              makeTeamEvent("intent_started", run, { intentId: intent.id, jobId: job.id }),
+            )
+          }
+          refreshRunStatus(draft, run)
+        })
+        if (fencedSessionID) {
+          // The reservation lost its race (run closed or token replaced): the
+          // freshly created child session must not survive the fence, or a
+          // cancelled wave keeps a live worker burning budget.
+          try {
+            await client.session.abort({ path: { id: fencedSessionID }, query: { directory } })
+          } catch (error) {
+            console.warn(`[team-runtime] ctf-team-claim fenced-session abort failed (non-fatal): ${safeError(error)}`)
+          }
+        }
+        await appendTeamEvents(auditEvents)
+        const finalRun = findRun(await readTeamState(directory), reservation.runID)
+        return JSON.stringify(
+          {
+            ok: !spawnError && !fencedSessionID,
+            action: args.action,
+            runID: reservation.runID,
+            intentID: reservation.intentID,
+            jobID: reservation.jobID,
+            sessionID,
+            spawnError,
+            run: finalRun
+              ? {
+                  id: finalRun.id,
+                  status: finalRun.status,
+                  jobs: finalRun.jobs.length,
+                  intents: finalRun.intents?.length ?? 0,
+                }
+              : undefined,
           },
           null,
           2,
@@ -2153,7 +3193,7 @@ export function createTeamRuntimeCore(
 
   async function initialize() {
     try {
-      const { state, repairs } = await normalizePersistedTeamState(directory)
+      const { state: _state, repairs } = await normalizePersistedTeamState(directory)
       if (repairs.length) {
         console.log(`[team-runtime] repaired persisted state: ${repairs.join(" | ")}`)
       }

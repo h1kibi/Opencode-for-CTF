@@ -5,8 +5,8 @@ import { mkdir, open, readdir, readFile, writeFile, lstat } from "node:fs/promis
 import path from "node:path"
 import { resolveAllowedPath } from "../lib/path-policy.ts"
 import { safeExec } from "../lib/exec-utils.ts"
-import { entropy, printableStrings } from "../lib/triage-core.ts"
-import { extractFlagCandidates } from "../lib/flag-utils.ts"
+import { printableStrings } from "../lib/triage-core.ts"
+import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
 
 const SAMPLE_BYTES = 1024 * 1024
 
@@ -41,9 +41,6 @@ type ArtifactDb = {
   createdAt: string
 }
 
-function log(...args: unknown[]) {
-  console.log("[artifact-analyze]", ...args)
-}
 
 async function sha256File(target: string) {
   const hash = createHash("sha256")
@@ -155,7 +152,6 @@ async function scanSourceAt(dir: string, slug: string): Promise<{ entries: Analy
     )
     .map((e) => path.join(e.parentPath ?? dir, e.name))
 
-  const lang = detectLanguage(sourceFiles)
 
   // Grep for common sink patterns
   const sinkPatterns: Array<{ regex: RegExp; kind: string; danger: string }> = [

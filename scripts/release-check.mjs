@@ -100,7 +100,6 @@ for (const file of [
   "mcp-server/launchers/browser.cmd",
   "mcp-server/launchers/cyberchef-mcp.cmd",
   "mcp-server/launchers/ctfd-mcp.cmd",
-  "mcp-server/launchers/ida-pro.cmd",
   "mcp-server/launchers/wiremcp.cmd",
   "mcp-server/vendor/WireMCP/index.js",
   "mcp-server/vendor/WireMCP/package.json",
@@ -127,46 +126,17 @@ for (const required of [
   "LICENSE",
   "README.md",
   "third_party",
-  // Slim RAG knowledge allowlist (do not list bare "rag" or "rag/knowledge").
-  "rag/knowledge/lessons",
-  "rag/knowledge/retros",
-  "rag/knowledge/sources",
-  "rag/knowledge/pwn",
-  "rag/knowledge/rev",
-  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v9.json",
-  "rag/knowledge/pattern-cards/java-web",
-  "rag/knowledge/pattern-cards/pwn-curated.cards.v1.json",
-  "rag/knowledge/pattern-cards/des-ctf/des-ctf.cards.v1.json",
-  "rag/knowledge/pattern-cards/synonyms.json",
-  "rag/knowledge/retros/retros.index.json",
-  "rag/knowledge/sources/des-ctf-knowledge.manifest.json",
-  "rag/knowledge/sources/secknowledge-skill.manifest.json",
-  "rag/lessons",
 ]) {
   if (!(packageJson.files ?? []).includes(required)) errors.push(`package files must include: ${required}`)
 }
 
-// Guard against re-bloating: bare RAG directory entries would ship raw mirrors and intermediate cards.
-if ((packageJson.files ?? []).includes("rag") || (packageJson.files ?? []).includes("rag/knowledge")) {
-  errors.push(
-    'package files must not list bare "rag" or "rag/knowledge" (use explicit slim RAG paths so raw mirrors and intermediate cards stay out of the tarball)',
-  )
-}
-
-// Slim default pack: these must NOT be published as package roots.
-for (const forbidden of ["skills-external", "benchmarks", "retros", "patches"]) {
+// Local knowledge retrieval is an external MCP server (ctf_rag), so no corpus
+// should ship. Re-adding these roots would resurrect the retired implementation.
+for (const forbidden of ["rag", "skills-external", "benchmarks", "retros", "patches", "knowledge", "lessons"]) {
   const listed = (packageJson.files ?? []).some(
-    (entry) => entry === forbidden || entry.startsWith(`${forbidden}/`) || entry.startsWith("skills-external/"),
+    (entry) => entry === forbidden || entry.startsWith(`${forbidden}/`),
   )
-  if (listed) errors.push(`package files must not include non-default asset root: ${forbidden}`)
-}
-
-if (
-  (packageJson.files ?? []).some(
-    (entry) => entry === "rag/Des-CTF-Knowledge" || entry.startsWith("rag/Des-CTF-Knowledge/"),
-  )
-) {
-  errors.push("package files must not include raw rag/Des-CTF-Knowledge mirror")
+  if (listed) errors.push(`package files must not include retired knowledge asset root: ${forbidden}`)
 }
 
 for (const required of ["runtime/README.md", "runtime/win-env", "runtime/wsl-env"]) {
@@ -188,18 +158,10 @@ if (typeof engine !== "string" || !engine.includes("22.20")) {
   errors.push('package engines.node should allow Node 22.20+ (e.g. ">=22.20.0")')
 }
 
-// Runtime knowledge surface must exist in the source tree (install / pack inputs).
-for (const required of [
-  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v9.json",
-  "rag/knowledge/pattern-cards/java-web/java-web.cards.v1.json",
-  "rag/knowledge/pattern-cards/pwn-curated.cards.v1.json",
-  "rag/knowledge/pattern-cards/des-ctf/des-ctf.cards.v1.json",
-  "rag/knowledge/pattern-cards/synonyms.json",
-  "rag/knowledge/retros/retros.index.json",
-  "rag/knowledge/sources/des-ctf-knowledge.manifest.json",
-  "rag/knowledge/sources/secknowledge-skill.manifest.json",
-]) {
-  if (!existsSync(path.join(repoRoot, required))) errors.push(`missing runtime knowledge asset: ${required}`)
+// Retired corpus must be absent from the source tree so an install or pack can
+// never pick it back up.
+for (const retired of ["rag", "skills-external"]) {
+  if (existsSync(path.join(repoRoot, retired))) errors.push(`retired knowledge tree must be removed: ${retired}`)
 }
 
 // Optional: pack dry-run content gate (skip when CTF_SKIP_PACK_PROBE=1 for quick local checks).

@@ -4,7 +4,7 @@ import { mkdir, writeFile, rm } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
-import { extractFlagCandidates, FLAG_REGEX } from "../lib/flag-utils.ts"
+import { extractFlagCandidates, FLAG_REGEX } from "../../packages/ctf-core/src/flag-rules.ts"
 
 const DEFAULT_FLAG_RE = FLAG_REGEX
 
@@ -292,7 +292,7 @@ run_case('mutant', ${JSON.stringify(args.mutantPayloadText || "")}, ${JSON.strin
       fallback_action:
         "if the same banner still hides inconsistent leak classes, keep payload structure fixed and compare one baseline vs one mutant only",
       stop_if:
-        "PoW, restart drift, or binary-stateful protocol effects dominate after a few bounded probes; ESCALATE: ctf-expert",
+        "PoW, restart drift, or binary-stateful protocol effects dominate after a few bounded probes; stop and report the blocker",
       matching_guess:
         splitLines(baseline.banner || "").join("\n") === splitLines(mutant.banner || "").join("\n")
           ? "likely_same_banner_shape"

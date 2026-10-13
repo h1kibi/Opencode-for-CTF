@@ -46,31 +46,70 @@ export const WORKER_DENIED_TOOLS = new Set([
   "ctf-decision-state",
   "ctf-file-write-matrix",
   "ctf-mcp-control",
-  "ctf-handoff",
   "ctf-team-mode",
   "ctf-continuation-control",
   "ctf-skill-mcp-lifecycle",
   "ctf-whitebox-handoff",
-  "ctf-pattern-feedback",
-  "ctf-lesson-index-audit",
-  "ctf-lesson-modifier-plan",
 ])
 
 export function isWorkerDeniedTool(toolName: string): boolean {
   return WORKER_DENIED_TOOLS.has(toolName) || toolName.startsWith("ctf-team-")
 }
 
-const PROTECTED_PATH_PATTERN =
-  /(?:^|[\\/\s"'`])(?:Evidence\.md|notes\.md|\.ctf-state\.json|\.ctf-team\.json|agent_flag\.txt|\.ctf-evidence-board\.json)(?:$|[\\/\s"'`])/i
-const PROTECTED_ROOT_PATTERN = /(?:^|[\\/\s"'`])(?:work[\\/]ctf-evidence|runtime[\\/]state)(?:$|[\\/\s"'`])/i
+const PROTECTED_STATE_NAMES = String.raw`(?:Evidence\.md|notes\.md|\.ctf-state\.json|\.ctf-team\.json|agent_flag\.txt|\.ctf-evidence-board\.json)`
+
+/**
+ * Boundaries are lookarounds over identifier characters, not an explicit
+ * delimiter class. A delimiter class silently misses every shell operator a
+ * worker would actually type — `echo x>Evidence.md`, `(echo x)>Evidence.md`,
+ * `echo x 2>Evidence.md` — because the operator sits between the command and
+ * the filename. Matching "not part of a longer identifier" instead keeps
+ * `xEvidence.md` out while catching all redirect/grouping forms.
+ */
+const PROTECTED_PATH_PATTERN = new RegExp(
+  String.raw`(?<![A-Za-z0-9_.\\-])${PROTECTED_STATE_NAMES}(?![A-Za-z0-9_-])`,
+  "i",
+)
+const PROTECTED_ROOT_PATTERN = /(?<![A-Za-z0-9_.\\-])(?:work[\\/]ctf-evidence|runtime[\\/]state)(?![A-Za-z0-9_-])/i
+/**
+ * Redirection operators are matched anywhere (they are never word-like), while
+ * word-shaped writers keep a leading delimiter so ordinary words such as
+ * `form`/`terraform` are not misread as `rm`.
+ */
 const WRITE_COMMAND_PATTERN =
-  /(?:^|[;&|\s])(?:>>?|tee(?:\.exe)?|set-content|add-content|out-file|sed\s+-i|perl\s+-i|rm(?:\.exe)?|del(?:\.exe)?|remove-item|mv(?:\.exe)?|move-item|cp(?:\.exe)?|copy-item)\b/i
-const WORKER_EXECUTION_TOOLS = new Set(["ctf-python-inline", "ctf-python-parallel", "ctf-background-job"])
+  /(?:[<>]|(?:^|[;&|(\s])(?:tee(?:\.exe)?|set-content|add-content|out-file|sed\s+-i|perl\s+-i|rm(?:\.exe)?|del(?:\.exe)?|remove-item|mv(?:\.exe)?|move-item|cp(?:\.exe)?|copy-item|truncate)\b)/i
+const WORKER_EXECUTION_TOOLS: Record<string, true> = {
+  "ctf-python-inline": true,
+  "ctf-python-parallel": true,
+  "ctf-background-job": true,
+  "ctf-pwn-runner": true,
+  "ctf-pwn-docker-runner": true,
+  "ctf-pwn-docker-harness": true,
+  "ctf-pwn-wsl-runner": true,
+  "ctf-pwn-expect-runner": true,
+  "ctf-windows-expect-runner": true,
+}
+const ARGV_ARGUMENT_KEY = /(?:^|[.:[\]]|::)argv(?:$|[.:[\]]|::)/i
+/**
+ * `argv` is joined into one command line by the host when the shell option is
+ * on, so an argv entry is command text, not data. Legitimate challenge
+ * arguments are plain tokens; anything that can escape the argument boundary
+ * is refused rather than passed through.
+ */
+const SAFE_EXEC_ARGUMENT_PATTERN = /^[A-Za-z0-9_\-./:=+,@\\%]{0,512}$/
+/**
+ * Distinctive state-name stems. Matching a stem instead of the whole filename
+ * survives string obfuscation that defeats literal matching: a payload that
+ * builds `".ctf-team"+chr(46)+"json"` never spells the full name but always
+ * contains the stem. The stems are chosen so ordinary challenge artifacts do
+ * not collide (`.ctf-*` and `agent_flag` are reserved; `Evidence.md`/
+ * `notes.md` are matched with their extension, so `evidence.txt` is fine).
+ */
+const PROTECTED_STATE_STEM_PATTERN = /(?:ctf-team|ctf-state|ctf-evidence|agent_flag|evidence\.md|notes\.md)/i
 const PATH_ARGUMENT_KEY = /(?:path|file|dir|directory|output|out|state|board|target)/i
 const MUTATING_PATH_ARGUMENT_KEY = /(?:script|output|out|state|board|destination|dest|write)/i
 const SCRIPT_WRITE_PATTERN =
   /(?:write_text|write_bytes|\.write\s*\(|\.append\s*\(|unlink|remove|rename|replace|mkdir|rmdir|shutil\.(?:copy|move|rmtree)|open\s*\([^)]{0,160},\s*[r\"']?[wax+])/i
-const SCRIPT_ARGUMENT_KEY = /(?:^|[.:[\]]|::)(?:code|script|command|input|shell)(?:$|[.:[\]]|::)/i
 const MAX_ARGUMENT_SCAN_DEPTH = 8
 const MAX_ARGUMENT_SCAN_VALUES = 512
 
@@ -130,11 +169,16 @@ function workerMutationDecision(
   routeLabel: string,
 ): WorkerPolicyDecision {
   const scanned = scanWorkerArguments(args)
+  const isExecutionTool = WORKER_EXECUTION_TOOLS[toolName] === true
   const protectedPath = scanned.find(({ keyPath, value }) => {
     if (!PATH_ARGUMENT_KEY.test(keyPath)) return false
-    const pathIsMutating =
-      WORKER_EXECUTION_TOOLS.has(toolName) || toolName === "ctf-ensure-dir" || MUTATING_PATH_ARGUMENT_KEY.test(keyPath)
-    return pathIsMutating && (PROTECTED_PATH_PATTERN.test(value) || PROTECTED_ROOT_PATTERN.test(value))
+    const pathIsMutating = isExecutionTool || toolName === "ctf-ensure-dir" || MUTATING_PATH_ARGUMENT_KEY.test(keyPath)
+    if (!pathIsMutating) return false
+    return (
+      PROTECTED_PATH_PATTERN.test(value) ||
+      PROTECTED_ROOT_PATTERN.test(value) ||
+      PROTECTED_STATE_STEM_PATTERN.test(value)
+    )
   })
   if (protectedPath) {
     return {
@@ -146,12 +190,30 @@ function workerMutationDecision(
     }
   }
 
-  if (WORKER_EXECUTION_TOOLS.has(toolName)) {
-    const code = scanned
-      .filter(({ keyPath }) => SCRIPT_ARGUMENT_KEY.test(keyPath))
-      .map(({ value }) => value)
-      .join("\n")
-    if ((PROTECTED_PATH_PATTERN.test(code) || PROTECTED_ROOT_PATTERN.test(code)) && SCRIPT_WRITE_PATTERN.test(code)) {
+  if (isExecutionTool) {
+    const unsafeArgv = scanned.find(
+      ({ keyPath, value }) => ARGV_ARGUMENT_KEY.test(keyPath) && !SAFE_EXEC_ARGUMENT_PATTERN.test(value),
+    )
+    if (unsafeArgv) {
+      return {
+        allowed: false,
+        reason:
+          `WorkerPolicyError: execution argument "${unsafeArgv.keyPath}" contains shell metacharacters (${routeLabel}). ` +
+          `The host joins argv into a single shell command, so arguments must be plain tokens ` +
+          `([A-Za-z0-9_-./:=+,@\\%]). Pass complex input through the script body instead.`,
+      }
+    }
+
+    // Every string argument of an execution tool is potential code: arguments
+    // are named `code`, `script`, `command`, `pythonInline`, … and guessing the
+    // envelope is how a bypass slips through. Both conditions below must hold,
+    // so scanning broadly does not deny ordinary path/argv arguments.
+    const code = scanned.map(({ value }) => value).join("\n")
+    const codeTargetsProtectedState =
+      PROTECTED_PATH_PATTERN.test(code) ||
+      PROTECTED_ROOT_PATTERN.test(code) ||
+      PROTECTED_STATE_STEM_PATTERN.test(code)
+    if (codeTargetsProtectedState && SCRIPT_WRITE_PATTERN.test(code)) {
       return {
         allowed: false,
         reason:
@@ -214,7 +276,9 @@ function evaluateUnverifiedWorkerPolicy(
   args: Record<string, unknown>,
   reason: string,
 ): WorkerPolicyDecision {
-  if (isWorkerDeniedTool(toolName)) {
+  // Unbound/unreadable workers never reach the worker-only claim exception,
+  // even if a future policy change ever expands WORKER_TEAM_ALLOWLIST.
+  if (toolName === "ctf-team-claim" || isWorkerDeniedTool(toolName)) {
     return {
       allowed: false,
       reason: `WorkerPolicyError: ${reason} Refusing high-privilege tool "${toolName}" until Team identity is verified.`,
@@ -279,6 +343,15 @@ export async function findWorkerContext(directory: string, sessionID?: string): 
   return (await lookupWorkerContext(directory, sessionID)).context
 }
 
+/**
+ * Tools a verified active Team worker may invoke. The runtime is the sole
+ * authorization decision point for `ctf-team-claim`; this list is the narrow
+ * worker-side exception to the blanket `ctf-team-*` denial.
+ */
+export const WORKER_TEAM_ALLOWLIST: Record<string, true> = {
+  "ctf-team-claim": true,
+}
+
 export function evaluateWorkerToolPolicy(
   context: WorkerContext,
   toolName: string,
@@ -298,6 +371,13 @@ export function evaluateWorkerToolPolicy(
         `WorkerPolicyError: worker ${context.jobId} is no longer active (status=${context.status}` +
         `${context.retryPending ? ", retry pending" : ""}); stale worker execution is fenced.`,
     }
+  }
+
+  // Narrow per-tool exception for verified active workers only. The runtime
+  // body still has to enforce run/job/agent/route/parent binding; this is the
+  // worker-side gate that lets the call through policy.
+  if (WORKER_TEAM_ALLOWLIST[toolName]) {
+    return { allowed: true }
   }
 
   if (isWorkerDeniedTool(toolName)) {

@@ -238,7 +238,6 @@
     "ctf-router": "allow"
     "ctf-decision-engine": "allow"
     "ctf-experience-gate": "allow"
-    "ctf-skill-repo-knowledge": "allow"
     "ctf-closure-gate": "allow"
     "ctf-ledger-discipline": "allow"
   "filesystem_*": "allow"
@@ -295,11 +294,6 @@
   "chrome_chrome_bookmark_add": "allow"
   "chrome_chrome_bookmark_delete": "allow"
   "ctf-decision-state": "allow"
-  "ctf-skill-repo-search": "allow"
-  "ctf-pattern-card-search": "allow"
-  "ctf-pattern-to-hypothesis": "allow"
-  "ctf-pattern-feedback": "allow"
-  "ctf-pattern-curation-report": "allow"
 "hidden": true
 "top_p": 0.1
 ---
@@ -320,7 +314,7 @@ Misc Routing Ladder: 1) run `ctf-misc-analyze`, 2) direct grep/decode/transform 
 Use the shared decision layer instead of restating it locally:
 
 - `ctf-common` owns action-only visible output, checkpoint shape, same-family limits, and verified-flag rules.
-- `ctf-decision-engine` owns top-3 queue maintenance, pattern-card conversion, lesson modifiers, probe contracts, and `ctf-decision-state` usage.
+- `ctf-decision-engine` owns top-3 queue maintenance, retrieval-note conversion, retrieval modifiers, probe contracts, and `ctf-decision-state` usage.
 - `ctf-experience-gate` owns anti-drift behavior, constraint-equation pressure, semantic mismatch promotion, and environment/proc budget caps.
 
 Return to the controller with only: compact classification evidence, why misc should remain owner or hand off, the cheapest specialized next probe, and the current direct-solve opportunity if one exists.

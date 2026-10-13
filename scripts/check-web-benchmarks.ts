@@ -70,7 +70,7 @@ const rules: BenchmarkRule[] = [
   },
   {
     name: "java-map first pass",
-    check(output, meta) {
+    check(output, _meta) {
       if (!/\.(java|jsp|jar|war)$/i.test(output) && !/pom\.xml|build\.gradle/i.test(output)) return "N/A"
       const hasMap = /ctf-java-map/i.test(output)
       return hasMap ? "PASS" : "FAIL"

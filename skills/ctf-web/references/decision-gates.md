@@ -4,7 +4,7 @@ Use this reference as a compact high-value decision layer for Web CTF branches. 
 
 ## Pattern retrieval gate
 
-Use Pattern Retrieval Gate only after a strong signal or primitive candidate. Search local pattern cards and `ctf-experience-gate` first for matching signals, keep at most 3, and retain a pattern only if it changes one of:
+Use Pattern Retrieval Gate only after a strong signal or primitive candidate. Search `ctf_rag` and `ctf-experience-gate` first for matching signals, keep at most 3 hits, and retain one only if it changes one of:
 
 - first safe check
 - score

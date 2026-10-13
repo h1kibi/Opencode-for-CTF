@@ -80,13 +80,12 @@ describe("mergePluginConfig", () => {
   it("merges ctf_fast_budget independently from continuation", () => {
     const cfg = mergePluginConfig({
       continuation: { enabled: false },
-      ctf_fast_budget: { enabled: true, soft_minutes: 30, escalate_on_expiry: false },
+      ctf_fast_budget: { enabled: true, soft_minutes: 30 },
     })
     expect(cfg.continuation.enabled).toBe(false)
     expect(cfg.disabled_hooks).toContain("continuation")
     expect(cfg.ctf_fast_budget.enabled).toBe(true)
     expect(cfg.ctf_fast_budget.soft_minutes).toBe(30)
-    expect(cfg.ctf_fast_budget.escalate_on_expiry).toBe(false)
   })
 
   it("clamps and validates ctf_fast_budget soft_minutes", () => {

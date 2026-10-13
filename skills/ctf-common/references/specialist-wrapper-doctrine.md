@@ -33,7 +33,7 @@ For any non-trivial branch:
 Use the shared decision layer instead of restating it locally:
 
 - `ctf-common` owns action-only visible output, same-family limits, checkpointing, verified-flag rules, and interruption hygiene.
-- `ctf-decision-engine` owns top-3 queue maintenance, pattern-card conversion, lesson modifiers, probe contracts, and `ctf-decision-state` usage.
+- `ctf-decision-engine` owns top-3 queue maintenance, retrieval-note conversion, retrieval modifiers, probe contracts, and `ctf-decision-state` usage.
 - `ctf-experience-gate` owns anti-drift behavior, semantic mismatch promotion, constraint-equation pressure where applicable, environment/proc budget caps, and resume discipline.
 
 ## Shared Return Contract

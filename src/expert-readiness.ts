@@ -20,16 +20,33 @@ export const EXPERT_TEAM_RUNTIME_TOOLS = [
 
 export const EXPERT_CORE_WORKFLOW_TOOLS = ["ctf-evidence-board", "ctf-mcp-control", "ctf-decompose-task"] as const
 
-export const EXPERT_SUPPORT_TOOLS = ["ctf-team-mode", "ctf-handoff", "ctf-tool-packs"] as const
+export const EXPERT_SUPPORT_TOOLS = ["ctf-team-mode", "ctf-tool-packs"] as const
+
+/**
+ * Phase ② local recall is served by the external `ctf_rag` MCP server
+ * (RAG-Agent), not by bundled plugin tools: the plugin no longer ships a local
+ * corpus, lesson/retro store, or pattern-card index.
+ *
+ * This is deliberately NOT a hard requirement. Team Mode + the Evidence
+ * workflow are what Expert Mode cannot run without; a retrieval backend is a
+ * capability the solve can proceed without, exactly like ghidra/apktool. When it
+ * is unavailable the Expert must record the gap (or a no-hit result) in the
+ * evidence decision log instead of silently skipping the recall stage.
+ */
+export const EXPERT_RAG_SERVER_ID = "ctf_rag" as const
+
+/** Environment the `ctf_rag` server needs before it can serve a query. */
+export const EXPERT_RAG_ENV_VARS = ["CTF_RAG_PYTHON", "CTF_RAG_ROOT", "CTF_RAG_KB_ROOT"] as const
 
 /** Route-specific external binaries are intentionally soft dependencies. */
-export const EXPERT_SOFT_DEPENDENCIES = ["ida", "jadx", "ghidra", "apktool", "frida"] as const
+export const EXPERT_SOFT_DEPENDENCIES = ["ghidra", "apktool", "frida"] as const
 
-/** Hard-required tools for /ctf-expert (team runtime + core workflow). */
+/** Hard-required tools for /ctf-expert, including the Team Mode + Evidence contract. */
 export const EXPERT_REQUIRED_TOOLS = [...EXPERT_TEAM_RUNTIME_TOOLS, ...EXPERT_CORE_WORKFLOW_TOOLS] as const
 
 /** Full expert surface including helpful support tools. */
 export const EXPERT_ALL_CONTRACT_TOOLS = [...EXPERT_REQUIRED_TOOLS, ...EXPERT_SUPPORT_TOOLS] as const
+
 
 export type ExpertReadinessCheck = {
   id: string
@@ -97,6 +114,7 @@ export function evaluateExpertReadiness(input: ExpertReadinessInput): ExpertRead
       : 'Set "team_mode": { "enabled": true } in opencode-for-ctf.jsonc and restart OpenCode.',
   })
 
+  const missingSupportTools: string[] = []
   const missingTools: string[] = []
   for (const name of EXPERT_REQUIRED_TOOLS) {
     const ok = registered.has(name)
@@ -114,7 +132,22 @@ export function evaluateExpertReadiness(input: ExpertReadinessInput): ExpertRead
     })
   }
 
-  const missingSupportTools: string[] = []
+  // Phase ② retrieval backend. Non-blocking: report it, never gate Expert Mode
+  // on an external service the solve can continue without.
+  const missingRagEnv = EXPERT_RAG_ENV_VARS.filter((name) => !process.env[name])
+  const ragReady = missingRagEnv.length === 0
+  checks.push({
+    id: `mcp:${EXPERT_RAG_SERVER_ID}`,
+    ok: ragReady,
+    required: false,
+    detail: ragReady
+      ? `${EXPERT_RAG_SERVER_ID} env configured`
+      : `${EXPERT_RAG_SERVER_ID} unavailable (unset: ${missingRagEnv.join(", ")})`,
+    remediation: ragReady
+      ? undefined
+      : `Set ${missingRagEnv.join(", ")} for the RAG-Agent server, or run Phase ② and record the unavailable backend in the evidence decision log.`,
+  })
+
   for (const name of EXPERT_SUPPORT_TOOLS) {
     const ok = registered.has(name)
     if (!ok) missingSupportTools.push(name)
@@ -130,11 +163,12 @@ export function evaluateExpertReadiness(input: ExpertReadinessInput): ExpertRead
   }
 
   const blocked = !teamModeOk || missingTools.length > 0
-  const status: ExpertReadinessStatus = blocked ? "blocked" : missingSupportTools.length > 0 ? "degraded" : "ready"
+  const status: ExpertReadinessStatus = blocked ? "blocked" : missingSupportTools.length > 0 || !ragReady ? "degraded" : "ready"
   const reasons = [
     ...(!teamModeOk ? ["team_mode.enabled is false"] : []),
     ...(missingTools.length ? [`missing required tools: ${missingTools.join(", ")}`] : []),
     ...(missingSupportTools.length ? [`missing optional support tools: ${missingSupportTools.join(", ")}`] : []),
+    ...(!ragReady ? [`Phase ② retrieval backend unavailable (unset: ${missingRagEnv.join(", ")})`] : []),
   ]
   const ready = !blocked
   return {
@@ -239,7 +273,8 @@ export function formatExpertReadinessFailure(
     "",
     "Scope note:",
     "- Expert Mode hard-depends only on Team Mode + Evidence workflow tools.",
-    "- External binaries such as ida, jadx, ghidra, apktool, and frida are route-specific soft dependencies; load them only when the current solve lane needs them.",
+    "- Phase ② local recall is served by the external `ctf_rag` MCP server; when it is unavailable, record that in the evidence decision log instead of silently skipping recall.",
+    "- External binaries such as ghidra, apktool, and frida are route-specific soft dependencies; load them only when the current solve lane needs them.",
     "",
     "Fix:",
     '1. Ensure opencode-for-ctf.jsonc has team_mode.enabled=true (and tool_packs=["all"] for full coverage).',

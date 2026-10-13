@@ -35,9 +35,9 @@ Common lightweight tools for subagents:
 - Facade routers: `ctf-web-analyze`, `ctf-pwn-analyze`, `ctf-rev-analyze`, `ctf-crypto-analyze`, `ctf-forensics-analyze`, `ctf-misc-analyze`, `ctf-encoding-chain`, `ctf-multimodal-triage`
 - Focused fallback probes: `ctf-binary-probe`, `ctf-rsa-probe`, `ctf-pcap-probe`, `ctf-stego-probe`
 - Artifact helpers: `archive-safe-extract`, `ctf-safe-extract`, `doc-read`, `image-file-info`, `ctf-artifact-analyze`
-- State/knowledge: `ctf-evidence-board`, `ctf-decision-state`, `ctf-lesson-search`, `ctf-retro-search`, `ctf-pattern-card-search`, `ctf-pattern-to-hypothesis`, `ctf-imported-knowledge-search`
+- State/knowledge: `ctf-evidence-board`, `ctf-decision-state`
 - Execution helpers: `ctf-python-inline`, `ctf-ensure-dir`, `ctf-env-check`
-- Escalation/control: `ctf-handoff`, `ctf-tool-packs`, `ctf-dynamic-mcp-advisor`, `ctf-mcp-control`
+- Escalation/control: `ctf-tool-packs`, `ctf-dynamic-mcp-advisor`, `ctf-mcp-control`
 
 ## Primary Agents
 
@@ -48,9 +48,9 @@ Purpose: lightweight primary lane for simple to medium challenges.
 Tool surface:
 
 - Uses `FAST_TOOL_ALLOWLIST` only.
-- Has light routing, triage, extraction, web, pwn, crypto, forensics, Python, environment, artifact, and handoff helpers.
+- Has light routing, triage, extraction, web, pwn, crypto, forensics, Python, environment, and artifact helpers.
 - Not equipped with Team Mode by default.
-- Must escalate instead of fighting blocked expert/heavy tools.
+- Reports the blocker and stops instead of fighting blocked expert/heavy tools; the user decides whether to continue in `ctf-expert`.
 
 Key allowed tools include (prefer the facade tools first; direct probes are focused fallbacks after the route is known):
 
@@ -60,11 +60,27 @@ Key allowed tools include (prefer the facade tools first; direct probes are focu
 - Rev/crypto/forensics light: `ctf-rev-analyze`, `ctf-crypto-analyze`, `ctf-forensics-analyze`, `ctf-misc-analyze`, `ctf-encoding-chain`, `ctf-multimodal-triage`
 - Focused fallback probes: `ctf-binary-probe`, `ctf-rsa-probe`, `ctf-pcap-probe`, `ctf-stego-probe`, `ctf-image-open`
 - Script/env: `ctf-python-inline`, `ctf-ensure-dir`, `ctf-env-check`, `ctf-artifact-analyze`
-- Escalation: `ctf-dynamic-mcp-advisor`, `ctf-handoff`
+- Escalation: `ctf-dynamic-mcp-advisor`
 
 MCP defaults:
 
-- `filesystem`, `context7`, `github`, `markitdown`
+- `filesystem`, `context7`, `github`, `markitdown`, `ctf_rag`
+
+The `ctf_rag` entry is RAG-Agent's read-only local corpus index. It is activated
+as part of this profile (not requested/approved) because it only retrieves cited
+evidence and never touches the target. The server declares its tool as `ctf_rag`;
+hosts that namespace MCP tools expose `ctf_rag_ctf_rag`. `FAST_MCP_TOOL_NAMES` and
+`FAST_MCP_SERVER_PREFIXES` in `src/tool-packs.ts` admit both spellings on the fast
+surface, so the CTF tool allowlist above stays unchanged.
+
+Unlike every other entry here, `ctf_rag` has **no** static config stub: the plugin
+activates it from `src/mcp-server-registry.ts` with a real config object, so its
+machine-specific paths never pass through config text. That matters because the
+host expands `{env:VAR}` into the config text before parsing it, and a placeholder
+resolving to a Windows path injects unescaped backslashes that make the whole
+config unparseable. Activation needs `CTF_RAG_PYTHON`, `CTF_RAG_ROOT`, and
+`CTF_RAG_KB_ROOT`; when they are unset the profile reports a `missing env` skip
+instead of failing the solve.
 
 Environment stance:
 
@@ -81,7 +97,8 @@ Purpose: evidence-driven primary lane for complex, multi-route, or resumed chall
 Tool surface:
 
 - Uses the full pack-filtered process registry.
-- Hard-required expert tools: `ctf-team-dispatch`, `ctf-team-status`, `ctf-team-collect`, `ctf-team-cancel`, `ctf-team-cancel-route`, `ctf-team-close`, `ctf-team-recover`, `ctf-team-adopt`, `ctf-evidence-board`, `ctf-mcp-control`, `ctf-decompose-task`.
+- Hard-required expert tools: `ctf-team-dispatch`, `ctf-team-status`, `ctf-team-collect`, `ctf-team-cancel`, `ctf-team-cancel-route`, `ctf-team-close`, `ctf-team-recover`, `ctf-team-adopt`, `ctf-team-repair`, `ctf-evidence-board`, `ctf-mcp-control`, `ctf-decompose-task`.
+- Expert fact/intent ledger: `ctf-team-facts` (review pending worker facts; `accept` is the only path to `confirmed`) and `ctf-team-intent` (create/list/claim-next/release/supersede; an intent needs a fact basis and a convergence rule). A verified worker pulls work only through `ctf-team-claim`.
 - Owns Team Mode, Evidence.md, exactly-three-route planning, route-state transitions, and heavy MCP approval.
 
 MCP defaults:
@@ -91,7 +108,7 @@ MCP defaults:
 Environment stance:
 
 - Restart OpenCode after changing `tool_packs`, `expert_tool_packs`, or `team_mode`.
-- Missing external binaries such as `ida`, `jadx`, `ghidra`, `apktool`, or `frida` are route-specific soft dependency failures, not global expert failure.
+- Missing external binaries such as `ghidra`, `apktool`, or `frida` are route-specific soft dependency failures, not global expert failure.
 - Heavy MCP is approved only when tied to a current route and a concrete need.
 
 ## Category Subagents
@@ -107,12 +124,12 @@ Light tools:
 
 MCP default candidates:
 
-- `filesystem`, `context7`, `github`, `markitdown`, `browser`, `jadx-mcp`, `mysql-mcp`, `ssh-mcp`
+- `filesystem`, `context7`, `github`, `markitdown`, `browser`, `mysql-mcp`, `ssh-mcp`
 
 Soft dependencies and environment:
 
 - Browser MCP is useful for runtime/admin-bot/SPAs, but curl/source-first fallback must remain viable.
-- Request heavy JADX/DB/SSH/search MCPs only when source or route evidence justifies them.
+- Request heavy DB/SSH/search MCPs only when source or route evidence justifies them.
 - Approved local CTF CLIs from `C:\Tools`: `nuclei`, `ffuf`, `feroxbuster`, `dirsearch`, `sqlmap`, `nmap`, `whatweb`, `XSStrike`, `tplmap`, `Fenjing`, `phpggc`, and `ysoserial` when the route evidence justifies them. Use low-rate/manual probes first; use `nuclei` only after host, template scope, and stop condition are explicit.
 
 ### `ctf-pwn`
@@ -127,14 +144,14 @@ Light tools:
 
 MCP default candidates:
 
-- `filesystem`, `context7`, `github`, `markitdown`, `gdb-mcp`, `ida-pro`, `ssh-mcp`
+- `filesystem`, `context7`, `github`, `markitdown`, `gdb-mcp`, `ssh-mcp`
 
 Soft dependencies and environment:
 
 - Docker, gdb, pwntools, checksec, and pwnlab images improve parity but are not always hard blockers.
 - Use Docker/pwnlab or WSL when Windows host execution is unsuitable.
-- GDB, IDA, and SSH MCPs are requestable heavy MCPs through expert approval.
-- Approved local static helpers from `C:\Tools`: radare2/r2 for quick disassembly, IDA Pro through the `ida-pro` MCP when configured, and SSH only for authorized challenge endpoints.
+- GDB and SSH MCPs are requestable heavy MCPs through expert approval.
+- Approved local static helpers from `C:\Tools`: radare2/r2 for quick disassembly, and SSH only for authorized challenge endpoints.
 
 ### `ctf-rev`
 
@@ -148,14 +165,14 @@ Light tools:
 
 MCP default candidates:
 
-- `filesystem`, `context7`, `github`, `markitdown`, `ReVa`, `ida-pro`, `jadx-mcp`, `gdb-mcp`, `x64dbg-mcp`, `ssh-mcp`
+- `filesystem`, `context7`, `github`, `markitdown`, `ReVa`, `gdb-mcp`, `x64dbg-mcp`, `ssh-mcp`
 
 Soft dependencies and environment:
 
-- Ghidra/ReVa/IDA/JADX/GDB/x64dbg improve decompilation, xref, and debugger workflows.
-- Android routes may require `android`, `android-dynamic`, or `java` packs plus Android SDK/ADB/jadx/frida/apktool. Use `ctf-android-analyze` as the first APK tool when the android pack is enabled.
+- Ghidra/ReVa/GDB/x64dbg improve decompilation, xref, and debugger workflows.
+- Android routes may require `android`, `android-dynamic`, or `java` packs plus Android SDK/ADB/frida/apktool. Use `ctf-android-analyze` as the first APK tool when the android pack is enabled.
 - Docker revlab is recommended for cross-arch and heavier reversing environments.
-- Approved local helpers from `C:\Tools`: IDA Professional 9.2, JADX, radare2/r2, dnSpy, and debugger MCPs (`ida-pro`, `gdb-mcp`, `x64dbg-mcp`) when the current route needs decompiler/debugger state.
+- Approved local helpers from `C:\Tools`: radare2/r2, dnSpy, and debugger MCPs (`gdb-mcp`, `x64dbg-mcp`) when the current route needs decompiler/debugger state.
 
 ### `ctf-crypto`
 
@@ -255,15 +272,15 @@ Soft dependencies and environment:
 ## Meta And Support Agents
 
 - `ctf-scout`: common light MCP plus `browser`; gathers route evidence, not final ownership.
-- `ctf-oracle`: common light MCP plus `seckb`; answers knowledge questions.
-- `ctf-librarian`: `filesystem`, `seckb`; maintains reusable local knowledge.
+- `ctf-oracle`: common light MCP plus `ctf_rag`; answers knowledge questions from retrieved `ctf_rag` evidence.
+- `ctf-librarian`: `filesystem`, `ctf_rag`; maintains reusable local knowledge and recalls techniques/patterns through `ctf_rag`.
 - `ctf-verifier`: `filesystem`; verifies final evidence/flag claims with minimal surface.
-- `ctf-retro`: common light MCP; post-solve lessons and feedback.
-- `researcher`: support primary for manual post-solve reflection and local knowledge maintenance, not an active solve lane.
+- `ctf-retro`: common light MCP plus `ctf_rag`; recalls prior route-ordering/stability/closure lessons through `ctf_rag` and records post-solve feedback.
+- `researcher`: support primary for manual post-solve reflection; it curates the RAG-Agent corpus behind `ctf_rag`, not an active solve lane.
 
 ## Escalation Rules
 
-- If `ctf-fast` needs Team Mode, heavy MCP, or tools outside its allowlist, escalate to `ctf-expert`.
+- If `ctf-fast` needs Team Mode, heavy MCP, or tools outside its allowlist, it reports the blocker + strongest evidence + best next direction and stops; the user chooses whether to continue in `ctf-expert`. The lane never switches automatically.
 - If a category subagent needs a tool outside its lightweight list, request it with `ctf-dynamic-mcp-advisor` and wait for expert approval.
 - Do not install tools ad hoc during a worker route unless the expert approved the environment change.
 - Do not treat missing soft dependencies as a reason to restart broad recon; use the declared fallback for that family first.

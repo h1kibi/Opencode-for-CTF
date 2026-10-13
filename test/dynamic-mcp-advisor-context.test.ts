@@ -5,7 +5,7 @@ const { getAgentMcpStateMock, listRecentActivationIssuesMock, requestMcpMock } =
     activeProfiles: [
       { agent: "ctf-web", sessionID: "session-1234567890abcdef", serverNames: ["filesystem", "browser"] },
     ],
-    requests: [{ id: "req-1", status: "pending", agent: "ctf-web", serverName: "ida-pro", reason: "need reversing" }],
+    requests: [{ id: "req-1", status: "pending", agent: "ctf-web", serverName: "flutter-aot", reason: "need reversing" }],
   })),
   listRecentActivationIssuesMock: vi.fn(async () => [
     {
@@ -18,7 +18,7 @@ const { getAgentMcpStateMock, listRecentActivationIssuesMock, requestMcpMock } =
   ]),
   requestMcpMock: vi.fn(async () => ({
     requestIds: ["req-99"],
-    results: [{ serverName: "ida-pro", status: "pending" }],
+    results: [{ serverName: "flutter-aot", status: "pending" }],
   })),
 }))
 
@@ -59,7 +59,7 @@ describe("ctf-dynamic-mcp-advisor", () => {
     const workspace = "C:/tmp/ctf-dynamic-request-worktree"
     const mod = await import("../tools/core/ctf-dynamic-mcp-advisor.ts")
 
-    const out = await mod.default.execute({ action: "request", serverIds: ["ida-pro"], reason: "need reversing" }, {
+    const out = await mod.default.execute({ action: "request", serverIds: ["flutter-aot"], reason: "need reversing" }, {
       worktree: workspace,
       directory: "C:/tmp/ctf-dynamic-request-directory",
       sessionID: "sess-2",
@@ -70,10 +70,10 @@ describe("ctf-dynamic-mcp-advisor", () => {
       worktree: workspace,
       sessionID: "sess-2",
       agentName: "ctf-rev",
-      serverNames: ["ida-pro"],
+      serverNames: ["flutter-aot"],
       reason: "need reversing",
     })
     expect(out).toContain("request_submitted: 1")
-    expect(out).toContain("ida-pro: pending")
+    expect(out).toContain("flutter-aot: pending")
   })
 })

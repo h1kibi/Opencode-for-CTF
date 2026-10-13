@@ -1,17 +1,17 @@
 # Windows Packed / Memory-Reconstructed PE
 
-Use for Windows PE challenges where the on-disk file is a stub, section names were changed, code appears only after runtime writes, IDA is unusable due to license failure, or Ghidra/ReVa recovers far too few functions from a rebuilt image.
+Use for Windows PE challenges where the on-disk file is a stub, section names were changed, code appears only after runtime writes, or Ghidra/ReVa recovers far too few functions from a rebuilt image.
 
 ## Triggers
 
 - `MZ`/PE file with high-entropy sections, missing imports, renamed UPX/packer sections, or an entry point outside normal `.text`.
 - Challenge hints mention memory dump, runtime unpack, self-decrypt, or an interactive stdin checker.
-- IDA reports `Cannot continue without a valid license`; do not retry IDA as the primary path.
+- The on-disk image decompiles to a near-empty stub: imports are missing or the entry point jumps straight into runtime-written memory.
 - Rebuilt memory image exists but Ghidra/ReVa only recognizes a handful of functions.
 
 ## First Steps
 
-1. Run `ctf-env-check category=rev`. Check `cli:ida-license`, `cli:x64dbg`, and `cli:cdb` results before choosing a tool path.
+1. Run `ctf-env-check category=rev`. Check the reported debugger and decompiler results (for example `cli:x64dbg` and `cli:cdb`) before choosing a tool path.
 2. If the target is not running yet, run `ctf-pe-unpack target=<pe> launch=true`. This detects packer/entropy signals, launches the target, dumps the in-memory image, and writes a rebuilt PE.
 3. If the target is already running, use `ctf-runtime-dump processName=<name>` or `ctf-runtime-dump pid=<pid>` directly.
 4. Run `ctf-pe-hybrid-rebuild original=<pe> memoryImage=<runtime-module-bin>` when a pure memory rebuild has poor ReVa/Ghidra function recovery. This keeps the original imports/header/resources and replaces executable sections from the dump.
@@ -25,7 +25,7 @@ Use for Windows PE challenges where the on-disk file is a stub, section names we
 
 - In Ghidra, run the generated `recover_pdata.py` before trusting auto-analysis function count. It tries multiple `createFunction` signatures for version compatibility.
 - In ReVa, import `pdata_addresses.txt` as function entry candidates before decompilation.
-- If IDA is licensed, open the rebuilt PE in IDA first; otherwise use Ghidra/ReVa/objdump without retrying IDA.
+- Open the rebuilt PE in Ghidra or ReVa; use bounded `objdump` ranges when a local disassembly check is faster than a full auto-analysis pass.
 - Prefer `.pdata` seeds and bounded linear disassembly over one full linear pass on a 3MB+ `.text` section.
 
 ## Interactive Checker Automation

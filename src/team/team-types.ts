@@ -67,6 +67,113 @@ export type TeamRunStatus =
 
 export type TeamRouteId = "recon" | "R1" | "R2" | "R3" | "general"
 
+export type TeamFactKind = "observation" | "measurement" | "artifact" | "error" | "negative" | "candidate"
+export type TeamFactConfidence = "observed" | "probable" | "speculative" | "confirmed"
+export type TeamFactStatus = "pending" | "accepted" | "rejected" | "superseded"
+
+export type TeamEvidenceRef = {
+  type: "command" | "file" | "response" | "hash" | "trace"
+  value: string
+}
+
+export type TeamFact = {
+  id: string
+  runId: string
+  routeId: TeamRouteId
+  sourceJobId: string
+  sourceSessionId: string
+  intentId?: string
+  kind: TeamFactKind
+  statement: string
+  evidence: TeamEvidenceRef[]
+  confidence: TeamFactConfidence
+  status: TeamFactStatus
+  reviewedBy?: string
+  reviewedAt?: string
+  reviewReason?: string
+  supersedesFactId?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type TeamIntentConcurrency = "exclusive" | "parallel" | "speculative"
+export type TeamIntentStatus =
+  | "open"
+  | "claimed"
+  | "running"
+  | "blocked"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "superseded"
+
+export type TeamIntent = {
+  id: string
+  runId: string
+  routeId: TeamRouteId
+  title: string
+  objective: string
+  basedOnFactIds: string[]
+  expectedObservation?: string
+  stopCondition?: string
+  failureCondition?: string
+  requiredCapabilities: string[]
+  concurrency: TeamIntentConcurrency
+  status: TeamIntentStatus
+  claimedBy?: string
+  claimToken?: string
+  claimExpiresAt?: string
+  attempts: number
+  maxAttempts: number
+  createdBy: "expert" | "migration"
+  resultSummary?: string
+  resultFactIds?: string[]
+  resultArtifacts?: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type TeamWorkerPacket = {
+  protocol: "ctf.team.worker.v1"
+  type: "fact" | "intent_result"
+  intentId?: string
+  routeId?: TeamRouteId
+  statement?: string
+  kind?: TeamFactKind
+  evidence?: TeamEvidenceRef[]
+  confidence?: Exclude<TeamFactConfidence, "confirmed">
+  status?: "completed" | "blocked" | "failed"
+  summary?: string
+  factIds?: string[]
+  artifacts?: string[]
+}
+
+export type TeamEventType =
+  | "fact_submitted"
+  | "fact_accepted"
+  | "fact_rejected"
+  | "fact_superseded"
+  | "fact_dropped"
+  | "intent_created"
+  | "intent_claimed"
+  | "intent_started"
+  | "intent_blocked"
+  | "intent_completed"
+  | "intent_failed"
+  | "intent_released"
+  | "intent_superseded"
+
+export type TeamEvent = {
+  id: string
+  type: TeamEventType
+  runId: string
+  jobId?: string
+  intentId?: string
+  factId?: string
+  at: string
+  data?: Record<string, unknown>
+}
+
 export const TEAM_ROUTE_IDS = ["recon", "R1", "R2", "R3", "general"] as const
 
 export type TeamOrphanedMetadata = {
@@ -87,6 +194,8 @@ export type TeamJob = {
   originalAgent?: string
   orphaned?: TeamOrphanedMetadata
   routeId: TeamRouteId
+  /** Stable decision object that produced this worker attempt. */
+  intentId?: string
   concurrency: "independent" | "shared_state"
   sessionID?: string
   status: TeamJobStatus
@@ -114,6 +223,8 @@ export type TeamJob = {
   /** Replacement session persisted before prompt so restart recovery can abort it. */
   retrySessionID?: string
   result?: string
+  /** Cursor: last collected message id/digest so collect extracts incrementally. */
+  lastCollectedMessageId?: string
   /** Short compatibility summary for existing renderers/consumers. */
   error?: string
   /** Structured lifecycle diagnostic; never rely on UnknownError alone. */
@@ -140,12 +251,18 @@ export type TeamRun = {
   id: string
   title: string
   parentSessionID: string
+  /** Evidence case that owns this Team run's facts and audit events. */
+  caseId?: string
   /** Explicit parent-session rebind audit trail; bounded by the runtime. */
   adoptionHistory?: TeamParentAdoption[]
   status: TeamRunStatus
   createdAt: string
   updatedAt: string
   jobs: TeamJob[]
+  /** Structured facts collected from workers or accepted by expert. */
+  facts?: TeamFact[]
+  /** Open or active intents for this run. */
+  intents?: TeamIntent[]
   notificationPending: boolean
   notificationSentAt?: string
   notificationError?: string
@@ -185,6 +302,8 @@ export const TEAM_AGENT = "ctf-expert"
 export const DEFAULT_MAX_JOBS = 8
 export const ABSOLUTE_MAX_JOBS = 16
 export const MAX_JOB_RESULT = 6_000
+/** Bound the per-run Fact ledger: an unbounded ledger is persisted in state. */
+export const MAX_FACTS_PER_RUN = 400
 export const MAX_COLLECT_OUTPUT = 32_000
 export const STATE_FILE = ".ctf-team.json"
 export const STATE_VERSION = 1

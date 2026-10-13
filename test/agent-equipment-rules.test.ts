@@ -52,7 +52,6 @@ describe("agent equipment rule", () => {
       "ctf-pcap-probe",
       "ctf-misc-analyze",
       "ctf-dynamic-mcp-advisor",
-      "ctf-handoff",
     ]) {
       expect(FAST_TOOL_ALLOWLIST.has(toolName)).toBe(true)
       expect(rule).toContain(toolName)
@@ -73,7 +72,7 @@ describe("agent equipment rule", () => {
       const contract = FAMILY_CAPABILITY_CONTRACTS[family]
       const agent = familyAgentByFamily[family]
       expect(rule).toContain(agent)
-      for (const pack of contract.expectedToolPacks) expect(rule).toContain(pack)
+      for (const pack of contract.expectedToolPacks) expect(rule).toContain(`\`${pack}\``)
       for (const mcp of contract.defaultMcps) expect(rule).toContain(mcp)
       for (const toolName of contract.requiredTools) expect(rule).toContain(toolName)
     }

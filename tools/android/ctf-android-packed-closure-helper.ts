@@ -5,7 +5,6 @@ import nativeTriage from "./ctf-android-native-triage.ts"
 import runtimeDoctor from "./ctf-android-runtime-doctor.ts"
 import apkTriage from "./ctf-apk-triage.ts"
 import dexPatchMap from "./ctf-dex-patch-map.ts"
-import jadxTargetedSlice from "./ctf-jadx-targeted-slice.ts"
 import {
   directoryFromContext,
   resolveFromDirectoryInsideWorkspace,
@@ -25,7 +24,7 @@ function score(text: string) {
     signals.push("native_shell_or_jni")
   if (has(text, /DexClassLoader|PathClassLoader|InMemoryDexClassLoader|loadDex|loadClass|classloader/i))
     signals.push("classloader_swap")
-  if (has(text, /apktool.*fail|jadx.*fail|decompile.*fail|smali.*exception/i)) signals.push("static_tool_fragility")
+  if (has(text, /apktool.*fail|decompile.*fail|smali.*exception/i)) signals.push("static_tool_fragility")
   if (has(text, /libndk_translation|x86_64|arm64-only|ABI|ro\.product\.cpu/i)) signals.push("runtime_abi_mismatch")
   if (has(text, /frida|logcat|run-as|private dir|tombstone|adb/i)) signals.push("dynamic_probe_needed")
   if (has(text, /anti-debug|ptrace|TracerPid|emulator|qemu|root|magisk/i)) signals.push("anti_analysis")
@@ -40,10 +39,10 @@ function nextProbe(signals: string[]) {
   if (signals.includes("native_shell_or_jni"))
     return "Run ctf-android-native-triage, map RegisterNatives/JNI exports, and locate the patch writer boundary."
   if (signals.includes("classloader_swap"))
-    return "Trace classloader/dex load calls with logcat or Frida before broad JADX."
+    return "Trace classloader/dex load calls with logcat or Frida before broad static decompilation."
   if (signals.includes("dynamic_probe_needed"))
     return "Run ctf-android-dynamic-macro with allowInstall only after approval; inspect logcat and run-as listing."
-  return "Run ctf-android-analyze first, then choose native/JADX/assets/runtime route from the strongest signal."
+  return "Run ctf-android-analyze first, then choose native/assets/runtime route from the strongest signal."
 }
 
 function compactJson(value: unknown) {
@@ -63,25 +62,6 @@ function summarizeSignals(parts: string[]) {
 
 function safeSlug(input: string) {
   return input.replace(/[^A-Za-z0-9_.-]+/g, "_")
-}
-
-function dexClassToPackageHint(name: string) {
-  const cleaned = name.replace(/^L/, "").replace(/;$/, "")
-  const parts = cleaned.split("/")
-  if (parts.length <= 1) return cleaned
-  return parts.slice(0, -1).join("/")
-}
-
-function dexMethodPattern(hitMethods: string[]) {
-  const tokens = new Set<string>()
-  for (const item of hitMethods) {
-    const right = item.split("->")[1] || ""
-    const methodName = right.split("(")[0] || ""
-    if (methodName && /^[A-Za-z_][A-Za-z0-9_$]{1,80}$/.test(methodName)) tokens.add(methodName)
-  }
-  const base = ["flag", "check", "verify", "native", "loadLibrary", "JNI", "decrypt", "encrypt", "extract", "patch"]
-  for (const item of base) tokens.add(item)
-  return [...tokens].slice(0, 24).join("|")
 }
 
 export default tool({
@@ -204,24 +184,6 @@ export default tool({
         return owner ? `${owner.className as string}->${owner.methodName as string}${owner.proto as string}` : "unknown"
       })
       .slice(0, 12)
-    const packageHint = hitMethods.length ? dexClassToPackageHint(hitMethods[0].split("->")[0] || "") : ""
-
-    if (args.apk && hitMethods.length > 0) {
-      const jadxSlice = await jadxTargetedSlice.execute(
-        {
-          target: args.apk,
-          packageHint: packageHint || undefined,
-          patterns: dexMethodPattern(hitMethods),
-          maxHits: 12,
-          radius: 5,
-          jsonOnly: true,
-        },
-        childContext,
-      )
-      const jadxSliceJson = compactJson(jadxSlice) as Record<string, unknown>
-      artifacts.jadxTargetedSlice = jadxSliceJson
-      parts.push(JSON.stringify(jadxSliceJson))
-    }
 
     const route =
       runtimeVerdict === "NOT_EQUIVALENT_X86_TRANSLATION_RISK"
@@ -240,18 +202,12 @@ export default tool({
       route === "blocked_runtime_equivalence"
         ? "Stop same-runtime native closure on x86_64 emulator; continue static JNI/patch-owner recovery and wait for real arm64 runtime for final confirmation."
         : route === "dex_code_item_patch_mapping"
-          ? `Inspect only mapped owner methods${hitMethods.length ? `: ${hitMethods.join("; ")}` : ""}; use the focused JADX slice if present, then trace the native patch writer or loader boundary.`
+          ? `Inspect only mapped owner methods${hitMethods.length ? `: ${hitMethods.join("; ")}` : ""}; then trace the native patch writer or loader boundary.`
           : route === "native_shell_jni_patch_boundary"
             ? "Use ctf-android-native-triage results to focus on JNI_OnLoad/RegisterNatives and recover the Java-native method map before broader browsing."
             : route === "second_stage_dex_loader"
-              ? "Inspect loader/classloader methods and dynamic dex artifacts before broad JADX; use logcat/run-as only as supporting evidence on x86_64 emulator."
+              ? "Inspect loader/classloader methods and dynamic dex artifacts before broad decompilation; use logcat/run-as only as supporting evidence on x86_64 emulator."
               : nextProbe(signals)
-
-    const jadxSlice = artifacts.jadxTargetedSlice as { hits?: Array<Record<string, unknown>> } | undefined
-    const jadxHits = Number(jadxSlice?.hits?.length || 0)
-    const jadxTopFiles = (jadxSlice?.hits || [])
-      .slice(0, 6)
-      .map((hit) => `${String(hit.file || "unknown")}:${String(hit.line || "?")}`)
 
     const payload = {
       route,
@@ -260,21 +216,18 @@ export default tool({
       apkPrimaryRoute: apkRoute || "unknown",
       patchRows,
       hitMethods,
-      packageHint,
-      jadxHits,
-      jadxTopFiles,
       selectedNextProbe,
       closureOrder: [
         "runtime equivalence doctor",
         "APK triage + native triage",
         "DEX patch owner map when patch records exist",
-        "focused JADX slice for hit owner methods when available",
+        "focused baksmali/apktool disassembly of hit owner methods when available",
         "focused owner-method/JNI boundary inspection",
         "dynamic macro only for supporting evidence on x86_64 emulator",
       ],
       stopRules: [
         "Do not continue x86_64 emulator dynamic native testing for arm64-only libraries after libndk_translation or runtime-doctor mismatch evidence appears.",
-        "Do not wait for global JADX/apktool success when a patch or loader boundary is already identified.",
+        "Do not wait for global apktool success when a patch or loader boundary is already identified.",
         "After DEX patch owner resolution, inspect only owner methods and patch writer xrefs before broad code browsing.",
       ],
       artifacts,
@@ -297,9 +250,6 @@ export default tool({
       `- apk_primary_route: ${payload.apkPrimaryRoute}`,
       `- patch_rows: ${payload.patchRows}`,
       `- hit_methods: ${payload.hitMethods.join("; ") || "none"}`,
-      `- package_hint: ${payload.packageHint || "none"}`,
-      `- jadx_hits: ${payload.jadxHits}`,
-      `- jadx_top_files: ${payload.jadxTopFiles.join("; ") || "none"}`,
       `- selected_next_probe: ${payload.selectedNextProbe}`,
       "",
       "## Closure Order",
@@ -323,9 +273,6 @@ export default tool({
       `- signals: ${payload.signals.join(", ") || "none"}`,
       `- patch_rows: ${payload.patchRows}`,
       `- hit_methods: ${payload.hitMethods.join("; ") || "none"}`,
-      `- package_hint: ${payload.packageHint || "none"}`,
-      `- jadx_hits: ${payload.jadxHits}`,
-      `- jadx_top_files: ${payload.jadxTopFiles.join("; ") || "none"}`,
       `- artifact_dir: ${outDir}`,
       `- summary: ${summaryPath}`,
       `- handoff: ${handoffPath}`,

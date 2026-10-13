@@ -20,9 +20,9 @@ import {
   resolveFromDirectoryInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-import { safeExec, safeExecDocker, shellQuote, type SafeExecResult } from "../lib/exec-utils.ts"
+import { safeExec, safeExecDocker, shellQuote } from "../lib/exec-utils.ts"
 import { pwnImage } from "../lib/docker-config.ts"
-import { extractFlagCandidates, FLAG_REGEX_ONCE } from "../lib/flag-utils.ts"
+import { extractFlagCandidates, FLAG_REGEX_ONCE } from "../../packages/ctf-core/src/flag-rules.ts"
 
 const INTERESTING_RE =
   /\b(win|flag|shell|system|execve|gets|scanf|printf|puts|read|write|open|openat|sendfile|strcpy|strcat|sprintf|memcpy|malloc|free|realloc|mprotect|mmap|seccomp|canary|libc|\/bin\/sh)\b/i
@@ -445,7 +445,7 @@ export default tool({
       )
     if (runtime.runtime === "go" && goPcln.functions.length)
       recommendations.push(
-        "function_address_map available: pivot directly to mapped main.main/init/decode/check addresses in ReVa or ida-pro",
+        "function_address_map available: pivot directly to mapped main.main/init/decode/check addresses in ReVa",
       )
     if (!recommendations.length)
       recommendations.push(
@@ -563,7 +563,7 @@ export default tool({
       ...recommendations.slice(0, 6).map((x) => `- ${x}`),
       `recommended_next_action: ${seeds[0] || recommendations[0] || "run ctf-pwn-analyze for route selection"}`,
       `fallback_action: ${probeBackend === "degraded" ? "fix missing host tools or switch to Docker/WSL substrate" : "if no fast primitive appears, collect one crash/leak/protocol oracle before widening routes"}`,
-      `stop_if: ${hasVmDispatcher || /heap_candidate/.test(seeds.join("\n")) ? "custom VM/heap complexity dominates; ESCALATE: ctf-expert" : "no new crash/leak/control evidence after 2-3 focused probes"}`,
+      `stop_if: ${hasVmDispatcher || /heap_candidate/.test(seeds.join("\n")) ? "custom VM/heap complexity dominates; stop and report the blocker instead of widening the fast lane" : "no new crash/leak/control evidence after 2-3 focused probes"}`,
       `relative_hint: use ./${base} for local execution from ${cwd}`,
     ].join("\n")
   },

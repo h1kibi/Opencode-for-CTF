@@ -58,7 +58,7 @@ Historical compatibility aliases, control-plane helpers, and specialist micro-co
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | `ctf-fast`   | Primary — lightweight CTF solving                                                                                                |
 | `ctf-expert` | Primary — evidence-driven CTF solving                                                                                            |
-| `researcher` | Support primary — manual post-solve reflection, lessons/retros, and local `rag/knowledge` RAG maintenance (not a CTF solve lane) |
+| `researcher` | Support primary — manual post-solve reflection and `ctf_rag` corpus maintenance (not a CTF solve lane)                                   |
 
 Optional args / notes from user:
 $ARGUMENTS

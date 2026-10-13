@@ -1,6 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
 import { fetchWithTimeout, normalizeUrl, readTextCapped, unique } from "../lib/web-http.ts"
-import { extractFlagCandidates, FLAG_REGEX_ONCE } from "../lib/flag-utils.ts"
+import { extractFlagCandidates, FLAG_REGEX_ONCE } from "../../packages/ctf-core/src/flag-rules.ts"
 
 type Finding = { label: string; evidence: string; next: string; score: number }
 

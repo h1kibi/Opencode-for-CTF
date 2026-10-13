@@ -410,7 +410,7 @@ export default tool({
       next_actions: [
         "Run ctf-rev-pe-recovery on the rebuilt PE to seed functions from .pdata and batch linear disassembly.",
         "Run ctf-memstr on dumped module .bin files to find ASCII/UTF-16 checker strings before decompilation.",
-        "If IDA is licensed, open the rebuilt PE; otherwise use objdump/Ghidra/ReVa on the rebuilt file.",
+        "Open the rebuilt PE with objdump, Ghidra, or ReVa after seeding functions and strings.",
       ],
     }
     await writeFile(path.join(outDir, "runtime-dump.json"), JSON.stringify(manifest, null, 2), "utf8")

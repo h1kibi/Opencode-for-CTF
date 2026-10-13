@@ -94,7 +94,7 @@ When a solve or failure reveals a reusable Web CTF technique, propose a pattern 
 - `parser-proxy-patterns.md`
 - `server-side-patterns.md`
 
-Do not copy long writeups. Write a compact pattern card:
+Do not copy long writeups. Write a compact pattern entry:
 
 ```markdown
 ## Pattern: <short name>

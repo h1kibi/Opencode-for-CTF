@@ -63,7 +63,7 @@ export type ContinuationState = {
   idleEligible?: boolean
   fastBudgetStartedAt?: string
   fastBudgetDeadlineAt?: string
-  fastBudgetStatus?: "active" | "review" | "escalated" | "blocked"
+  fastBudgetStatus?: "active" | "review" | "blocked"
   fastBudgetSummary?: string
   fastBudgetReviewSentAt?: string
   pausedByUser?: boolean
@@ -152,9 +152,11 @@ export type AgentMcpRequest = {
   reason: string
   status: McpRequestStatus
   activationState?: "idle" | "activating" | "active" | "released" | "failed"
+  activationToken?: string
   decidedBy?: string
   decidedNote?: string
   createdAt: string
+  expiresAt?: string
   updatedAt: string
 }
 

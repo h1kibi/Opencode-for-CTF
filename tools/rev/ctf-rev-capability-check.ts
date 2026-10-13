@@ -115,7 +115,7 @@ const FAMILY_NEXT_TOOL: Record<RevFamily, { tool: string; nextAction: string }> 
   apk: {
     tool: "ctf-apk-triage / ctf-android-analyze",
     nextAction:
-      "Enable the android pack and start with manifest/resources/native-library triage before broad JADX output.",
+      "Enable the android pack and start with manifest/resources/native-library triage before focused bytecode or native analysis.",
   },
   java: {
     tool: "ctf-java-analyze",
@@ -290,11 +290,6 @@ function probesForFamily(family: RevFamily): ProbeSpec[] {
     case "android":
       return [
         {
-          name: "jadx",
-          commands: [{ command: "jadx", args: ["--version"] }],
-          hint: "Install JADX for a Java/decompiled view.",
-        },
-        {
           name: "baksmali",
           commands: [{ command: "baksmali", args: ["--version"] }],
           hint: "Install baksmali for deterministic DEX disassembly.",
@@ -341,11 +336,6 @@ function probesForFamily(family: RevFamily): ProbeSpec[] {
           name: "jar",
           commands: [{ command: "jar", args: ["--version"] }],
           hint: "Install the JDK for archive inspection.",
-        },
-        {
-          name: "jadx",
-          commands: [{ command: "jadx", args: ["--version"] }],
-          hint: "Use JADX only when Java decompilation is needed.",
         },
       ]
     case "wasm":

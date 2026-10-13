@@ -24,7 +24,6 @@ export async function handleEventHook(args: {
   input: { client: any; worktree: string; directory: string }
   isHookEnabled: (hook: any) => boolean
   teamEventsEnabled: () => boolean
-  promoteExpertSurface: (sessionID?: string | null) => void
 }) {
   const { event } = args
 
@@ -98,7 +97,7 @@ export async function handleEventHook(args: {
     }
 
     if (args.pluginConfig.ctf_fast_budget.enabled) {
-      const result = await applyFastBudgetAction({
+      await applyFastBudgetAction({
         client: args.input.client,
         worktree: args.input.worktree,
         sessionID,
@@ -106,10 +105,6 @@ export async function handleEventHook(args: {
         policy: args.pluginConfig.ctf_fast_budget,
         summary: continuationSummary,
       })
-      if (result.prompted && result.budget.shouldEscalate) {
-        args.promoteExpertSurface(sessionID)
-        console.log(`[plugin] fast-budget: session=${sessionID.slice(0, 12)} escalated to ctf-expert`)
-      }
     }
 
     if (args.isHookEnabled("skill_mcp")) {
@@ -126,6 +121,7 @@ export async function handleEventHook(args: {
         client: args.input.client,
         worktree: args.input.worktree,
         directory: args.input.directory,
+        sessionID,
       })
       if (result.processed > 0) {
         console.log(
@@ -198,7 +194,7 @@ export async function handleEventHook(args: {
     }
     if (!args.teamEventsEnabled()) return
     try {
-      await handleTeamEvent(event, args.input.client, args.input.directory, args.input.directory, {
+      await handleTeamEvent(event, args.input.client, args.input.directory, args.input.worktree, {
         maxWorkers: args.pluginConfig.team_mode.max_workers,
         maxJobAttempts: args.pluginConfig.team_mode.max_job_attempts,
       })

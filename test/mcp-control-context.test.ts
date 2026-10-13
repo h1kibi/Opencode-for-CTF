@@ -12,7 +12,7 @@ const {
   createRuntimeClientMock: vi.fn(() => ({ mcp: {} })),
   approveRequestMock: vi.fn(async () => ({
     ok: true,
-    serverName: "ida-pro",
+    serverName: "flutter-aot",
     agent: "ctf-rev",
     sessionID: "worker-session-123456",
     skillName: "agent-request:ctf-rev",
@@ -59,6 +59,6 @@ describe("ctf-mcp-control context", () => {
       decidedBy: "ctf-expert",
       note: "needed for rev",
     })
-    expect(out).toContain("approved mcp=ida-pro")
+    expect(out).toContain("approved mcp=flutter-aot")
   })
 })

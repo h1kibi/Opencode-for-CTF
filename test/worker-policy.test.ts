@@ -39,12 +39,11 @@ describe("worker runtime policy", () => {
       "ctf-team-recover",
       "ctf-team-adopt",
       "ctf-team-future-control",
-      "ctf-handoff",
       "ctf-team-mode",
       "ctf-continuation-control",
       "ctf-skill-mcp-lifecycle",
       "ctf-whitebox-handoff",
-      "ctf-pattern-feedback",
+      "ctf-file-write-matrix",
     ]) {
       const result = evaluateWorkerToolPolicy(context, tool)
       expect(result.allowed).toBe(false)
@@ -135,14 +134,83 @@ describe("worker runtime policy", () => {
   it("does not block a read-only command that mentions no protected state", () => {
     expect(evaluateWorkerToolPolicy(context, "bash", { command: "strings sample.bin | head" }).allowed).toBe(true)
   })
+
+  it("denies an unspaced redirect into protected state", () => {
+    // Regression: `>file` (no space) previously matched neither boundary rule,
+    // so the whole protected-path policy was bypassable with the most common
+    // redirection spelling.
+    for (const command of [
+      "echo x>Evidence.md",
+      "echo x>.ctf-team.json",
+      "echo pwned>agent_flag.txt",
+      "(echo x)>Evidence.md",
+      "echo x 2>Evidence.md",
+      "printf x>notes.md",
+    ]) {
+      const result = evaluateWorkerToolPolicy(context, "bash", { command })
+      expect(result.allowed, command).toBe(false)
+      expect(result.reason).toContain("WorkerPolicyError")
+    }
+  })
+
+  it("still allows ordinary redirects to non-protected challenge artifacts", () => {
+    for (const command of [
+      "objdump -d chall > disasm.txt",
+      "cat chall.bin > copy.bin",
+      "strings chall.bin | head",
+      "terraform plan",
+      "echo forming",
+    ]) {
+      expect(evaluateWorkerToolPolicy(context, "bash", { command }).allowed, command).toBe(true)
+    }
+  })
+
+  it("denies shell metacharacters in execution arguments", () => {
+    // `argv` is joined into one shell command line by the host, so it is
+    // command text and must not carry metacharacters.
+    for (const argv of [["&echo x>Evidence.md"], ["a; rm -rf /"], ["$(id)"], ["x|tee Evidence.md"], ["`id`"]]) {
+      const result = evaluateWorkerToolPolicy(context, "ctf-python-inline", { code: "print(1)", argv })
+      expect(result.allowed, JSON.stringify(argv)).toBe(false)
+    }
+    expect(
+      evaluateWorkerToolPolicy(context, "ctf-python-inline", { code: "print(1)", argv: ["--flag", "./chall"] })
+        .allowed,
+    ).toBe(true)
+  })
+
+  it("denies obfuscated protected-path construction in execution code", () => {
+    // Regression: a literal-only match was defeated by building the filename
+    // from fragments, so the check now also matches the distinctive stem.
+    for (const code of [
+      'pathlib.Path(".ctf-team"+chr(46)+"json").write_text("{}")',
+      'p=".ctf-team"+"."+"json"; open(p,"w").write("x")',
+      'open("Evidence.md","w").write("x")',
+    ]) {
+      expect(evaluateWorkerToolPolicy(context, "ctf-python-inline", { code }).allowed, code).toBe(false)
+    }
+    expect(
+      evaluateWorkerToolPolicy(context, "ctf-python-inline", { code: 'open("solve_out.txt","w").write("ok")' })
+        .allowed,
+    ).toBe(true)
+  })
+
+  it("applies the protected-state rule to pwn runner execution arguments", () => {
+    expect(
+      evaluateWorkerToolPolicy(context, "ctf-pwn-docker-runner", {
+        pythonInline: 'open("Evidence.md","w").write("x")',
+      }).allowed,
+    ).toBe(false)
+    expect(evaluateWorkerToolPolicy(context, "ctf-pwn-runner", { payload: "payload.bin" }).allowed).toBe(true)
+  })
+
   it("fails closed for high-privilege tools when Team state is unreadable", () => {
-    expect(evaluateUnreadableWorkerStatePolicy("ctf-handoff").allowed).toBe(false)
+    expect(evaluateUnreadableWorkerStatePolicy("ctf-continuation-control").allowed).toBe(false)
     expect(evaluateUnreadableWorkerStatePolicy("bash", { command: "echo x >> Evidence.md" }).allowed).toBe(false)
     expect(evaluateUnreadableWorkerStatePolicy("bash", { command: "strings sample.bin | head" }).allowed).toBe(true)
   })
 
   it("fails closed for unbound CTF subagents instead of allowing a session bypass", () => {
-    expect(evaluateUnboundWorkerPolicy("ctf-handoff").allowed).toBe(false)
+    expect(evaluateUnboundWorkerPolicy("ctf-continuation-control").allowed).toBe(false)
     expect(evaluateUnboundWorkerPolicy("ctf-team-mode").allowed).toBe(false)
     expect(evaluateUnboundWorkerPolicy("bash", { command: "strings sample.bin | head" }).allowed).toBe(true)
     expect(evaluateUnboundWorkerPolicy("ctf-dynamic-mcp-advisor", { action: "request" }).allowed).toBe(true)
@@ -164,7 +232,7 @@ describe("worker runtime policy", () => {
           directory,
           sessionID: "missing-worker-session",
           agentName: "ctf-pwn",
-          toolName: "ctf-handoff",
+          toolName: "ctf-continuation-control",
         }),
       ).rejects.toThrow("not bound to a persisted Team job")
       await expect(
@@ -283,7 +351,7 @@ describe("worker runtime policy", () => {
           directory,
           sessionID: "unbound-worker-session",
           agentName: "ctf-pwn",
-          toolName: "ctf-handoff",
+          toolName: "ctf-continuation-control",
         }),
       ).rejects.toThrow("Team state is unreadable")
       await expect(

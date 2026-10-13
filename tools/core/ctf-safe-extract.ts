@@ -10,7 +10,7 @@ import {
   resolveInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-import { DEFAULT_FLAG_REGEX } from "../lib/flag-utils.ts"
+import { DEFAULT_FLAG_REGEX } from "../../packages/ctf-core/src/flag-rules.ts"
 
 const DEFAULT_FLAG_RE = DEFAULT_FLAG_REGEX
 const MAX_OUTPUT = 256 * 1024

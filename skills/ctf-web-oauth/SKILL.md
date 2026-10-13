@@ -41,7 +41,7 @@ First safe checks:
 - Map the flow: client_id, redirect_uri, state, nonce, code/token response mode, issuer, audience, callback route, and post-login account binding.
 - Test redirect_uri validation with same-origin open redirects, path confusion, subdomain tricks, fragment/query handling, and exact-match vs prefix-match behavior.
 - Check state/nonce binding and code reuse/replay only with controlled accounts.
-- If JWT/JWK/JKU/KID appears, switch to token-shape classification and `ctf-web-jwt`/pattern cards.
+- If JWT/JWK/JKU/KID appears, switch to token-shape classification and `ctf-web-jwt`, with `ctf_rag` recall for token-shape techniques.
 - Treat open redirect as high-value only when it reaches OAuth token/code theft, SSRF, or trusted callback abuse.
 
 Pattern recall queries:

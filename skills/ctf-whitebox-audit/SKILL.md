@@ -76,7 +76,7 @@ Classify findings with this gate:
 | `uncertain`      | Suspicious pattern exists, but controllability, route reachability, sanitizer bypass, or output oracle is unclear.                         |
 | `false_positive` | File missing, snippet mismatch, input not controllable, sanitizer fully covers sink, auth path unreachable, dependency/config gate absent. |
 
-Never upgrade a knowledge-base example, pattern-card hit, or scanner line to `confirmed` until it passes this gate.
+Never upgrade a knowledge-base example, `ctf_rag` hit, or scanner line to `confirmed` until it passes this gate.
 
 ## Local Harness Verification
 
@@ -128,7 +128,7 @@ Use tools in this order unless the challenge format strongly says otherwise:
 3. Rule-driven scan: `semgrep` with focused configs or temporary CTF-specific rules.
 4. Deep dataflow: `codeql` only after language/framework and likely sinks are known.
 5. Secrets/dependencies: `gitleaks --redact`, `trivy fs`, `osv-scanner`, language package audit tools.
-6. Java archive/bytecode: `jar`, `javap`, `CFR`, `jadx`, Maven/Gradle dependency tree.
+6. Java archive/bytecode: `jar`, `javap`, `CFR`, Maven/Gradle dependency tree.
 7. Language-specific scanners only when they match the detected stack: `bandit`, `pip-audit`, `gosec`, `govulncheck`, `brakeman`, `composer audit`, `npm audit`, `pnpm audit`, `retire`.
 
 ## Required Workflow
@@ -172,7 +172,7 @@ Do not loop on a missing external CLI. Use these fallbacks immediately:
 | `gitleaks`    | Use redacted `rg` patterns for `secret`, `token`, `key`, `password`; never print full secrets.  |
 | `trivy`       | Parse manifests and use `osv-scanner` or manual CTF version gates.                              |
 | `osv-scanner` | Use `trivy fs` or manual dependency version review.                                             |
-| `jadx`/CFR    | Use `javap`, `ctf-java-bytecode-hints`, and selective class constants first.                    |
+| `CFR`         | Use `javap`, `ctf-java-bytecode-hints`, and selective class constants first.                    |
 
 ## CTF-focused Semgrep Families
 

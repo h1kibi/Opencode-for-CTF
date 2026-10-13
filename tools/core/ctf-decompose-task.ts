@@ -160,7 +160,6 @@ function webDecomposition(tag: string, input: ChallengeInput): Decomposition {
 
 function pwnDecomposition(tag: string, input: ChallengeInput): Decomposition {
   const hasSource = !!input.sourcePath
-  const hasBinary = !!input.binary
   const hasLibc = !!input.libc
   return {
     challengeTag: tag,

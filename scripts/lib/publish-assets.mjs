@@ -2,12 +2,12 @@
  * Shared publish / install asset filters for opencode-for-ctf.
  *
  * Goals:
- * - npm package ships runtime-needed knowledge only (current pattern-card index)
- * - managed install copies the same slim knowledge surface (source checkout may still have history)
+ * - the npm package ships runtime code plus the model-facing assets (agents,
+ *   commands, skills, rules, templates, mcp-server)
+ * - local knowledge retrieval is NOT bundled: it is served by the external
+ *   `ctf_rag` MCP server, so no corpus, card index, or lesson/retro store ships
  * - external skills stay opt-in via OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS
  */
-
-import path from "node:path"
 
 /** Normalize to posix-ish relative path for matching. */
 export function toPosixRel(input = "") {
@@ -18,27 +18,10 @@ export function toPosixRel(input = "") {
 }
 
 /**
- * Intermediate ljagiello pattern-card dumps and generation helpers.
- * Runtime tools use v9 only (see src/asset-paths.ts).
+ * Retired local knowledge corpus. These trees were deleted from the repository;
+ * the list is kept so a stale checkout cannot smuggle them back into a release.
  */
-const INTERMEDIATE_CARD_BASENAMES = new Set([
-  "ljagiello-ctf-skills.cards.json",
-  "ljagiello-ctf-skills.cards.v2.json",
-  "ljagiello-ctf-skills.cards.v3.json",
-  "ljagiello-ctf-skills.cards.v4.json",
-  "ljagiello-ctf-skills.cards.v5.json",
-  "ljagiello-ctf-skills.cards.v6.json",
-  "ljagiello-ctf-skills.cards.v7.json",
-  "ljagiello-ctf-skills.cards.v8.json",
-])
-
-const PATTERN_CARD_DEV_PREFIXES = [
-  "rag/knowledge/pattern-cards/build-",
-  "rag/knowledge/pattern-cards/smoke-",
-  "rag/knowledge/pattern-cards/update-",
-]
-
-const PATTERN_CARD_DEV_FILES = new Set(["rag/knowledge/pattern-cards/curation-candidates.json"])
+const RETIRED_KNOWLEDGE_PREFIXES = ["rag/", "skills-external/", "knowledge/", "lessons/"]
 
 /** Paths that must never appear in the default published tarball. */
 const PACK_FORBIDDEN_SUBSTRINGS = [
@@ -46,62 +29,19 @@ const PACK_FORBIDDEN_SUBSTRINGS = [
   "mcp-server/vendor/WireMCP/.git/",
   "mcp-server/vendor/WireMCP/node_modules/",
   "mcp-server/vendor/WireMCP/package-lock.json",
-  "rag/Des-CTF-Knowledge/",
-  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v2.json",
-  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v3.json",
-  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v4.json",
-  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v5.json",
-  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v6.json",
-  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v7.json",
-  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v8.json",
-  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.json",
-  "rag/knowledge/imported/",
-  "rag/knowledge/sources/des-ctf-knowledge/raw/",
+  "rag/",
 ]
 
 /** Paths that must exist in a healthy published package (relative to package root). */
 export const PACK_REQUIRED_PATHS = [
   "dist/plugin/index.js",
   "dist/wiremcp/index.js",
-  "rag/knowledge/pattern-cards/ljagiello-ctf-skills.cards.v9.json",
-  "rag/knowledge/pattern-cards/java-web/java-web.cards.v1.json",
-  "rag/knowledge/pattern-cards/pwn-curated.cards.v1.json",
-  "rag/knowledge/pattern-cards/des-ctf/des-ctf.cards.v1.json",
-  "rag/knowledge/pattern-cards/synonyms.json",
-  "rag/knowledge/lessons/lessons.index.json",
-  "rag/knowledge/retros/retros.index.json",
-  "rag/knowledge/sources/des-ctf-knowledge.manifest.json",
-  "rag/knowledge/sources/secknowledge-skill.manifest.json",
   "agents/ctf-fast.md",
   "agents/ctf-expert.md",
   "commands/ctf.md",
   "commands/help.md",
   "scripts/cli.mjs",
 ]
-
-/**
- * Whether a path under runtime `rag/knowledge/` should be copied during managed install.
- * `rel` is relative to the knowledge directory (not the repo root).
- */
-export function isKnowledgeInstallIncluded(rel = "") {
-  const posix = toPosixRel(rel)
-  if (!posix) return true
-  if (posix === "imported" || posix.startsWith("imported/")) return false
-
-  const base = path.posix.basename(posix)
-  if (INTERMEDIATE_CARD_BASENAMES.has(base)) return false
-
-  // Dev-only pattern-card generators / smoke harnesses under pattern-cards/
-  if (posix.startsWith("pattern-cards/")) {
-    const name = base
-    if (name.startsWith("build-") && name.endsWith(".cjs")) return false
-    if (name.startsWith("smoke-") && name.endsWith(".cjs")) return false
-    if (name.startsWith("update-") && (name.endsWith(".ps1") || name.endsWith(".sh"))) return false
-    if (name === "curation-candidates.json") return false
-  }
-
-  return true
-}
 
 /**
  * Whether a repo-relative path should be excluded from the default npm pack surface.
@@ -114,19 +54,9 @@ export function isPackExcluded(relPosixPath = "") {
   // npm pack lists usually look like "package/foo" or "foo"
   const normalized = posix.replace(/^package\//, "")
 
-  if (normalized.startsWith("skills-external/")) return true
-
-  if (normalized.startsWith("rag/Des-CTF-Knowledge/")) return true
-
-  if (normalized.startsWith("rag/knowledge/")) {
-    const underKnowledge = normalized.slice("rag/knowledge/".length)
-    if (!isKnowledgeInstallIncluded(underKnowledge)) return true
+  for (const prefix of RETIRED_KNOWLEDGE_PREFIXES) {
+    if (normalized === prefix.replace(/\/$/, "") || normalized.startsWith(prefix)) return true
   }
-
-  for (const prefix of PATTERN_CARD_DEV_PREFIXES) {
-    if (normalized.startsWith(prefix)) return true
-  }
-  if (PATTERN_CARD_DEV_FILES.has(normalized)) return true
 
   return false
 }
@@ -145,20 +75,16 @@ export function findForbiddenPackPaths(fileList = []) {
         break
       }
     }
-    // Also catch intermediate cards by basename anywhere under runtime knowledge.
-    const base = path.posix.basename(posix)
-    if (posix.startsWith("rag/knowledge/") && INTERMEDIATE_CARD_BASENAMES.has(base)) {
-      if (!offenders.includes(posix)) offenders.push(posix)
-    }
   }
   return offenders
 }
 
 /**
  * Soft size thresholds for pack dry-run reporting (bytes).
- * Unpacked still includes v9 (~27MB); adjust when Phase B slim lands.
+ * The bundled knowledge corpus used to dominate this budget (~145MB unpacked);
+ * what remains is the plugin bundle plus model-facing assets.
  */
 export const PACK_SIZE_WARN = {
-  compressedBytes: 8 * 1024 * 1024,
-  unpackedBytes: 45 * 1024 * 1024,
+  compressedBytes: 4 * 1024 * 1024,
+  unpackedBytes: 16 * 1024 * 1024,
 }

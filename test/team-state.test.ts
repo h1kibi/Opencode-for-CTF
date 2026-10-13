@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest"
 import { resolveFileLockPaths, withFileLock } from "../src/file-lock.ts"
 import { inspectTeamLockState, normalizePersistedTeamState, normalizeTeamState, parseTeamState, quarantineTeamState, readTeamState } from "../src/team/team-state.ts"
 import type { TeamState } from "../src/team/team-types.ts"
+import { deriveTeamRunStatus } from "../src/team-reducer.ts"
 
 function makeState(overrides: Partial<TeamState> = {}): TeamState {
   return {
@@ -277,5 +278,147 @@ describe("team lock diagnostics", () => {
     expect(released.entries[0]?.status).toBe("released")
 
     await rm(directory, { recursive: true, force: true })
+  })
+})
+
+describe("team state fact and intent validation", () => {
+  const baseRun = {
+    id: "run-1",
+    title: "validation",
+    parentSessionID: "parent-1",
+    status: "running",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    jobs: [
+      {
+        id: "job-1",
+        title: "pwn",
+        objective: "test",
+        agent: "ctf-pwn",
+        routeId: "R1",
+        concurrency: "independent",
+        intentId: "intent-1",
+        ownerToken: "claim-token",
+        status: "running",
+        sessionID: "worker-1",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ],
+  }
+  const write = async (directory: string, run: Record<string, unknown>) => {
+    await writeFile(
+      path.join(directory, ".ctf-team.json"),
+      JSON.stringify({ schemaVersion: 1, revision: 1, updatedAt: new Date().toISOString(), runs: [run] }),
+      "utf8",
+    )
+  }
+
+  it("accepts a well-formed fact and intent ledger", async () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-valid-ledger-"))
+    try {
+      await write(directory, {
+        ...baseRun,
+        facts: [
+          {
+            id: "fact-1",
+            runId: "run-1",
+            routeId: "R1",
+            sourceJobId: "job-1",
+            sourceSessionId: "worker-1",
+            kind: "observation",
+            statement: "NX enabled",
+            evidence: [{ type: "command", value: "checksec ./chall" }],
+            confidence: "observed",
+            status: "pending",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        intents: [
+          {
+            id: "intent-1",
+            runId: "run-1",
+            routeId: "R1",
+            title: "confirm control",
+            objective: "confirm RIP control",
+            basedOnFactIds: ["fact-1"],
+            stopCondition: "confirmed or ruled out",
+            concurrency: "exclusive",
+            requiredCapabilities: [],
+            status: "claimed",
+            claimedBy: "job-1",
+            claimToken: "claim-token",
+            claimExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+            attempts: 1,
+            maxAttempts: 2,
+            createdBy: "expert",
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      })
+      const state = await readTeamState(directory)
+      expect(state.runs[0].facts).toHaveLength(1)
+      expect(state.runs[0].intents).toHaveLength(1)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("fails closed on a malformed fact or intent ledger", async () => {
+    const cases: Array<Record<string, unknown>> = [
+      { intents: "not-an-array" },
+      { facts: { id: "fact-1" } },
+      { intents: [{ id: "intent-1", status: "bogus", routeId: "R1", concurrency: "exclusive" }] },
+      { intents: [{ id: "intent-1", status: "open", routeId: "R9", concurrency: "exclusive" }] },
+      { facts: [{ id: "fact-1", status: "pending", statement: "s", evidence: "not-an-array" }] },
+      { facts: [{ id: "fact-1", status: "nope", statement: "s", evidence: [] }] },
+      { intents: [{ id: "intent-1", status: "open", routeId: "R1", concurrency: "exclusive", claimedBy: "ghost" }] },
+      { facts: [{ id: "fact-1", runId: "run-1", routeId: "R1", sourceJobId: "job-1", sourceSessionId: "worker-1", kind: "bogus", statement: "s", evidence: [{ type: "command", value: "v" }], confidence: "observed", status: "pending" }] },
+      { facts: [{ id: "fact-1", runId: "run-1", routeId: "R1", sourceJobId: "job-1", sourceSessionId: "worker-1", kind: "observation", statement: "s", evidence: [{ type: "command", value: "v" }], confidence: "confirmed", status: "pending" }] },
+      { intents: [{ id: "intent-1", status: "claimed", routeId: "R1", title: "t", objective: "o", basedOnFactIds: [], requiredCapabilities: [], concurrency: "exclusive", attempts: 1, maxAttempts: 2, createdBy: "expert" }] },
+      { intents: [{ id: "intent-1", status: "open", routeId: "R1", title: "t", objective: "o", basedOnFactIds: ["f", "f"], requiredCapabilities: [], concurrency: "exclusive", attempts: 0, maxAttempts: 2, createdBy: "expert" }] },
+      { intents: [{ id: "intent-1", runId: "run-1", status: "claimed", routeId: "R1", title: "t", objective: "o", basedOnFactIds: [], requiredCapabilities: [], concurrency: "exclusive", attempts: 1, maxAttempts: 2, createdBy: "expert", stopCondition: "done", claimedBy: "job-1", claimToken: "token-a", claimExpiresAt: new Date(Date.now() + 60_000).toISOString() }] },
+      { intents: [{ id: "intent-1", runId: "run-1", status: "claimed", routeId: "R1", title: "t", objective: "o", basedOnFactIds: [], requiredCapabilities: [], concurrency: "exclusive", attempts: 1, maxAttempts: 2, createdBy: "expert", stopCondition: "done", claimedBy: "job-1" }] }
+    ]
+    const validJob = { ...baseRun.jobs[0], sessionID: "worker-1" }
+    const validFact = {
+      id: "fact-1", runId: "run-1", routeId: "R1", sourceJobId: "job-1", sourceSessionId: "worker-1",
+      kind: "observation", statement: "s", evidence: [{ type: "command", value: "v" }], confidence: "observed",
+      status: "pending", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    }
+    const validIntent = {
+      id: "intent-1", runId: "run-1", routeId: "R1", title: "t", objective: "o", basedOnFactIds: ["fact-1"],
+      requiredCapabilities: [], concurrency: "exclusive", status: "open", attempts: 0, maxAttempts: 2,
+      createdBy: "expert", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    }
+    const duplicateCases = [
+      { facts: [validFact, { ...validFact }], intents: [validIntent] },
+      { facts: [validFact], intents: [validIntent, { ...validIntent }] },
+    ]
+    for (const ledger of duplicateCases) {
+      const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-duplicate-ledger-"))
+      try {
+        await write(directory, { ...baseRun, jobs: [validJob], ...ledger })
+        await expect(readTeamState(directory)).rejects.toThrow(/duplicate (fact|intent) id/)
+      } finally {
+        await rm(directory, { recursive: true, force: true })
+      }
+    }
+    for (const malformed of cases) {
+      const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-bad-ledger-"))
+      try {
+        await write(directory, { ...baseRun, ...malformed })
+        await expect(readTeamState(directory), JSON.stringify(malformed).slice(0, 60)).rejects.toThrow(
+          /Invalid CTF team state/,
+        )
+      } finally {
+        await rm(directory, { recursive: true, force: true })
+      }
+    }
+  })
+
+  it("derives cancelled for a run whose workers were all cancelled", () => {
+    expect(deriveTeamRunStatus([{ status: "cancelled" }, { status: "cancelled" }], "running")).toBe("cancelled")
   })
 })

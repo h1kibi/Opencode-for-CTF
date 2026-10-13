@@ -70,7 +70,9 @@ export default tool({
       cwd: workdir,
       timeoutMs,
       maxBuffer: 16 * 1024 * 1024,
-      shell: process.platform === "win32",
+      // No shell hop: interpreter and script path are explicit, and `shell:
+      // true` made every argv entry shell command text on Windows.
+      shell: false,
       env: { ...process.env, PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8" },
     })
     if (!ok) throw new Error(stderr.trim() || "python execution failed")

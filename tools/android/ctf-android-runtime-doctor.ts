@@ -1,7 +1,6 @@
 ﻿import { tool } from "@opencode-ai/plugin"
 import { readFile } from "node:fs/promises"
 import { safeExec } from "../lib/exec-utils.ts"
-import path from "node:path"
 import { resolveInsideWorkspace } from "../lib/workspace-path.ts"
 
 function firstDevice(adbDevices: string) {
