@@ -1,34 +1,14 @@
 ﻿import { tool } from "@opencode-ai/plugin"
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { safeExec, safeExecWithStreams } from "../lib/exec-utils.ts"
+import { safeExecWithStreams } from "../lib/exec-utils.ts"
+import { resolvePythonLauncher } from "../lib/python-launcher.ts"
 import {
   directoryFromContext,
   resolveFromDirectoryInsideWorkspace,
   resolveInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-
-async function works(cmd: string, args: string[]) {
-  const r = await safeExec(cmd, args, { timeoutMs: 4000, maxBuffer: 256 * 1024, shell: process.platform === "win32" })
-  return r.ok
-}
-
-async function choosePython() {
-  const candidates: Array<[string, string[]]> =
-    process.platform === "win32"
-      ? [
-          ["python", ["--version"]],
-          ["py", ["-3", "--version"]],
-          ["python3", ["--version"]],
-        ]
-      : [
-          ["python3", ["--version"]],
-          ["python", ["--version"]],
-        ]
-  for (const [cmd, args] of candidates) if (await works(cmd, args)) return { cmd, baseArgs: cmd === "py" ? ["-3"] : [] }
-  throw new Error("No working Python launcher found (tried python, py, python3).")
-}
 
 function looksParallelPython(code: string) {
   return /\bmultiprocessing\b|ProcessPoolExecutor|Pool\(|set_start_method\(/.test(code)
@@ -90,7 +70,7 @@ export default tool({
     const parallelHint = looksParallelPython(code)
     const mainGuard = hasMainGuard(code)
     await writeFile(scriptPath, code, "utf8")
-    const py = await choosePython()
+    const py = await resolvePythonLauncher()
     const timeoutMs = Math.max(1000, Math.min(args.timeoutMs ?? 12000, 120000))
     const argv = args.argv || []
     // No shell hop: the interpreter and script path are explicit, and

@@ -23,7 +23,14 @@ async function walk(root: string, maxFiles: number) {
   const out: string[] = []
   async function rec(dir: string) {
     if (out.length >= maxFiles) return
-    const entries = await readdir(dir, { withFileTypes: true })
+    let entries
+    try {
+      entries = await readdir(dir, { withFileTypes: true })
+    } catch (error) {
+      // A probe target that does not exist is reported as "no files", not a crash.
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return
+      throw error
+    }
     for (const entry of entries) {
       if (out.length >= maxFiles) break
       if (["node_modules", ".git", "extracted", "work", "__pycache__"].includes(entry.name)) continue

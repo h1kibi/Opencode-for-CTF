@@ -4,6 +4,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
+import { resolvePythonLauncher } from "../lib/python-launcher.ts"
 
 function compact(s: string, max = 12000) {
   const clean = String(s || "").replace(/\x1b\[[0-9;]*[A-Za-z]/g, "")
@@ -122,7 +123,8 @@ for i in range(RETRIES):
 print(json.dumps(rows, ensure_ascii=False))
 `
     await writeFile(driver, script, "utf8")
-    const { stdout, stderr } = await safeExecWithStreams("python", [driver], {
+    const python = await resolvePythonLauncher()
+    const { stdout, stderr } = await safeExecWithStreams(python.cmd, [...python.baseArgs, driver], {
       timeoutMs: recvTimeoutMs * retries + 5000,
       maxBuffer: 2 * 1024 * 1024,
     })

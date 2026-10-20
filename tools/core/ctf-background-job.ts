@@ -3,6 +3,7 @@ import { spawn } from "node:child_process"
 import { existsSync, openSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
+import { resolvePythonLauncher } from "../lib/python-launcher.ts"
 import {
   directoryFromContext,
   resolveFromDirectoryInsideWorkspace,
@@ -67,6 +68,7 @@ async function readJson(file: string) {
 }
 
 function isPidAlive(pid: number) {
+  if (!Number.isInteger(pid) || pid <= 0) return false
   try {
     process.kill(pid, 0)
     return true
@@ -121,7 +123,10 @@ async function stopProcess(pid: number): Promise<{ ok: boolean; reason?: string 
 }
 
 async function chooseRunner(lang: string) {
-  if (lang === "python") return { cmd: "python", args: [] as string[], ext: ".py" }
+  if (lang === "python") {
+    const python = await resolvePythonLauncher()
+    return { cmd: python.cmd, args: python.baseArgs, ext: ".py" }
+  }
   if (lang === "node") return { cmd: "node", args: [] as string[], ext: ".js" }
   if (lang === "powershell")
     return { cmd: "powershell", args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"], ext: ".ps1" }
@@ -341,8 +346,29 @@ export default tool({
     }
 
     if (op === "stop") {
-      const killed = await stopProcess(Number(meta.pid))
-      if (!killed.ok && isPidAlive(Number(meta.pid))) {
+      const targetPid = Number(meta.pid)
+      // A job record can be stale or edited. pid<=0 signals the whole process
+      // group on POSIX and pid===self kills the host runtime, so refuse both.
+      if (!Number.isInteger(targetPid) || targetPid <= 0 || targetPid === process.pid) {
+        const payload = {
+          ok: false,
+          id,
+          stopped: false,
+          pid: meta.pid,
+          error: `refusing to signal unsafe pid: ${String(meta.pid)}`,
+        }
+        if (args.jsonOnly) return JSON.stringify(payload, null, 2)
+        return [
+          "CTF_BACKGROUND_JOB:",
+          "- operation: stop",
+          `- id: ${id}`,
+          "- stopped: false",
+          `- pid: ${meta.pid}`,
+          `- error: ${payload.error}`,
+        ].join("\n")
+      }
+      const killed = await stopProcess(targetPid)
+      if (!killed.ok && isPidAlive(targetPid)) {
         const payload = { ok: false, id, stopped: false, pid: meta.pid, error: killed.reason || "stop failed" }
         if (args.jsonOnly) return JSON.stringify(payload, null, 2)
         return [

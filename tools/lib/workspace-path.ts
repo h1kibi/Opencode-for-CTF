@@ -62,6 +62,9 @@ export type WorkspaceLikeContext = { directory?: string; worktree?: string } | u
  * else.
  */
 function isFilesystemRoot(value: string): boolean {
+  // A Windows drive root stays a root even when interpreted on POSIX, so the
+  // malformed-context guard behaves the same on every platform.
+  if (/^[A-Za-z]:[\\/]$/.test(value)) return true
   const resolved = path.resolve(value)
   return resolved === path.parse(resolved).root
 }

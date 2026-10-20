@@ -154,9 +154,20 @@ describe("mcp-server-registry", () => {
 
   it("envPrerequisitesSatisfied detects missing env for servers with requirements", () => {
     const server = lookupMcpServer("github")!
-    const result = envPrerequisitesSatisfied(server)
-    // GITHUB_PAT may or may not be set; just check the function works
-    expect(result.ok).toBe(typeof result.missing === "object")
+    const key = "GITHUB_PAT"
+    const saved = process.env[key]
+    try {
+      delete process.env[key]
+      const missing = envPrerequisitesSatisfied(server)
+      expect(missing.ok).toBe(false)
+      expect(missing.missing).toContain(key)
+
+      process.env[key] = "test-token"
+      expect(envPrerequisitesSatisfied(server)).toEqual({ ok: true, missing: [] })
+    } finally {
+      if (saved === undefined) delete process.env[key]
+      else process.env[key] = saved
+    }
   })
 
   it("every server has a valid weight", () => {

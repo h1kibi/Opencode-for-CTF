@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process"
+import { spawn, type ChildProcess } from "node:child_process"
 import { existsSync, mkdtempSync } from "node:fs"
 import { readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
@@ -16,6 +16,9 @@ function runWorker(args: string[], options: { killOn?: string } = {}) {
     cwd: projectRoot,
     env: process.env,
     stdio: ["ignore", "pipe", "pipe"],
+    // POSIX: own process group so a hard kill also reaps the tsx runner's
+    // grandchild (the process that actually holds the lock).
+    detached: process.platform !== "win32",
   })
   let output = ""
   child.stdout.on("data", (chunk: Buffer) => {
@@ -34,6 +37,23 @@ function runWorker(args: string[], options: { killOn?: string } = {}) {
     child.once("close", (code, signal) => resolve({ code, signal }))
   })
   return { child, ready, closed, getOutput: () => output }
+}
+
+/**
+ * Hard-kill the worker and every process it spawned. tsx runs the fixture in a
+ * child process on POSIX, so killing only the direct child leaves the real
+ * lock holder alive and the lease never goes stale.
+ */
+function killWorker(child: ChildProcess) {
+  if (process.platform === "win32" || !child.pid) {
+    child.kill("SIGKILL")
+    return
+  }
+  try {
+    process.kill(-child.pid, "SIGKILL")
+  } catch {
+    child.kill("SIGKILL")
+  }
 }
 
 describe("withFileLock", () => {
@@ -192,7 +212,7 @@ describe("withFileLock cross-process guarantees", () => {
 
     const holder = runWorker(["hold", file, "1", "0", "2000"], { killOn: "LOCKED" })
     await holder.ready
-    holder.child.kill("SIGKILL")
+    killWorker(holder.child)
     const holderExit = await holder.closed
     expect(holderExit.code).not.toBe(0)
 
@@ -319,7 +339,7 @@ describe("withFileLock cross-process guarantees", () => {
     ).rejects.toMatchObject({ code: "ELOCKED" })
     expect(ran).toBe(false)
 
-    holder.child.kill("SIGKILL")
+    killWorker(holder.child)
     await holder.closed
     await rm(directory, { recursive: true, force: true })
   }, 10_000)

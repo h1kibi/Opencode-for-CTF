@@ -3,6 +3,7 @@ import { lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
 import { objectToStringRecord, parseJsonObjectArg } from "../lib/json-args.ts"
+import { resolvePythonLauncher } from "../lib/python-launcher.ts"
 import { resolveAllowedPath } from "../lib/path-policy.ts"
 import { directoryFromContext, resolveInsideWorkspace, workspaceRootFromContext } from "../lib/workspace-path.ts"
 import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
@@ -153,8 +154,9 @@ export default tool({
     const timeoutMs = Math.max(1000, Math.min(args.timeoutMs ?? 15000, 120000))
     const extra = (args.argv || "").split(/\s+/).filter(Boolean).slice(0, 20)
     const ext = path.extname(script).toLowerCase()
-    const command = ext === ".js" ? "node" : ext === ".sh" ? "bash" : ext === ".sage" ? "sage" : "python"
-    const cmdArgs = [script, ...extra]
+    const pythonLauncher = ext === ".py" ? await resolvePythonLauncher() : null
+    const command = ext === ".js" ? "node" : ext === ".sh" ? "bash" : ext === ".sage" ? "sage" : pythonLauncher!.cmd
+    const cmdArgs = [...(pythonLauncher?.baseArgs ?? []), script, ...extra]
     const extraEnv: Record<string, string> = {}
     if (args.envJson) {
       Object.assign(extraEnv, objectToStringRecord("envJson", parseJsonObjectArg("envJson", args.envJson)))

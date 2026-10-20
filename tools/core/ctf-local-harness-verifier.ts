@@ -2,6 +2,7 @@
 import { mkdir, readFile, writeFile, stat } from "node:fs/promises"
 import path from "node:path"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
+import { resolvePythonLauncher } from "../lib/python-launcher.ts"
 import {
   directoryFromContext,
   resolveFromDirectoryInsideWorkspace,
@@ -197,9 +198,12 @@ function extFor(language: string) {
   return ".txt"
 }
 
-function runnerFor(language: string) {
+async function runnerFor(language: string) {
   const lang = language.toLowerCase()
-  if (lang === "python" || lang === "py") return { cmd: "python", args: [] as string[] }
+  if (lang === "python" || lang === "py") {
+    const python = await resolvePythonLauncher()
+    return { cmd: python.cmd, args: python.baseArgs }
+  }
   if (["javascript", "js", "node", "typescript", "ts"].includes(lang)) return { cmd: "node", args: [] as string[] }
   if (lang === "php") return { cmd: "php", args: [] as string[] }
   if (lang === "ruby") return { cmd: "ruby", args: [] as string[] }
@@ -310,7 +314,7 @@ export default tool({
     if (operation === "run") {
       if (args.allowRun !== true)
         return "Refusing to execute harness: set allowRun=true after reviewing the harness code and confirming it is workspace-local and safe."
-      const runner = runnerFor(language)
+      const runner = await runnerFor(language)
       if (!runner)
         return `Execution not supported for language '${language}'. Use operation=plan/write and run manually in a sandbox.`
       let fullFile = ""

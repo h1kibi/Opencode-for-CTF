@@ -11,7 +11,7 @@ describe("ctf-pwn-probe tool", () => {
     ) => Promise<string>
     const text = await execute(
       { targetDir: "templates", binary: "templates/pwn_fast_ret2win.py", jsonOnly: true },
-      { directory: "C:/Projects/Agent-projects/Opencode-for-CTF" },
+      { directory: process.cwd() },
     )
     const parsed = JSON.parse(text)
     expect(parsed.schema_version).toBe("pwn_probe.v1")
@@ -46,7 +46,7 @@ describe("ctf-pwn-probe tool", () => {
           port: 31337,
           jsonOnly: true,
         },
-        { directory: "C:/Projects/Agent-projects/Opencode-for-CTF" },
+        { directory: process.cwd() },
       )
       const parsed = JSON.parse(text)
       expect(parsed.remote_behavior).toBeTruthy()

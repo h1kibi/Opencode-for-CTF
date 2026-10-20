@@ -1,40 +1,34 @@
-import { EventEmitter } from "node:events"
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { spawn } from "node:child_process"
 import { describe, expect, it, vi } from "vitest"
-
-vi.mock("node:child_process", () => ({ spawn: vi.fn() }))
 
 import backgroundJob from "../tools/core/ctf-background-job.ts"
 
-describe("ctf-background-job stop contract", () => {
-  it("reports a failed stop instead of claiming stopped=true", async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), "ctf-bg-stop-fail-"))
-    const jobDir = path.join(dir, "work", "background-jobs", "fail")
-    await mkdir(jobDir, { recursive: true })
-    await writeFile(
-      path.join(jobDir, "job.json"),
-      JSON.stringify({
-        id: "fail",
-        pid: process.pid,
-        scriptPath: path.join(jobDir, "run.js"),
-        workdir: jobDir,
-        stdoutPath: path.join(jobDir, "stdout.log"),
-        stderrPath: path.join(jobDir, "stderr.log"),
-        startedAt: new Date().toISOString(),
-        argv: [],
-      }),
-      "utf8",
-    )
+async function writeJob(dir: string, id: string, meta: Record<string, unknown>) {
+  const jobDir = path.join(dir, "work", "background-jobs", id)
+  await mkdir(jobDir, { recursive: true })
+  await writeFile(
+    path.join(jobDir, "job.json"),
+    JSON.stringify({
+      id,
+      scriptPath: path.join(jobDir, "run.js"),
+      workdir: jobDir,
+      stdoutPath: path.join(jobDir, "stdout.log"),
+      stderrPath: path.join(jobDir, "stderr.log"),
+      startedAt: new Date().toISOString(),
+      argv: [],
+      ...meta,
+    }),
+    "utf8",
+  )
+  return jobDir
+}
 
-    const spawnMock = vi.mocked(spawn)
-    spawnMock.mockImplementation((() => {
-      const child = new EventEmitter() as ReturnType<typeof spawn>
-      setImmediate(() => child.emit("exit", 1))
-      return child
-    }) as typeof spawn)
+describe("ctf-background-job stop contract", () => {
+  it("refuses to signal its own process instead of claiming stopped=true", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "ctf-bg-stop-fail-"))
+    await writeJob(dir, "fail", { pid: process.pid })
 
     const out = await backgroundJob.execute({ operation: "stop", id: "fail", jsonOnly: true }, {
       directory: dir,
@@ -42,12 +36,25 @@ describe("ctf-background-job stop contract", () => {
     const parsed = JSON.parse(String(out))
     expect(parsed.ok).toBe(false)
     expect(parsed.stopped).toBe(false)
-    expect(parsed.error).toMatch(/taskkill exited with code 1/)
+    expect(parsed.error).toMatch(/unsafe pid/)
   })
+
+  it("refuses to signal a non-positive pid, which would target the process group", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "ctf-bg-stop-zero-"))
+    await writeJob(dir, "zero", { pid: 0 })
+
+    const out = await backgroundJob.execute({ operation: "stop", id: "zero", jsonOnly: true }, {
+      directory: dir,
+    } as never)
+    const parsed = JSON.parse(String(out))
+    expect(parsed.ok).toBe(false)
+    expect(parsed.stopped).toBe(false)
+    expect(parsed.error).toMatch(/unsafe pid/)
+  })
+
   it("redacts secret environment values and URL query credentials from collected output", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "ctf-bg-redact-"))
-    const jobDir = path.join(dir, "work", "background-jobs", "redact")
-    await mkdir(jobDir, { recursive: true })
+    const jobDir = await writeJob(dir, "redact", { pid: 0 })
     vi.stubEnv("CTF_TEST_TOKEN", "super-secret-token")
     try {
       await writeFile(
@@ -56,17 +63,6 @@ describe("ctf-background-job stop contract", () => {
         "utf8",
       )
       await writeFile(path.join(jobDir, "stderr.log"), "", "utf8")
-      await writeFile(
-        path.join(jobDir, "job.json"),
-        JSON.stringify({
-          id: "redact",
-          pid: 0,
-          stdoutPath: path.join(jobDir, "stdout.log"),
-          stderrPath: path.join(jobDir, "stderr.log"),
-          startedAt: new Date().toISOString(),
-        }),
-        "utf8",
-      )
       const out = await backgroundJob.execute({ operation: "read", id: "redact", jsonOnly: true }, {
         directory: dir,
       } as never)

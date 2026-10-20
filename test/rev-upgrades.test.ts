@@ -8,6 +8,19 @@ import { packForTool } from "../src/tool-packs.ts"
 
 const execFileAsync = promisify(execFile)
 
+/** First Python launcher that exists on this host (Windows ships `python`, POSIX usually `python3`). */
+async function resolvePythonLauncher(): Promise<string | undefined> {
+  for (const candidate of ["python3", "python"]) {
+    try {
+      await execFileAsync(candidate, ["--version"])
+      return candidate
+    } catch {
+      // try the next candidate
+    }
+  }
+  return undefined
+}
+
 async function tempRoot(prefix: string) {
   return mkdtemp(path.join(os.tmpdir(), prefix))
 }
@@ -45,7 +58,10 @@ describe("Rev upgrade contracts", () => {
     expect(script).toContain("ARCH = UC_ARCH_X86")
     expect(script).toContain('mu.reg_write(UC_X86_REG_RAX, int("0x2", 0))')
     expect(script).not.toContain("<ARCH>")
-    await execFileAsync("python", ["-m", "py_compile", path.join(root, "replay", "unicorn_replay.py")])
+    const python = await resolvePythonLauncher()
+    if (python) {
+      await execFileAsync(python, ["-m", "py_compile", path.join(root, "replay", "unicorn_replay.py")])
+    }
   })
 
   it("rejects unsupported Unicorn architectures instead of emitting placeholders", async () => {
