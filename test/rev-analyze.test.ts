@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest"
 
 const MOD_PATH = "../tools/rev/ctf-rev-analyze.ts"
 
-describe("ctf-rev-analyze tool", () => {
+// These cases delegate to host probe binaries (file/readelf/nm/ldd/checksec), so the
+// default 5s budget is not enough on a cold CI runner.
+describe("ctf-rev-analyze tool", { timeout: 30_000 }, () => {
   it("routes APKs to the android facade hint without native probing", async () => {
     const mod = await import(MOD_PATH)
     const root = await mkdtemp(path.join(os.tmpdir(), "ctf-rev-analyze-"))
