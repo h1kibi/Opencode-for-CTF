@@ -106,7 +106,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "@opencode-ai/plugin": "^1.17.0",
+    "@opencode-ai/plugin": "1.19.3",
     "@opencode-ai/sdk": "^1.0.0",
     "jsonc-parser": "^3.3.1",
     "proper-lockfile": "^4.1.2",

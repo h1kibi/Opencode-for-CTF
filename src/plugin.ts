@@ -46,6 +46,14 @@ function safeHook<Args extends unknown[], Out>(name: string, fn: (...args: Args)
   }
 }
 
+// OpenCode 2.x compatibility guard
+if (process.env.OPENCODE_VERSION?.startsWith("2.")) {
+  throw new Error(
+    "OpenCode 2.x requires plugin migration. Current plugin supports OpenCode 1.18.x - 1.19.x only. " +
+      "See https://github.com/h1kibi/Opencode-for-CTF#compatibility for details.",
+  )
+}
+
 const RuntimePlugin: Plugin = async (input, _options) => {
   // opencode desktop may report a filesystem root (e.g. "C:\\") as the
   // worktree for projects without a detected VCS root. State files written

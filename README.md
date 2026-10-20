@@ -21,6 +21,30 @@ to test.
 - Managed install, upgrade, uninstall, doctor, and strict status checks
 - Disabled-by-default MCP stubs for safe opt-in integration
 
+## Compatibility
+
+**Supported OpenCode versions**: 1.18.x - 1.19.x
+
+This plugin is built for OpenCode 1.x using the `@opencode-ai/plugin` API. It is
+**not compatible** with OpenCode 2.x, which requires a complete plugin rewrite.
+
+If you are running OpenCode 2.x, the plugin will refuse to load with a clear
+error message. To use this plugin, install OpenCode 1.19.3:
+
+```bash
+npm install -g opencode-ai@1.19.3
+```
+
+To prevent automatic upgrades to OpenCode 2.x, set the update mode to `notify`:
+
+```jsonc
+// ~/.config/opencode/opencode.json
+{
+  "update": "notify"
+}
+```
+
+
 ## How It Works
 
 When OpenCode loads the plugin, the runtime registers:
