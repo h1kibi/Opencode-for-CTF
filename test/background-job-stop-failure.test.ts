@@ -50,7 +50,11 @@ describe("ctf-background-job stop contract", () => {
     await mkdir(jobDir, { recursive: true })
     vi.stubEnv("CTF_TEST_TOKEN", "super-secret-token")
     try {
-      await writeFile(path.join(jobDir, "stdout.log"), "token=super-secret-token url=https://user:pass@example.test/x?api_key=super-secret-token\n", "utf8")
+      await writeFile(
+        path.join(jobDir, "stdout.log"),
+        "token=super-secret-token url=https://user:pass@example.test/x?api_key=super-secret-token\n",
+        "utf8",
+      )
       await writeFile(path.join(jobDir, "stderr.log"), "", "utf8")
       await writeFile(
         path.join(jobDir, "job.json"),
@@ -63,7 +67,9 @@ describe("ctf-background-job stop contract", () => {
         }),
         "utf8",
       )
-      const out = await backgroundJob.execute({ operation: "read", id: "redact", jsonOnly: true }, { directory: dir } as never)
+      const out = await backgroundJob.execute({ operation: "read", id: "redact", jsonOnly: true }, {
+        directory: dir,
+      } as never)
       const parsed = JSON.parse(String(out))
       expect(parsed.stdout).not.toContain("super-secret-token")
       expect(parsed.stdout).toContain("REDACTED")

@@ -197,16 +197,7 @@ export const FAMILY_CAPABILITY_CONTRACTS: Record<CtfFamily, FamilyCapabilityCont
       "ctf-windows-debug-helper",
     ],
     softDependencies: ["ReVa", "ghidra", "frida", "apktool"],
-    defaultMcps: [
-      "filesystem",
-      "context7",
-      "github",
-      "markitdown",
-      "ReVa",
-      "gdb-mcp",
-      "x64dbg-mcp",
-      "ssh-mcp",
-    ],
+    defaultMcps: ["filesystem", "context7", "github", "markitdown", "ReVa", "gdb-mcp", "x64dbg-mcp", "ssh-mcp"],
     requestableHeavyMcps: ["gdb-mcp", "x64dbg-mcp", "ssh-mcp", "flutter-aot"],
     fallbackModes: [
       {

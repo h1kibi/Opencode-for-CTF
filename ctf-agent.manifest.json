@@ -1,41 +1,14 @@
 {
   "version": "0.1.2",
   "description": "CTF agent operating profile. Default user entry is /ctf (auto-route). Primary CTF agents: ctf-fast and ctf-expert only. researcher owns manual post-solve learning and local knowledge RAG maintenance.",
-  "default_entrypoints": [
-    "/ctf",
-    "/help",
-    "/ctf-fast",
-    "/ctf-expert",
-    "/resume"
-  ],
+  "default_entrypoints": ["/ctf", "/help", "/ctf-fast", "/ctf-expert", "/resume"],
   "compatibility_entrypoints": [],
-  "primary_agents": [
-    "ctf-fast",
-    "ctf-expert"
-  ],
-  "user_selectable_agents": [
-    "ctf-fast",
-    "ctf-expert"
-  ],
+  "primary_agents": ["ctf-fast", "ctf-expert"],
+  "user_selectable_agents": ["ctf-fast", "ctf-expert"],
   "compatibility_agents": [],
-  "support_primary_agents": [
-    "researcher"
-  ],
-  "category_subagents": [
-    "ctf-web",
-    "ctf-pwn",
-    "ctf-rev",
-    "ctf-crypto",
-    "ctf-forensics",
-    "ctf-misc",
-    "ctf-aisec"
-  ],
-  "meta_subagents": [
-    "ctf-scout",
-    "ctf-librarian",
-    "ctf-oracle",
-    "ctf-verifier"
-  ],
+  "support_primary_agents": ["researcher"],
+  "category_subagents": ["ctf-web", "ctf-pwn", "ctf-rev", "ctf-crypto", "ctf-forensics", "ctf-misc", "ctf-aisec"],
+  "meta_subagents": ["ctf-scout", "ctf-librarian", "ctf-oracle", "ctf-verifier"],
   "routing": {
     "tool": "ctf-route-plan",
     "skill": "ctf-router",
@@ -120,20 +93,12 @@
       "ctf-mcp-control",
       "ctf-decompose-task"
     ],
-    "expert_soft_dependencies": [
-      "ghidra",
-      "apktool",
-      "frida"
-    ]
+    "expert_soft_dependencies": ["ghidra", "apktool", "frida"]
   },
   "local_retrieval_backend": {
     "server": "ctf_rag",
     "transport": "stdio",
-    "env_required": [
-      "CTF_RAG_PYTHON",
-      "CTF_RAG_ROOT",
-      "CTF_RAG_KB_ROOT"
-    ],
+    "env_required": ["CTF_RAG_PYTHON", "CTF_RAG_ROOT", "CTF_RAG_KB_ROOT"],
     "note": "Local knowledge retrieval is an external MCP server; no corpus ships with this package."
   }
 }

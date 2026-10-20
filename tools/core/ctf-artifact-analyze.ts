@@ -41,7 +41,6 @@ type ArtifactDb = {
   createdAt: string
 }
 
-
 async function sha256File(target: string) {
   const hash = createHash("sha256")
   await new Promise<void>((resolve, reject) => {
@@ -152,7 +151,6 @@ async function scanSourceAt(dir: string, slug: string): Promise<{ entries: Analy
     )
     .map((e) => path.join(e.parentPath ?? dir, e.name))
 
-
   // Grep for common sink patterns
   const sinkPatterns: Array<{ regex: RegExp; kind: string; danger: string }> = [
     {
@@ -260,9 +258,7 @@ async function scanSourceAt(dir: string, slug: string): Promise<{ entries: Analy
         const index = content.indexOf(candidate.value)
         const line = index >= 0 ? content.slice(0, index).split(/\r?\n/).length : undefined
         const context =
-          line !== undefined
-            ? (lines[Math.max(0, line - 1)] || "").trim().replace(/\s+/g, " ").slice(0, 220)
-            : ""
+          line !== undefined ? (lines[Math.max(0, line - 1)] || "").trim().replace(/\s+/g, " ").slice(0, 220) : ""
         entries.push({
           kind: "flag",
           name: "flag_candidate",

@@ -284,7 +284,10 @@ async function exportedPluginToolNames() {
     .map((entry) => entry.name.slice(0, -3))
     .filter(
       (name) =>
-        name.startsWith("ctf-") || name.startsWith("archive-") || name.startsWith("anysearch_") || name.startsWith("ctf_rag"),
+        name.startsWith("ctf-") ||
+        name.startsWith("archive-") ||
+        name.startsWith("anysearch_") ||
+        name.startsWith("ctf_rag"),
     )
     .sort()
 }

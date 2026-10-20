@@ -9,7 +9,8 @@ const STATIC_FOLLOWUP_GAPS: Record<string, string> = {
   java_kotlin_checker:
     "no bounded Java/Kotlin static follow-up tool is registered; work from the APK triage dex string hits, then ctf-dex-patch-map when patch records exist",
   assets_or_resource_decode: "decode only the suspect assets with ctf-apk-resource-read or extract them directly",
-  unknown_apk_static: "rerun ctf-apk-triage with a larger maxStrings or run ctf-android-native-triage on the strongest signal",
+  unknown_apk_static:
+    "rerun ctf-apk-triage with a larger maxStrings or run ctf-android-native-triage on the strongest signal",
 }
 
 type ApkTriagePayload = {
@@ -38,9 +39,7 @@ export default tool({
     followStatic: tool.schema
       .boolean()
       .optional()
-      .describe(
-        "Run one bounded static follow-up from the triage route (native triage). Default false.",
-      ),
+      .describe("Run one bounded static follow-up from the triage route (native triage). Default false."),
     includeRuntime: tool.schema
       .boolean()
       .optional()

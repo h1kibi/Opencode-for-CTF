@@ -3,7 +3,12 @@ import path from "node:path"
 import { tool } from "@opencode-ai/plugin"
 import decisionState from "../core/ctf-decision-state.ts"
 import evidenceBoard from "../core/ctf-evidence-board.ts"
-import { directoryFromContext, resolveFromDirectoryInsideWorkspace, resolveInsideWorkspace, workspaceRootFromContext } from "../lib/workspace-path.ts"
+import {
+  directoryFromContext,
+  resolveFromDirectoryInsideWorkspace,
+  resolveInsideWorkspace,
+  workspaceRootFromContext,
+} from "../lib/workspace-path.ts"
 import {
   initRuntimeSession,
   readRuntimeSession,
@@ -38,7 +43,9 @@ function jsonObject(name: string, value?: string) {
 }
 
 async function exists(file: string) {
-  return access(file).then(() => true).catch(() => false)
+  return access(file)
+    .then(() => true)
+    .catch(() => false)
 }
 
 export default tool({
@@ -47,51 +54,125 @@ export default tool({
   args: {
     command: tool.schema
       .string()
-      .describe("init | read | update | record-artifact | record-marker | record-observation | inspect-artifacts | verify-history | anchor-evidence | verify-evidence-anchor | set-oracle | set-stage | link-evidence | sync"),
+      .describe(
+        "init | read | update | record-artifact | record-marker | record-observation | inspect-artifacts | verify-history | anchor-evidence | verify-evidence-anchor | set-oracle | set-stage | link-evidence | sync",
+      ),
     sessionPath: tool.schema
       .string()
       .optional()
-      .describe("Workspace-relative session JSON path. Defaults to work/rev-runtime/<target-hash>.json when target is supplied."),
-    target: tool.schema.string().optional().describe("Workspace-relative target path; required for init unless sessionPath already exists."),
-    family: tool.schema.string().optional().describe("elf | pe | mach-o | dex | apk | wasm | jvm | python-bytecode | unicorn | unknown"),
+      .describe(
+        "Workspace-relative session JSON path. Defaults to work/rev-runtime/<target-hash>.json when target is supplied.",
+      ),
+    target: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative target path; required for init unless sessionPath already exists."),
+    family: tool.schema
+      .string()
+      .optional()
+      .describe("elf | pe | mach-o | dex | apk | wasm | jvm | python-bytecode | unicorn | unknown"),
     substrate: tool.schema.string().optional().describe("local | docker | wsl | adb | unicorn | qiling | unknown"),
-    observationContract: tool.schema.string().optional().describe("legacy | linked | strict; init defaults to legacy for backward compatibility"),
+    observationContract: tool.schema
+      .string()
+      .optional()
+      .describe("legacy | linked | strict; init defaults to legacy for backward compatibility"),
     arch: tool.schema.string().optional(),
     mode: tool.schema.string().optional(),
-    substrateFingerprint: tool.schema.string().optional().describe("Stable runtime/environment fingerprint for the selected substrate."),
+    substrateFingerprint: tool.schema
+      .string()
+      .optional()
+      .describe("Stable runtime/environment fingerprint for the selected substrate."),
     runtimeTool: tool.schema.string().optional().describe("Runtime/emulator tool name, e.g. unicorn or qiling."),
     runtimeVersion: tool.schema.string().optional().describe("Runtime/emulator version."),
-    imageDigest: tool.schema.string().optional().describe("Container/image digest when the substrate is containerized."),
-    runtimeFingerprintJson: tool.schema.string().optional().describe("JSON runtime metadata imported from an external doctor/runner; never executes the target."),
-    stage: tool.schema.string().optional().describe("planned | prepared | running | captured | replayed | oracle_verified | closed | blocked"),
-    patchJson: tool.schema.string().optional().describe("JSON object for update; supports stage, family, substrate, next_action, blocking, oracle, and evidence_refs."),
-    artifactJson: tool.schema.string().optional().describe('JSON artifact, e.g. {"path":"work/rev-live-dump/payload.dump.bin","kind":"payload-dump","source":"ctf-rev-live-memory-dump"}.'),
-    markerJson: tool.schema.string().optional().describe('JSON marker, e.g. {"name":"post-unpack","reached":true,"evidence":"stdout marker observed"}.'),
-    observationJson: tool.schema.string().optional().describe('JSON runtime observation, e.g. {"kind":"comparison","status":"pass","evidence":"native and replay agree"}.'),
-    observationIdsJson: tool.schema.string().optional().describe("JSON string array of observation IDs linked to the oracle."),
+    imageDigest: tool.schema
+      .string()
+      .optional()
+      .describe("Container/image digest when the substrate is containerized."),
+    runtimeFingerprintJson: tool.schema
+      .string()
+      .optional()
+      .describe("JSON runtime metadata imported from an external doctor/runner; never executes the target."),
+    stage: tool.schema
+      .string()
+      .optional()
+      .describe("planned | prepared | running | captured | replayed | oracle_verified | closed | blocked"),
+    patchJson: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "JSON object for update; supports stage, family, substrate, next_action, blocking, oracle, and evidence_refs.",
+      ),
+    artifactJson: tool.schema
+      .string()
+      .optional()
+      .describe(
+        'JSON artifact, e.g. {"path":"work/rev-live-dump/payload.dump.bin","kind":"payload-dump","source":"ctf-rev-live-memory-dump"}.',
+      ),
+    markerJson: tool.schema
+      .string()
+      .optional()
+      .describe('JSON marker, e.g. {"name":"post-unpack","reached":true,"evidence":"stdout marker observed"}.'),
+    observationJson: tool.schema
+      .string()
+      .optional()
+      .describe(
+        'JSON runtime observation, e.g. {"kind":"comparison","status":"pass","evidence":"native and replay agree"}.',
+      ),
+    observationIdsJson: tool.schema
+      .string()
+      .optional()
+      .describe("JSON string array of observation IDs linked to the oracle."),
     oracleStatus: tool.schema.string().optional().describe("unknown | pass | fail | not_available"),
     oracleCommand: tool.schema.string().optional(),
     oracleEvidence: tool.schema.string().optional(),
-    evidenceRef: tool.schema.string().optional().describe("Workspace-relative artifact, ledger, or evidence path to link."),
-    decisionStatePath: tool.schema.string().optional().describe("Optional workspace-relative .ctf-decision-state.json path."),
-    evidenceBoardPath: tool.schema.string().optional().describe("Optional workspace-relative .ctf-evidence-board.json path."),
-    anchorPath: tool.schema.string().optional().describe("Optional external evidence anchor sidecar path; defaults to <session>.json.anchor.json."),
-    anchorSource: tool.schema.string().optional().describe("Provenance source recorded in the external evidence anchor."),
-    syncDecisionState: tool.schema.boolean().optional().describe("Project the session event into an existing decision state. Default true for sync."),
-    syncEvidenceBoard: tool.schema.boolean().optional().describe("Project the session event into an existing evidence board. Default true for sync."),
+    evidenceRef: tool.schema
+      .string()
+      .optional()
+      .describe("Workspace-relative artifact, ledger, or evidence path to link."),
+    decisionStatePath: tool.schema
+      .string()
+      .optional()
+      .describe("Optional workspace-relative .ctf-decision-state.json path."),
+    evidenceBoardPath: tool.schema
+      .string()
+      .optional()
+      .describe("Optional workspace-relative .ctf-evidence-board.json path."),
+    anchorPath: tool.schema
+      .string()
+      .optional()
+      .describe("Optional external evidence anchor sidecar path; defaults to <session>.json.anchor.json."),
+    anchorSource: tool.schema
+      .string()
+      .optional()
+      .describe("Provenance source recorded in the external evidence anchor."),
+    syncDecisionState: tool.schema
+      .boolean()
+      .optional()
+      .describe("Project the session event into an existing decision state. Default true for sync."),
+    syncEvidenceBoard: tool.schema
+      .boolean()
+      .optional()
+      .describe("Project the session event into an existing evidence board. Default true for sync."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args, context) {
     const workspace = workspaceRootFromContext(context)
     const directory = directoryFromContext(context)
-    const requestedTarget = args.target ? resolveFromDirectoryInsideWorkspace(directory, workspace, args.target) : undefined
-    const file = resolveRuntimeSessionFile(workspace, args.sessionPath, requestedTarget ? rel(workspace, requestedTarget) : undefined)
+    const requestedTarget = args.target
+      ? resolveFromDirectoryInsideWorkspace(directory, workspace, args.target)
+      : undefined
+    const file = resolveRuntimeSessionFile(
+      workspace,
+      args.sessionPath,
+      requestedTarget ? rel(workspace, requestedTarget) : undefined,
+    )
     const command = args.command.trim().toLowerCase()
     let session
     let action = command
     let historyVerification: { status: "legacy" | "verified" | "invalid"; issues: string[] } | undefined
     let fingerprintVerification: { status: string; issues: string[]; compared_fields: string[] } | undefined
-    let provenanceIssues: Array<{ code: string; message: string; artifact_id?: string; observation_id?: string }> | undefined
+    let provenanceIssues:
+      Array<{ code: string; message: string; artifact_id?: string; observation_id?: string }> | undefined
     let anchorVerification: { status: string; issues: string[] } | undefined
 
     if (command === "init") {
@@ -102,7 +183,7 @@ export default tool({
         {
           target,
           family: args.family,
-           observationContract: args.observationContract,
+          observationContract: args.observationContract,
           substrate: args.substrate,
           arch: args.arch,
           mode: args.mode,
@@ -110,9 +191,15 @@ export default tool({
           tool: args.runtimeTool,
           version: args.runtimeVersion,
           imageDigest: args.imageDigest,
-          nextAction: args.patchJson ? (jsonObject("patchJson", args.patchJson).next_action as string[] | undefined) : undefined,
-          decisionStatePath: args.decisionStatePath ? rel(workspace, resolveFromDirectoryInsideWorkspace(directory, workspace, args.decisionStatePath)) : null,
-          evidenceBoardPath: args.evidenceBoardPath ? rel(workspace, resolveFromDirectoryInsideWorkspace(directory, workspace, args.evidenceBoardPath)) : null,
+          nextAction: args.patchJson
+            ? (jsonObject("patchJson", args.patchJson).next_action as string[] | undefined)
+            : undefined,
+          decisionStatePath: args.decisionStatePath
+            ? rel(workspace, resolveFromDirectoryInsideWorkspace(directory, workspace, args.decisionStatePath))
+            : null,
+          evidenceBoardPath: args.evidenceBoardPath
+            ? rel(workspace, resolveFromDirectoryInsideWorkspace(directory, workspace, args.evidenceBoardPath))
+            : null,
         },
         workspace,
       )
@@ -133,9 +220,17 @@ export default tool({
       session = result.session
       provenanceIssues = result.issues
     } else if (command === "record-runtime-fingerprint") {
-      session = await recordRuntimeFingerprint(file, workspace, jsonObject("runtimeFingerprintJson", args.runtimeFingerprintJson))
+      session = await recordRuntimeFingerprint(
+        file,
+        workspace,
+        jsonObject("runtimeFingerprintJson", args.runtimeFingerprintJson),
+      )
     } else if (command === "verify-runtime-fingerprint") {
-      const result = await verifyRuntimeFingerprint(file, workspace, args.runtimeFingerprintJson ? jsonObject("runtimeFingerprintJson", args.runtimeFingerprintJson) : undefined)
+      const result = await verifyRuntimeFingerprint(
+        file,
+        workspace,
+        args.runtimeFingerprintJson ? jsonObject("runtimeFingerprintJson", args.runtimeFingerprintJson) : undefined,
+      )
       session = result.session
       fingerprintVerification = result.verification
     } else if (command === "anchor-evidence") {
@@ -163,7 +258,10 @@ export default tool({
       })
     } else if (command === "set-stage") {
       if (!args.stage) throw new Error("set-stage requires stage")
-      session = await updateRuntimeSession(file, workspace, command, { summary: `stage set to ${args.stage}`, stage: args.stage })
+      session = await updateRuntimeSession(file, workspace, command, {
+        summary: `stage set to ${args.stage}`,
+        stage: args.stage,
+      })
     } else if (command === "link-evidence") {
       if (!args.evidenceRef) throw new Error("link-evidence requires evidenceRef")
       const evidenceFile = resolveFromDirectoryInsideWorkspace(directory, workspace, args.evidenceRef)
@@ -175,7 +273,16 @@ export default tool({
       const patch = jsonObject("patchJson", args.patchJson)
       if (args.stage) patch.stage = args.stage
       if (args.family) patch.family = args.family
-      if (args.observationContract || args.substrate || args.arch || args.mode || args.substrateFingerprint || args.runtimeTool || args.runtimeVersion || args.imageDigest) {
+      if (
+        args.observationContract ||
+        args.substrate ||
+        args.arch ||
+        args.mode ||
+        args.substrateFingerprint ||
+        args.runtimeTool ||
+        args.runtimeVersion ||
+        args.imageDigest
+      ) {
         if (args.observationContract) patch.observation_contract = args.observationContract
         patch.substrate = {
           kind: args.substrate,
@@ -194,9 +301,10 @@ export default tool({
       throw new Error(`unknown command: ${args.command}`)
     }
 
-    const projection = command === "sync" || Boolean(args.syncDecisionState) || Boolean(args.syncEvidenceBoard)
-      ? await syncProjections(session, args, workspace, directory, context)
-      : { decision_state: { attempted: false, synced: false }, evidence_board: { attempted: false, synced: false } }
+    const projection =
+      command === "sync" || Boolean(args.syncDecisionState) || Boolean(args.syncEvidenceBoard)
+        ? await syncProjections(session, args, workspace, directory, context)
+        : { decision_state: { attempted: false, synced: false }, evidence_board: { attempted: false, synced: false } }
     const payload = {
       schema_version: session.schema_version,
       command: action,
@@ -232,21 +340,37 @@ export default tool({
       `- promotion_allowed: ${session.promotion.allowed}`,
       `- promotion_reason: ${session.promotion.reason}`,
       `- history_events: ${session.history.length}`,
-      ...(session.evidence_anchor ? [`- evidence_anchor: ${session.evidence_anchor.status} (${session.evidence_anchor.path})`] : []),
-      ...(historyVerification ? [`- history_verification: ${historyVerification.status}${historyVerification.issues.length ? ` (${historyVerification.issues.join("; ")})` : ""}`] : []),
-      ...(fingerprintVerification ? [`- fingerprint_verification: ${fingerprintVerification.status}${fingerprintVerification.issues.length ? ` (${fingerprintVerification.issues.join("; ")})` : ""}`] : []),
+      ...(session.evidence_anchor
+        ? [`- evidence_anchor: ${session.evidence_anchor.status} (${session.evidence_anchor.path})`]
+        : []),
+      ...(historyVerification
+        ? [
+            `- history_verification: ${historyVerification.status}${historyVerification.issues.length ? ` (${historyVerification.issues.join("; ")})` : ""}`,
+          ]
+        : []),
+      ...(fingerprintVerification
+        ? [
+            `- fingerprint_verification: ${fingerprintVerification.status}${fingerprintVerification.issues.length ? ` (${fingerprintVerification.issues.join("; ")})` : ""}`,
+          ]
+        : []),
       ...(provenanceIssues ? [`- provenance_issues: ${provenanceIssues.length}`] : []),
       `- next_tool_hint: ${payload.next_tool_hint}`,
     ].join("\n")
   },
 })
 
-async function syncProjections(session: Awaited<ReturnType<typeof readRuntimeSession>>, args: Record<string, unknown>, workspace: string, directory: string, context: unknown) {
+async function syncProjections(
+  session: Awaited<ReturnType<typeof readRuntimeSession>>,
+  args: Record<string, unknown>,
+  workspace: string,
+  directory: string,
+  context: unknown,
+) {
   const decisionPathInput = (args.decisionStatePath as string | undefined) || session.decision_state_path || undefined
   const boardPathInput = (args.evidenceBoardPath as string | undefined) || session.evidence_board_path || undefined
   const decisionResult: Record<string, unknown> = { attempted: false, synced: false }
   const boardResult: Record<string, unknown> = { attempted: false, synced: false }
-  if (decisionPathInput && (args.syncDecisionState !== false)) {
+  if (decisionPathInput && args.syncDecisionState !== false) {
     const decisionPath = args.decisionStatePath
       ? resolveFromDirectoryInsideWorkspace(directory, workspace, decisionPathInput)
       : resolveInsideWorkspace(workspace, decisionPathInput)
@@ -261,13 +385,16 @@ async function syncProjections(session: Awaited<ReturnType<typeof readRuntimeSes
             actionJson: JSON.stringify({
               source: "ctf-rev-runtime-session",
               sessionId: session.session_id,
-              sessionPath: rel(workspace, resolveRuntimeSessionFile(workspace, (args.sessionPath as string | undefined), session.target)),
+              sessionPath: rel(
+                workspace,
+                resolveRuntimeSessionFile(workspace, args.sessionPath as string | undefined, session.target),
+              ),
               stage: session.stage,
               observationContract: session.observation_contract,
               promotion: session.promotion,
               artifacts: session.artifacts,
               markers: session.markers,
-               observations: session.observations,
+              observations: session.observations,
               oracle: session.oracle,
               evidenceRefs: session.evidence_refs,
             }),
@@ -280,7 +407,7 @@ async function syncProjections(session: Awaited<ReturnType<typeof readRuntimeSes
       }
     } else decisionResult.detail = "decision state does not exist"
   }
-  if (boardPathInput && (args.syncEvidenceBoard !== false)) {
+  if (boardPathInput && args.syncEvidenceBoard !== false) {
     const boardPath = args.evidenceBoardPath
       ? resolveFromDirectoryInsideWorkspace(directory, workspace, boardPathInput)
       : resolveInsideWorkspace(workspace, boardPathInput)
@@ -299,8 +426,18 @@ async function syncProjections(session: Awaited<ReturnType<typeof readRuntimeSes
             confidence: session.promotion.allowed ? "high" : "medium",
             status: session.promotion.allowed ? "confirmed" : "in_progress",
             flagPathDistance: session.promotion.allowed ? 1 : 3,
-            evidence: JSON.stringify({ sessionId: session.session_id, stage: session.stage, observationContract: session.observation_contract, artifacts: session.artifacts, markers: session.markers, observations: session.observations, oracle: session.oracle }).slice(0, 4000),
-            followUp: session.promotion.allowed ? "Record the accepted flag with flag-verify." : session.next_action.join("; ") || "Record the next runtime artifact or oracle.",
+            evidence: JSON.stringify({
+              sessionId: session.session_id,
+              stage: session.stage,
+              observationContract: session.observation_contract,
+              artifacts: session.artifacts,
+              markers: session.markers,
+              observations: session.observations,
+              oracle: session.oracle,
+            }).slice(0, 4000),
+            followUp: session.promotion.allowed
+              ? "Record the accepted flag with flag-verify."
+              : session.next_action.join("; ") || "Record the next runtime artifact or oracle.",
           },
           context as never,
         )

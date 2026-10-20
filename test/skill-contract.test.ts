@@ -35,13 +35,9 @@ describe("skill layer contract", () => {
         value.startsWith("ctf-web-") ||
         value.startsWith("ctf-forensics-") ||
         value.startsWith("ctf-rev-") ||
-        [
-          "ctf-terminal",
-          "ctf-artifact-analysis",
-          "ctf-oob-discipline",
-          "ctf-whitebox-audit",
-          "anysearch",
-        ].includes(value),
+        ["ctf-terminal", "ctf-artifact-analysis", "ctf-oob-discipline", "ctf-whitebox-audit", "anysearch"].includes(
+          value,
+        ),
     )
     for (const name of normalized) {
       const text = body(name)

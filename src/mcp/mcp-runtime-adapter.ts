@@ -71,12 +71,21 @@ function activationStateForStatus(status: AgentMcpRequest["status"]): NonNullabl
   return "idle"
 }
 
-async function teamOwnerEligibility(directory: string, sessionID: string): Promise<"eligible" | "terminal" | "unknown"> {
+async function teamOwnerEligibility(
+  directory: string,
+  sessionID: string,
+): Promise<"eligible" | "terminal" | "unknown"> {
   try {
     const state = await readTeamState(directory)
     const located = findJobBySession(state, sessionID)
     if (!located) return "eligible"
-    if (isTerminalJob(located.job.status) || located.job.retryPending || located.job.retrySessionID || ["completed", "cancelled", "cancelling"].includes(located.run.status)) return "terminal"
+    if (
+      isTerminalJob(located.job.status) ||
+      located.job.retryPending ||
+      located.job.retrySessionID ||
+      ["completed", "cancelled", "cancelling"].includes(located.run.status)
+    )
+      return "terminal"
     return "eligible"
   } catch {
     return "unknown"
@@ -300,7 +309,6 @@ export async function activateAgentDefaults(args: {
   }
 }
 
-
 export async function requestMcp(args: {
   worktree: string
   sessionID: string
@@ -313,13 +321,29 @@ export async function requestMcp(args: {
   const path = statePath(args.worktree)
   for (const serverName of args.serverNames) {
     const meta = lookupMcpServer(serverName)
-    if (!meta) { results.push({ serverName, status: `unknown: "${serverName}" not in registry` }); continue }
+    if (!meta) {
+      results.push({ serverName, status: `unknown: "${serverName}" not in registry` })
+      continue
+    }
     const prereq = envPrerequisitesSatisfied(meta)
-    if (!prereq.ok) { results.push({ serverName, status: `denied: missing env ${prereq.missing.join(", ")}` }); continue }
+    if (!prereq.ok) {
+      results.push({ serverName, status: `denied: missing env ${prereq.missing.join(", ")}` })
+      continue
+    }
     const state = await loadState(args.worktree)
-    const profile = state.activeProfiles.find((profile) => profile.agent === args.agentName && profile.sessionID === args.sessionID)
-    if (profile?.serverNames.includes(serverName)) { results.push({ serverName, status: "already_active" }); continue }
-    if (isInMemoryApproved(serverName, { worktree: args.worktree, sessionID: args.sessionID, agentName: args.agentName })) { results.push({ serverName, status: "approved (in-memory)" }); continue }
+    const profile = state.activeProfiles.find(
+      (profile) => profile.agent === args.agentName && profile.sessionID === args.sessionID,
+    )
+    if (profile?.serverNames.includes(serverName)) {
+      results.push({ serverName, status: "already_active" })
+      continue
+    }
+    if (
+      isInMemoryApproved(serverName, { worktree: args.worktree, sessionID: args.sessionID, agentName: args.agentName })
+    ) {
+      results.push({ serverName, status: "approved (in-memory)" })
+      continue
+    }
     const timestamp = nowIso()
     const request: AgentMcpRequest = {
       id: `mcp-req-${randomUUID().slice(0, 8)}`,
@@ -334,7 +358,13 @@ export async function requestMcp(args: {
     }
     let persistedRequestId = request.id
     await atomicUpdateJsonFile<AgentMcpState>(path, initialState(), (current) => {
-      const existing = current.requests.find((candidate) => candidate.agent === args.agentName && candidate.sessionID === args.sessionID && candidate.serverName === serverName && !["denied", "released", "expired"].includes(candidate.status))
+      const existing = current.requests.find(
+        (candidate) =>
+          candidate.agent === args.agentName &&
+          candidate.sessionID === args.sessionID &&
+          candidate.serverName === serverName &&
+          !["denied", "released", "expired"].includes(candidate.status),
+      )
       if (existing) persistedRequestId = existing.id
       else current.requests.push(request)
       return current
@@ -345,10 +375,16 @@ export async function requestMcp(args: {
   return { requestIds, results }
 }
 
-
-export async function processPendingRequests(args: { client: OpencodeClient; worktree: string; directory: string; sessionID?: string }) {
+export async function processPendingRequests(args: {
+  client: OpencodeClient
+  worktree: string
+  directory: string
+  sessionID?: string
+}) {
   const state = await loadState(args.worktree)
-  const pending = state.requests.filter((request) => request.status === "pending" && (!args.sessionID || request.sessionID === args.sessionID))
+  const pending = state.requests.filter(
+    (request) => request.status === "pending" && (!args.sessionID || request.sessionID === args.sessionID),
+  )
   if (!pending.length) return { processed: 0, autoApproved: 0, stillPending: 0, expired: 0, skippedNotLive: 0 }
   const nowMs = Date.now()
   const requestTtlMs = 30 * 60_000
@@ -360,13 +396,25 @@ export async function processPendingRequests(args: { client: OpencodeClient; wor
   for (const request of pending) {
     const expiresAt = request.expiresAt ? Date.parse(request.expiresAt) : Date.parse(request.createdAt) + requestTtlMs
     if (!Number.isFinite(expiresAt) || nowMs >= expiresAt) {
-      if (await setRequestStatus(args.worktree, request.id, "expired", { expected: "pending", note: "MCP request expired before activation." })) expired++
+      if (
+        await setRequestStatus(args.worktree, request.id, "expired", {
+          expected: "pending",
+          note: "MCP request expired before activation.",
+        })
+      )
+        expired++
       continue
     }
     const presence = await probeSessionPresence(args.client, args.directory, request.sessionID)
     if (presence !== "present") {
       if (presence === "absent") {
-        if (await setRequestStatus(args.worktree, request.id, "expired", { expected: "pending", note: "MCP request owner session is no longer live." })) skippedNotLive++
+        if (
+          await setRequestStatus(args.worktree, request.id, "expired", {
+            expected: "pending",
+            note: "MCP request owner session is no longer live.",
+          })
+        )
+          skippedNotLive++
       } else {
         stillPending++
       }
@@ -374,7 +422,10 @@ export async function processPendingRequests(args: { client: OpencodeClient; wor
     }
     const owner = await teamOwnerEligibility(args.directory, request.sessionID)
     if (owner === "terminal") {
-      await setRequestStatus(args.worktree, request.id, "released", { expected: "pending", note: "MCP request owner Team job is terminal." })
+      await setRequestStatus(args.worktree, request.id, "released", {
+        expected: "pending",
+        note: "MCP request owner Team job is terminal.",
+      })
       skippedNotLive++
       continue
     }
@@ -384,7 +435,10 @@ export async function processPendingRequests(args: { client: OpencodeClient; wor
     }
     const meta = lookupMcpServer(request.serverName)
     if (!meta) {
-      await setRequestStatus(args.worktree, request.id, "denied", { expected: "pending", note: "unknown server, not in registry" })
+      await setRequestStatus(args.worktree, request.id, "denied", {
+        expected: "pending",
+        note: "unknown server, not in registry",
+      })
       continue
     }
     const agentCategory = agentNameToCategory(request.agent)
@@ -395,20 +449,52 @@ export async function processPendingRequests(args: { client: OpencodeClient; wor
     const activationToken = await claimPendingRequest(args.worktree, request.id)
     if (!activationToken) continue
     const skillName = `agent-request:${request.agent}`
-    const act = await activateRegistryServers({ client: args.client, worktree: args.worktree, directory: args.directory, sessionID: request.sessionID, skillName, serverNames: [request.serverName] })
+    const act = await activateRegistryServers({
+      client: args.client,
+      worktree: args.worktree,
+      directory: args.directory,
+      sessionID: request.sessionID,
+      skillName,
+      serverNames: [request.serverName],
+    })
     if (act.activated.length) {
-      const committed = await commitActiveServer(args.worktree, request.id, activationToken, request.agent, request.sessionID, request.serverName, {
-        decidedBy: "auto",
-        note: "auto-approved",
-      })
+      const committed = await commitActiveServer(
+        args.worktree,
+        request.id,
+        activationToken,
+        request.agent,
+        request.sessionID,
+        request.serverName,
+        {
+          decidedBy: "auto",
+          note: "auto-approved",
+        },
+      )
       if (!committed) {
-        await releaseSkillMcpLeases({ client: args.client, worktree: args.worktree, directory: args.directory, sessionID: request.sessionID, skillName })
+        await releaseSkillMcpLeases({
+          client: args.client,
+          worktree: args.worktree,
+          directory: args.directory,
+          sessionID: request.sessionID,
+          skillName,
+        })
         continue
       }
-      addInMemoryApproved({ worktree: args.worktree, sessionID: request.sessionID, agentName: request.agent, serverName: request.serverName })
+      addInMemoryApproved({
+        worktree: args.worktree,
+        sessionID: request.sessionID,
+        agentName: request.agent,
+        serverName: request.serverName,
+      })
       autoApproved++
     } else {
-      await finalizeRequest(args.worktree, request.id, activationToken, "activation_failed", act.skipped.join("; ") || "activation returned no active servers")
+      await finalizeRequest(
+        args.worktree,
+        request.id,
+        activationToken,
+        "activation_failed",
+        act.skipped.join("; ") || "activation returned no active servers",
+      )
       stillPending++
     }
   }
@@ -433,7 +519,9 @@ export async function approveRequest(args: {
   await atomicUpdateJsonFile<AgentMcpState>(path, initialState(), (state) => {
     const request = state.requests.find((candidate) => candidate.id === args.requestId)
     if (!request || !["pending", "activation_failed"].includes(request.status) || request.activationToken) return state
-    const expiresAt = request.expiresAt ? Date.parse(request.expiresAt) : Date.parse(request.createdAt) + IN_MEMORY_TTL_MS
+    const expiresAt = request.expiresAt
+      ? Date.parse(request.expiresAt)
+      : Date.parse(request.createdAt) + IN_MEMORY_TTL_MS
     if (!Number.isFinite(expiresAt) || Date.now() >= expiresAt) {
       request.status = "expired"
       request.activationState = activationStateForStatus("expired")
@@ -458,7 +546,8 @@ export async function approveRequest(args: {
   })
 
   if (expired) return { ok: false, reason: "request expired" }
-  if (!activationToken || !serverName || !sessionID) return { ok: false, reason: "request not found or already activating" }
+  if (!activationToken || !serverName || !sessionID)
+    return { ok: false, reason: "request not found or already activating" }
   const presence = await probeSessionPresence(args.client, args.directory, sessionID)
   if (presence !== "present") {
     await finalizeRequest(
@@ -466,9 +555,14 @@ export async function approveRequest(args: {
       args.requestId,
       activationToken,
       presence === "absent" ? "expired" : "pending",
-      presence === "absent" ? "MCP request owner session is no longer live." : "MCP request owner session liveness is unknown; retry later.",
+      presence === "absent"
+        ? "MCP request owner session is no longer live."
+        : "MCP request owner session liveness is unknown; retry later.",
     )
-    return { ok: false, reason: presence === "absent" ? "owner session is no longer live" : "owner session liveness is unknown" }
+    return {
+      ok: false,
+      reason: presence === "absent" ? "owner session is no longer live" : "owner session liveness is unknown",
+    }
   }
   const owner = await teamOwnerEligibility(args.directory, sessionID)
   if (owner !== "eligible") {
@@ -477,7 +571,9 @@ export async function approveRequest(args: {
       args.requestId,
       activationToken,
       owner === "terminal" ? "released" : "pending",
-      owner === "terminal" ? "MCP request owner Team job is terminal." : "Team owner state is unavailable; retry later.",
+      owner === "terminal"
+        ? "MCP request owner Team job is terminal."
+        : "Team owner state is unavailable; retry later.",
     )
     return { ok: false, reason: owner === "terminal" ? "owner Team job is terminal" : "owner Team state is unknown" }
   }
@@ -492,14 +588,35 @@ export async function approveRequest(args: {
     serverNames: [serverName],
   })
   if (!act.activated.length) {
-    await finalizeRequest(args.worktree, args.requestId, activationToken, "activation_failed", act.skipped.join("; ") || "activation returned no active servers")
-    await recordMcpActivationIssue({ worktree: args.worktree, sessionID, agentName: agentName || "unknown", serverName, phase: "request", error: act.skipped.join("; ") || "activation returned no active servers" })
+    await finalizeRequest(
+      args.worktree,
+      args.requestId,
+      activationToken,
+      "activation_failed",
+      act.skipped.join("; ") || "activation returned no active servers",
+    )
+    await recordMcpActivationIssue({
+      worktree: args.worktree,
+      sessionID,
+      agentName: agentName || "unknown",
+      serverName,
+      phase: "request",
+      error: act.skipped.join("; ") || "activation returned no active servers",
+    })
     return { ok: false, reason: act.skipped.join("; ") || "activation failed", serverName }
   }
-  const committed = await commitActiveServer(args.worktree, args.requestId, activationToken, agentName || "unknown", sessionID, serverName, {
-    decidedBy: args.decidedBy ?? "ctf-expert",
-    note: args.note,
-  })
+  const committed = await commitActiveServer(
+    args.worktree,
+    args.requestId,
+    activationToken,
+    agentName || "unknown",
+    sessionID,
+    serverName,
+    {
+      decidedBy: args.decidedBy ?? "ctf-expert",
+      note: args.note,
+    },
+  )
   if (!committed) {
     const { releaseMcps } = await import("./mcp-activation-coordinator.ts")
     const skillName = `agent-request:${agentName || "unknown"}`
@@ -507,7 +624,13 @@ export async function approveRequest(args: {
     return { ok: false, reason: "request was released while activation was in flight", serverName }
   }
   addInMemoryApproved({ worktree: args.worktree, sessionID, agentName: agentName || "unknown", serverName })
-  await clearMcpActivationIssues({ worktree: args.worktree, sessionID, agentName: agentName || "unknown", serverNames: [serverName], phase: "request" })
+  await clearMcpActivationIssues({
+    worktree: args.worktree,
+    sessionID,
+    agentName: agentName || "unknown",
+    serverNames: [serverName],
+    phase: "request",
+  })
   return { ok: true, serverName, agent: agentName, sessionID, skillName: `agent-request:${agentName || "unknown"}` }
 }
 
@@ -563,7 +686,6 @@ export async function releaseSessionMcps(args: {
       serverName: scope.serverName,
     })
   }
-
 }
 
 export async function listPendingRequests(worktree: string) {
@@ -669,4 +791,3 @@ async function commitActiveServer(
   })
   return committed
 }
-

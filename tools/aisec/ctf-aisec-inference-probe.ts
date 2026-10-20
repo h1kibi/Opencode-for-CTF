@@ -2,7 +2,11 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
-import { resolveFromDirectoryInsideWorkspace, workspaceRootFromContext, directoryFromContext } from "../lib/workspace-path.ts"
+import {
+  resolveFromDirectoryInsideWorkspace,
+  workspaceRootFromContext,
+  directoryFromContext,
+} from "../lib/workspace-path.ts"
 
 type RunRecord = {
   index: number
@@ -21,7 +25,10 @@ function shapeOf(stdout: string): string {
     const value = JSON.parse(trimmed) as unknown
     if (value === null) return "null"
     if (Array.isArray(value)) return `array(${value.length})`
-    if (typeof value === "object") return `object(${Object.keys(value as object).slice(0, 12).join(",")})`
+    if (typeof value === "object")
+      return `object(${Object.keys(value as object)
+        .slice(0, 12)
+        .join(",")})`
     return typeof value
   } catch {
     return "text"
@@ -40,12 +47,19 @@ export default tool({
   description:
     "Bounded local AI inference baseline harness: runs an explicitly supplied command against a workspace input file, records latency/output shape/determinism, and avoids shell interpretation.",
   args: {
-    command: tool.schema.string().describe("Executable name or path, for example python, node, or a challenge wrapper."),
-    argv: tool.schema.array(tool.schema.string()).describe("Arguments; use the literal {input_file} where the wrapper should receive the generated input file."),
+    command: tool.schema
+      .string()
+      .describe("Executable name or path, for example python, node, or a challenge wrapper."),
+    argv: tool.schema
+      .array(tool.schema.string())
+      .describe("Arguments; use the literal {input_file} where the wrapper should receive the generated input file."),
     input: tool.schema.string().describe("One benign baseline input or authorized test case. Max 64 KiB."),
     workdir: tool.schema.string().optional().describe("Workspace-relative working directory for the wrapper."),
     repetitions: tool.schema.number().optional().describe("Number of identical runs, 1-5. Default 2."),
-    timeoutMs: tool.schema.number().optional().describe("Per-run timeout, clamped to 1-60 seconds. Default 10 seconds."),
+    timeoutMs: tool.schema
+      .number()
+      .optional()
+      .describe("Per-run timeout, clamped to 1-60 seconds. Default 10 seconds."),
     jsonOnly: tool.schema.boolean().optional().describe("Return machine-readable JSON only."),
   },
   async execute(args, context) {
@@ -122,7 +136,9 @@ export default tool({
       "",
     ]
     for (const record of records) {
-      lines.push(`--- run ${record.index} (${record.ok ? "ok" : "failed"}, ${record.duration_ms} ms, ${record.response_shape}) ---`)
+      lines.push(
+        `--- run ${record.index} (${record.ok ? "ok" : "failed"}, ${record.duration_ms} ms, ${record.response_shape}) ---`,
+      )
       if (record.stdout) lines.push(record.stdout)
       if (record.stderr) lines.push(`[stderr] ${record.stderr}`)
     }

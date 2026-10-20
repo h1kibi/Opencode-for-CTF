@@ -50,7 +50,10 @@ function redactText(input: string) {
     .map(([, value]) => value as string)
     .sort((a, b) => b.length - a.length)
   for (const secret of secretValues) output = output.split(secret).join("REDACTED")
-  output = output.replace(/\b([A-Z][A-Z0-9_-]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API[_-]?KEY|COOKIE|AUTH|PRIVATE[_-]?KEY|CREDENTIAL)[A-Z0-9_-]*)=([^\s&;,]+)/gi, (_match, name: string) => `${name}=REDACTED`)
+  output = output.replace(
+    /\b([A-Z][A-Z0-9_-]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API[_-]?KEY|COOKIE|AUTH|PRIVATE[_-]?KEY|CREDENTIAL)[A-Z0-9_-]*)=([^\s&;,]+)/gi,
+    (_match, name: string) => `${name}=REDACTED`,
+  )
   output = output.replace(/https?:\/\/[^\s"'<>]+/gi, (url) => redactUrl(url))
   return output
 }
@@ -173,7 +176,10 @@ export default tool({
     "CTF background job: start, inspect, stop, and read detached local Python/Node/PowerShell jobs for long-running brute force or analysis tasks.",
   args: {
     operation: tool.schema.string().describe("start | status | checkpoint | collect | stop | read"),
-    id: tool.schema.string().optional().describe("Job id for status/stop/read/checkpoint/collect, or preferred id for start."),
+    id: tool.schema
+      .string()
+      .optional()
+      .describe("Job id for status/stop/read/checkpoint/collect, or preferred id for start."),
     lang: tool.schema.string().optional().describe("python | node | powershell for start."),
     code: tool.schema.string().optional().describe("Inline script code for start."),
     scriptPath: tool.schema.string().optional().describe("Existing workspace-local script path for start."),
@@ -272,10 +278,24 @@ export default tool({
       const stdoutBytes = Buffer.byteLength(streams.rawStdout)
       const stderrBytes = Buffer.byteLength(streams.rawStderr)
       const delta = {
-        stdout: redactText(Buffer.from(streams.rawStdout).subarray(Number(previous.stdoutBytes) || 0).toString("utf8")),
-        stderr: redactText(Buffer.from(streams.rawStderr).subarray(Number(previous.stderrBytes) || 0).toString("utf8")),
+        stdout: redactText(
+          Buffer.from(streams.rawStdout)
+            .subarray(Number(previous.stdoutBytes) || 0)
+            .toString("utf8"),
+        ),
+        stderr: redactText(
+          Buffer.from(streams.rawStderr)
+            .subarray(Number(previous.stderrBytes) || 0)
+            .toString("utf8"),
+        ),
       }
-      const checkpoint = { id, capturedAt: new Date().toISOString(), stdoutBytes, stderrBytes, running: isPidAlive(Number(meta.pid)) }
+      const checkpoint = {
+        id,
+        capturedAt: new Date().toISOString(),
+        stdoutBytes,
+        stderrBytes,
+        running: isPidAlive(Number(meta.pid)),
+      }
       await writeFile(checkpointPath, JSON.stringify(checkpoint, null, 2), "utf8")
       const payload = {
         ok: true,
@@ -286,7 +306,9 @@ export default tool({
         checkpoint,
         stdout: op === "collect" ? streams.stdout : delta.stdout,
         stderr: op === "collect" ? streams.stderr : delta.stderr,
-        next: checkpoint.running ? "ctf-background-job operation=checkpoint" : "job complete; collect for the final output",
+        next: checkpoint.running
+          ? "ctf-background-job operation=checkpoint"
+          : "job complete; collect for the final output",
       }
       if (args.jsonOnly) return JSON.stringify(payload, null, 2)
       return JSON.stringify(payload, null, 2)
@@ -354,9 +376,15 @@ export default tool({
       const streams = await readStreams()
       const payload = { ok: true, id, stdout: streams.stdout, stderr: streams.stderr }
       if (args.jsonOnly) return JSON.stringify(payload, null, 2)
-      return ["CTF_BACKGROUND_JOB:", "- operation: read", `- id: ${id}`, "- stdout:", payload.stdout, "- stderr:", payload.stderr].join(
-        "\n",
-      )
+      return [
+        "CTF_BACKGROUND_JOB:",
+        "- operation: read",
+        `- id: ${id}`,
+        "- stdout:",
+        payload.stdout,
+        "- stderr:",
+        payload.stderr,
+      ].join("\n")
     }
 
     throw new Error(`unsupported operation: ${op}`)

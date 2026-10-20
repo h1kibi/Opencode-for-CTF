@@ -155,7 +155,6 @@ function collectMatches(files: SourceFile[], patterns: Array<[string, RegExp]>, 
   return hits
 }
 
-
 function collectFlagCandidates(files: SourceFile[], limit = 80) {
   const hits: string[] = []
   for (const f of files) {
@@ -168,9 +167,7 @@ function collectFlagCandidates(files: SourceFile[], limit = 80) {
       const index = f.text.indexOf(candidate.value)
       const line = index >= 0 ? f.text.slice(0, index).split(/\r?\n/).length : 0
       const lineText =
-        index >= 0
-          ? (f.text.split(/\r?\n/)[Math.max(0, line - 1)] || "").trim().replace(/\s+/g, " ").slice(0, 220)
-          : ""
+        index >= 0 ? (f.text.split(/\r?\n/)[Math.max(0, line - 1)] || "").trim().replace(/\s+/g, " ").slice(0, 220) : ""
       hits.push(
         `${f.rel}:${line || "?"}: value=${candidate.value} confidence=${candidate.confidence} kind=${candidate.kind} reason=${candidate.reason}${lineText ? ` context=${lineText}` : ""}`,
       )

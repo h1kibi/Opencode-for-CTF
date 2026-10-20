@@ -21,8 +21,7 @@ describe("strict default flag identification", () => {
   it("accepts only the strict braced shape by default", () => {
     expect(classifyFlagCandidate("flag{Abc_123-xyz!}")?.confidence).toBe("high")
     expect(classifyFlagCandidate("DAS3{A1_b2-C3!d4}")?.kind).toBe("braced")
-    expect(findFlags("flag{test} flag{valid_payload-1} CTF{too short}"))
-      .toEqual(["flag{valid_payload-1}"])
+    expect(findFlags("flag{test} flag{valid_payload-1} CTF{too short}")).toEqual(["flag{valid_payload-1}"])
     expect(classifyFlagCandidate("flag{with spaces-not-allowed}")).toBeUndefined()
   })
 
@@ -56,7 +55,9 @@ describe("strict default flag identification", () => {
     await expect(verifyCandidateFlag({ candidates: ["flag{valid_payload-1}"] })).resolves.toMatchObject({
       status: "candidate",
     })
-    await expect(verifyCandidateFlag({ candidates: ["flag{short}"], expectedFlag: "flag{short}" })).resolves.toMatchObject({
+    await expect(
+      verifyCandidateFlag({ candidates: ["flag{short}"], expectedFlag: "flag{short}" }),
+    ).resolves.toMatchObject({
       status: "oracle-verified",
     })
   })

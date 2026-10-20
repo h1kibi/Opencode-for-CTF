@@ -103,14 +103,14 @@ function printableStrings(buf: Buffer) {
 function looksLikePe(sample: Buffer) {
   if (sample.subarray(0, 2).toString("latin1") !== "MZ" || sample.length < 0x40) return false
   const peOffset = sample.readUInt32LE(0x3c)
-  return peOffset + 4 <= sample.length && sample.subarray(peOffset, peOffset + 4).toString("latin1") === "PE\u0000\u0000"
+  return (
+    peOffset + 4 <= sample.length && sample.subarray(peOffset, peOffset + 4).toString("latin1") === "PE\u0000\u0000"
+  )
 }
 
 function isBinarySample(rel: string, sample: Buffer) {
   return (
-    BINARY_EXT.test(rel) ||
-    sample.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) ||
-    looksLikePe(sample)
+    BINARY_EXT.test(rel) || sample.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) || looksLikePe(sample)
   )
 }
 
@@ -265,9 +265,7 @@ function looksLikeEncodingBlob(text: string) {
     printableTextFromBytes(Buffer.from(compact, "hex")) !== null
   const binary =
     /^(?:[01]{8}){2,}$/.test(compact) &&
-    printableTextFromBytes(
-      Buffer.from(compact.match(/.{8}/g)!.map((part) => Number.parseInt(part, 2))),
-    ) !== null
+    printableTextFromBytes(Buffer.from(compact.match(/.{8}/g)!.map((part) => Number.parseInt(part, 2)))) !== null
   return base64 || base32 || hex || binary
 }
 
@@ -346,8 +344,7 @@ function signalFromFile(
   if (isBinarySample(rel, sample)) add("binary", "binary candidate", 72)
   if (/cipher|encrypt|decrypt|nonce|xor|aes|base(?:32|64)|rot13|vigenere|substitution|modulus/i.test(lower))
     add("crypto", "crypto/encoding indicator", 58)
-  else if (looksLikeEncodingBlob(text))
-    add("crypto", "text-only base32/base64/hex/binary encoding candidate", 56)
+  else if (looksLikeEncodingBlob(text)) add("crypto", "text-only base32/base64/hex/binary encoding candidate", 56)
   return out
 }
 
@@ -583,4 +580,3 @@ export default tool({
     ].join("\n")
   },
 })
-

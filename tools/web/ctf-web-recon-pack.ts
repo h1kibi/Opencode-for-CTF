@@ -51,7 +51,12 @@ function classify(all: string, headers: string[], routeList: string[]): Finding[
   const add = (label: string, re: RegExp, next: string, score: number) => {
     if (re.test(text)) findings.push({ label, evidence: re.source, next, score })
   }
-  add("flag candidate content", FLAG_REGEX_ONCE, "send candidate to ctf-evidence-board (command=flag-verify); do not treat HTTP text as success", 100)
+  add(
+    "flag candidate content",
+    FLAG_REGEX_ONCE,
+    "send candidate to ctf-evidence-board (command=flag-verify); do not treat HTTP text as success",
+    100,
+  )
   add(
     "Java/Spring/Tomcat surface",
     /spring|jsessionid|actuator|tomcat|jetty|shiro|struts|whitelabel/i,

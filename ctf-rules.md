@@ -60,11 +60,13 @@ When source, bytecode, config, API specs, Docker files, dependency manifests, or
 When source or bytecode confirms a parser sink with a known exploit family, switch from generic payload variation to parser-family closure immediately.
 
 Examples:
+
 - `WorkbookFactory.create(InputStream)` or POI/XMLBeans with OOXML/XLSX -> prioritize standard OOXML XXE entrypoint order before unrelated file-read filter bypasses or upload-write speculation.
 - XML parser factories / SAX / DOM / XMLBeans -> prioritize XXE entrypoint + external resource / DTD reachability checks.
 - `ObjectInputStream.readObject` / Fastjson / Jackson default typing / XStream / SnakeYAML -> prioritize deserialization gate checks before route fuzzing.
 
 For OOXML/XLSX specifically, use this entrypoint order unless source disproves it:
+
 1. `[Content_Types].xml`
 2. `_rels/.rels`
 3. `xl/workbook.xml`
@@ -81,6 +83,7 @@ Before committing to an XXE / blind parser / callback branch, distinguish these 
 - **Response-serving OOB**: can return attacker-controlled content such as `evil.dtd`, staged XML, second-hop redirects, or JavaScript payload bodies.
 
 Rule:
+
 - External DTD / staged XXE / second-phase fetch chains require **response-serving OOB**, not receive-only OOB.
 - Interactsh-style services are sufficient for callback confirmation and some exfil channels, but are **not** sufficient when the target must fetch attacker-defined DTD/body content unless a separate controllable HTTP server exists.
 - If the top branch requires response-serving OOB and none is available, ask the user for VPS/HTTP hosting/approved infrastructure early instead of continuing blind payload mutation.

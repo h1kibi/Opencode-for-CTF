@@ -14,7 +14,11 @@ describe("Expert watchdog", () => {
       await writeFile(
         path.join(evidenceDir, ".ctf-evidence-board.json"),
         JSON.stringify({
-          routes: [{ id: "R1", state: "live" }, { id: "R2", state: "blocked" }, { id: "R3", state: "untested" }],
+          routes: [
+            { id: "R1", state: "live" },
+            { id: "R2", state: "blocked" },
+            { id: "R3", state: "untested" },
+          ],
         }),
       )
       await writeFile(

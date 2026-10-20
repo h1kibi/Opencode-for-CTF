@@ -40,13 +40,7 @@ export type TeamJobErrorType =
   | "unknown"
 
 export type TeamJobErrorPhase =
-  | "dispatching"
-  | "session_create"
-  | "session_start"
-  | "prompt_injection"
-  | "running"
-  | "collect"
-  | "finalize"
+  "dispatching" | "session_create" | "session_start" | "prompt_injection" | "running" | "collect" | "finalize"
 
 export type TeamJobError = {
   errorType: TeamJobErrorType
@@ -98,14 +92,7 @@ export type TeamFact = {
 
 export type TeamIntentConcurrency = "exclusive" | "parallel" | "speculative"
 export type TeamIntentStatus =
-  | "open"
-  | "claimed"
-  | "running"
-  | "blocked"
-  | "completed"
-  | "failed"
-  | "cancelled"
-  | "superseded"
+  "open" | "claimed" | "running" | "blocked" | "completed" | "failed" | "cancelled" | "superseded"
 
 export type TeamIntent = {
   id: string

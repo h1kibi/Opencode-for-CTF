@@ -115,7 +115,8 @@ async function validateSkillContracts() {
       continue
     }
     for (const field of SKILL_CONTRACT_FIELDS) {
-      if (!hasHeading(body, field)) errors.push(`${path.relative(ROOT, skillFile)}: missing contract heading '## ${field}'`)
+      if (!hasHeading(body, field))
+        errors.push(`${path.relative(ROOT, skillFile)}: missing contract heading '## ${field}'`)
     }
   }
 
@@ -130,7 +131,8 @@ async function validateSkillContracts() {
     const skillFile = path.join(ROOT, "skills", skillName, "SKILL.md")
     const body = await readFile(skillFile, "utf8")
     for (const field of FOCUSED_SKILL_FIELDS) {
-      if (!hasHeading(body, field)) errors.push(`${path.relative(ROOT, skillFile)}: missing focused contract heading '## ${field}'`)
+      if (!hasHeading(body, field))
+        errors.push(`${path.relative(ROOT, skillFile)}: missing focused contract heading '## ${field}'`)
     }
     if (webFocusedSkills.includes(skillName) && !webRouter.includes(`\`${skillName}\``)) {
       errors.push(`skills/ctf-web/SKILL.md: focused skill ${skillName} is not in the dispatch table`)

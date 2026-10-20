@@ -83,8 +83,7 @@ describe("NYU benchmark runner", () => {
   })
 
   it("extracts NYU flags whose payload contains URL punctuation", () => {
-    expect(extractCandidateFlags("decoded key{imgur.com/DsQl4by}"))
-      .toContain("key{imgur.com/DsQl4by}")
+    expect(extractCandidateFlags("decoded key{imgur.com/DsQl4by}")).toContain("key{imgur.com/DsQl4by}")
   })
 
   it("verifies an NYU exact flag with URL punctuation", async () => {
@@ -307,4 +306,3 @@ describe("NYU benchmark runner", () => {
     expect(result.solverTimedOut).toBe(true)
   })
 })
-

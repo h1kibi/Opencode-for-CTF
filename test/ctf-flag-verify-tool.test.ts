@@ -13,10 +13,10 @@ describe("ctf-flag-verify tool", () => {
   it("keeps a strict-shaped value pending until an independent oracle is supplied", async () => {
     const verifier = (await import("../tools/core/ctf-flag-verify.ts")).default
     const output = String(
-      await verifier.execute(
-        { candidatesJson: JSON.stringify(["flag{candidate_payload}"]) },
-        { directory: process.cwd(), worktree: process.cwd() } as never,
-      ),
+      await verifier.execute({ candidatesJson: JSON.stringify(["flag{candidate_payload}"]) }, {
+        directory: process.cwd(),
+        worktree: process.cwd(),
+      } as never),
     )
     expect(output).toContain("status: candidate")
     expect(output).toContain("oracle_verified: false")
@@ -39,10 +39,10 @@ describe("ctf-flag-verify tool", () => {
     expect(verified).toContain("matched_flag: flag{real_payload}")
 
     const rejected = String(
-      await verifier.execute(
-        { candidate: "flag{short}" },
-        { directory: process.cwd(), worktree: process.cwd() } as never,
-      ),
+      await verifier.execute({ candidate: "flag{short}" }, {
+        directory: process.cwd(),
+        worktree: process.cwd(),
+      } as never),
     )
     expect(rejected).toContain("status: rejected")
     expect(rejected).not.toContain("oracle_verified: true")
@@ -54,21 +54,20 @@ describe("ctf-flag-verify tool", () => {
     await writeFile(path.join(root, "flag.txt"), "flag{file_oracle_payload}\n", "utf8")
     const verifier = (await import("../tools/core/ctf-flag-verify.ts")).default
     const verified = String(
-      await verifier.execute(
-        { candidate: "flag{file_oracle_payload}", flagFile: "flag.txt" },
-        { directory: root, worktree: root } as never,
-      ),
+      await verifier.execute({ candidate: "flag{file_oracle_payload}", flagFile: "flag.txt" }, {
+        directory: root,
+        worktree: root,
+      } as never),
     )
     expect(verified).toContain("status: oracle-verified")
 
     const escaped = String(
-      await verifier.execute(
-        { candidate: "flag{file_oracle_payload}", flagFile: "../outside-flag.txt" },
-        { directory: root, worktree: root } as never,
-      ),
+      await verifier.execute({ candidate: "flag{file_oracle_payload}", flagFile: "../outside-flag.txt" }, {
+        directory: root,
+        worktree: root,
+      } as never),
     )
     expect(escaped).toContain("ERROR:")
     expect(escaped).toContain("outside allowed CTF roots")
   })
 })
-

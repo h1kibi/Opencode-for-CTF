@@ -192,7 +192,7 @@ const category = option("--category") as NyuCategory | undefined
 
 if (!action || !dataset || (split !== "development" && split !== "test")) {
   console.error(
-    "Usage: npx tsx scripts/ctf-benchmark-nyu.ts <list|prepare|run|run-suite> --dataset <dataset.json> --split <development|test> [--root <dataset-root>] [--id <id>] [--category <family>] [--workspace <dir>] [--workspace-root <dir>] [--report <dir>] [--report-root <dir>] [--solver-prompt <text>] [--solver-model <provider/model>] [--solver-opencode-command <command-name>] [--solver-opencode-skill-root <dir>]", 
+    "Usage: npx tsx scripts/ctf-benchmark-nyu.ts <list|prepare|run|run-suite> --dataset <dataset.json> --split <development|test> [--root <dataset-root>] [--id <id>] [--category <family>] [--workspace <dir>] [--workspace-root <dir>] [--report <dir>] [--report-root <dir>] [--solver-prompt <text>] [--solver-model <provider/model>] [--solver-opencode-command <command-name>] [--solver-opencode-skill-root <dir>]",
   )
   process.exit(1)
 }

@@ -133,7 +133,13 @@ export const TOOL_CHECKS = [
   { group: "rev", name: "rizin", command: "rizin", args: ["-v"] },
   { group: "rev", name: "rz-bin", command: "rz-bin", args: ["-v"] },
   { group: "rev", name: "ghidraRun", command: "ghidraRun", args: [] },
-  { group: "rev", name: "analyzeHeadless", command: "analyzeHeadless", args: ["-h"], okWhen: /Headless Analyzer Usage/i },
+  {
+    group: "rev",
+    name: "analyzeHeadless",
+    command: "analyzeHeadless",
+    args: ["-h"],
+    okWhen: /Headless Analyzer Usage/i,
+  },
   { group: "rev", name: "mcp-reva", command: "mcp-reva", args: ["--version"] },
   // Android REV toolchain
   {
@@ -360,4 +366,3 @@ export function runToolChecksDetailed(checks = TOOL_CHECKS) {
     return { ...check, ok, status: res.status, preview }
   })
 }
-

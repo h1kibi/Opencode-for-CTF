@@ -5,13 +5,7 @@ import { COMMAND_SURFACE } from "../packages/ctf-core/src/router.js"
 
 const root = process.cwd()
 
-const publicCommandFiles = [
-  "ctf.md",
-  "help.md",
-  "ctf-fast.md",
-  "ctf-expert.md",
-  "resume.md",
-]
+const publicCommandFiles = ["ctf.md", "help.md", "ctf-fast.md", "ctf-expert.md", "resume.md"]
 
 function isHiddenCommand(file: string) {
   return /^hidden:\s*["']?true["']?\s*$/m.test(readFileSync(join(root, "commands", file), "utf8"))

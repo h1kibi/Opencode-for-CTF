@@ -72,7 +72,11 @@ export default tool({
       config.default_mode,
     )
     const primary = primaryAgentForDecision(decision)
-    const isWorker = typeof context?.agent === "string" && context.agent.startsWith("ctf-") && context.agent !== "ctf-expert" && context.agent !== "ctf-fast"
+    const isWorker =
+      typeof context?.agent === "string" &&
+      context.agent.startsWith("ctf-") &&
+      context.agent !== "ctf-expert" &&
+      context.agent !== "ctf-fast"
     if (primary === "ctf-expert" && !isWorker && sessionID && getSessionSurface(sessionID) !== "ctf-expert") {
       throw new Error("Expert route planning requires an explicitly promoted ctf-expert session surface.")
     }

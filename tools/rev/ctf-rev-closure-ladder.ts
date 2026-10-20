@@ -217,7 +217,9 @@ export default tool({
     sessionPath: tool.schema
       .string()
       .optional()
-      .describe("Optional workspace-relative rev_runtime_session.v1 JSON; closure plan and ledger are linked as evidence."),
+      .describe(
+        "Optional workspace-relative rev_runtime_session.v1 JSON; closure plan and ledger are linked as evidence.",
+      ),
     syncState: tool.schema
       .boolean()
       .optional()
@@ -372,10 +374,18 @@ export default tool({
 
     if (args.sessionPath) {
       const sessionFile = resolveInsideWorkspace(workspace, args.sessionPath)
-      if (!(await fileAccess(sessionFile).then(() => true).catch(() => false))) {
+      if (
+        !(await fileAccess(sessionFile)
+          .then(() => true)
+          .catch(() => false))
+      ) {
         throw new Error(`runtime session not found: ${path.relative(workspace, sessionFile).replace(/\\/g, "/")}`)
       }
-      if (await fileAccess(sessionFile).then(() => true).catch(() => false)) {
+      if (
+        await fileAccess(sessionFile)
+          .then(() => true)
+          .catch(() => false)
+      ) {
         await recordRuntimeArtifact(sessionFile, workspace, {
           path: path.relative(workspace, planPath).replace(/\\/g, "/"),
           kind: "closure-plan",
@@ -391,7 +401,10 @@ export default tool({
         })
         await updateRuntimeSession(sessionFile, workspace, "link_closure", {
           summary: "Rev closure plan linked to runtime session",
-          evidence_refs: [path.relative(workspace, planPath).replace(/\\/g, "/"), path.relative(workspace, ledgerPath).replace(/\\/g, "/")],
+          evidence_refs: [
+            path.relative(workspace, planPath).replace(/\\/g, "/"),
+            path.relative(workspace, ledgerPath).replace(/\\/g, "/"),
+          ],
           next_action: plan.recommended_next,
         })
       }

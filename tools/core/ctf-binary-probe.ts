@@ -552,10 +552,12 @@ export default tool({
       ...(interestingStrings.length ? interestingStrings.map((x) => `- ${x}`) : ["- none"]),
       "flag_candidates:",
       ...(flagCandidates.length
-        ? flagCandidates.slice(0, 20).map(
-            (candidate) =>
-              `- value=${candidate.value} confidence=${candidate.confidence} kind=${candidate.kind} reason=${candidate.reason} source=${candidate.source} origin=${candidate.origin} context=${candidate.context}`,
-          )
+        ? flagCandidates
+            .slice(0, 20)
+            .map(
+              (candidate) =>
+                `- value=${candidate.value} confidence=${candidate.confidence} kind=${candidate.kind} reason=${candidate.reason} source=${candidate.source} origin=${candidate.origin} context=${candidate.context}`,
+            )
         : ["- none"]),
       "flag_like_string_hits:",
       ...(flagHits.length ? flagHits.map((x) => `- ${x}`) : ["- none"]),

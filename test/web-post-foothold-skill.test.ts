@@ -33,7 +33,9 @@ describe("web post-foothold skill coverage", () => {
     expect(internal).toContain("reachable`, `protocol_ok`, `authenticated`, `authorized`, and `closure_relevant")
     expect(lateral).toContain("successful TCP handshake alone")
     expect(privesc).toContain("root UID, or readable file is not elevated execution")
-    expect(postFoothold).toContain("origin -> execution_context -> asset -> protocol_ok -> authenticated -> authorized -> impact -> closure")
+    expect(postFoothold).toContain(
+      "origin -> execution_context -> asset -> protocol_ok -> authenticated -> authorized -> impact -> closure",
+    )
     expect(postFoothold).toContain("oracle_verified: true")
   })
 

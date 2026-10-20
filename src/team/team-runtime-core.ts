@@ -138,13 +138,15 @@ function attachCause(error: Error, cause: unknown) {
 }
 
 function responseData<T>(response: { data?: T; error?: unknown }, action: string): T {
-  if (response?.error) throw attachCause(new Error(`${action} failed: ${diagnosticText(response.error)}`), response.error)
+  if (response?.error)
+    throw attachCause(new Error(`${action} failed: ${diagnosticText(response.error)}`), response.error)
   if (response?.data === undefined) throw new Error(`${action} returned no data.`)
   return response.data
 }
 
 function assertAccepted(response: { error?: unknown } | undefined, action: string) {
-  if (response?.error) throw attachCause(new Error(`${action} failed: ${diagnosticText(response.error)}`), response.error)
+  if (response?.error)
+    throw attachCause(new Error(`${action} failed: ${diagnosticText(response.error)}`), response.error)
 }
 
 function classifyTeamError(error: unknown, fallback: TeamJobErrorType): TeamJobErrorType {
@@ -152,7 +154,9 @@ function classifyTeamError(error: unknown, fallback: TeamJobErrorType): TeamJobE
   if (/content was flagged|possible cybersecurity risk|trusted access|safety policy|provider policy/i.test(text)) {
     return "provider_policy"
   }
-  if (/parent.*model|model.*(unavailable|not found|could not be resolved)|provider.*model.*(missing|unknown)/i.test(text)) {
+  if (
+    /parent.*model|model.*(unavailable|not found|could not be resolved)|provider.*model.*(missing|unknown)/i.test(text)
+  ) {
     return "parent_model"
   }
   if (/unknown\s+agent|agent.*(not|un)registered|registry|allowlist/i.test(text)) return "agent_registry"
@@ -176,9 +180,10 @@ function buildTeamJobError(
   },
 ): TeamJobError {
   const raw = diagnosticText(opts.error)
-  const message = raw === "UnknownError"
-    ? `Worker returned UnknownError during ${opts.phase}; no lower-level message was supplied.`
-    : raw || `Worker failed during ${opts.phase}.`
+  const message =
+    raw === "UnknownError"
+      ? `Worker returned UnknownError during ${opts.phase}; no lower-level message was supplied.`
+      : raw || `Worker failed during ${opts.phase}.`
   const cause = opts.cause === undefined ? (opts.error as any)?.cause : opts.cause
   const rawStack = opts.error instanceof Error ? opts.error.stack : (opts.error as any)?.stack
   const classifiedType = classifyTeamError(opts.error, opts.errorType ?? "unknown")
@@ -198,22 +203,14 @@ function buildTeamJobError(
   }
 }
 
-function persistTeamJobError(
-  run: TeamRun,
-  job: TeamJob,
-  opts: Parameters<typeof buildTeamJobError>[2],
-) {
+function persistTeamJobError(run: TeamRun, job: TeamJob, opts: Parameters<typeof buildTeamJobError>[2]) {
   const details = buildTeamJobError(run, job, opts)
   job.errorDetails = details
   job.error = details.message.slice(0, 1_000)
   return details
 }
 
-function failTeamJob(
-  run: TeamRun,
-  job: TeamJob,
-  opts: Parameters<typeof buildTeamJobError>[2],
-) {
+function failTeamJob(run: TeamRun, job: TeamJob, opts: Parameters<typeof buildTeamJobError>[2]) {
   const details = persistTeamJobError(run, job, opts)
   transitionTeamJob(job, "failed", details.message)
   return details
@@ -302,7 +299,12 @@ function extractResult(
   const assistant = [...validAssistants].reverse()[0]
   if (!assistant) {
     const failed = [...messages].reverse().find((message) => message.info.role === "assistant" && message.info.error)
-    return { result: "", error: failed?.info.error ?? "Worker reached idle without an assistant result.", packets: [], lastMessageID: undefined }
+    return {
+      result: "",
+      error: failed?.info.error ?? "Worker reached idle without an assistant result.",
+      packets: [],
+      lastMessageID: undefined,
+    }
   }
   const text = assistant.parts
     .filter((p) => p.type === "text" && typeof p.text === "string")
@@ -317,7 +319,9 @@ function extractResult(
     .join("\n")
   const packets = parseWorkerPackets(packetText || text)
   const lastResult = [...packets].reverse().find((packet) => packet.type === "intent_result")
-  const lastMessage = [...validAssistants].reverse().find((message) => message.info.id || message.info.messageID || message.parts.length > 0)
+  const lastMessage = [...validAssistants]
+    .reverse()
+    .find((message) => message.info.id || message.info.messageID || message.parts.length > 0)
   const lastMessageID = lastMessage ? messageCursor(lastMessage) : undefined
   return {
     result,
@@ -326,16 +330,26 @@ function extractResult(
     lastMessageID,
   }
 }
-function messageCursor(message: { info: { id?: string; messageID?: string }; parts: Array<{ type: string; text?: string }> }): string {
+function messageCursor(message: {
+  info: { id?: string; messageID?: string }
+  parts: Array<{ type: string; text?: string }>
+}): string {
   const stable = message.info.id ?? message.info.messageID
   if (stable) return stable
-  const text = message.parts.filter((part) => part.type === "text" && typeof part.text === "string").map((part) => part.text).join("\n")
+  const text = message.parts
+    .filter((part) => part.type === "text" && typeof part.text === "string")
+    .map((part) => part.text)
+    .join("\n")
   let hash = 2166136261
   for (const char of text.slice(0, 4_000)) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619)
   return `digest-${(hash >>> 0).toString(16)}`
 }
 function normalizeCapabilityToken(value: string): string {
-  return value.trim().toLowerCase().replace(/^ctf-/, "").replace(/-fast$/, "")
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^ctf-/, "")
+    .replace(/-fast$/, "")
 }
 
 function isActiveJobStatus(status: TeamJob["status"]): boolean {
@@ -513,7 +527,8 @@ export function createTeamRuntimeCore(
       const job = run?.jobs.find((candidate) => candidate.id === jobID)
       if (!run || !job) return
       if (job.status === "cancelled") transitionTeamJob(job, "cancel_failed", `${reason}; abort failed: ${abortError}`)
-      else if (!isTerminalJob(job.status)) transitionTeamJob(job, "cancel_failed", `${reason}; abort failed: ${abortError}`)
+      else if (!isTerminalJob(job.status))
+        transitionTeamJob(job, "cancel_failed", `${reason}; abort failed: ${abortError}`)
       job.error = `${reason}; abort failed: ${abortError}`
       job.finishedAt = job.finishedAt ?? now()
       job.updatedAt = now()
@@ -525,7 +540,6 @@ export function createTeamRuntimeCore(
       syncIntentStatus(run, job, job.status)
     })
   }
-
 
   /**
    * Best-effort audit: mirror team lifecycle events into the evidence case's
@@ -584,7 +598,9 @@ export function createTeamRuntimeCore(
         path: { id: parentSessionID },
         query: { directory, limit: 20 },
       })
-      const messages = responseData(response, `Read parent model ${parentSessionID}`) as Array<{ info?: Record<string, unknown> }>
+      const messages = responseData(response, `Read parent model ${parentSessionID}`) as Array<{
+        info?: Record<string, unknown>
+      }>
       const assistant = [...messages].reverse().find((message) => message?.info?.role === "assistant")
       const providerID = typeof assistant?.info?.providerID === "string" ? assistant.info.providerID : undefined
       const modelID = typeof assistant?.info?.modelID === "string" ? assistant.info.modelID : undefined
@@ -628,17 +644,39 @@ export function createTeamRuntimeCore(
         const resultPacket = [...collected.packets].reverse().find((packet) => packet.type === "intent_result")
         const factPackets = collected.packets.filter((packet) => packet.type === "fact")
         const ownIntent = current.run.intents?.find((candidate) => candidate.id === current.job.intentId)
-        const resultIntent = resultPacket && ownIntent && (!resultPacket.intentId || resultPacket.intentId === current.job.intentId) && (!resultPacket.routeId || resultPacket.routeId === current.job.routeId) ? ownIntent : undefined
+        const resultIntent =
+          resultPacket &&
+          ownIntent &&
+          (!resultPacket.intentId || resultPacket.intentId === current.job.intentId) &&
+          (!resultPacket.routeId || resultPacket.routeId === current.job.routeId)
+            ? ownIntent
+            : undefined
         if (collected.error) {
-          failTeamJob(current.run, current.job, { phase: "collect", errorType: "worker_runtime", error: collected.error, retryable: false })
+          failTeamJob(current.run, current.job, {
+            phase: "collect",
+            errorType: "worker_runtime",
+            error: collected.error,
+            retryable: false,
+          })
         } else if (resultPacket?.status === "failed") {
-          failTeamJob(current.run, current.job, { phase: "collect", errorType: "worker_runtime", error: resultPacket.summary || "Worker reported intent failure.", retryable: false })
+          failTeamJob(current.run, current.job, {
+            phase: "collect",
+            errorType: "worker_runtime",
+            error: resultPacket.summary || "Worker reported intent failure.",
+            retryable: false,
+          })
           if (resultIntent) {
             resultIntent.status = "failed"
             resultIntent.resultSummary = resultPacket.summary
             resultIntent.resultArtifacts = resultPacket.artifacts
             resultIntent.updatedAt = now()
-            auditEvents.push(makeTeamEvent("intent_failed", current.run, { intentId: resultIntent.id, jobId: current.job.id, data: { summary: resultIntent.resultSummary } }))
+            auditEvents.push(
+              makeTeamEvent("intent_failed", current.run, {
+                intentId: resultIntent.id,
+                jobId: current.job.id,
+                data: { summary: resultIntent.resultSummary },
+              }),
+            )
           }
         } else {
           transitionTeamJob(current.job, "completed")
@@ -648,7 +686,14 @@ export function createTeamRuntimeCore(
             resultIntent.resultArtifacts = resultPacket.artifacts
             resultIntent.updatedAt = now()
           }
-          if (resultIntent && resultPacket?.status === "completed") auditEvents.push(makeTeamEvent("intent_completed", current.run, { intentId: resultIntent.id, jobId: current.job.id, data: { summary: resultIntent.resultSummary } }))
+          if (resultIntent && resultPacket?.status === "completed")
+            auditEvents.push(
+              makeTeamEvent("intent_completed", current.run, {
+                intentId: resultIntent.id,
+                jobId: current.job.id,
+                data: { summary: resultIntent.resultSummary },
+              }),
+            )
         }
         current.run.facts ??= []
         for (const [index, packet] of factPackets.entries()) {
@@ -662,12 +707,38 @@ export function createTeamRuntimeCore(
             continue
           }
           const submittedAt = now()
-          current.run.facts.push({ id: factID, runId: current.run.id, routeId: packet.routeId ?? current.job.routeId, sourceJobId: current.job.id, sourceSessionId: sessionID, intentId: packet.intentId ?? current.job.intentId, kind: packet.kind ?? "observation", statement: packet.statement, evidence: packet.evidence ?? [], confidence: packet.confidence ?? "observed", status: "pending", createdAt: submittedAt, updatedAt: submittedAt })
+          current.run.facts.push({
+            id: factID,
+            runId: current.run.id,
+            routeId: packet.routeId ?? current.job.routeId,
+            sourceJobId: current.job.id,
+            sourceSessionId: sessionID,
+            intentId: packet.intentId ?? current.job.intentId,
+            kind: packet.kind ?? "observation",
+            statement: packet.statement,
+            evidence: packet.evidence ?? [],
+            confidence: packet.confidence ?? "observed",
+            status: "pending",
+            createdAt: submittedAt,
+            updatedAt: submittedAt,
+          })
           generatedFactIds.push(factID)
-          auditEvents.push(makeTeamEvent("fact_submitted", current.run, { factId: factID, jobId: current.job.id, data: { routeId: packet.routeId ?? current.job.routeId, statement: packet.statement, confidence: packet.confidence ?? "observed" } }))
+          auditEvents.push(
+            makeTeamEvent("fact_submitted", current.run, {
+              factId: factID,
+              jobId: current.job.id,
+              data: {
+                routeId: packet.routeId ?? current.job.routeId,
+                statement: packet.statement,
+                confidence: packet.confidence ?? "observed",
+              },
+            }),
+          )
         }
         if (resultIntent && resultPacket) {
-          const packetFactIds = (resultPacket.factIds ?? []).filter((id) => current.run.facts?.some((fact) => fact.id === id))
+          const packetFactIds = (resultPacket.factIds ?? []).filter((id) =>
+            current.run.facts?.some((fact) => fact.id === id),
+          )
           resultIntent.resultFactIds = [...new Set([...packetFactIds, ...generatedFactIds])]
           resultIntent.updatedAt = now()
         }
@@ -678,9 +749,21 @@ export function createTeamRuntimeCore(
           resultIntent.claimToken = undefined
           resultIntent.claimExpiresAt = undefined
           resultIntent.updatedAt = now()
-          auditEvents.push(makeTeamEvent("intent_blocked", current.run, { intentId: resultIntent.id, jobId: current.job.id, data: { summary: resultIntent.resultSummary } }))
+          auditEvents.push(
+            makeTeamEvent("intent_blocked", current.run, {
+              intentId: resultIntent.id,
+              jobId: current.job.id,
+              data: { summary: resultIntent.resultSummary },
+            }),
+          )
         }
-        for (const dropped of droppedFacts) auditEvents.push(makeTeamEvent("fact_dropped", current.run, { jobId: dropped.jobId, data: { index: dropped.index, reason: dropped.reason } }))
+        for (const dropped of droppedFacts)
+          auditEvents.push(
+            makeTeamEvent("fact_dropped", current.run, {
+              jobId: dropped.jobId,
+              data: { index: dropped.index, reason: dropped.reason },
+            }),
+          )
       })
       await appendTeamEvents(auditEvents)
     } catch (error) {
@@ -845,11 +928,7 @@ export function createTeamRuntimeCore(
           error: `Worker deadline exceeded (attempt ${verdict.attempt}/${verdict.maxAttempts}); abort failed: ${oldAbortError}`,
           retryable: true,
         })
-        transitionTeamJob(
-          current.job,
-          "cancel_failed",
-          current.job.errorDetails?.message,
-        )
+        transitionTeamJob(current.job, "cancel_failed", current.job.errorDetails?.message)
         current.job.finishedAt = now()
         current.job.updatedAt = now()
         refreshRunStatus(draft, current.run)
@@ -1000,7 +1079,11 @@ export function createTeamRuntimeCore(
           error: retryFailure,
           retryable: true,
         })
-        transitionTeamJob(current.job, replacementAbortError ? "cancel_failed" : "failed", current.job.errorDetails?.message)
+        transitionTeamJob(
+          current.job,
+          replacementAbortError ? "cancel_failed" : "failed",
+          current.job.errorDetails?.message,
+        )
         current.job.finishedAt = now()
         current.job.updatedAt = now()
         refreshRunStatus(draft, current.run)
@@ -1081,9 +1164,9 @@ export function createTeamRuntimeCore(
         const result = aborts[index]
         const abortError =
           result?.status === "fulfilled"
-            ? ((result.value as { error?: unknown } | undefined)?.error
-                ? safeError((result.value as { error?: unknown }).error)
-                : undefined)
+            ? (result.value as { error?: unknown } | undefined)?.error
+              ? safeError((result.value as { error?: unknown }).error)
+              : undefined
             : safeError(result?.reason)
         if (!abortError) {
           transitionTeamJob(job, "cancelled", "Cancellation retry succeeded during Team recovery.")
@@ -1112,9 +1195,7 @@ export function createTeamRuntimeCore(
     reason: string,
   ) {
     const dedupe = (items: typeof sessions) =>
-      Array.from(
-        new Map(items.map((item) => [`${item.runID}:${item.jobID}:${item.sessionID}`, item])).values(),
-      )
+      Array.from(new Map(items.map((item) => [`${item.runID}:${item.jobID}:${item.sessionID}`, item])).values())
     let pending = dedupe(sessions)
     const maxPasses = 4
 
@@ -1136,17 +1217,27 @@ export function createTeamRuntimeCore(
           const job = run?.jobs.find((candidate) => candidate.id === item.jobID)
           if (!run || !job) continue
           if (job.sessionID && job.sessionID !== item.sessionID && job.sessionID !== item.supersedesSessionID) {
-            enqueue({ runID: item.runID, jobID: item.jobID, sessionID: job.sessionID, supersedesSessionID: item.sessionID })
+            enqueue({
+              runID: item.runID,
+              jobID: item.jobID,
+              sessionID: job.sessionID,
+              supersedesSessionID: item.sessionID,
+            })
           }
           if (job.retrySessionID && job.retrySessionID !== item.sessionID) {
-            enqueue({ runID: item.runID, jobID: item.jobID, sessionID: job.retrySessionID, supersedesSessionID: job.sessionID })
+            enqueue({
+              runID: item.runID,
+              jobID: item.jobID,
+              sessionID: job.retrySessionID,
+              supersedesSessionID: job.sessionID,
+            })
           }
           const result = aborts[index]
           const abortError =
             result?.status === "fulfilled"
-              ? ((result.value as { error?: unknown } | undefined)?.error
-                  ? safeError((result.value as { error?: unknown }).error)
-                  : undefined)
+              ? (result.value as { error?: unknown } | undefined)?.error
+                ? safeError((result.value as { error?: unknown }).error)
+                : undefined
               : safeError(result?.reason)
           if (!abortError || (job.status !== "cancelled" && job.status !== "cancel_failed")) continue
           transitionTeamJob(job, "cancel_failed", `${reason}; replacement abort failed: ${abortError}`)
@@ -1168,7 +1259,11 @@ export function createTeamRuntimeCore(
         const run = findRun(draft, item.runID)
         const job = run?.jobs.find((candidate) => candidate.id === item.jobID)
         if (!run || !job || (job.status !== "cancelled" && job.status !== "cancel_failed")) continue
-        transitionTeamJob(job, "cancel_failed", `${reason}; replacement abort did not converge after ${maxPasses} attempts`)
+        transitionTeamJob(
+          job,
+          "cancel_failed",
+          `${reason}; replacement abort did not converge after ${maxPasses} attempts`,
+        )
         clearRetryReservation(job)
         job.finishedAt = now()
         job.updatedAt = now()
@@ -1356,27 +1451,38 @@ export function createTeamRuntimeCore(
           run.notificationSentAt = undefined
           run.notificationError = `Expired claim ${intent.id} could not be reclaimed: ${abortError}`
           draft.activeRunID = run.id
-          released.push(makeTeamEvent("intent_blocked", run, {
-            intentId: intent.id,
-            jobId: boundJob?.id,
-            data: { reason: "claim_lease_abort_failed", error: abortError },
-          }))
+          released.push(
+            makeTeamEvent("intent_blocked", run, {
+              intentId: intent.id,
+              jobId: boundJob?.id,
+              data: { reason: "claim_lease_abort_failed", error: abortError },
+            }),
+          )
           continue
         }
         clearIntentClaim(intent)
         intent.updatedAt = now()
         if (intent.attempts < intent.maxAttempts) {
           intent.status = "open"
-          released.push(makeTeamEvent("intent_released", run, { intentId: intent.id, data: { reason: "claim_lease_expired" } }))
+          released.push(
+            makeTeamEvent("intent_released", run, { intentId: intent.id, data: { reason: "claim_lease_expired" } }),
+          )
         } else {
           intent.status = "failed"
-          released.push(makeTeamEvent("intent_failed", run, { intentId: intent.id, data: { reason: "claim_lease_expired_budget_exhausted" } }))
+          released.push(
+            makeTeamEvent("intent_failed", run, {
+              intentId: intent.id,
+              data: { reason: "claim_lease_expired_budget_exhausted" },
+            }),
+          )
         }
       }
     })
     await appendTeamEvents(released)
     if (expired.length) {
-      console.log(`[team-runtime] reclaimed ${expired.length} expired claim(s); aborted ${aborted.length} live session(s)`)
+      console.log(
+        `[team-runtime] reclaimed ${expired.length} expired claim(s); aborted ${aborted.length} live session(s)`,
+      )
     }
     return aborted
   }
@@ -1416,47 +1522,66 @@ export function createTeamRuntimeCore(
           state = await readTeamState(directory)
         } catch (error) {
           const raw = await readRawTeamState(directory).catch(() => undefined)
-          return JSON.stringify({
-            ok: false,
-            operation: args.operation,
-            stateReadable: false,
-            error: safeError(error),
-            rawStatePresent: raw !== undefined,
-            repairCommands: [
-              "ctf-team-repair operation=quarantine reason=\"preserve corrupt Team state\"",
-              "ctf-team-repair operation=reset force=true reason=\"reset corrupt Team state\"",
-            ],
-          }, null, 2)
+          return JSON.stringify(
+            {
+              ok: false,
+              operation: args.operation,
+              stateReadable: false,
+              error: safeError(error),
+              rawStatePresent: raw !== undefined,
+              repairCommands: [
+                'ctf-team-repair operation=quarantine reason="preserve corrupt Team state"',
+                'ctf-team-repair operation=reset force=true reason="reset corrupt Team state"',
+              ],
+            },
+            null,
+            2,
+          )
         }
         const runs = args.runID ? ([findRun(state, args.runID)].filter(Boolean) as TeamRun[]) : state.runs
         if (args.operation === "inspect") {
-          const orphaned = runs.flatMap((run) => run.jobs.filter(isOrphanedJob).map((job) => ({
-            runID: run.id,
-            runTitle: run.title,
-            jobID: job.id,
-            state: "orphaned",
-            reason: job.orphaned?.reason || "unknown_agent",
-            originalAgent: job.orphaned?.originalAgent || job.originalAgent,
-            sessionID: job.sessionID,
-            recoverable: job.orphaned?.recoverable ?? true,
-            status: job.status,
-            error: job.error,
-            errorDetails: job.errorDetails,
-          })))
-          return JSON.stringify({
-            ok: true,
-            operation: args.operation,
-            stateReadable: true,
-            orphaned,
-            runs: runs.map((run) => ({ id: run.id, status: run.status, jobs: run.jobs.length })),
-            repairCommands: orphaned.length
-              ? ["ctf-team-repair operation=cancel_orphans", "ctf-team-repair operation=quarantine reason=\"archive stale Team run\""]
-              : [],
-          }, null, 2)
+          const orphaned = runs.flatMap((run) =>
+            run.jobs.filter(isOrphanedJob).map((job) => ({
+              runID: run.id,
+              runTitle: run.title,
+              jobID: job.id,
+              state: "orphaned",
+              reason: job.orphaned?.reason || "unknown_agent",
+              originalAgent: job.orphaned?.originalAgent || job.originalAgent,
+              sessionID: job.sessionID,
+              recoverable: job.orphaned?.recoverable ?? true,
+              status: job.status,
+              error: job.error,
+              errorDetails: job.errorDetails,
+            })),
+          )
+          return JSON.stringify(
+            {
+              ok: true,
+              operation: args.operation,
+              stateReadable: true,
+              orphaned,
+              runs: runs.map((run) => ({ id: run.id, status: run.status, jobs: run.jobs.length })),
+              repairCommands: orphaned.length
+                ? [
+                    "ctf-team-repair operation=cancel_orphans",
+                    'ctf-team-repair operation=quarantine reason="archive stale Team run"',
+                  ]
+                : [],
+            },
+            null,
+            2,
+          )
         }
 
-        const targets = runs.flatMap((run) => run.jobs.filter(isOrphanedJob).map((job) => ({ runID: run.id, jobID: job.id, sessionID: job.sessionID })))
-        const aborts = await Promise.allSettled(targets.filter((item) => item.sessionID).map((item) => client.session.abort({ path: { id: item.sessionID! }, query: { directory } })))
+        const targets = runs.flatMap((run) =>
+          run.jobs.filter(isOrphanedJob).map((job) => ({ runID: run.id, jobID: job.id, sessionID: job.sessionID })),
+        )
+        const aborts = await Promise.allSettled(
+          targets
+            .filter((item) => item.sessionID)
+            .map((item) => client.session.abort({ path: { id: item.sessionID! }, query: { directory } })),
+        )
         let abortIndex = 0
         await updateTeamState(directory, (draft) => {
           for (const target of targets) {
@@ -1464,14 +1589,18 @@ export function createTeamRuntimeCore(
             const job = located?.jobs.find((candidate) => candidate.id === target.jobID)
             if (!job || !isOrphanedJob(job)) continue
             const result = target.sessionID ? aborts[abortIndex++] : undefined
-            const abortError = result?.status === "rejected"
-              ? safeError(result.reason)
-              : result?.status === "fulfilled" && (result.value as { error?: unknown })?.error
-                ? safeError((result.value as { error?: unknown }).error)
-                : undefined
+            const abortError =
+              result?.status === "rejected"
+                ? safeError(result.reason)
+                : result?.status === "fulfilled" && (result.value as { error?: unknown })?.error
+                  ? safeError((result.value as { error?: unknown }).error)
+                  : undefined
             if (abortError) {
               job.error = `${reason}; abort failed: ${abortError}`
-              job.orphaned = { ...(job.orphaned || { state: "orphaned", reason: "unknown_agent", recoverable: true }), recoverable: true }
+              job.orphaned = {
+                ...(job.orphaned || { state: "orphaned", reason: "unknown_agent", recoverable: true }),
+                recoverable: true,
+              }
             } else {
               job.status = "cancelled"
               job.error = `${reason}; orphaned worker quarantined`
@@ -1492,7 +1621,11 @@ export function createTeamRuntimeCore(
             }
           }
         })
-        return JSON.stringify({ ok: true, operation: args.operation, targeted: targets.length, state: await readTeamState(directory) }, null, 2)
+        return JSON.stringify(
+          { ok: true, operation: args.operation, targeted: targets.length, state: await readTeamState(directory) },
+          null,
+          2,
+        )
       },
     }),
     "ctf-team-dispatch": tool({
@@ -1559,7 +1692,13 @@ export function createTeamRuntimeCore(
         const runID = buildRunId()
         const createdAt = now()
         const jobs: TeamJob[] = args.jobs.map((job, index) => ({
-          id: `job-${index + 1}-${job.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32) || "task"}`,
+          id: `job-${index + 1}-${
+            job.title
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-|-$/g, "")
+              .slice(0, 32) || "task"
+          }`,
           title: job.title,
           objective: job.objective,
           agent: job.agent as TeamAgent,
@@ -1611,16 +1750,13 @@ export function createTeamRuntimeCore(
           const active = findRun(state)
           if (active && !["completed", "cancelled"].includes(active.status)) {
             if (runCanBeAutoArchived(active)) {
-              const recoverableOrphans = active.jobs.some(
-                (job) => isOrphanedJob(job) && job.orphaned?.recoverable,
-              )
+              const recoverableOrphans = active.jobs.some((job) => isOrphanedJob(job) && job.orphaned?.recoverable)
               if (recoverableOrphans) {
                 active.status = "degraded"
                 active.notificationPending = true
                 active.notificationSentAt = undefined
                 active.notificationError = undefined
-                active.synthesisSummary =
-                  `Automatically isolated stale Team run before dispatch; recoverable orphan jobs remain adoptable: ${active.id}`
+                active.synthesisSummary = `Automatically isolated stale Team run before dispatch; recoverable orphan jobs remain adoptable: ${active.id}`
               } else {
                 active.status = "cancelled"
                 active.notificationPending = false
@@ -1868,17 +2004,21 @@ export function createTeamRuntimeCore(
           return appendRuntimeNotes(renderRun(run), repairs, await inspectTeamLockState(directory))
         } catch (error) {
           const raw = await readRawTeamState(directory).catch(() => undefined)
-          return JSON.stringify({
-            ok: false,
-            stateReadable: false,
-            error: safeError(error),
-            rawStatePresent: raw !== undefined,
-            repairCommands: [
-              'ctf-team-repair operation=inspect',
-              'ctf-team-repair operation=quarantine reason="preserve corrupt Team state"',
-              'ctf-team-repair operation=reset force=true reason="reset corrupt Team state"',
-            ],
-          }, null, 2)
+          return JSON.stringify(
+            {
+              ok: false,
+              stateReadable: false,
+              error: safeError(error),
+              rawStatePresent: raw !== undefined,
+              repairCommands: [
+                "ctf-team-repair operation=inspect",
+                'ctf-team-repair operation=quarantine reason="preserve corrupt Team state"',
+                'ctf-team-repair operation=reset force=true reason="reset corrupt Team state"',
+              ],
+            },
+            null,
+            2,
+          )
         }
       },
     }),
@@ -1902,7 +2042,10 @@ export function createTeamRuntimeCore(
       args: {
         runID: tool.schema.string().optional(),
         reason: tool.schema.string().min(1).max(1_000),
-        force: tool.schema.boolean().optional().describe("Force cancellation even when an orphaned/unknown-agent session cannot be reconciled."),
+        force: tool.schema
+          .boolean()
+          .optional()
+          .describe("Force cancellation even when an orphaned/unknown-agent session cannot be reconciled."),
       },
       async execute(args, context) {
         requireExpert(context.agent, context.sessionID)
@@ -1915,9 +2058,16 @@ export function createTeamRuntimeCore(
         const orphanedJobs = run.jobs.filter(isOrphanedJob)
         const orphanedWithoutSession = args.force ? orphanedJobs.filter((j) => !j.sessionID) : []
         if (orphanedJobs.length > 0 && !args.force) {
-          throw new Error("The run contains orphaned jobs. Retry with force=true or use ctf-team-repair operation=cancel_orphans.")
+          throw new Error(
+            "The run contains orphaned jobs. Retry with force=true or use ctf-team-repair operation=cancel_orphans.",
+          )
         }
-        const followUpSessions: Array<{ runID: string; jobID: string; sessionID: string; supersedesSessionID?: string }> = []
+        const followUpSessions: Array<{
+          runID: string
+          jobID: string
+          sessionID: string
+          supersedesSessionID?: string
+        }> = []
         const abortJobs = activeJobs.filter((job) => Boolean(job.sessionID))
         const aborts = await Promise.allSettled(
           abortJobs.map((job) =>
@@ -1936,10 +2086,23 @@ export function createTeamRuntimeCore(
           current.notificationPending = false
           for (const job of activeJobs) {
             const cj = current.jobs.find((candidate) => candidate.id === job.id)
-            if (!cj || (isTerminalJob(cj.status) && cj.status !== "cancel_failed" && !(args.force && isOrphanedJob(cj)))) continue
+            if (
+              !cj ||
+              (isTerminalJob(cj.status) && cj.status !== "cancel_failed" && !(args.force && isOrphanedJob(cj)))
+            )
+              continue
             for (const candidate of [cj.sessionID, cj.retrySessionID]) {
-              if (candidate && candidate !== job.sessionID && !followUpSessions.some((item) => item.jobID === cj.id && item.sessionID === candidate)) {
-                followUpSessions.push({ runID: current.id, jobID: cj.id, sessionID: candidate, supersedesSessionID: job.sessionID })
+              if (
+                candidate &&
+                candidate !== job.sessionID &&
+                !followUpSessions.some((item) => item.jobID === cj.id && item.sessionID === candidate)
+              ) {
+                followUpSessions.push({
+                  runID: current.id,
+                  jobID: cj.id,
+                  sessionID: candidate,
+                  supersedesSessionID: job.sessionID,
+                })
               }
             }
             const result = abortByJob.get(job.id)
@@ -1947,7 +2110,10 @@ export function createTeamRuntimeCore(
               transitionTeamJob(cj, "cancelled", args.reason)
             } else if (result?.status === "fulfilled") {
               const value = result.value
-              const abortError = value && typeof value === "object" && "error" in value && value.error ? safeError(value.error) : undefined
+              const abortError =
+                value && typeof value === "object" && "error" in value && value.error
+                  ? safeError(value.error)
+                  : undefined
               if (abortError) {
                 if (args.force && isOrphanedJob(cj)) {
                   cj.status = "cancelled"
@@ -2020,7 +2186,12 @@ export function createTeamRuntimeCore(
         if (!toCancel.length) {
           return `No active workers to cancel (keepRouteId=${args.keepRouteId}).\n${renderRun(run)}`
         }
-        const followUpSessions: Array<{ runID: string; jobID: string; sessionID: string; supersedesSessionID?: string }> = []
+        const followUpSessions: Array<{
+          runID: string
+          jobID: string
+          sessionID: string
+          supersedesSessionID?: string
+        }> = []
         const abortJobs = toCancel.filter((job) => Boolean(job.sessionID))
         const aborts = await Promise.allSettled(
           abortJobs.map((job) => client.session.abort({ path: { id: job.sessionID! }, query: { directory } })),
@@ -2034,8 +2205,17 @@ export function createTeamRuntimeCore(
             const cj = current.jobs.find((candidate) => candidate.id === job.id)
             if (!cj || (isTerminalJob(cj.status) && cj.status !== "cancel_failed")) continue
             for (const candidate of [cj.sessionID, cj.retrySessionID]) {
-              if (candidate && candidate !== job.sessionID && !followUpSessions.some((item) => item.jobID === cj.id && item.sessionID === candidate)) {
-                followUpSessions.push({ runID: current.id, jobID: cj.id, sessionID: candidate, supersedesSessionID: job.sessionID })
+              if (
+                candidate &&
+                candidate !== job.sessionID &&
+                !followUpSessions.some((item) => item.jobID === cj.id && item.sessionID === candidate)
+              ) {
+                followUpSessions.push({
+                  runID: current.id,
+                  jobID: cj.id,
+                  sessionID: candidate,
+                  supersedesSessionID: job.sessionID,
+                })
               }
             }
             const result = abortByJob.get(job.id)
@@ -2043,10 +2223,21 @@ export function createTeamRuntimeCore(
               transitionTeamJob(cj, "cancelled", reason)
             } else if (result?.status === "fulfilled") {
               const value = result.value
-              const abortError = value && typeof value === "object" && "error" in value && value.error ? safeError(value.error) : undefined
-              transitionTeamJob(cj, abortError ? "cancel_failed" : "cancelled", abortError ? `${reason}; abort failed: ${abortError}` : reason)
+              const abortError =
+                value && typeof value === "object" && "error" in value && value.error
+                  ? safeError(value.error)
+                  : undefined
+              transitionTeamJob(
+                cj,
+                abortError ? "cancel_failed" : "cancelled",
+                abortError ? `${reason}; abort failed: ${abortError}` : reason,
+              )
             } else {
-              transitionTeamJob(cj, "cancel_failed", `${reason}; abort failed: ${result ? safeError(result.reason) : "abort outcome missing"}`)
+              transitionTeamJob(
+                cj,
+                "cancel_failed",
+                `${reason}; abort failed: ${result ? safeError(result.reason) : "abort outcome missing"}`,
+              )
             }
             clearRetryReservation(cj)
             cj.finishedAt = now()
@@ -2103,9 +2294,15 @@ export function createTeamRuntimeCore(
       args: {
         runID: tool.schema.string().min(1),
         reason: tool.schema.string().min(1).max(1_000),
-        orphaned: tool.schema.boolean().optional().describe("Adopt one orphaned job with a newly-created worker session."),
+        orphaned: tool.schema
+          .boolean()
+          .optional()
+          .describe("Adopt one orphaned job with a newly-created worker session."),
         jobID: tool.schema.string().optional().describe("Required with orphaned=true."),
-        agent: tool.schema.enum(TEAM_AGENTS as unknown as [string, ...string[]]).optional().describe("Replacement valid agent; required with orphaned=true."),
+        agent: tool.schema
+          .enum(TEAM_AGENTS as unknown as [string, ...string[]])
+          .optional()
+          .describe("Replacement valid agent; required with orphaned=true."),
         force: tool.schema.boolean().optional().describe("Required with orphaned=true; never reuses the old session."),
       },
       async execute(args, context) {
@@ -2120,7 +2317,8 @@ export function createTeamRuntimeCore(
           const run = findRun(before, args.runID)
           if (!run) throw new Error(`No matching CTF team run: ${args.runID}`)
           const job = run.jobs.find((candidate) => candidate.id === args.jobID)
-          if (!job || !isOrphanedJob(job)) throw new Error(`Job ${args.jobID} is not an orphaned job in run ${args.runID}.`)
+          if (!job || !isOrphanedJob(job))
+            throw new Error(`Job ${args.jobID} is not an orphaned job in run ${args.runID}.`)
           if (run.parentSessionID !== context.sessionID && hasOpenTeamWorker(run)) {
             throw new Error("Cannot adopt an orphaned job while another worker in the run is active.")
           }
@@ -2128,7 +2326,9 @@ export function createTeamRuntimeCore(
           if (previousSessionID) {
             const aborted = await client.session.abort({ path: { id: previousSessionID }, query: { directory } })
             if ((aborted as { error?: unknown } | undefined)?.error) {
-              throw new Error(`Cannot adopt orphaned job until its old session is aborted: ${safeError((aborted as { error: unknown }).error)}`)
+              throw new Error(
+                `Cannot adopt orphaned job until its old session is aborted: ${safeError((aborted as { error: unknown }).error)}`,
+              )
             }
           }
           const parentModel = await resolveParentModel(context.sessionID)
@@ -2137,13 +2337,15 @@ export function createTeamRuntimeCore(
             body: { parentID: context.sessionID, title: `[CTF Team Adopt] ${job.title}` },
           })
           const createdData = responseData(created, `Create adopted worker ${job.id}`) as { id?: unknown }
-          if (typeof createdData.id !== "string" || !createdData.id) throw new Error(`Create adopted worker ${job.id} returned an invalid session id.`)
+          if (typeof createdData.id !== "string" || !createdData.id)
+            throw new Error(`Create adopted worker ${job.id} returned an invalid session id.`)
           const replacementSessionID = createdData.id
           let adoptedJob: TeamJob | undefined
           await updateTeamState(directory, (state) => {
             const currentRun = findRun(state, args.runID)
             const currentJob = currentRun?.jobs.find((candidate) => candidate.id === args.jobID)
-            if (!currentRun || !currentJob || !isOrphanedJob(currentJob)) throw new Error("Orphaned job changed during adoption; retry with current state.")
+            if (!currentRun || !currentJob || !isOrphanedJob(currentJob))
+              throw new Error("Orphaned job changed during adoption; retry with current state.")
             const stamp = now()
             currentRun.parentSessionID = context.sessionID!
             currentRun.status = "dispatching"
@@ -2161,14 +2363,17 @@ export function createTeamRuntimeCore(
             currentJob.error = `Adopted orphaned worker: ${args.reason.trim()}`
             currentJob.updatedAt = stamp
             currentJob.ownerToken = randomUUID().slice(0, 8)
-            currentJob.adoptionHistory = [...(currentJob.adoptionHistory ?? []), {
-              originalAgent: currentJob.originalAgent,
-              adoptedAgent: args.agent as TeamAgent,
-              adoptedAt: stamp,
-              adoptedBySessionID: context.sessionID!,
-              reason: args.reason.trim(),
-              ...(previousSessionID ? { previousSessionID } : {}),
-            }].slice(-8)
+            currentJob.adoptionHistory = [
+              ...(currentJob.adoptionHistory ?? []),
+              {
+                originalAgent: currentJob.originalAgent,
+                adoptedAgent: args.agent as TeamAgent,
+                adoptedAt: stamp,
+                adoptedBySessionID: context.sessionID!,
+                reason: args.reason.trim(),
+                ...(previousSessionID ? { previousSessionID } : {}),
+              },
+            ].slice(-8)
             state.activeRunID = currentRun.id
             adoptedJob = currentJob
           })
@@ -2187,18 +2392,46 @@ export function createTeamRuntimeCore(
                 agent: args.agent,
                 model: parentModel,
                 tools: buildChildSessionTools(options.runtimeVisibility?.exportedToolNames, {
-                  task: false, edit: false, write: false, apply_patch: false,
-                  "ctf-team-dispatch": false, "ctf-team-status": false, "ctf-team-collect": false,
-                  "ctf-team-cancel": false, "ctf-team-cancel-route": false, "ctf-team-close": false,
-                  "ctf-team-recover": false, "ctf-team-adopt": false, "ctf-team-repair": false, "ctf-team-mode": false,
-                  "ctf-team-facts": false, "ctf-team-intent": false, "ctf-team-claim": true,
+                  task: false,
+                  edit: false,
+                  write: false,
+                  apply_patch: false,
+                  "ctf-team-dispatch": false,
+                  "ctf-team-status": false,
+                  "ctf-team-collect": false,
+                  "ctf-team-cancel": false,
+                  "ctf-team-cancel-route": false,
+                  "ctf-team-close": false,
+                  "ctf-team-recover": false,
+                  "ctf-team-adopt": false,
+                  "ctf-team-repair": false,
+                  "ctf-team-mode": false,
+                  "ctf-team-facts": false,
+                  "ctf-team-intent": false,
+                  "ctf-team-claim": true,
                 }),
-                parts: [{ type: "text", text: [workerPrompt({ ...run, parentSessionID: context.sessionID! }, adoptedJob!, {
-                  surface: options.runtimeVisibility?.surface ?? "ctf-expert",
-                  pluginToolCount: options.runtimeVisibility?.pluginToolCount,
-                  expectedSkills: options.runtimeVisibility?.expectedSkills,
-                  externalSkillsEnabled: options.runtimeVisibility?.externalSkillsEnabled,
-                }), "", "Default MCP profile:", `- activated: ${mcp.activated.join(", ") || "(none)"}`, `- skipped: ${mcp.skipped.join("; ") || "(none)"}`, mcp.failed.length ? `- activation_error: ${mcp.failed.map((item) => `${item.serverName}: ${item.message}`).join("; ")}` : ""].filter(Boolean).join("\n") }],
+                parts: [
+                  {
+                    type: "text",
+                    text: [
+                      workerPrompt({ ...run, parentSessionID: context.sessionID! }, adoptedJob!, {
+                        surface: options.runtimeVisibility?.surface ?? "ctf-expert",
+                        pluginToolCount: options.runtimeVisibility?.pluginToolCount,
+                        expectedSkills: options.runtimeVisibility?.expectedSkills,
+                        externalSkillsEnabled: options.runtimeVisibility?.externalSkillsEnabled,
+                      }),
+                      "",
+                      "Default MCP profile:",
+                      `- activated: ${mcp.activated.join(", ") || "(none)"}`,
+                      `- skipped: ${mcp.skipped.join("; ") || "(none)"}`,
+                      mcp.failed.length
+                        ? `- activation_error: ${mcp.failed.map((item) => `${item.serverName}: ${item.message}`).join("; ")}`
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join("\n"),
+                  },
+                ],
               },
             })
             assertAccepted(response, `Start adopted worker ${job.id}`)
@@ -2232,7 +2465,19 @@ export function createTeamRuntimeCore(
             })
             throw error
           }
-          return JSON.stringify({ adopted: true, orphaned: true, runID: args.runID, jobID: args.jobID, previousSessionID, sessionID: replacementSessionID, agent: args.agent }, null, 2)
+          return JSON.stringify(
+            {
+              adopted: true,
+              orphaned: true,
+              runID: args.runID,
+              jobID: args.jobID,
+              previousSessionID,
+              sessionID: replacementSessionID,
+              agent: args.agent,
+            },
+            null,
+            2,
+          )
         }
 
         const before = await readTeamState(directory)
@@ -2410,7 +2655,11 @@ export function createTeamRuntimeCore(
           fact.updatedAt = now()
           auditEvents.push(
             makeTeamEvent(
-              args.action === "accept" ? "fact_accepted" : args.action === "reject" ? "fact_rejected" : "fact_superseded",
+              args.action === "accept"
+                ? "fact_accepted"
+                : args.action === "reject"
+                  ? "fact_rejected"
+                  : "fact_superseded",
               current,
               { factId: fact.id, data: { reviewedBy: context.sessionID, reason: args.reason } },
             ),
@@ -2418,7 +2667,16 @@ export function createTeamRuntimeCore(
         })
         await appendTeamEvents(auditEvents)
         const updated = findRun(await readTeamState(directory), run.id)
-        return JSON.stringify({ ok: true, action: args.action, factID: args.factID, run: updated ? { id: updated.id, facts: updated.facts } : undefined }, null, 2)
+        return JSON.stringify(
+          {
+            ok: true,
+            action: args.action,
+            factID: args.factID,
+            run: updated ? { id: updated.id, facts: updated.facts } : undefined,
+          },
+          null,
+          2,
+        )
       },
     }),
 
@@ -2433,14 +2691,20 @@ export function createTeamRuntimeCore(
         objective: tool.schema.string().min(1).max(8_000).optional(),
         routeId: tool.schema.enum(TEAM_ROUTE_IDS as unknown as [string, ...string[]]).optional(),
         basedOnFactIds: tool.schema.array(tool.schema.string()).optional(),
-        allowUnbased: tool.schema.boolean().optional().describe("Permit an intent without fact basis (initial recon only)."),
+        allowUnbased: tool.schema
+          .boolean()
+          .optional()
+          .describe("Permit an intent without fact basis (initial recon only)."),
         concurrency: tool.schema.enum(["exclusive", "parallel", "speculative"]).optional(),
         expectedObservation: tool.schema.string().max(2_000).optional(),
         stopCondition: tool.schema.string().max(2_000).optional(),
         failureCondition: tool.schema.string().max(2_000).optional(),
         requiredCapabilities: tool.schema.array(tool.schema.string()).optional(),
         intentID: tool.schema.string().optional().describe("Required for release/supersede."),
-        agent: tool.schema.enum(TEAM_AGENTS as unknown as [string, ...string[]]).optional().describe("Required for claim-next."),
+        agent: tool.schema
+          .enum(TEAM_AGENTS as unknown as [string, ...string[]])
+          .optional()
+          .describe("Required for claim-next."),
         reason: tool.schema.string().max(1_000).optional(),
       },
       async execute(args, context) {
@@ -2470,9 +2734,13 @@ export function createTeamRuntimeCore(
               "ctf-team-intent create requires expectedObservation or stopCondition so the attempt has a convergence rule.",
             )
           }
-          const openCount = (run.intents ?? []).filter((intent) => ["open", "claimed", "running"].includes(intent.status)).length
+          const openCount = (run.intents ?? []).filter((intent) =>
+            ["open", "claimed", "running"].includes(intent.status),
+          ).length
           if (openCount >= maxJobs) {
-            throw new Error(`Run ${run.id} already has ${openCount} active intents (max ${maxJobs}); close or supersede one first.`)
+            throw new Error(
+              `Run ${run.id} already has ${openCount} active intents (max ${maxJobs}); close or supersede one first.`,
+            )
           }
           const auditEvents: TeamEvent[] = []
           let createdIntentID: string | undefined
@@ -2540,7 +2808,10 @@ export function createTeamRuntimeCore(
             const intent = (current.intents ?? [])
               .filter((candidate) => candidate.status === "open")
               .filter((candidate) => claimEligibleForAgent(candidate, requestedAgent))
-              .filter((candidate) => !(candidate.concurrency === "exclusive" && routeHasActiveExclusive(current, candidate.routeId)))
+              .filter(
+                (candidate) =>
+                  !(candidate.concurrency === "exclusive" && routeHasActiveExclusive(current, candidate.routeId)),
+              )
               .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))[0]
             if (!intent) throw new Error(`No open intent to claim in run ${current.id}.`)
             if (intent.attempts >= intent.maxAttempts) {
@@ -2555,7 +2826,10 @@ export function createTeamRuntimeCore(
               agent: args.agent! as TeamAgent,
               routeId: intent.routeId,
               intentId: intent.id,
-              concurrency: intent.concurrency === "speculative" || intent.concurrency === "parallel" ? "independent" : "shared_state",
+              concurrency:
+                intent.concurrency === "speculative" || intent.concurrency === "parallel"
+                  ? "independent"
+                  : "shared_state",
               status: "queued",
               createdAt,
               updatedAt: createdAt,
@@ -2571,7 +2845,13 @@ export function createTeamRuntimeCore(
             intent.attempts += 1
             intent.updatedAt = createdAt
             claim = { runID: current.id, intentID: intent.id, jobID: job.id, ownerToken }
-            auditEvents.push(makeTeamEvent("intent_claimed", current, { intentId: intent.id, jobId: job.id, data: { agent: args.agent } }))
+            auditEvents.push(
+              makeTeamEvent("intent_claimed", current, {
+                intentId: intent.id,
+                jobId: job.id,
+                data: { agent: args.agent },
+              }),
+            )
           })
           if (!claim) return JSON.stringify({ ok: false, reason: "no claim performed" }, null, 2)
 
@@ -2587,7 +2867,8 @@ export function createTeamRuntimeCore(
               }),
               `Create claim worker ${spawnJob.id}`,
             ) as { id?: unknown }
-            if (typeof created.id !== "string" || !created.id) throw new Error("session.create returned an invalid session id.")
+            if (typeof created.id !== "string" || !created.id)
+              throw new Error("session.create returned an invalid session id.")
             sessionID = created.id
             await activateAgentDefaults({ client, worktree, directory, sessionID, agentName: spawnJob.agent })
             const response = await client.session.promptAsync({
@@ -2597,12 +2878,23 @@ export function createTeamRuntimeCore(
                 agent: spawnJob.agent,
                 model: parentModel,
                 tools: buildChildSessionTools(options.runtimeVisibility?.exportedToolNames, {
-                  task: false, edit: false, write: false, apply_patch: false,
+                  task: false,
+                  edit: false,
+                  write: false,
+                  apply_patch: false,
                   "ctf-team-claim": true,
-                  "ctf-team-dispatch": false, "ctf-team-status": false, "ctf-team-collect": false,
-                  "ctf-team-cancel": false, "ctf-team-cancel-route": false, "ctf-team-close": false,
-                  "ctf-team-recover": false, "ctf-team-adopt": false, "ctf-team-repair": false,
-                  "ctf-team-mode": false, "ctf-team-facts": false, "ctf-team-intent": false,
+                  "ctf-team-dispatch": false,
+                  "ctf-team-status": false,
+                  "ctf-team-collect": false,
+                  "ctf-team-cancel": false,
+                  "ctf-team-cancel-route": false,
+                  "ctf-team-close": false,
+                  "ctf-team-recover": false,
+                  "ctf-team-adopt": false,
+                  "ctf-team-repair": false,
+                  "ctf-team-mode": false,
+                  "ctf-team-facts": false,
+                  "ctf-team-intent": false,
                 }),
                 parts: [
                   {
@@ -2640,12 +2932,23 @@ export function createTeamRuntimeCore(
               sessionToAbort = sessionID
               if (sessionID) job.sessionID = sessionID
               if (spawnError && !closed && ownsClaim && job.status === "queued") {
-                failTeamJob(current, job, { phase: "session_create", errorType: "child_session_startup", error: spawnError, retryable: true })
+                failTeamJob(current, job, {
+                  phase: "session_create",
+                  errorType: "child_session_startup",
+                  error: spawnError,
+                  retryable: true,
+                })
                 job.finishedAt = now()
                 clearIntentClaim(claimedIntent)
                 claimedIntent.status = claimedIntent.attempts < claimedIntent.maxAttempts ? "open" : "failed"
               } else {
-                finalizeFencedReservation(current, job, claimedIntent, `Claim startup lost ownership/cancellation fence (${current.status}/${job.status})`, auditEvents)
+                finalizeFencedReservation(
+                  current,
+                  job,
+                  claimedIntent,
+                  `Claim startup lost ownership/cancellation fence (${current.status}/${job.status})`,
+                  auditEvents,
+                )
               }
             } else {
               job.sessionID = sessionID
@@ -2662,10 +2965,22 @@ export function createTeamRuntimeCore(
             }
             refreshRunStatus(draft, current)
           })
-          if (sessionToAbort) await abortFencedSession(sessionToAbort, claim.runID, claim.jobID, "Claim child session cleanup")
+          if (sessionToAbort)
+            await abortFencedSession(sessionToAbort, claim.runID, claim.jobID, "Claim child session cleanup")
           await appendTeamEvents(auditEvents)
           const finalRun = findRun(await readTeamState(directory), claim.runID)
-          return JSON.stringify({ ok: !spawnError && !fenced, intentID: claim.intentID, jobID: claim.jobID, spawnError, fenced, run: finalRun ? { id: finalRun.id, status: finalRun.status, jobs: finalRun.jobs.length } : undefined }, null, 2)
+          return JSON.stringify(
+            {
+              ok: !spawnError && !fenced,
+              intentID: claim.intentID,
+              jobID: claim.jobID,
+              spawnError,
+              fenced,
+              run: finalRun ? { id: finalRun.id, status: finalRun.status, jobs: finalRun.jobs.length } : undefined,
+            },
+            null,
+            2,
+          )
         }
 
         // release | supersede
@@ -2723,19 +3038,21 @@ export function createTeamRuntimeCore(
         if (worker.retryPending || isTerminalJob(worker.status)) {
           throw new Error(
             `ctf-team-claim refused: worker ${worker.jobId} is no longer active (status=${worker.status}` +
-            `${worker.retryPending ? ", retry pending" : ""}).`,
+              `${worker.retryPending ? ", retry pending" : ""}).`,
           )
         }
         const timeoutMs = DEFAULT_JOB_TIMEOUT_MINUTES * 60_000
-        let reservation: {
-          runID: string
-          intentID: string
-          jobID: string
-          ownerToken: string
-          parentSessionID: string
-          agent: TeamAgent
-          routeId: TeamRouteId
-        } | undefined
+        let reservation:
+          | {
+              runID: string
+              intentID: string
+              jobID: string
+              ownerToken: string
+              parentSessionID: string
+              agent: TeamAgent
+              routeId: TeamRouteId
+            }
+          | undefined
         await updateTeamState(directory, (draft) => {
           const run = draft.runs.find((candidate) => candidate.id === worker.runId)
           if (!run) {
@@ -2748,9 +3065,7 @@ export function createTeamRuntimeCore(
             throw new Error("ctf-team-claim: calling worker no longer bound to its Team job.")
           }
           if (!isActiveJobStatus(caller.status) || caller.retryPending || isOrphanedJob(caller)) {
-            throw new Error(
-              `ctf-team-claim: caller job ${caller.id} is not active (status=${caller.status}).`,
-            )
+            throw new Error(`ctf-team-claim: caller job ${caller.id} is not active (status=${caller.status}).`)
           }
           // Capacity: caller counts as an active worker; spawning a new child
           // must keep total active jobs in this run under maxJobs.
@@ -2790,7 +3105,12 @@ export function createTeamRuntimeCore(
             agent: worker.agent as TeamAgent,
             routeId: target.routeId,
             intentId: target.id,
-            concurrency: target.concurrency === "speculative" ? "independent" : target.concurrency === "parallel" ? "independent" : "shared_state",
+            concurrency:
+              target.concurrency === "speculative"
+                ? "independent"
+                : target.concurrency === "parallel"
+                  ? "independent"
+                  : "shared_state",
             status: "queued",
             createdAt,
             updatedAt: createdAt,
@@ -2830,7 +3150,8 @@ export function createTeamRuntimeCore(
             }),
             `Create claim worker ${reservation.jobID}`,
           ) as { id?: unknown }
-          if (typeof created.id !== "string" || !created.id) throw new Error("session.create returned an invalid session id.")
+          if (typeof created.id !== "string" || !created.id)
+            throw new Error("session.create returned an invalid session id.")
           sessionID = created.id
           await activateAgentDefaults({
             client,
@@ -2869,7 +3190,9 @@ export function createTeamRuntimeCore(
                   type: "text",
                   text: workerPrompt(
                     findRun(await readTeamState(directory), reservation!.runID)!,
-                    findRun(await readTeamState(directory), reservation!.runID)!.jobs.find((j) => j.id === reservation!.jobID)!,
+                    findRun(await readTeamState(directory), reservation!.runID)!.jobs.find(
+                      (j) => j.id === reservation!.jobID,
+                    )!,
                     {
                       surface: options.runtimeVisibility?.surface ?? "ctf-expert",
                       pluginToolCount: options.runtimeVisibility?.pluginToolCount,
@@ -2905,7 +3228,12 @@ export function createTeamRuntimeCore(
           // job is still the queued reservation it created. A cancel that
           // landed while the child session was starting must win: otherwise a
           // live worker is committed into a closed run and never aborted.
-          if (job.status !== "queued" || run.status === "completed" || run.status === "cancelled" || run.status === "cancelling") {
+          if (
+            job.status !== "queued" ||
+            run.status === "completed" ||
+            run.status === "cancelled" ||
+            run.status === "cancelling"
+          ) {
             console.warn(
               `[team-runtime] ctf-team-claim fenced: run ${run.id} is ${run.status} / job ${job.id} is ${job.status}; skipping commit.`,
             )
@@ -2962,9 +3290,7 @@ export function createTeamRuntimeCore(
                 data: { agent: job.agent },
               }),
             )
-            auditEvents.push(
-              makeTeamEvent("intent_started", run, { intentId: intent.id, jobId: job.id }),
-            )
+            auditEvents.push(makeTeamEvent("intent_started", run, { intentId: intent.id, jobId: job.id }))
           }
           refreshRunStatus(draft, run)
         })

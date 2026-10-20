@@ -47,7 +47,6 @@ export const EXPERT_REQUIRED_TOOLS = [...EXPERT_TEAM_RUNTIME_TOOLS, ...EXPERT_CO
 /** Full expert surface including helpful support tools. */
 export const EXPERT_ALL_CONTRACT_TOOLS = [...EXPERT_REQUIRED_TOOLS, ...EXPERT_SUPPORT_TOOLS] as const
 
-
 export type ExpertReadinessCheck = {
   id: string
   ok: boolean
@@ -163,7 +162,11 @@ export function evaluateExpertReadiness(input: ExpertReadinessInput): ExpertRead
   }
 
   const blocked = !teamModeOk || missingTools.length > 0
-  const status: ExpertReadinessStatus = blocked ? "blocked" : missingSupportTools.length > 0 || !ragReady ? "degraded" : "ready"
+  const status: ExpertReadinessStatus = blocked
+    ? "blocked"
+    : missingSupportTools.length > 0 || !ragReady
+      ? "degraded"
+      : "ready"
   const reasons = [
     ...(!teamModeOk ? ["team_mode.enabled is false"] : []),
     ...(missingTools.length ? [`missing required tools: ${missingTools.join(", ")}`] : []),

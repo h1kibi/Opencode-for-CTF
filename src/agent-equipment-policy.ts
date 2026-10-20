@@ -244,7 +244,6 @@ const SCOUT_LIGHT: Record<string, true> = {
   "ctf-stego-probe": true,
 }
 
-
 /** Subagent name → lightweight tool set (category tools ∪ core tools). */
 export const SUBAGENT_LIGHT_TOOLS: Record<string, Set<string>> = {
   "ctf-web": new Set([...Object.keys(WEB_LIGHT), ...Object.keys(SUBAGENT_CORE_TOOLS)]),
@@ -322,7 +321,7 @@ export const AGENT_MCP_DEFAULTS: Record<string, string[]> = {
   "ctf-retro": [...COMMON_LIGHT_MCPS, "ctf_rag"],
 
   /** Researcher — curates the corpus behind ctf_rag retrieval. */
-  "researcher": [...COMMON_LIGHT_MCPS, "ctf_rag"],
+  researcher: [...COMMON_LIGHT_MCPS, "ctf_rag"],
 }
 
 /**
@@ -372,7 +371,7 @@ export function toolAllowedForSubagent(toolName: string, agentName: string, enab
   if (!isCtfSubagent(agentName)) return true
   const allowlist = SUBAGENT_LIGHT_TOOLS[agentName]
   if (!allowlist) return true
-  
+
   // The Team runtime injects this generated tool into worker sessions.
   if (toolName === "ctf-team-claim") return true
 

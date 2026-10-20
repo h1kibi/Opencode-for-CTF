@@ -406,7 +406,10 @@ export default tool({
         const frameSource = `${target}#${cand.source}:frame#${frameIndex}`
         const frameCandidateKeys = new Set<string>()
         const frameCandidates: CarvedFlagCandidate[] = []
-        for (const [view, text] of [["raw", body.toString("latin1")], ["decrypted", decrypted.toString("latin1")]] as const) {
+        for (const [view, text] of [
+          ["raw", body.toString("latin1")],
+          ["decrypted", decrypted.toString("latin1")],
+        ] as const) {
           for (const candidate of extractFlagCandidates(text, {
             source: frameSource,
             origin: `pcap-carve:${view}`,
@@ -560,10 +563,12 @@ export default tool({
         : ["- none"]),
       "flag_candidates:",
       ...(flagCandidates.length
-        ? flagCandidates.slice(0, 50).map(
-            (candidate) =>
-              `- frame#${candidate.frameIndex} value=${candidate.value} confidence=${candidate.confidence} kind=${candidate.kind} reason=${candidate.reason} source=${candidate.source} origin=${candidate.origin} context=${candidate.context}`,
-          )
+        ? flagCandidates
+            .slice(0, 50)
+            .map(
+              (candidate) =>
+                `- frame#${candidate.frameIndex} value=${candidate.value} confidence=${candidate.confidence} kind=${candidate.kind} reason=${candidate.reason} source=${candidate.source} origin=${candidate.origin} context=${candidate.context}`,
+            )
         : ["- none"]),
       "xor_byte_auto_hits:",
       ...(xorByteHits.length

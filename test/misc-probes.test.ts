@@ -16,10 +16,10 @@ describe("Misc dedicated probe contracts", () => {
     const mod = await import("../tools/misc/ctf-dns-probe.ts")
     const output = JSON.parse(
       String(
-        await mod.default.execute(
-          { domain: "not a domain", recordTypes: ["TXT"], jsonOnly: true },
-          { directory: root, worktree: root } as never,
-        ),
+        await mod.default.execute({ domain: "not a domain", recordTypes: ["TXT"], jsonOnly: true }, {
+          directory: root,
+          worktree: root,
+        } as never),
       ),
     )
     expect(output.schemaVersion).toBe("misc_dns.v1")
@@ -34,10 +34,10 @@ describe("Misc dedicated probe contracts", () => {
     const mod = await import("../tools/misc/ctf-dns-probe.ts")
     const output = JSON.parse(
       String(
-        await mod.default.execute(
-          { domain: "example.com", recordTypes: ["ANY", "AXFR"], jsonOnly: true },
-          { directory: root, worktree: root } as never,
-        ),
+        await mod.default.execute({ domain: "example.com", recordTypes: ["ANY", "AXFR"], jsonOnly: true }, {
+          directory: root,
+          worktree: root,
+        } as never),
       ),
     )
     expect(output.requestedTypes).toEqual([])
@@ -50,10 +50,7 @@ describe("Misc dedicated probe contracts", () => {
     roots.push(root)
     const mod = await import("../tools/misc/ctf-qr-probe.ts")
     await expect(
-      mod.default.execute(
-        { target: "../outside.png", jsonOnly: true },
-        { directory: root, worktree: root } as never,
-      ),
+      mod.default.execute({ target: "../outside.png", jsonOnly: true }, { directory: root, worktree: root } as never),
     ).rejects.toThrow(/inside the current workspace|escapes the workspace/)
   })
 })

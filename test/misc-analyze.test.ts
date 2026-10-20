@@ -89,7 +89,8 @@ describe("ctf-misc-analyze tool", () => {
     const out = await mod.default.execute(
       {
         target: ".",
-        description: "Custom protocol challenge: connect with nc 127.0.0.1 31337, read the banner, then send one line and receive a response.",
+        description:
+          "Custom protocol challenge: connect with nc 127.0.0.1 31337, read the banner, then send one line and receive a response.",
         jsonOnly: true,
       },
       { directory: root } as never,
@@ -107,7 +108,11 @@ describe("ctf-misc-analyze tool", () => {
     const mod = await import(MOD_PATH)
     const jailRoot = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-jail-"))
     const jailOut = await mod.default.execute(
-      { target: ".", description: "A Python jail blocks builtins and eval; find a bounded sandbox escape.", jsonOnly: true },
+      {
+        target: ".",
+        description: "A Python jail blocks builtins and eval; find a bounded sandbox escape.",
+        jsonOnly: true,
+      },
       { directory: jailRoot } as never,
     )
     const jailPayload = JSON.parse(String(jailOut))
@@ -116,7 +121,11 @@ describe("ctf-misc-analyze tool", () => {
 
     const mlRoot = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-ml-"))
     const mlOut = await mod.default.execute(
-      { target: ".", description: "Inspect a PyTorch model and tokenizer for an adversarial ML objective.", jsonOnly: true },
+      {
+        target: ".",
+        description: "Inspect a PyTorch model and tokenizer for an adversarial ML objective.",
+        jsonOnly: true,
+      },
       { directory: mlRoot } as never,
     )
     const mlPayload = JSON.parse(String(mlOut))
@@ -127,7 +136,12 @@ describe("ctf-misc-analyze tool", () => {
   it("covers the remaining bounded Misc shape routes from description/service clues", async () => {
     const mod = await import(MOD_PATH)
     const cases = [
-      ["programming_ppc", "programming challenge: solve 20 rounds of arithmetic", "nc 127.0.0.1 4000", "ctf-proto-probe"],
+      [
+        "programming_ppc",
+        "programming challenge: solve 20 rounds of arithmetic",
+        "nc 127.0.0.1 4000",
+        "ctf-proto-probe",
+      ],
       ["game_state_machine", "model the game state machine and legal moves", undefined, "ctf-python-inline"],
       ["osint", "OSINT geolocation challenge using a public source timeline", undefined, "ctf-file-triage"],
       ["dns", "Find the TXT record and inspect the nameserver clue", undefined, "ctf-dns-probe"],
@@ -137,7 +151,9 @@ describe("ctf-misc-analyze tool", () => {
 
     for (const [shape, description, service, nextTool] of cases) {
       const root = await mkdtemp(path.join(os.tmpdir(), `ctf-misc-analyze-${shape}-`))
-      const out = await mod.default.execute({ target: ".", description, service, jsonOnly: true }, { directory: root } as never)
+      const out = await mod.default.execute({ target: ".", description, service, jsonOnly: true }, {
+        directory: root,
+      } as never)
       const payload = JSON.parse(String(out))
       expect(payload.shape, shape).toBe(shape)
       expect(payload.nextTool, shape).toBe(nextTool)
@@ -152,7 +168,8 @@ describe("ctf-misc-analyze tool", () => {
     const out = await mod.default.execute(
       {
         target: ".",
-        description: "The supplied QR code contains a base64 payload; extract the QR first, then decode the recovered text.",
+        description:
+          "The supplied QR code contains a base64 payload; extract the QR first, then decode the recovered text.",
         jsonOnly: true,
       },
       { directory: root } as never,

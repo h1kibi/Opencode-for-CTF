@@ -109,7 +109,7 @@ function emitRenameScript(symbols: GoSymbol[], maxRenames = 200, format: "reva" 
     const sanitized = s.name.replace(/[^A-Za-z0-9_.]/g, "_").slice(0, 220)
     lines.push(`    ("${s.addr}", "${sanitized}"),`)
   }
-  lines.push("]:" )
+  lines.push("]:")
   lines.push("    addr = toAddr(addr_str)")
   lines.push("    fn = fm.getFunctionAt(addr)")
   lines.push("    if fn:")
@@ -117,7 +117,6 @@ function emitRenameScript(symbols: GoSymbol[], maxRenames = 200, format: "reva" 
   lines.push("        print(f'renamed {addr} -> {name}')")
   return lines.join("\n") + "\n"
 }
-
 
 export default tool({
   description:
@@ -160,9 +159,7 @@ export default tool({
     const backendArg = (args.backend ?? "auto").toLowerCase()
     const image = args.image || revImage("ubuntu22.04")
     const objdumpFiltersRaw = args.objdumpFunctions || "^main\\.|encode|decode|check|verify|flag"
-    const objdumpFilters = objdumpFiltersRaw
-      .split(",")
-      .map((s) => s.trim())
+    const objdumpFilters = objdumpFiltersRaw.split(",").map((s) => s.trim())
     const renameFormat = (["reva", "ghidra"].includes(args.renameFormat || "") ? args.renameFormat : "reva") as
       "reva" | "ghidra"
     const maxObjdumpFunctions = Math.max(1, Math.min(20, args.maxObjdumpFunctions ?? 6))

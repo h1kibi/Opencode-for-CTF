@@ -210,9 +210,7 @@ function workerMutationDecision(
     // so scanning broadly does not deny ordinary path/argv arguments.
     const code = scanned.map(({ value }) => value).join("\n")
     const codeTargetsProtectedState =
-      PROTECTED_PATH_PATTERN.test(code) ||
-      PROTECTED_ROOT_PATTERN.test(code) ||
-      PROTECTED_STATE_STEM_PATTERN.test(code)
+      PROTECTED_PATH_PATTERN.test(code) || PROTECTED_ROOT_PATTERN.test(code) || PROTECTED_STATE_STEM_PATTERN.test(code)
     if (codeTargetsProtectedState && SCRIPT_WRITE_PATTERN.test(code)) {
       return {
         allowed: false,

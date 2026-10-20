@@ -40,10 +40,9 @@ To prevent automatic upgrades to OpenCode 2.x, set the update mode to `notify`:
 ```jsonc
 // ~/.config/opencode/opencode.json
 {
-  "update": "notify"
+  "update": "notify",
 }
 ```
-
 
 ## How It Works
 
@@ -155,24 +154,24 @@ These agents are hidden from the user-facing Agent picker and slash-command
 surface. `ctf-expert` dispatches them internally when the selected route needs
 focused category expertise.
 
-| Agent              | Focus                                                          |
-| ------------------ | -------------------------------------------------------------- |
-| `ctf-web`          | HTTP services, source review, auth, SSRF, SQLi, XSS, deserialization |
-| `ctf-pwn`          | Binary exploitation, heap/stack/kernel, docker/WSL/remote drift |
-| `ctf-rev`          | ELF/PE, Android, VM/bytecode, packers, runtime and memory dump  |
-| `ctf-crypto`       | RSA, ECC, PRNG, encodings, custom ciphers, oracle attacks       |
-| `ctf-forensics`    | PCAP, disk/memory, stego, documents, malware triage, artifacts  |
-| `ctf-misc`         | Jails, OSINT, encodings, games/VMs, protocols, multimodal media |
-| `ctf-aisec`        | LLM agents, prompt injection, model artifacts, adversarial ML, RAG/tool boundaries |
+| Agent           | Focus                                                                              |
+| --------------- | ---------------------------------------------------------------------------------- |
+| `ctf-web`       | HTTP services, source review, auth, SSRF, SQLi, XSS, deserialization               |
+| `ctf-pwn`       | Binary exploitation, heap/stack/kernel, docker/WSL/remote drift                    |
+| `ctf-rev`       | ELF/PE, Android, VM/bytecode, packers, runtime and memory dump                     |
+| `ctf-crypto`    | RSA, ECC, PRNG, encodings, custom ciphers, oracle attacks                          |
+| `ctf-forensics` | PCAP, disk/memory, stego, documents, malware triage, artifacts                     |
+| `ctf-misc`      | Jails, OSINT, encodings, games/VMs, protocols, multimodal media                    |
+| `ctf-aisec`     | LLM agents, prompt injection, model artifacts, adversarial ML, RAG/tool boundaries |
 
 ### Meta Helpers
 
-| Agent              | Purpose                                                       |
-| ------------------ | ------------------------------------------------------------- |
-| `ctf-scout`        | Reconnaissance and hypothesis gathering                        |
-| `ctf-librarian`    | Knowledge and pattern-card lookup                              |
-| `ctf-oracle`       | Oracle calibration and verification planning                   |
-| `ctf-verifier`     | Evidence and flag verification checks                          |
+| Agent           | Purpose                                      |
+| --------------- | -------------------------------------------- |
+| `ctf-scout`     | Reconnaissance and hypothesis gathering      |
+| `ctf-librarian` | Knowledge and pattern-card lookup            |
+| `ctf-oracle`    | Oracle calibration and verification planning |
+| `ctf-verifier`  | Evidence and flag verification checks        |
 
 ## Tools and Environment
 
@@ -180,20 +179,20 @@ focused category expertise.
 
 Tools are grouped into packs so startup stays lightweight:
 
-| Pack              | Includes                                                      |
-| ----------------- | ------------------------------------------------------------- |
-| `core`            | Common triage, evidence, extract, script, route, and RAG tools |
-| `web`             | Web probing, source maps, blackbox maps, fingerprinting        |
-| `pwn`             | PWN analysis, docker harness, probes, exploit helpers          |
-| `rev`             | ELF/PE analysis, runtime dump, memory rebuild, reverse helpers |
-| `crypto`          | RSA/ECC/PRNG attack families, crypto analysis                  |
-| `forensics`       | PCAP carve/extract/probe, stego, media, image triage           |
-| `misc`            | Encoding, DNS, QR, jails, multimodal triage                    |
-| `aisec`           | AI/ML model inspection, inference probes, env checks           |
-| `java`            | Java/Spring analysis and source mapping                        |
-| `android`         | APK, DEX, JNI, dynamic Android analysis                        |
-| `godot`           | Godot pack and resource inspection                            |
-| `maintenance`     | Doctor, pack diagnostics, runtime self-test                    |
+| Pack          | Includes                                                       |
+| ------------- | -------------------------------------------------------------- |
+| `core`        | Common triage, evidence, extract, script, route, and RAG tools |
+| `web`         | Web probing, source maps, blackbox maps, fingerprinting        |
+| `pwn`         | PWN analysis, docker harness, probes, exploit helpers          |
+| `rev`         | ELF/PE analysis, runtime dump, memory rebuild, reverse helpers |
+| `crypto`      | RSA/ECC/PRNG attack families, crypto analysis                  |
+| `forensics`   | PCAP carve/extract/probe, stego, media, image triage           |
+| `misc`        | Encoding, DNS, QR, jails, multimodal triage                    |
+| `aisec`       | AI/ML model inspection, inference probes, env checks           |
+| `java`        | Java/Spring analysis and source mapping                        |
+| `android`     | APK, DEX, JNI, dynamic Android analysis                        |
+| `godot`       | Godot pack and resource inspection                             |
+| `maintenance` | Doctor, pack diagnostics, runtime self-test                    |
 
 The default registry includes:
 
@@ -212,7 +211,7 @@ Use this in `opencode-for-ctf.jsonc` for a full expert environment:
 
 ```jsonc
 {
-  "tool_packs": ["all"]
+  "tool_packs": ["all"],
 }
 ```
 
@@ -220,7 +219,7 @@ Or list explicit packs:
 
 ```jsonc
 {
-  "tool_packs": ["core", "web", "pwn", "rev", "crypto", "forensics", "misc", "java"]
+  "tool_packs": ["core", "web", "pwn", "rev", "crypto", "forensics", "misc", "java"],
 }
 ```
 
@@ -228,34 +227,34 @@ Restart OpenCode after changing tool packs.
 
 ### Runtime Prerequisites
 
-| Requirement     | Notes                                                            |
-| --------------- | ---------------------------------------------------------------- |
-| Node.js         | `>= 22.20.0`                                                     |
-| OpenCode        | Recent build with plugin, agents, commands, and skills support   |
-| Git             | Required for source checkout                                     |
-| Docker / WSL    | Optional but recommended for Pwn/Rev challenge runtimes          |
-| Python 3        | Optional for Crypto, Misc, and Forensics helper scripts          |
-| Ghidra          | Optional for deep reverse engineering                            |
-| GDB             | Optional for native debugging                                    |
+| Requirement     | Notes                                                             |
+| --------------- | ----------------------------------------------------------------- |
+| Node.js         | `>= 22.20.0`                                                      |
+| OpenCode        | Recent build with plugin, agents, commands, and skills support    |
+| Git             | Required for source checkout                                      |
+| Docker / WSL    | Optional but recommended for Pwn/Rev challenge runtimes           |
+| Python 3        | Optional for Crypto, Misc, and Forensics helper scripts           |
+| Ghidra          | Optional for deep reverse engineering                             |
+| GDB             | Optional for native debugging                                     |
 | x64dbg / WinDbg | Optional for Windows reverse engineering and interactive checkers |
 
 ### Environment Variables
 
-| Variable                                 | Purpose                                           |
-| ---------------------------------------- | ------------------------------------------------- |
-| `OPENCODE_CONFIG_DIR`                    | Override the OpenCode config directory            |
-| `OPENCODE_CTF_TOOL_PACKS`                | Override tool packs, e.g. `all` or `core,web,pwn` |
-| `OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS=1` | Install external skill snapshots during setup     |
-| `DEEPSEEK_API_KEY`                       | DeepSeek API key                                  |
-| `GITHUB_PAT`                             | GitHub personal access token, read-only use       |
-| `CTF_RAG_PYTHON`                         | RAG-Agent venv interpreter for the `ctf_rag` MCP  |
-| `CTF_RAG_ROOT`                           | RAG-Agent checkout root (used as `PYTHONPATH`)    |
+| Variable                                 | Purpose                                             |
+| ---------------------------------------- | --------------------------------------------------- |
+| `OPENCODE_CONFIG_DIR`                    | Override the OpenCode config directory              |
+| `OPENCODE_CTF_TOOL_PACKS`                | Override tool packs, e.g. `all` or `core,web,pwn`   |
+| `OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS=1` | Install external skill snapshots during setup       |
+| `DEEPSEEK_API_KEY`                       | DeepSeek API key                                    |
+| `GITHUB_PAT`                             | GitHub personal access token, read-only use         |
+| `CTF_RAG_PYTHON`                         | RAG-Agent venv interpreter for the `ctf_rag` MCP    |
+| `CTF_RAG_ROOT`                           | RAG-Agent checkout root (used as `PYTHONPATH`)      |
 | `CTF_RAG_KB_ROOT`                        | Knowledge-base root holding `cybersec/vector_store` |
-| `GHIDRA_INSTALL_DIR`                     | Ghidra install directory                          |
-| `JINA_API_KEY`                           | Jina AI API key                                   |
-| `BRAVE_API_KEY`                          | Brave Search API key                              |
-| `CTF_ALLOWED_ROOTS`                      | Extra allowed filesystem roots                    |
-| `CTF_ALLOWED_HOSTS`                      | Extra allowed private or lab hosts                |
+| `GHIDRA_INSTALL_DIR`                     | Ghidra install directory                            |
+| `JINA_API_KEY`                           | Jina AI API key                                     |
+| `BRAVE_API_KEY`                          | Brave Search API key                                |
+| `CTF_ALLOWED_ROOTS`                      | Extra allowed filesystem roots                      |
+| `CTF_ALLOWED_HOSTS`                      | Extra allowed private or lab hosts                  |
 
 See `.env.example` for the complete template. Do not commit real secrets.
 
@@ -267,16 +266,16 @@ after restarts.
 
 Core commands:
 
-| Command                     | Purpose                                        |
-| --------------------------- | ---------------------------------------------- |
-| `ctf-team-dispatch`         | Start a worker wave with route IDs             |
-| `ctf-team-status`           | Inspect active runs and jobs                   |
-| `ctf-team-collect`          | Collect worker results                         |
-| `ctf-team-cancel`           | Cancel active workers or waves                 |
-| `ctf-team-cancel-route`     | Cancel all workers for one route               |
-| `ctf-team-close`            | Close a completed run                          |
-| `ctf-team-recover`          | Recover runs after restart                     |
-| `ctf-team-adopt`            | Adopt an orphaned run explicitly               |
+| Command                 | Purpose                            |
+| ----------------------- | ---------------------------------- |
+| `ctf-team-dispatch`     | Start a worker wave with route IDs |
+| `ctf-team-status`       | Inspect active runs and jobs       |
+| `ctf-team-collect`      | Collect worker results             |
+| `ctf-team-cancel`       | Cancel active workers or waves     |
+| `ctf-team-cancel-route` | Cancel all workers for one route   |
+| `ctf-team-close`        | Close a completed run              |
+| `ctf-team-recover`      | Recover runs after restart         |
+| `ctf-team-adopt`        | Adopt an orphaned run explicitly   |
 
 Concurrency rules:
 
@@ -293,8 +292,8 @@ Example plugin config:
 {
   "team_mode": {
     "enabled": true,
-    "max_workers": 8
-  }
+    "max_workers": 8,
+  },
 }
 ```
 
@@ -348,21 +347,21 @@ The repository provides:
 
 Common external MCP integrations:
 
-| MCP name        | Backend                                             |
-| --------------- | --------------------------------------------------- |
-| `browser`       | `@playwright/mcp`                                   |
-| `wireshark-mcp` | Bundled WireMCP                                     |
+| MCP name        | Backend                                                                              |
+| --------------- | ------------------------------------------------------------------------------------ |
+| `browser`       | `@playwright/mcp`                                                                    |
+| `wireshark-mcp` | Bundled WireMCP                                                                      |
 | `ctf_rag`       | RAG-Agent `ctf_rag`, activated at runtime from the plugin registry; ctf-fast default |
-| `gdb-mcp`       | `{env:GDB_MCP_COMMAND}`                             |
-| `mysql-mcp`     | `{env:MYSQL_MCP_COMMAND}` plus `MYSQL_*`            |
-| `x64dbg-mcp`    | `{env:X64DBG_MCP_COMMAND}` plus `X64DBG_PATH`       |
-| `ssh-mcp`       | `{env:SSH_MCP_COMMAND}` plus `SSH_MCP_*`            |
-| `cyberchef-mcp` | `{env:CYBERCHEF_MCP_COMMAND}`, disabled by default  |
-| `ctfd-mcp`      | `npx -y ctfd-mcp-server`, disabled by default       |
+| `gdb-mcp`       | `{env:GDB_MCP_COMMAND}`                                                              |
+| `mysql-mcp`     | `{env:MYSQL_MCP_COMMAND}` plus `MYSQL_*`                                             |
+| `x64dbg-mcp`    | `{env:X64DBG_MCP_COMMAND}` plus `X64DBG_PATH`                                        |
+| `ssh-mcp`       | `{env:SSH_MCP_COMMAND}` plus `SSH_MCP_*`                                             |
+| `cyberchef-mcp` | `{env:CYBERCHEF_MCP_COMMAND}`, disabled by default                                   |
+| `ctfd-mcp`      | `npx -y ctfd-mcp-server`, disabled by default                                        |
 
 Add custom MCP servers under `mcp` in `opencode.jsonc`, then restart OpenCode.
 
-> **Windows path hazard:** the host expands `{env:VAR}` into the config *text*
+> **Windows path hazard:** the host expands `{env:VAR}` into the config _text_
 > before parsing it. A placeholder that resolves to a Windows path
 > (`C:\Tools\...`) therefore injects unescaped backslashes and makes the whole
 > config unparseable, which surfaces as `Failed to load sessions` /
@@ -379,9 +378,9 @@ Example:
     "browser": {
       "type": "local",
       "command": ["npx", "-y", "@playwright/mcp@latest"],
-      "enabled": false
-    }
-  }
+      "enabled": false,
+    },
+  },
 }
 ```
 
@@ -416,10 +415,10 @@ The installer:
 
 Default config directories:
 
-| Platform      | Typical location                  |
-| ------------- | --------------------------------- |
-| Linux / macOS | `~/.config/opencode`              |
-| Windows       | `%USERPROFILE%\.config\opencode`  |
+| Platform      | Typical location                 |
+| ------------- | -------------------------------- |
+| Linux / macOS | `~/.config/opencode`             |
+| Windows       | `%USERPROFILE%\.config\opencode` |
 
 Override with `OPENCODE_CONFIG_DIR`.
 
@@ -439,13 +438,13 @@ Then add this to `~/.config/opencode/opencode.jsonc`:
   "plugin": ["file:/absolute/path/to/Opencode-for-CTF/dist/plugin/index.js"],
   "default_agent": "ctf-fast",
   "skills": {
-    "paths": ["/absolute/path/to/Opencode-for-CTF/skills"]
+    "paths": ["/absolute/path/to/Opencode-for-CTF/skills"],
   },
   "instructions": [
     "/absolute/path/to/Opencode-for-CTF/rules/en-solve-rules.md",
     "/absolute/path/to/Opencode-for-CTF/rules/zh-rules.md",
-    "/absolute/path/to/Opencode-for-CTF/rules/agent-equipment.md"
-  ]
+    "/absolute/path/to/Opencode-for-CTF/rules/agent-equipment.md",
+  ],
 }
 ```
 
@@ -454,13 +453,13 @@ manifest-based protection of user-edited files.
 
 ## Commands
 
-| Command        | Purpose                                   |
-| -------------- | ----------------------------------------- |
-| `/ctf`         | Auto-route and solve a challenge          |
-| `/ctf-fast`    | Force the lightweight fast lane           |
-| `/ctf-expert`  | Force the evidence-driven expert lane     |
-| `/resume`      | Resume from an evidence branch            |
-| `/help`        | Show the command surface                  |
+| Command       | Purpose                               |
+| ------------- | ------------------------------------- |
+| `/ctf`        | Auto-route and solve a challenge      |
+| `/ctf-fast`   | Force the lightweight fast lane       |
+| `/ctf-expert` | Force the evidence-driven expert lane |
+| `/resume`     | Resume from an evidence branch        |
+| `/help`       | Show the command surface              |
 
 ## User Configuration
 
@@ -469,17 +468,17 @@ Copy `opencode-for-ctf.example.jsonc` to the project root or
 
 Common keys:
 
-| Key                          | Meaning                                            |
-| ---------------------------- | -------------------------------------------------- |
-| `default_mode`               | `auto`, `fast`, or `expert` for `/ctf`             |
-| `disabled_hooks`             | Disable individual runtime hooks                   |
-| `hashline.enabled`           | Enable or disable hashed read/edit tags            |
-| `continuation.enabled`       | Enable or disable continuation/compaction hooks    |
-| `team_mode.enabled`          | Enable team-mode worker orchestration              |
-| `team_mode.max_workers`      | Cap concurrent workers                             |
-| `tool_packs`                 | Tool packs registered at startup                   |
-| `expert_tool_packs`          | Extra packs merged for expert lanes                |
-| `external_skills`            | Whether external skill paths are published         |
+| Key                     | Meaning                                         |
+| ----------------------- | ----------------------------------------------- |
+| `default_mode`          | `auto`, `fast`, or `expert` for `/ctf`          |
+| `disabled_hooks`        | Disable individual runtime hooks                |
+| `hashline.enabled`      | Enable or disable hashed read/edit tags         |
+| `continuation.enabled`  | Enable or disable continuation/compaction hooks |
+| `team_mode.enabled`     | Enable team-mode worker orchestration           |
+| `team_mode.max_workers` | Cap concurrent workers                          |
+| `tool_packs`            | Tool packs registered at startup                |
+| `expert_tool_packs`     | Extra packs merged for expert lanes             |
+| `external_skills`       | Whether external skill paths are published      |
 
 ## Repository Layout
 

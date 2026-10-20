@@ -103,7 +103,10 @@ function parsePacket(value: unknown): TeamWorkerPacket | undefined {
 
   if (typeof value.status !== "string" || !RESULT_STATUSES[value.status]) return undefined
   if (value.summary !== undefined && !boundedString(value.summary, MAX_STATEMENT_CHARS)) return undefined
-  if (value.factIds !== undefined && (!Array.isArray(value.factIds) || value.factIds.some((id) => !boundedString(id, 256)))) {
+  if (
+    value.factIds !== undefined &&
+    (!Array.isArray(value.factIds) || value.factIds.some((id) => !boundedString(id, 256)))
+  ) {
     return undefined
   }
   if (value.artifacts !== undefined && (!Array.isArray(value.artifacts) || value.artifacts.length > MAX_ARTIFACTS)) {
@@ -125,9 +128,8 @@ function parsePacket(value: unknown): TeamWorkerPacket | undefined {
 /** Extract valid worker packets from fenced JSON without trusting arbitrary prose. */
 export function parseWorkerPackets(text: string): TeamWorkerPacket[] {
   if (typeof text !== "string" || text.length === 0) return []
-  const source = text.length <= MAX_PACKET_CHARS
-    ? text
-    : `${text.slice(0, PACKET_HEAD_CHARS)}\n${text.slice(-PACKET_TAIL_CHARS)}`
+  const source =
+    text.length <= MAX_PACKET_CHARS ? text : `${text.slice(0, PACKET_HEAD_CHARS)}\n${text.slice(-PACKET_TAIL_CHARS)}`
   const packets: TeamWorkerPacket[] = []
   const blockPattern = /```(?:json)?\s*([\s\S]*?)\s*```/gi
   for (const match of source.matchAll(blockPattern)) {

@@ -25,7 +25,8 @@ describe("ctf-misc-env-check tool", () => {
       expect(["ready", "degraded", "blocked"]).toContain(capability.status)
       expect(Array.isArray(capability.checks)).toBe(true)
       if (capability.id === "dns") expect(capability.fallbackGroups).toContainEqual(["python:dns", "dig", "nslookup"])
-      if (capability.id === "qr") expect(capability.fallbackGroups).toContainEqual(["python:opencv", "python:pyzbar", "zbarimg"])
+      if (capability.id === "qr")
+        expect(capability.fallbackGroups).toContainEqual(["python:opencv", "python:pyzbar", "zbarimg"])
       for (const check of capability.checks) {
         expect(typeof check.ok).toBe("boolean")
         expect(typeof check.required).toBe("boolean")

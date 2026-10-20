@@ -22,9 +22,7 @@ export type NyuCommandSpec = {
   completionFile?: string
 }
 
-export type NyuSolverSpec =
-  | NyuCommandSpec
-  | ((workspaceDir: string) => NyuCommandSpec | Promise<NyuCommandSpec>)
+export type NyuSolverSpec = NyuCommandSpec | ((workspaceDir: string) => NyuCommandSpec | Promise<NyuCommandSpec>)
 
 export type NyuCommandResult = {
   exitCode: number | null
@@ -166,17 +164,18 @@ export async function runNyuCommand(spec: NyuCommandSpec, timeoutMs = DEFAULT_TI
       ? setInterval(() => {
           if (checkingCompletion || settled) return
           checkingCompletion = true
-          void readCompletionSnapshot(completionPath).then((current) => {
-            if (!current || !current.content.trim()) return
-            const changed =
-              !baseline || current.content !== baseline.content || current.mtimeMs > baseline.mtimeMs
-            if (changed && !completionFileDetected) {
-              completionFileDetected = true
-              child.kill()
-            }
-          }).finally(() => {
-            checkingCompletion = false
-          })
+          void readCompletionSnapshot(completionPath)
+            .then((current) => {
+              if (!current || !current.content.trim()) return
+              const changed = !baseline || current.content !== baseline.content || current.mtimeMs > baseline.mtimeMs
+              if (changed && !completionFileDetected) {
+                completionFileDetected = true
+                child.kill()
+              }
+            })
+            .finally(() => {
+              checkingCompletion = false
+            })
         }, 100)
       : undefined
     const timer = setTimeout(() => {
@@ -330,11 +329,14 @@ export async function runNyuBenchmark(options: RunNyuBenchmarkOptions): Promise<
       : undefined
     const completionOutput =
       solverCompletionPath && solverResult.completionFileDetected
-        ? (await readCompletionSnapshot(solverCompletionPath))?.content ?? ""
+        ? ((await readCompletionSnapshot(solverCompletionPath))?.content ?? "")
         : ""
     const candidates = [
       ...new Set(
-        extractCandidateFlags(`${solverResult.stdout}\n${solverResult.stderr}\n${completionOutput}`, options.flagPattern),
+        extractCandidateFlags(
+          `${solverResult.stdout}\n${solverResult.stderr}\n${completionOutput}`,
+          options.flagPattern,
+        ),
       ),
     ]
     const oracle = verifyNyuCandidates(challenge, candidates)
@@ -506,4 +508,3 @@ export async function writeNyuBenchmarkResult(reportDir: string, result: NyuBenc
   await writeFile(path, `${JSON.stringify(result, null, 2)}\n`, "utf8")
   return path
 }
-

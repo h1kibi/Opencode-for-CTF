@@ -543,4 +543,3 @@ export default tool({
     ].join("\n")
   },
 })
-

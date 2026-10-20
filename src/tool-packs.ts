@@ -66,7 +66,6 @@ const TOOL_PACK_ALIASES: Record<string, ToolPackId> = {
 /** Default packs registered without user config (main CTF categories, not rare specialists). */
 export const DEFAULT_TOOL_PACKS: ToolPackId[] = ["core", "web", "pwn", "rev", "crypto", "forensics", "misc", "aisec"]
 
-
 /** Always-on tools regardless of category. */
 const CORE_EXACT = new Set([
   "archive-safe-extract",

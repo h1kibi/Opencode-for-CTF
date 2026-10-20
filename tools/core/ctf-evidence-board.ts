@@ -241,8 +241,10 @@ function defaultPaths(
   }
   const boardParent = caseParent(explicitBoard)
   const mdParent = caseParent(explicitMd)
-  if ((explicitBoard && !boardParent) !== (explicitMd && !mdParent)) throw new Error("custom board and evidenceMd paths must be paired")
-  if (boardParent && mdParent && boardParent !== mdParent) throw new Error("board and evidenceMd must belong to the same evidence case directory")
+  if ((explicitBoard && !boardParent) !== (explicitMd && !mdParent))
+    throw new Error("custom board and evidenceMd paths must be paired")
+  if (boardParent && mdParent && boardParent !== mdParent)
+    throw new Error("board and evidenceMd must belong to the same evidence case directory")
   const explicitCase = boardParent || mdParent
   const currentSlug = useCurrent && !explicitCase ? readCurrentEvidenceSlug(contextDir) : null
   const slug = explicitCase || currentSlug || buildEvidenceSlug(category || "misc", challengeName)
@@ -303,7 +305,9 @@ function stateEmoji(state: RouteState): string {
 
 function renderEvidenceMd(board: EvidenceBoard): string {
   const facts = board.entries.filter((entry) => entry.status === "confirmed")
-  const clues = board.entries.filter((entry) => entry.type === "clue" || entry.type === "hypothesis" || entry.type === "fact")
+  const clues = board.entries.filter(
+    (entry) => entry.type === "clue" || entry.type === "hypothesis" || entry.type === "fact",
+  )
   const active = board.routes.filter((r) => r.state !== "dead")
   const dead = board.routes.filter((r) => r.state === "dead")
 
@@ -320,8 +324,8 @@ function renderEvidenceMd(board: EvidenceBoard): string {
     `- **flag_format**: ${escapeMarkdown(board.challenge.flagFormat || "(unknown)")}`,
     `- **phase**: ${escapeMarkdown(board.phase)}`,
     `- **round**: ${board.round}`,
-    `- **strategy**: ${escapeMarkdown(board.strategy || "(none)")}`, 
-    `- **updated**: ${escapeMarkdown(board.updatedAt)}`, 
+    `- **strategy**: ${escapeMarkdown(board.strategy || "(none)")}`,
+    `- **updated**: ${escapeMarkdown(board.updatedAt)}`,
     "",
     "## Known Facts",
     "",
@@ -330,14 +334,17 @@ function renderEvidenceMd(board: EvidenceBoard): string {
   if (!facts.length) lines.push("- (none yet)")
   else {
     for (const fact of facts) {
-      lines.push(`- [${escapeMarkdown(fact.confidence)}] ${escapeMarkdown(fact.finding)}${fact.evidence ? ` - ${escapeMarkdown(fact.evidence)}` : ""}`)
+      lines.push(
+        `- [${escapeMarkdown(fact.confidence)}] ${escapeMarkdown(fact.finding)}${fact.evidence ? ` - ${escapeMarkdown(fact.evidence)}` : ""}`,
+      )
     }
   }
 
   lines.push("", "## Clues (unverified)", "")
   if (!clues.length) lines.push("- (none yet)")
   else {
-    for (const clue of clues) lines.push(`- [${escapeMarkdown(clue.agent)}/w${clue.wave}] ${escapeMarkdown(clue.finding)}`)
+    for (const clue of clues)
+      lines.push(`- [${escapeMarkdown(clue.agent)}/w${clue.wave}] ${escapeMarkdown(clue.finding)}`)
   }
 
   lines.push("", "## Routes (active <= 3)", "", "States: untested | blocked (not dead) | dead | live", "")
@@ -347,7 +354,9 @@ function renderEvidenceMd(board: EvidenceBoard): string {
     lines.push("_No routes yet. After recon, set exactly 3 routes with `set-routes`._")
   } else {
     for (const route of showRoutes) {
-      lines.push(`### ${escapeMarkdown(route.id)}: ${escapeMarkdown(route.name)} [${stateEmoji(route.state)} ${route.state}]`)
+      lines.push(
+        `### ${escapeMarkdown(route.id)}: ${escapeMarkdown(route.name)} [${stateEmoji(route.state)} ${route.state}]`,
+      )
       lines.push(`- **why_now**: ${escapeMarkdown(route.whyNow || "-")}`)
       lines.push(`- **evidence**: ${escapeMarkdown(route.evidence || "-")}`)
       lines.push(`- **verify**: ${escapeMarkdown(route.verifyMethod || "-")}`)
@@ -362,7 +371,10 @@ function renderEvidenceMd(board: EvidenceBoard): string {
   lines.push("## Dead Ends (confirmed)", "")
   if (!dead.length && !board.blockedPaths.length) lines.push("- (none)")
   else {
-    for (const route of dead) lines.push(`- **${escapeMarkdown(route.id)} ${escapeMarkdown(route.name)}**: attempts=${route.attempts}; ${route.blockers.map(escapeMarkdown).join("; ") || "confirmed dead"}`)
+    for (const route of dead)
+      lines.push(
+        `- **${escapeMarkdown(route.id)} ${escapeMarkdown(route.name)}**: attempts=${route.attempts}; ${route.blockers.map(escapeMarkdown).join("; ") || "confirmed dead"}`,
+      )
     for (const blockedPath of board.blockedPaths) lines.push(`- ${escapeMarkdown(blockedPath)}`)
   }
 
@@ -371,7 +383,9 @@ function renderEvidenceMd(board: EvidenceBoard): string {
   if (!lessons.length) lines.push("- (none)")
   else {
     for (const entry of lessons.slice(-20)) {
-      lines.push(`- ${escapeMarkdown(entry.timestamp.slice(0, 19))} [${escapeMarkdown(entry.agent)}] ${escapeMarkdown(entry.finding)}`)
+      lines.push(
+        `- ${escapeMarkdown(entry.timestamp.slice(0, 19))} [${escapeMarkdown(entry.agent)}] ${escapeMarkdown(entry.finding)}`,
+      )
     }
   }
 
@@ -420,7 +434,12 @@ async function atomicWriteText(file: string, content: string) {
  * ledgers. A missing/unreadable Team state renders nothing rather than failing
  * the evidence board.
  */
-async function loadTeamProjection(worktree: string, directory: string, caseId: string, runId?: string): Promise<string[]> {
+async function loadTeamProjection(
+  worktree: string,
+  directory: string,
+  caseId: string,
+  runId?: string,
+): Promise<string[]> {
   try {
     const state = await readTeamState(directory)
     const matching = state.runs.filter((candidate) => candidate.caseId === caseId)
@@ -437,15 +456,19 @@ async function loadTeamProjection(worktree: string, directory: string, caseId: s
       )
       lines.push(`  - ${statement}`)
       const derived = (run.intents ?? []).filter((intent) => intent.basedOnFactIds?.includes(fact.id))
-      if (derived.length) lines.push(`  - derived intents: ${derived.map((intent) => escapeMarkdown(intent.id)).join(", ")}`)
+      if (derived.length)
+        lines.push(`  - derived intents: ${derived.map((intent) => escapeMarkdown(intent.id)).join(", ")}`)
     }
     const intents = run.intents ?? []
     if (intents.length) {
       lines.push("", "### Intents", "")
       for (const intent of intents) {
-        lines.push(`- [${escapeMarkdown(intent.id)}] ${escapeMarkdown(intent.status)} route=${escapeMarkdown(intent.routeId)}${intent.claimedBy ? ` worker=${escapeMarkdown(intent.claimedBy)}` : ""}`)
+        lines.push(
+          `- [${escapeMarkdown(intent.id)}] ${escapeMarkdown(intent.status)} route=${escapeMarkdown(intent.routeId)}${intent.claimedBy ? ` worker=${escapeMarkdown(intent.claimedBy)}` : ""}`,
+        )
         lines.push(`  - objective: ${escapeMarkdown(intent.objective.slice(0, 8_000))}`)
-        if (intent.basedOnFactIds?.length) lines.push(`  - based on: ${intent.basedOnFactIds.map(escapeMarkdown).join(", ")}`)
+        if (intent.basedOnFactIds?.length)
+          lines.push(`  - based on: ${intent.basedOnFactIds.map(escapeMarkdown).join(", ")}`)
         if (intent.stopCondition) lines.push(`  - stop: ${escapeMarkdown(intent.stopCondition.slice(0, 2_000))}`)
       }
     }
@@ -455,7 +478,15 @@ async function loadTeamProjection(worktree: string, directory: string, caseId: s
   }
 }
 
-async function persist(board: EvidenceBoard, boardPath: string, mdPath: string, worktree: string, directory: string, caseId: string, runId?: string) {
+async function persist(
+  board: EvidenceBoard,
+  boardPath: string,
+  mdPath: string,
+  worktree: string,
+  directory: string,
+  caseId: string,
+  runId?: string,
+) {
   await withFileLock(boardPath, async (lease) => {
     const teamProjection = await loadTeamProjection(worktree, directory, caseId, runId)
     board.updatedAt = now()
@@ -474,13 +505,34 @@ async function persist(board: EvidenceBoard, boardPath: string, mdPath: string, 
       state.challengeName = board.challenge.name
       state.target = board.challenge.target
       state.flagFormat = board.challenge.flagFormat || undefined
-      state.routes = board.routes.map((route) => ({ id: route.id, name: route.name, state: route.state, attempts: route.attempts, nextProbe: route.nextProbe || undefined, updatedAt: route.updatedAt }))
-      state.facts = board.entries.filter((entry) => entry.status === "confirmed" || (entry.type === "fact" && entry.status !== "in_progress")).map((entry) => ({ id: entry.id, kind: entry.status === "confirmed" ? "verified_fact" : "candidate", claim: entry.finding, artifact: entry.evidence || undefined, producedBy: entry.agent, createdAt: entry.timestamp }))
+      state.routes = board.routes.map((route) => ({
+        id: route.id,
+        name: route.name,
+        state: route.state,
+        attempts: route.attempts,
+        nextProbe: route.nextProbe || undefined,
+        updatedAt: route.updatedAt,
+      }))
+      state.facts = board.entries
+        .filter((entry) => entry.status === "confirmed" || (entry.type === "fact" && entry.status !== "in_progress"))
+        .map((entry) => ({
+          id: entry.id,
+          kind: entry.status === "confirmed" ? "verified_fact" : "candidate",
+          claim: entry.finding,
+          artifact: entry.evidence || undefined,
+          producedBy: entry.agent,
+          createdAt: entry.timestamp,
+        }))
       state.blockedPaths = [...new Set(board.blockedPaths)]
       return state
     })
     await lease.assertOwned()
-    await appendCaseEvent(worktree, caseId, "evidence-board.synced", { phase: board.phase, round: board.round, routes: board.routes.length, entries: board.entries.length })
+    await appendCaseEvent(worktree, caseId, "evidence-board.synced", {
+      phase: board.phase,
+      round: board.round,
+      routes: board.routes.length,
+      entries: board.entries.length,
+    })
   })
 }
 
@@ -561,7 +613,10 @@ export default tool({
       .string()
       .optional()
       .describe('Set to "true" to approve route -> live when an independent oracle already accepted the flag.'),
-    probeResultJson: tool.schema.string().optional().describe("JSON result emitted by a CTF web probe; records budgets, hashes, observations, and route state."),
+    probeResultJson: tool.schema
+      .string()
+      .optional()
+      .describe("JSON result emitted by a CTF web probe; records budgets, hashes, observations, and route state."),
   },
   async execute(args, context) {
     const cwd = context?.worktree ?? context?.directory ?? process.cwd()
@@ -593,7 +648,14 @@ export default tool({
           const category = args.category
           bootstrapEvidenceDir(cwd, slug)
           writeCurrentEvidenceSlug(cwd, slug)
-          const board = createBoard(challengeName, category, args.target, args.strategy || "", args.flagFormat || "", path.basename(mdPath))
+          const board = createBoard(
+            challengeName,
+            category,
+            args.target,
+            args.strategy || "",
+            args.flagFormat || "",
+            path.basename(mdPath),
+          )
           if (args.phase) board.phase = args.phase
           await persist(board, boardPath, mdPath, cwd, boardDirectory, slug)
           return [
@@ -625,7 +687,8 @@ export default tool({
             followUp: args.followUp || "Expert review required",
           }
           const teamBoard = await loadBoard(boardPath)
-          if (teamBoard.entries.some((entry) => entry.id === teamFact.id)) return `Fact already recorded: ${teamFact.id}`
+          if (teamBoard.entries.some((entry) => entry.id === teamFact.id))
+            return `Fact already recorded: ${teamFact.id}`
           teamBoard.entries.push(teamFact)
           await persist(teamBoard, boardPath, mdPath, cwd, boardDirectory, slug)
           return `${entrySummary(teamFact)}\n   Pending Expert confirmation`
@@ -664,14 +727,17 @@ export default tool({
           let probe: Record<string, unknown>
           try {
             const parsed = JSON.parse(args.probeResultJson)
-            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return "ERROR: probeResultJson must be a JSON object"
+            if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+              return "ERROR: probeResultJson must be a JSON object"
             probe = parsed as Record<string, unknown>
           } catch {
             return "ERROR: invalid probeResultJson"
           }
           const board = await loadBoard(boardPath)
           const toolName = String(probe.tool || "ctf-probe")
-          const route = args.routeId ? board.routes.find((item) => item.id === args.routeId || item.name === args.routeId) : undefined
+          const route = args.routeId
+            ? board.routes.find((item) => item.id === args.routeId || item.name === args.routeId)
+            : undefined
           const routeState = String(probe.route_state || probe.routeState || "")
           const observations = Array.isArray(probe.observations) ? probe.observations : []
           const finding = args.finding || `${toolName} probe${route ? ` on ${route.id}` : ""}`
@@ -680,7 +746,11 @@ export default tool({
             requests: probe.requests,
             state_changing_requests: probe.state_changing_requests,
             route_state: routeState,
-            response_hashes: observations.map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>).responseHash : undefined)).filter(Boolean),
+            response_hashes: observations
+              .map((item) =>
+                item && typeof item === "object" ? (item as Record<string, unknown>).responseHash : undefined,
+              )
+              .filter(Boolean),
             stop_reason: probe.stop_reason,
             confirmed_primitives: probe.confirmed_primitives,
           })
@@ -692,11 +762,13 @@ export default tool({
             finding,
             type: (args.type as EvidenceType) || "fact",
             category: args.category || board.challenge.category,
-            confidence: (args.confidence as EvidenceEntry["confidence"]) || (probe.confirmed_primitives ? "high" : "medium"),
+            confidence:
+              (args.confidence as EvidenceEntry["confidence"]) || (probe.confirmed_primitives ? "high" : "medium"),
             status: (args.status as EvidenceStatus) || "confirmed",
             flagPathDistance: args.flagPathDistance ?? 3,
             evidence,
-            followUp: args.followUp || String(probe.next_probe || "review probe evidence and choose one bounded next probe"),
+            followUp:
+              args.followUp || String(probe.next_probe || "review probe evidence and choose one bounded next probe"),
           })
           if (route && ["blocked", "live", "dead"].includes(routeState)) {
             route.state = routeState as RouteState
@@ -978,7 +1050,7 @@ export default tool({
             route.attempts = Math.max(route.attempts, MIN_DEAD_ATTEMPTS)
             if (args.blockReason) route.blockers.push(args.blockReason)
             board.blockedPaths.push(`${route.id}: ${args.blockReason || "closed"}`)
-          await persist(board, boardPath, mdPath, cwd, boardDirectory, slug)
+            await persist(board, boardPath, mdPath, cwd, boardDirectory, slug)
             return `${route.id} marked dead`
           }
           const board = await loadBoard(boardPath)

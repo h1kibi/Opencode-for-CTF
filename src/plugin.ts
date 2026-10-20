@@ -96,9 +96,7 @@ const RuntimePlugin: Plugin = async (input, _options) => {
     initializeTeamRuntime(input.client, input.directory, input.worktree, {
       maxWorkers: pluginConfig.team_mode.max_workers,
       maxJobAttempts: pluginConfig.team_mode.max_job_attempts,
-    }).catch((err) =>
-      console.warn("[plugin] team-runtime init (non-fatal):", err),
-    )
+    }).catch((err) => console.warn("[plugin] team-runtime init (non-fatal):", err))
   }
   const registeredToolNames = Object.keys(tools)
   const toolRegistrySummary = summarizeRuntimeToolRegistry({
@@ -156,8 +154,6 @@ const RuntimePlugin: Plugin = async (input, _options) => {
       sessionNote,
     })
   }
-
-
 
   function teamEventsEnabled() {
     return pluginConfig.team_mode.enabled && isHookEnabled(pluginConfig, "team_events")

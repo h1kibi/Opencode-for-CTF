@@ -1,6 +1,6 @@
 import { activateSkillMcps } from "../mcp/mcp-activation-coordinator.ts"
 import { recordMcpActivationIssue } from "../dynamic-mcp-manager.ts"
- import { bindingsForSkill } from "../skill-mcp-registry.ts"
+import { bindingsForSkill } from "../skill-mcp-registry.ts"
 import {
   activateAgentDefaultsOnce,
   clearFileCache,
@@ -164,7 +164,6 @@ export async function handleToolExecuteBefore(args: {
     }
   }
 
-
   if (toolName === "skill") {
     const skillName = firstNonEmptyString(propString(toolArgs, "name"), propString(toolArgs, "skillName"))
     if (!skillName) return
@@ -199,7 +198,6 @@ export async function handleToolExecuteBefore(args: {
         }
       }
     }
-
 
     if (skillName === "ctf-expert") {
       const agent = surfaceAgentForTools(sessionKey, rawAgent)

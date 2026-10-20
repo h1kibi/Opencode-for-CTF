@@ -19,21 +19,26 @@ describe("new CTF web tool contracts", () => {
     })
     vi.stubGlobal("fetch", fetchMock)
     try {
-      const result = jsonOutput(await blindSqli.execute({
-        baseUrl: "http://challenge.local",
-        registrationPath: "/register",
-        parameter: "email",
-        oracleUrl: "/user/{username}",
-        oracleSelector: "TRUE",
-        payloadTemplate: "{prefix}' OR ({condition})--",
-        expression: "password",
-        charset: "AB",
-        maxLength: 1,
-        maxRequests: 2,
-        maxStateChangingRequests: 2,
-        minIntervalMs: 0,
-        challenge: "contract",
-      }, { directory } as never))
+      const result = jsonOutput(
+        await blindSqli.execute(
+          {
+            baseUrl: "http://challenge.local",
+            registrationPath: "/register",
+            parameter: "email",
+            oracleUrl: "/user/{username}",
+            oracleSelector: "TRUE",
+            payloadTemplate: "{prefix}' OR ({condition})--",
+            expression: "password",
+            charset: "AB",
+            maxLength: 1,
+            maxRequests: 2,
+            maxStateChangingRequests: 2,
+            minIntervalMs: 0,
+            challenge: "contract",
+          },
+          { directory } as never,
+        ),
+      )
       expect(result.partial).toBe(true)
       expect(result.completed).toBe(false)
       expect(result.stop_reason).toContain("budget_exhausted")
@@ -57,23 +62,31 @@ describe("new CTF web tool contracts", () => {
         return new Response(url.includes("upload") ? "stored: probe.xml" : body, { status: 200 })
       }
       previews++
-      return new Response(previews === 1 ? "hostname-value" : 'Traceback\n  File "/app/app.py", line 373\nStartTag: invalid element name', { status: 200 })
+      return new Response(
+        previews === 1 ? "hostname-value" : 'Traceback\n  File "/app/app.py", line 373\nStartTag: invalid element name',
+        { status: 200 },
+      )
     })
     vi.stubGlobal("fetch", fetchMock)
     try {
-      const result = jsonOutput(await xxeClosure.execute({
-        baseUrl: "http://challenge.local",
-        uploadPath: "/admin/upload",
-        previewPattern: "/admin/preview/{stored}",
-        field: "file",
-        targetFiles: ["/app/app.py"],
-        filenamePrefix: "canary",
-        canaryFile: "/etc/hostname",
-        maxRequests: 4,
-        maxStateChangingRequests: 2,
-        minIntervalMs: 0,
-        challenge: "contract",
-      }, { directory } as never))
+      const result = jsonOutput(
+        await xxeClosure.execute(
+          {
+            baseUrl: "http://challenge.local",
+            uploadPath: "/admin/upload",
+            previewPattern: "/admin/preview/{stored}",
+            field: "file",
+            targetFiles: ["/app/app.py"],
+            filenamePrefix: "canary",
+            canaryFile: "/etc/hostname",
+            maxRequests: 4,
+            maxStateChangingRequests: 2,
+            minIntervalMs: 0,
+            challenge: "contract",
+          },
+          { directory } as never,
+        ),
+      )
       expect(fetchMock).toHaveBeenCalledTimes(4)
       expect(fetchMock.mock.calls.map(([, init]) => init?.method || "GET")).toEqual(["POST", "GET", "POST", "GET"])
       expect(result.xxe_verified).toBe(true)

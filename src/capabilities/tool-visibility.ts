@@ -1,9 +1,5 @@
 import { packForTool, type ToolPackId } from "../tool-packs.ts"
-import {
-  toolAllowedForAgent,
-  toolAllowedForSubagent,
-  isCtfSubagent,
-} from "../agent-equipment-policy.ts"
+import { toolAllowedForAgent, toolAllowedForSubagent, isCtfSubagent } from "../agent-equipment-policy.ts"
 
 export type ToolVisibilityCategory =
   "visible" | "pack_not_enabled" | "tool_not_in_process_registry" | "fast_surface_blocked" | "subagent_gate_blocked"
@@ -62,9 +58,9 @@ export function explainToolVisibility(args: {
   ) {
     // Check if tool belongs to the same family as the subagent
     const toolFamily = args.toolName.match(/^ctf-([^-]+)-/)?.[1]
-    const agentFamily = args.agentName.replace(/^ctf-/, '')
+    const agentFamily = args.agentName.replace(/^ctf-/, "")
     const isSameFamily = toolFamily === agentFamily
-    
+
     if (!isSameFamily) {
       reasons.push(`${args.toolName} is outside the lightweight tool surface for subagent ${args.agentName}.`)
       return {

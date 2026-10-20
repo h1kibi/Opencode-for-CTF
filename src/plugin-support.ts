@@ -295,7 +295,7 @@ export async function activateAgentDefaultsOnce(args: {
       agentName: args.agentName,
     })
     const failed = result.failed ?? []
-    
+
     // Record issues for any failures
     for (const failure of failed) {
       await recordMcpActivationIssue({
@@ -307,12 +307,14 @@ export async function activateAgentDefaultsOnce(args: {
         error: failure.message,
       })
     }
-    
+
     if (failed.length === 0) markActivatedDefaults(args.sessionID, args.agentName)
     return { activated: result.activated, skipped: result.skipped, failed, attempted: true }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    for (const serverName of getAgentDefaults(args.agentName).filter((name) => lookupMcpServer(name)?.weight !== "heavy")) {
+    for (const serverName of getAgentDefaults(args.agentName).filter(
+      (name) => lookupMcpServer(name)?.weight !== "heavy",
+    )) {
       await recordMcpActivationIssue({
         worktree: args.worktree,
         sessionID: args.sessionID,

@@ -157,10 +157,12 @@ export default tool({
         try {
           Object.assign(packageResults, JSON.parse(checked.output.trim()))
         } catch {
-          for (const name of packages) packageResults[name] = { ok: false, version: null, detail: "invalid probe output" }
+          for (const name of packages)
+            packageResults[name] = { ok: false, version: null, detail: "invalid probe output" }
         }
       } else {
-        for (const name of packages) packageResults[name] = { ok: false, version: null, detail: checked.output.trim().slice(0, 180) }
+        for (const name of packages)
+          packageResults[name] = { ok: false, version: null, detail: checked.output.trim().slice(0, 180) }
       }
     }
 
@@ -172,7 +174,9 @@ export default tool({
         ok: result.ok,
         required: false,
         version: result.version ?? undefined,
-        detail: result.ok ? `import ${IMPORT_NAMES[name]} available (${result.version ?? "present"})` : result.detail ?? "package unavailable",
+        detail: result.ok
+          ? `import ${IMPORT_NAMES[name]} available (${result.version ?? "present"})`
+          : (result.detail ?? "package unavailable"),
         hint: result.ok ? undefined : PACKAGE_HINTS[name],
       })
     }
@@ -202,7 +206,10 @@ export default tool({
       `ready: ${output.ready ? "YES" : "NO"}`,
       `platform: ${process.platform}/${process.arch}`,
       "",
-      ...results.map((result) => `  ${result.ok ? "OK" : result.required ? "MISS" : "WARN"} [${result.kind}] ${result.name}: ${result.detail}`),
+      ...results.map(
+        (result) =>
+          `  ${result.ok ? "OK" : result.required ? "MISS" : "WARN"} [${result.kind}] ${result.name}: ${result.detail}`,
+      ),
       "",
       "Safety: read-only; no installs and no model deserialization.",
     ]

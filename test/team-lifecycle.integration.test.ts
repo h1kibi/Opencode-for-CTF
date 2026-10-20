@@ -6,7 +6,13 @@ import { describe, expect, it, vi } from "vitest"
 import { getEvidenceDir, getEvidenceRoot } from "../scripts/evidence-helper.ts"
 import { evaluateExpertToolPolicy, loadExpertPolicySnapshot } from "../src/expert-policy.ts"
 import { listCaseEvents } from "../src/case-state.ts"
-import { createTeamTools, handleTeamEvent, initializeTeamRuntime, readTeamState, updateTeamState } from "../src/team-runtime.ts"
+import {
+  createTeamTools,
+  handleTeamEvent,
+  initializeTeamRuntime,
+  readTeamState,
+  updateTeamState,
+} from "../src/team-runtime.ts"
 
 async function makeEvidenceFixture(directory: string) {
   const slug = "web-team-lifecycle"
@@ -87,9 +93,7 @@ function fakeTeamClient(
             parts: [
               {
                 type: "text",
-                text:
-                  failureOptions.workerTexts?.[createCalls] ??
-                  `STATUS: completed\nFINDINGS: finding from ${id}`,
+                text: failureOptions.workerTexts?.[createCalls] ?? `STATUS: completed\nFINDINGS: finding from ${id}`,
               },
             ],
           },
@@ -119,7 +123,7 @@ function fakeTeamClient(
             ? []
             : [{ info: { role: "assistant", providerID: "test-provider", modelID: "test-model" }, parts: [] }]),
       })),
-      get: vi.fn(async ({ path: requestPath }: { path: { id: string } }) => ({ data: { id: requestPath.id } })), 
+      get: vi.fn(async ({ path: requestPath }: { path: { id: string } }) => ({ data: { id: requestPath.id } })),
       abort: vi.fn(async () => {
         abortCalls++
         if (failureOptions.failAbortCalls?.includes(abortCalls)) return { error: `abort failure on call ${abortCalls}` }
@@ -191,7 +195,22 @@ describe("Team Mode lifecycle integration", () => {
     }
     for (const [request] of promptCalls) {
       const workerTools = request.body?.tools ?? {}
-      for (const toolName of ["bash", "shell", "powershell", "cmd", "edit", "write", "apply_patch", "ctf-python-inline", "ctf-python-parallel", "ctf-background-job", "ctf-pwn-runner", "ctf-pwn-docker-runner", "ctf-windows-debug-helper", "ctf-rev-live-memory-dump"]) {
+      for (const toolName of [
+        "bash",
+        "shell",
+        "powershell",
+        "cmd",
+        "edit",
+        "write",
+        "apply_patch",
+        "ctf-python-inline",
+        "ctf-python-parallel",
+        "ctf-background-job",
+        "ctf-pwn-runner",
+        "ctf-pwn-docker-runner",
+        "ctf-windows-debug-helper",
+        "ctf-rev-live-memory-dump",
+      ]) {
         expect(workerTools[toolName] ?? false, `${toolName} must not be exposed to workers`).toBe(false)
       }
       for (const toolName of ["read", "glob", "grep", "skill"]) {
@@ -206,10 +225,14 @@ describe("Team Mode lifecycle integration", () => {
     const run = state.runs[0]
     expect(run.intents).toHaveLength(2)
     expect(run.intents?.every((intent) => intent.status === "running")).toBe(true)
-    expect(run.jobs.every((job) => job.intentId && run.intents?.some((intent) => intent.id === job.intentId))).toBe(true)
+    expect(run.jobs.every((job) => job.intentId && run.intents?.some((intent) => intent.id === job.intentId))).toBe(
+      true,
+    )
     expect(run.intents?.map((intent) => intent.routeId)).toEqual(["R1", "R2"])
     expect(run.intents?.every((intent) => intent.claimToken)).toBe(true)
-    expect(run.intents?.every((intent) => intent.claimedBy && run.jobs.some((job) => job.id === intent.claimedBy))).toBe(true)
+    expect(
+      run.intents?.every((intent) => intent.claimedBy && run.jobs.some((job) => job.id === intent.claimedBy)),
+    ).toBe(true)
     const running = await loadExpertPolicySnapshot(directory, parentSessionID)
     expect(running.teamRunStatus).toBe("running")
     expect(evaluateExpertToolPolicy(running, "bash").allowed).toBe(false)
@@ -278,15 +301,30 @@ describe("Team Mode lifecycle integration", () => {
     const args = {
       title: "fact collection wave",
       jobs: [
-        { title: "web route", objective: "probe login surface", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
-        { title: "pwn route", objective: "inspect binary", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+        {
+          title: "web route",
+          objective: "probe login surface",
+          agent: "ctf-web",
+          routeId: "R1",
+          concurrency: "independent",
+        },
+        {
+          title: "pwn route",
+          objective: "inspect binary",
+          agent: "ctf-pwn",
+          routeId: "R2",
+          concurrency: "independent",
+        },
       ],
     } as const
     await tools["ctf-team-dispatch"].execute(args, { agent: "ctf-expert", sessionID: parentSessionID } as any)
     let state = await readTeamState(directory)
     const run = state.runs[0]
     for (const job of run.jobs) statuses[job.sessionID!] = { type: "idle" }
-    await tools["ctf-team-collect"].execute({ runID: run.id }, { agent: "ctf-expert", sessionID: parentSessionID } as any)
+    await tools["ctf-team-collect"].execute({ runID: run.id }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
 
     state = await readTeamState(directory)
     const facts = state.runs[0].facts ?? []
@@ -303,10 +341,10 @@ describe("Team Mode lifecycle integration", () => {
     expect(types).toContain("team.intent_completed")
     expect(types).toContain("team.intent_created")
 
-    await tools["ctf-team-facts"].execute(
-      { action: "accept", runID: run.id, factID: facts[0].id },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-facts"].execute({ action: "accept", runID: run.id, factID: facts[0].id }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     state = await readTeamState(directory)
     expect(state.runs[0].facts?.[0]).toMatchObject({ status: "accepted", confidence: "confirmed" })
     const reviewedEvents = await listCaseEvents(directory, "web-team-lifecycle")
@@ -331,14 +369,29 @@ describe("Team Mode lifecycle integration", () => {
     const args = {
       title: "provenance wave",
       jobs: [
-        { title: "web route", objective: "probe login surface", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
-        { title: "pwn route", objective: "inspect binary", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+        {
+          title: "web route",
+          objective: "probe login surface",
+          agent: "ctf-web",
+          routeId: "R1",
+          concurrency: "independent",
+        },
+        {
+          title: "pwn route",
+          objective: "inspect binary",
+          agent: "ctf-pwn",
+          routeId: "R2",
+          concurrency: "independent",
+        },
       ],
     } as const
     await tools["ctf-team-dispatch"].execute(args, { agent: "ctf-expert", sessionID: parentSessionID } as any)
     const state0 = await readTeamState(directory)
     for (const job of state0.runs[0].jobs) statuses[job.sessionID!] = { type: "idle" }
-    await tools["ctf-team-collect"].execute({ runID: state0.runs[0].id }, { agent: "ctf-expert", sessionID: parentSessionID } as any)
+    await tools["ctf-team-collect"].execute({ runID: state0.runs[0].id }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     expect((await readTeamState(directory)).runs[0].facts ?? []).toHaveLength(0)
 
     // Unaccepted fact basis must be rejected for follow-up intents.
@@ -376,22 +429,37 @@ describe("Team Mode lifecycle integration", () => {
     const args = {
       title: "claim seed wave",
       jobs: [
-        { title: "web route", objective: "probe admin surface", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
-        { title: "pwn route", objective: "inspect binary", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+        {
+          title: "web route",
+          objective: "probe admin surface",
+          agent: "ctf-web",
+          routeId: "R1",
+          concurrency: "independent",
+        },
+        {
+          title: "pwn route",
+          objective: "inspect binary",
+          agent: "ctf-pwn",
+          routeId: "R2",
+          concurrency: "independent",
+        },
       ],
     } as const
     await tools["ctf-team-dispatch"].execute(args, { agent: "ctf-expert", sessionID: parentSessionID } as any)
     let state = await readTeamState(directory)
     for (const job of state.runs[0].jobs) statuses[job.sessionID!] = { type: "idle" }
-    await tools["ctf-team-collect"].execute({ runID: state.runs[0].id }, { agent: "ctf-expert", sessionID: parentSessionID } as any)
+    await tools["ctf-team-collect"].execute({ runID: state.runs[0].id }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     state = await readTeamState(directory)
     const factID = state.runs[0].facts?.[0]?.id
     expect(factID).toBeTruthy()
 
-    await tools["ctf-team-facts"].execute(
-      { action: "accept", runID: state.runs[0].id, factID: factID! },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-facts"].execute({ action: "accept", runID: state.runs[0].id, factID: factID! }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     const created = await tools["ctf-team-intent"].execute(
       {
         action: "create",
@@ -409,10 +477,10 @@ describe("Team Mode lifecycle integration", () => {
 
     const claimed = JSON.parse(
       String(
-        await tools["ctf-team-intent"].execute(
-          { action: "claim-next", agent: "ctf-web", runID: state.runs[0].id },
-          { agent: "ctf-expert", sessionID: parentSessionID } as any,
-        ),
+        await tools["ctf-team-intent"].execute({ action: "claim-next", agent: "ctf-web", runID: state.runs[0].id }, {
+          agent: "ctf-expert",
+          sessionID: parentSessionID,
+        } as any),
       ),
     )
     expect(claimed.ok).toBe(true)
@@ -427,7 +495,10 @@ describe("Team Mode lifecycle integration", () => {
     expect(claimedIntent?.basedOnFactIds).toEqual([factID])
 
     statuses[claimedJob!.sessionID!] = { type: "idle" }
-    await tools["ctf-team-collect"].execute({ runID: state.runs[0].id }, { agent: "ctf-expert", sessionID: parentSessionID } as any)
+    await tools["ctf-team-collect"].execute({ runID: state.runs[0].id }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     state = await readTeamState(directory)
     expect(state.runs[0].intents?.find((intent) => intent.id === intentID)?.status).toBe("completed")
     expect(state.runs[0].status).toBe("ready_for_synthesis")
@@ -456,10 +527,10 @@ describe("Team Mode lifecycle integration", () => {
     const before = await readTeamState(directory)
     const runID = before.runs[0].id
 
-    await tools["ctf-team-cancel"].execute(
-      { runID, reason: "route became irrelevant" },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-cancel"].execute({ runID, reason: "route became irrelevant" }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
 
     const state = await readTeamState(directory)
     expect(state.runs[0].status).toBe("cancelled")
@@ -469,7 +540,6 @@ describe("Team Mode lifecycle integration", () => {
     const policy = await loadExpertPolicySnapshot(directory, parentSessionID)
     expect(evaluateExpertToolPolicy(policy, "bash").allowed).toBe(true)
   }, 30_000)
-
 
   it("fails closed on abort failure and recovers before close", async () => {
     const directory = await fsTempDirectory()
@@ -488,10 +558,10 @@ describe("Team Mode lifecycle integration", () => {
     await tools["ctf-team-dispatch"].execute(args, { agent: "ctf-expert", sessionID: parentSessionID } as any)
     const before = await readTeamState(directory)
     const runID = before.runs[0].id
-    await tools["ctf-team-cancel"].execute(
-      { runID, reason: "abort test" },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-cancel"].execute({ runID, reason: "abort test" }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
 
     let state = await readTeamState(directory)
     expect(state.runs[0].status).toBe("degraded")
@@ -503,10 +573,7 @@ describe("Team Mode lifecycle integration", () => {
       ),
     ).rejects.toThrow("cancel_failed")
 
-    await tools["ctf-team-recover"].execute(
-      { runID },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-recover"].execute({ runID }, { agent: "ctf-expert", sessionID: parentSessionID } as any)
     state = await readTeamState(directory)
     expect(state.runs[0].status).toBe("cancelled")
     expect(state.runs[0].jobs.every((job) => job.status === "cancelled")).toBe(true)
@@ -535,15 +602,14 @@ describe("Team Mode lifecycle integration", () => {
       for (const job of state.runs[0].jobs) job.deadlineAt = "2026-08-01T00:00:00.000Z"
     })
 
-    await tools["ctf-team-recover"].execute(
-      {},
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-recover"].execute({}, { agent: "ctf-expert", sessionID: parentSessionID } as any)
 
     let state = await readTeamState(directory)
     let run = state.runs[0]
     expect(run.status).toBe("running")
-    expect(run.jobs.every((job, index) => job.status === "running" && job.sessionID !== initialSessionIDs[index])).toBe(true)
+    expect(run.jobs.every((job, index) => job.status === "running" && job.sessionID !== initialSessionIDs[index])).toBe(
+      true,
+    )
     expect(run.jobs.every((job) => job.attempt === 1 && job.deadlineAt)).toBe(true)
     expect(client.session.abort).toHaveBeenCalledTimes(2)
 
@@ -551,17 +617,16 @@ describe("Team Mode lifecycle integration", () => {
     await updateTeamState(directory, (draft) => {
       for (const job of draft.runs[0].jobs) job.deadlineAt = "2026-08-01T00:00:00.000Z"
     })
-    await tools["ctf-team-recover"].execute(
-      {},
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-recover"].execute({}, { agent: "ctf-expert", sessionID: parentSessionID } as any)
     state = await readTeamState(directory)
     run = state.runs[0]
     expect(run.status).toBe("degraded")
     expect(run.jobs.every((job) => job.status === "failed")).toBe(true)
     expect(run.jobs.every((job) => job.abortRequestedAt && job.abortSucceededAt)).toBe(true)
     expect(run.jobs.every((job) => job.error?.includes("deadline exceeded"))).toBe(true)
-    expect(run.jobs.every((job) => job.errorDetails?.errorType === "heartbeat" && job.errorDetails?.phase === "running")).toBe(true)
+    expect(
+      run.jobs.every((job) => job.errorDetails?.errorType === "heartbeat" && job.errorDetails?.phase === "running"),
+    ).toBe(true)
     expect(run.notificationSentAt).toBeDefined()
     expect(client.session.abort).toHaveBeenCalledTimes(4)
   }, 30_000)
@@ -595,7 +660,11 @@ describe("Team Mode lifecycle integration", () => {
 
     const state = await readTeamState(directory)
     const run = state.runs[0]
-    expect(run.jobs.every((job, index) => job.status === "running" && job.attempt === 1 && job.sessionID !== initialSessionIDs[index])).toBe(true)
+    expect(
+      run.jobs.every(
+        (job, index) => job.status === "running" && job.attempt === 1 && job.sessionID !== initialSessionIDs[index],
+      ),
+    ).toBe(true)
     expect(new Set(run.jobs.map((job) => job.sessionID)).size).toBe(2)
     expect(run.jobs.every((job) => !job.retryPending && !job.retrySessionID)).toBe(true)
     expect(client.session.create).toHaveBeenCalledTimes(4)
@@ -676,7 +745,9 @@ describe("Team Mode lifecycle integration", () => {
     const state = await readTeamState(directory)
     const run = state.runs[0]
     expect(run.status).toBe("degraded")
-    expect(run.jobs.every((job) => job.status === "cancel_failed" && !job.retryPending && !job.retrySessionID)).toBe(true)
+    expect(run.jobs.every((job) => job.status === "cancel_failed" && !job.retryPending && !job.retrySessionID)).toBe(
+      true,
+    )
     expect(run.jobs.every((job) => job.error?.includes("pending replacement"))).toBe(true)
     expect(client.session.abort).toHaveBeenCalledTimes(2)
   }, 30_000)
@@ -701,10 +772,7 @@ describe("Team Mode lifecycle integration", () => {
       for (const job of state.runs[0].jobs) job.deadlineAt = "2026-08-01T00:00:00.000Z"
     })
 
-    await tools["ctf-team-recover"].execute(
-      {},
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-recover"].execute({}, { agent: "ctf-expert", sessionID: parentSessionID } as any)
 
     const state = await readTeamState(directory)
     const run = state.runs[0]
@@ -741,10 +809,7 @@ describe("Team Mode lifecycle integration", () => {
       for (const job of state.runs[0].jobs) job.deadlineAt = "2026-08-01T00:00:00.000Z"
     })
 
-    await tools["ctf-team-recover"].execute(
-      {},
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-recover"].execute({}, { agent: "ctf-expert", sessionID: parentSessionID } as any)
 
     const state = await readTeamState(directory)
     const run = state.runs[0]
@@ -829,10 +894,10 @@ describe("Team Mode lifecycle integration", () => {
     await tools["ctf-team-dispatch"].execute(args, { agent: "ctf-expert", sessionID: parentSessionID } as any)
     const dispatched = await readTeamState(directory)
     for (const job of dispatched.runs[0].jobs) statuses[job.sessionID!] = { type: "idle" }
-    await tools["ctf-team-collect"].execute(
-      { runID: dispatched.runs[0].id },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-collect"].execute({ runID: dispatched.runs[0].id }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     client.session.abort.mockClear()
 
     await handleTeamEvent(
@@ -910,16 +975,16 @@ describe("Team Mode lifecycle integration", () => {
     await tools["ctf-team-dispatch"].execute(args, { agent: "ctf-expert", sessionID: oldParentSessionID } as any)
     const dispatched = await readTeamState(directory)
     for (const job of dispatched.runs[0].jobs) statuses[job.sessionID!] = { type: "idle" }
-    await tools["ctf-team-collect"].execute(
-      { runID: dispatched.runs[0].id },
-      { agent: "ctf-expert", sessionID: oldParentSessionID } as any,
-    )
+    await tools["ctf-team-collect"].execute({ runID: dispatched.runs[0].id }, {
+      agent: "ctf-expert",
+      sessionID: oldParentSessionID,
+    } as any)
 
     await expect(
-      tools["ctf-team-adopt"].execute(
-        { runID: dispatched.runs[0].id, reason: "test" },
-        { agent: "ctf-expert", sessionID: newParentSessionID } as any,
-      ),
+      tools["ctf-team-adopt"].execute({ runID: dispatched.runs[0].id, reason: "test" }, {
+        agent: "ctf-expert",
+        sessionID: newParentSessionID,
+      } as any),
     ).rejects.toThrow("original parent session still exists")
   }, 30_000)
 
@@ -944,19 +1009,19 @@ describe("Team Mode lifecycle integration", () => {
     await tools["ctf-team-dispatch"].execute(args, { agent: "ctf-expert", sessionID: oldParentSessionID } as any)
     const dispatched = await readTeamState(directory)
     for (const job of dispatched.runs[0].jobs) statuses[job.sessionID!] = { type: "idle" }
-    await tools["ctf-team-collect"].execute(
-      { runID: dispatched.runs[0].id },
-      { agent: "ctf-expert", sessionID: oldParentSessionID } as any,
-    )
+    await tools["ctf-team-collect"].execute({ runID: dispatched.runs[0].id }, {
+      agent: "ctf-expert",
+      sessionID: oldParentSessionID,
+    } as any)
     await updateTeamState(directory, (state) => {
       state.runs[0].status = "running"
     })
 
     await expect(
-      tools["ctf-team-adopt"].execute(
-        { runID: dispatched.runs[0].id, reason: "test stale status" },
-        { agent: "ctf-expert", sessionID: newParentSessionID } as any,
-      ),
+      tools["ctf-team-adopt"].execute({ runID: dispatched.runs[0].id, reason: "test stale status" }, {
+        agent: "ctf-expert",
+        sessionID: newParentSessionID,
+      } as any),
     ).rejects.toThrow("only ready_for_synthesis or degraded runs are adoptable")
   }, 30_000)
 
@@ -977,15 +1042,11 @@ describe("Team Mode lifecycle integration", () => {
     await tools["ctf-team-dispatch"].execute(args, { agent: "ctf-expert", sessionID: parentSessionID } as any)
     const dispatched = await readTeamState(directory)
     for (const job of dispatched.runs[0].jobs) statuses[job.sessionID!] = { type: "idle" }
-    client.session.promptAsync.mockImplementation(
-      async ({ path: requestPath }: { path?: { id?: string } } = {}) =>
-        requestPath?.id === parentSessionID ? { error: "parent session is gone" } : { data: {} },
+    client.session.promptAsync.mockImplementation(async ({ path: requestPath }: { path?: { id?: string } } = {}) =>
+      requestPath?.id === parentSessionID ? { error: "parent session is gone" } : { data: {} },
     )
 
-    await tools["ctf-team-recover"].execute(
-      {},
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-recover"].execute({}, { agent: "ctf-expert", sessionID: parentSessionID } as any)
     let state = await readTeamState(directory)
     expect(state.runs[0].status).toBe("ready_for_synthesis")
     expect(state.runs[0].notificationPending).toBe(true)
@@ -993,10 +1054,7 @@ describe("Team Mode lifecycle integration", () => {
     expect(state.runs[0].notificationError).toContain("parent session is gone")
 
     client.session.promptAsync.mockImplementation(async () => ({ data: {} }))
-    await tools["ctf-team-recover"].execute(
-      {},
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-recover"].execute({}, { agent: "ctf-expert", sessionID: parentSessionID } as any)
     state = await readTeamState(directory)
     expect(state.runs[0].notificationPending).toBe(false)
     expect(state.runs[0].notificationSentAt).toBeDefined()
@@ -1021,10 +1079,10 @@ describe("Team Mode lifecycle integration", () => {
     const dispatched = await readTeamState(directory)
     const runID = dispatched.runs[0].id
     const workerSessionID = dispatched.runs[0].jobs[0].sessionID!
-    await tools["ctf-team-cancel"].execute(
-      { runID, reason: "stale event test" },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-cancel"].execute({ runID, reason: "stale event test" }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
 
     await handleTeamEvent(
       { type: "session.status", properties: { sessionID: workerSessionID, status: { type: "running" } } },
@@ -1046,7 +1104,15 @@ describe("Team Mode lifecycle integration", () => {
     const args = {
       title: "cancel retry race wave",
       timeoutMinutes: 1,
-      jobs: [{ title: "R1", objective: "race cancellation with retry", agent: "ctf-web", routeId: "R1", concurrency: "independent" }],
+      jobs: [
+        {
+          title: "R1",
+          objective: "race cancellation with retry",
+          agent: "ctf-web",
+          routeId: "R1",
+          concurrency: "independent",
+        },
+      ],
     } as const
 
     await tools["ctf-team-dispatch"].execute(args, { agent: "ctf-expert", sessionID: parentSessionID } as any)
@@ -1089,16 +1155,16 @@ describe("Team Mode lifecycle integration", () => {
       return { data: {} }
     })
 
-    const cancellation = tools["ctf-team-cancel"].execute(
-      { runID, reason: "replacement race cancellation" },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    const cancellation = tools["ctf-team-cancel"].execute({ runID, reason: "replacement race cancellation" }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     await initialAbortStartedPromise
 
-    const recovery = tools["ctf-team-recover"].execute(
-      { runID },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    const recovery = tools["ctf-team-recover"].execute({ runID }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     await replacementPromptStartedPromise
     const retried = await waitForTeamState(directory, (state) => Boolean(state.runs[0].jobs[0].retrySessionID))
     const replacementSessionID = retried.runs[0].jobs[0].retrySessionID!
@@ -1126,7 +1192,15 @@ describe("Team Mode lifecycle integration", () => {
     const args = {
       title: "cancel retry race failure wave",
       timeoutMinutes: 1,
-      jobs: [{ title: "R1", objective: "race cancellation with retry failure", agent: "ctf-web", routeId: "R1", concurrency: "independent" }],
+      jobs: [
+        {
+          title: "R1",
+          objective: "race cancellation with retry failure",
+          agent: "ctf-web",
+          routeId: "R1",
+          concurrency: "independent",
+        },
+      ],
     } as const
 
     await tools["ctf-team-dispatch"].execute(args, { agent: "ctf-expert", sessionID: parentSessionID } as any)
@@ -1170,15 +1244,15 @@ describe("Team Mode lifecycle integration", () => {
       return { data: {} }
     })
 
-    const cancellation = tools["ctf-team-cancel"].execute(
-      { runID, reason: "replacement race failure" },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    const cancellation = tools["ctf-team-cancel"].execute({ runID, reason: "replacement race failure" }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     await initialAbortStartedPromise
-    const recovery = tools["ctf-team-recover"].execute(
-      { runID },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    const recovery = tools["ctf-team-recover"].execute({ runID }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     await replacementPromptStartedPromise
     await waitForTeamState(directory, (state) => Boolean(state.runs[0].jobs[0].retrySessionID))
     releaseInitialAbort()
@@ -1215,19 +1289,18 @@ describe("Team Mode lifecycle integration", () => {
     const runID = state.runs[0].id
     const keptSessionID = state.runs[0].jobs.find((job) => job.routeId === "R1")!.sessionID!
 
-    await tools["ctf-team-cancel-route"].execute(
-      { runID, keepRouteId: "R1" },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-cancel-route"].execute({ runID, keepRouteId: "R1" }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     state = await readTeamState(directory)
     expect(state.runs[0].jobs.find((job) => job.routeId === "R1")?.status).toBe("running")
-    expect(state.runs[0].jobs.filter((job) => job.routeId !== "R1").every((job) => job.status === "cancelled")).toBe(true)
+    expect(state.runs[0].jobs.filter((job) => job.routeId !== "R1").every((job) => job.status === "cancelled")).toBe(
+      true,
+    )
 
     statuses[keptSessionID] = { type: "idle" }
-    await tools["ctf-team-collect"].execute(
-      { runID },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-collect"].execute({ runID }, { agent: "ctf-expert", sessionID: parentSessionID } as any)
     state = await readTeamState(directory)
     expect(state.runs[0].status).toBe("ready_for_synthesis")
     expect(state.runs[0].jobs.find((job) => job.routeId === "R1")?.status).toBe("completed")
@@ -1244,7 +1317,13 @@ describe("Team Mode lifecycle integration", () => {
         {
           title: "registry validation",
           jobs: [
-            { title: "bad", objective: "health check", agent: "ctf-does-not-exist", routeId: "R1", concurrency: "independent" },
+            {
+              title: "bad",
+              objective: "health check",
+              agent: "ctf-does-not-exist",
+              routeId: "R1",
+              concurrency: "independent",
+            },
             { title: "good", objective: "health check", agent: "ctf-web", routeId: "R2", concurrency: "independent" },
           ],
         },
@@ -1262,13 +1341,28 @@ describe("Team Mode lifecycle integration", () => {
     const { client } = fakeTeamClient([], { failPromptCalls: [1] })
     const tools = createTeamTools(client, directory, directory, { maxWorkers: 2, maxJobAttempts: 1 })
 
-    await tools["ctf-team-dispatch"].execute({
-      title: "startup cleanup wave",
-      jobs: [
-        { title: "web route", objective: "check startup cleanup", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
-        { title: "pwn route", objective: "check healthy startup", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
-      ],
-    }, { agent: "ctf-expert", sessionID: parentSessionID, directory } as never)
+    await tools["ctf-team-dispatch"].execute(
+      {
+        title: "startup cleanup wave",
+        jobs: [
+          {
+            title: "web route",
+            objective: "check startup cleanup",
+            agent: "ctf-web",
+            routeId: "R1",
+            concurrency: "independent",
+          },
+          {
+            title: "pwn route",
+            objective: "check healthy startup",
+            agent: "ctf-pwn",
+            routeId: "R2",
+            concurrency: "independent",
+          },
+        ],
+      },
+      { agent: "ctf-expert", sessionID: parentSessionID, directory } as never,
+    )
 
     const state = await readTeamState(directory)
     const failed = state.runs[0].jobs.find((job) => job.agent === "ctf-web")!
@@ -1292,8 +1386,20 @@ describe("Team Mode lifecycle integration", () => {
       {
         title: "startup diagnostics",
         jobs: [
-          { title: "web startup", objective: "health check", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
-          { title: "pwn startup", objective: "health check", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+          {
+            title: "web startup",
+            objective: "health check",
+            agent: "ctf-web",
+            routeId: "R1",
+            concurrency: "independent",
+          },
+          {
+            title: "pwn startup",
+            objective: "health check",
+            agent: "ctf-pwn",
+            routeId: "R2",
+            concurrency: "independent",
+          },
         ],
       },
       { agent: "ctf-expert", sessionID: parentSessionID } as any,
@@ -1327,8 +1433,20 @@ describe("Team Mode lifecycle integration", () => {
         {
           title: "strict model requirement",
           jobs: [
-            { title: "web health", objective: "health check", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
-            { title: "pwn health", objective: "health check", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+            {
+              title: "web health",
+              objective: "health check",
+              agent: "ctf-web",
+              routeId: "R1",
+              concurrency: "independent",
+            },
+            {
+              title: "pwn health",
+              objective: "health check",
+              agent: "ctf-pwn",
+              routeId: "R2",
+              concurrency: "independent",
+            },
           ],
         },
         { agent: "ctf-expert", sessionID: parentSessionID } as any,
@@ -1357,8 +1475,20 @@ describe("Team Mode lifecycle integration", () => {
       {
         title: "provider policy diagnostics",
         jobs: [
-          { title: "web startup", objective: "health check", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
-          { title: "pwn startup", objective: "health check", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+          {
+            title: "web startup",
+            objective: "health check",
+            agent: "ctf-web",
+            routeId: "R1",
+            concurrency: "independent",
+          },
+          {
+            title: "pwn startup",
+            objective: "health check",
+            agent: "ctf-pwn",
+            routeId: "R2",
+            concurrency: "independent",
+          },
         ],
       },
       { agent: "ctf-expert", sessionID: parentSessionID } as any,
@@ -1397,8 +1527,20 @@ describe("Team Mode lifecycle integration", () => {
       {
         title: "model inheritance",
         jobs: [
-          { title: "web health", objective: "return a health report", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
-          { title: "pwn health", objective: "return a health report", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+          {
+            title: "web health",
+            objective: "return a health report",
+            agent: "ctf-web",
+            routeId: "R1",
+            concurrency: "independent",
+          },
+          {
+            title: "pwn health",
+            objective: "return a health report",
+            agent: "ctf-pwn",
+            routeId: "R2",
+            concurrency: "independent",
+          },
         ],
       },
       { agent: "ctf-expert", sessionID: parentSessionID } as any,
@@ -1419,23 +1561,34 @@ describe("Team Mode lifecycle integration", () => {
     const parentSessionID = "absent-child-parent"
     const { client } = fakeTeamClient()
     client.session.status.mockResolvedValue({ data: {} })
-    ;(client.session as any).get = vi.fn(async () => ({ error: { name: "NotFoundError", message: "session not found" } }))
+    ;(client.session as any).get = vi.fn(async () => ({
+      error: { name: "NotFoundError", message: "session not found" },
+    }))
     const tools = createTeamTools(client, directory, directory, { maxWorkers: 2 })
 
     await tools["ctf-team-dispatch"].execute(
       {
         title: "missing child",
         jobs: [
-          { title: "web child", objective: "health check", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
-          { title: "pwn child", objective: "health check", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+          {
+            title: "web child",
+            objective: "health check",
+            agent: "ctf-web",
+            routeId: "R1",
+            concurrency: "independent",
+          },
+          {
+            title: "pwn child",
+            objective: "health check",
+            agent: "ctf-pwn",
+            routeId: "R2",
+            concurrency: "independent",
+          },
         ],
       },
       { agent: "ctf-expert", sessionID: parentSessionID } as any,
     )
-    await tools["ctf-team-recover"].execute(
-      {},
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-recover"].execute({}, { agent: "ctf-expert", sessionID: parentSessionID } as any)
 
     const state = await readTeamState(directory)
     for (const job of state.runs[0].jobs) {
@@ -1468,8 +1621,20 @@ describe("Team Mode lifecycle integration", () => {
       {
         title: "claim seed",
         jobs: [
-          { title: "R1 probe", objective: "inspect login", agent: "ctf-web", routeId: "R1", concurrency: "independent" },
-          { title: "R2 probe", objective: "inspect binary", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
+          {
+            title: "R1 probe",
+            objective: "inspect login",
+            agent: "ctf-web",
+            routeId: "R1",
+            concurrency: "independent",
+          },
+          {
+            title: "R2 probe",
+            objective: "inspect binary",
+            agent: "ctf-pwn",
+            routeId: "R2",
+            concurrency: "independent",
+          },
         ],
       },
       { agent: "ctf-expert", sessionID: parentSessionID } as any,
@@ -1479,15 +1644,18 @@ describe("Team Mode lifecycle integration", () => {
     const seedR1 = state.runs[0].jobs.find((job) => job.routeId === "R1")!
     const seedR2 = state.runs[0].jobs.find((job) => job.routeId === "R2")!
     statuses[seedR2.sessionID!] = { type: "idle" }
-    await tools["ctf-team-collect"].execute({ runID: state.runs[0].id }, { agent: "ctf-expert", sessionID: parentSessionID } as any)
+    await tools["ctf-team-collect"].execute({ runID: state.runs[0].id }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     state = await readTeamState(directory)
     const runID = state.runs[0].id
     const factID = state.runs[0].facts?.[0]?.id
     if (!factID) throw new Error("seed R2 produced no fact; stateJobs=" + JSON.stringify(state.runs[0].jobs))
-    await tools["ctf-team-facts"].execute(
-      { action: "accept", runID, factID },
-      { agent: "ctf-expert", sessionID: parentSessionID } as any,
-    )
+    await tools["ctf-team-facts"].execute({ action: "accept", runID, factID }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     // Expert opens a follow-up intent but does NOT claim it.
     const created = await tools["ctf-team-intent"].execute(
       {
@@ -1505,7 +1673,12 @@ describe("Team Mode lifecycle integration", () => {
     // R1 worker is still active; it self-claims the next open intent.
     const workerSessionID = seedR1.sessionID!
     const result = JSON.parse(
-      String(await tools["ctf-team-claim"].execute({ action: "claim-next" }, { agent: "ctf-web", sessionID: workerSessionID } as any)),
+      String(
+        await tools["ctf-team-claim"].execute({ action: "claim-next" }, {
+          agent: "ctf-web",
+          sessionID: workerSessionID,
+        } as any),
+      ),
     )
     expect(result.ok).toBe(true)
     expect(result.intentID).toBe(intentID)
@@ -1553,15 +1726,18 @@ describe("Team Mode lifecycle integration", () => {
 
     // Unbound session: never resolves to a job.
     await expect(
-      tools["ctf-team-claim"].execute({ action: "claim-next" }, { agent: "ctf-web", sessionID: "not-a-worker-session" } as any),
+      tools["ctf-team-claim"].execute({ action: "claim-next" }, {
+        agent: "ctf-web",
+        sessionID: "not-a-worker-session",
+      } as any),
     ).rejects.toThrow(/verified Team worker/)
 
     // Terminal worker: policy + runtime both refuse.
     await expect(
-      tools["ctf-team-claim"].execute(
-        { action: "claim-next" },
-        { agent: "ctf-web", sessionID: terminalWorkerSession } as any,
-      ),
+      tools["ctf-team-claim"].execute({ action: "claim-next" }, {
+        agent: "ctf-web",
+        sessionID: terminalWorkerSession,
+      } as any),
     ).rejects.toThrow(/no longer active|not active/)
   }, 30_000)
 
@@ -1621,12 +1797,18 @@ describe("Team Mode lifecycle integration", () => {
     const seedR1 = state.runs[0].jobs.find((job) => job.routeId === "R1")!
     const seedR2 = state.runs[0].jobs.find((job) => job.routeId === "R2")!
     statuses[seedR2.sessionID!] = { type: "idle" }
-    await tools["ctf-team-collect"].execute({ runID: state.runs[0].id }, { agent: "ctf-expert", sessionID: parentSessionID } as any)
+    await tools["ctf-team-collect"].execute({ runID: state.runs[0].id }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     state = await readTeamState(directory)
     const runID = state.runs[0].id
     const firstFact = state.runs[0].facts?.[0]
     const factID = firstFact?.id as string
-    await tools["ctf-team-facts"].execute({ action: "accept", runID, factID }, { agent: "ctf-expert", sessionID: parentSessionID } as any)
+    await tools["ctf-team-facts"].execute({ action: "accept", runID, factID }, {
+      agent: "ctf-expert",
+      sessionID: parentSessionID,
+    } as any)
     const created = await tools["ctf-team-intent"].execute(
       {
         action: "create",
@@ -1652,10 +1834,12 @@ describe("Team Mode lifecycle integration", () => {
       tools["ctf-team-claim"].execute({ action: "claim-next" }, { agent: "ctf-web", sessionID: workerB } as any),
     ])
     const winners = results.filter(
-      (result): result is PromiseFulfilledResult<string> => result.status === "fulfilled" && JSON.parse(String(result.value)).ok === true,
+      (result): result is PromiseFulfilledResult<string> =>
+        result.status === "fulfilled" && JSON.parse(String(result.value)).ok === true,
     )
     const losers = results.filter(
-      (result) => result.status === "rejected" || (result.status === "fulfilled" && JSON.parse(String(result.value)).ok !== true),
+      (result) =>
+        result.status === "rejected" || (result.status === "fulfilled" && JSON.parse(String(result.value)).ok !== true),
     )
     expect(winners).toHaveLength(1)
     expect(losers).toHaveLength(1)
@@ -1730,7 +1914,13 @@ describe("Team Mode lifecycle integration", () => {
         title: "seed",
         jobs: [
           { title: "holder", objective: "stay active", agent: "ctf-pwn", routeId: "R2", concurrency: "independent" },
-          { title: "finisher", objective: "complete once", agent: "ctf-rev", routeId: "R2", concurrency: "independent" }
+          {
+            title: "finisher",
+            objective: "complete once",
+            agent: "ctf-rev",
+            routeId: "R2",
+            concurrency: "independent",
+          },
         ],
       },
       ctx,
@@ -1755,10 +1945,7 @@ describe("Team Mode lifecycle integration", () => {
 
     const claim = JSON.parse(
       String(
-        await tools["ctf-team-claim"].execute(
-          { action: "claim-next" },
-          toolContext(holder.sessionID!, "ctf-pwn"),
-        ),
+        await tools["ctf-team-claim"].execute({ action: "claim-next" }, toolContext(holder.sessionID!, "ctf-pwn")),
       ),
     )
     expect(claim.ok).toBe(true)
@@ -1779,7 +1966,13 @@ describe("Team Mode lifecycle integration", () => {
         title: "seed",
         jobs: [
           { title: "holder", objective: "stay active", agent: "ctf-pwn", routeId: "R1", concurrency: "independent" },
-          { title: "finisher", objective: "complete once", agent: "ctf-rev", routeId: "R2", concurrency: "independent" },
+          {
+            title: "finisher",
+            objective: "complete once",
+            agent: "ctf-rev",
+            routeId: "R2",
+            concurrency: "independent",
+          },
         ],
       },
       ctx,
@@ -1881,10 +2074,16 @@ describe("Team Mode lifecycle integration", () => {
     const directory = await fsTempDirectory()
     await makeEvidenceFixture(directory)
     const { client } = fakeTeamClient()
-    client.session.get.mockImplementation(async () => ({ error: "404 session not found" } as never))
+    client.session.get.mockImplementation(async () => ({ error: "404 session not found" }) as never)
     const tools = createTeamTools(client, directory, directory, { maxWorkers: 2, maxJobAttempts: 2 })
     const ctx = toolContext("expert-absent-session")
-    await tools["ctf-team-dispatch"].execute({ title: "seed", jobs: [{ title: "seed", objective: "seed", agent: "ctf-pwn", routeId: "R1", concurrency: "independent" }] }, ctx)
+    await tools["ctf-team-dispatch"].execute(
+      {
+        title: "seed",
+        jobs: [{ title: "seed", objective: "seed", agent: "ctf-pwn", routeId: "R1", concurrency: "independent" }],
+      },
+      ctx,
+    )
     const run = (await readTeamState(directory)).runs[0]
     const intentID = run.intents![0].id
     await updateTeamState(directory, (draft) => {
@@ -1899,7 +2098,9 @@ describe("Team Mode lifecycle integration", () => {
     await tools["ctf-team-recover"].execute({ runID: run.id }, ctx)
     const recovered = (await readTeamState(directory)).runs[0].intents!.find((candidate) => candidate.id === intentID)
     expect(recovered?.status).toBe("open")
-    expect(client.session.abort).not.toHaveBeenCalledWith(expect.objectContaining({ path: { id: "missing-stale-session" } }))
+    expect(client.session.abort).not.toHaveBeenCalledWith(
+      expect.objectContaining({ path: { id: "missing-stale-session" } }),
+    )
   }, 30_000)
 
   it("records facts from a failed attempt instead of dropping them", async () => {
@@ -1976,8 +2177,14 @@ describe("Team Mode lifecycle integration", () => {
       if (requestPath.id.startsWith("worker-session-")) {
         return {
           data: [
-            { info: { role: "assistant", id: "worker-message-1" }, parts: [{ type: "text", text: `\`\`\`json\n${early}\n\`\`\`` }] },
-            { info: { role: "assistant", id: "worker-message-2" }, parts: [{ type: "text", text: `\`\`\`json\n${late}\n\`\`\`` }] },
+            {
+              info: { role: "assistant", id: "worker-message-1" },
+              parts: [{ type: "text", text: `\`\`\`json\n${early}\n\`\`\`` }],
+            },
+            {
+              info: { role: "assistant", id: "worker-message-2" },
+              parts: [{ type: "text", text: `\`\`\`json\n${late}\n\`\`\`` }],
+            },
           ],
         }
       }
@@ -2007,22 +2214,54 @@ describe("Team Mode lifecycle integration", () => {
   it("retains valid packets before a final assistant error and prefers the last valid result", async () => {
     const directory = await fsTempDirectory()
     await makeEvidenceFixture(directory)
-    const firstResult = JSON.stringify({ protocol: "ctf.team.worker.v1", type: "intent_result", status: "completed", summary: "first result" })
-    const secondResult = JSON.stringify({ protocol: "ctf.team.worker.v1", type: "intent_result", status: "completed", summary: "last valid result" })
-    const fact = JSON.stringify({ protocol: "ctf.team.worker.v1", type: "fact", routeId: "R1", statement: "fact before provider error", kind: "observation", confidence: "observed", evidence: [{ type: "response", value: "evidence" }] })
+    const firstResult = JSON.stringify({
+      protocol: "ctf.team.worker.v1",
+      type: "intent_result",
+      status: "completed",
+      summary: "first result",
+    })
+    const secondResult = JSON.stringify({
+      protocol: "ctf.team.worker.v1",
+      type: "intent_result",
+      status: "completed",
+      summary: "last valid result",
+    })
+    const fact = JSON.stringify({
+      protocol: "ctf.team.worker.v1",
+      type: "fact",
+      routeId: "R1",
+      statement: "fact before provider error",
+      kind: "observation",
+      confidence: "observed",
+      evidence: [{ type: "response", value: "evidence" }],
+    })
     const { client, statuses } = fakeTeamClient([], { workerTexts: { 1: "unused" } })
     client.session.messages.mockImplementation(async ({ path: requestPath }: { path: { id: string } }) =>
       requestPath.id.startsWith("worker-session-")
-        ? { data: [
-          { info: { role: "assistant", id: "result-1" }, parts: [{ type: "text", text: "```json\n" + firstResult + "\n```" }] },
-          { info: { role: "assistant", id: "result-2" }, parts: [{ type: "text", text: "```json\n" + fact + "\n```\n```json\n" + secondResult + "\n```" }] },
-          { info: { role: "assistant", id: "error-final", error: { name: "UnknownError" } }, parts: [] },
-        ] }
+        ? {
+            data: [
+              {
+                info: { role: "assistant", id: "result-1" },
+                parts: [{ type: "text", text: "```json\n" + firstResult + "\n```" }],
+              },
+              {
+                info: { role: "assistant", id: "result-2" },
+                parts: [{ type: "text", text: "```json\n" + fact + "\n```\n```json\n" + secondResult + "\n```" }],
+              },
+              { info: { role: "assistant", id: "error-final", error: { name: "UnknownError" } }, parts: [] },
+            ],
+          }
         : { data: [{ info: { role: "assistant", providerID: "test-provider", modelID: "test-model" }, parts: [] }] },
     )
     const tools = createTeamTools(client, directory, directory, { maxWorkers: 2, maxJobAttempts: 1 })
     const ctx = toolContext("expert-final-error")
-    await tools["ctf-team-dispatch"].execute({ title: "final-error", jobs: [{ title: "seed", objective: "seed", agent: "ctf-pwn", routeId: "R1", concurrency: "independent" }] }, ctx)
+    await tools["ctf-team-dispatch"].execute(
+      {
+        title: "final-error",
+        jobs: [{ title: "seed", objective: "seed", agent: "ctf-pwn", routeId: "R1", concurrency: "independent" }],
+      },
+      ctx,
+    )
     const run = (await readTeamState(directory)).runs[0]
     statuses[run.jobs[0].sessionID!] = { type: "idle" }
     await tools["ctf-team-collect"].execute({ runID: run.id }, ctx)
@@ -2055,7 +2294,6 @@ describe("Team Mode lifecycle integration", () => {
       ),
     ).rejects.toThrow(/expectedObservation or stopCondition/)
   }, 30_000)
-
 })
 
 async function waitForTeamState(

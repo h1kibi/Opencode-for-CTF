@@ -165,7 +165,10 @@ export default tool({
       )
       .filter((candidate, index, values) => values.findIndex((item) => item.value === candidate.value) === index)
       .slice(0, 50)
-    const flagHits = unique(flagCandidates.map((candidate) => candidate.value), 50)
+    const flagHits = unique(
+      flagCandidates.map((candidate) => candidate.value),
+      50,
+    )
     const credentialHints = unique(
       strings.filter((s) => /password|passwd|token|secret|authorization|bearer|cookie|session|flag/i.test(s)),
       80,

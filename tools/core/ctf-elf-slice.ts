@@ -145,7 +145,6 @@ function collectFunctionLabels(lines: string[], preferred: string[], max = 12) {
   return out
 }
 
-
 function addrToLineTarget(name: string, functions: Array<{ name: string; entry: string }>) {
   const hit = functions.find((f) => f.name === name)
   return hit ? hit.entry.replace(/^0x/i, "") : ""

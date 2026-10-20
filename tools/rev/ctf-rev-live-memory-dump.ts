@@ -52,7 +52,10 @@ export default tool({
       .optional()
       .describe("Workspace-relative output directory for generated helper script. Default work/rev-live-dump."),
     substrateHint: tool.schema.string().optional().describe("Optional substrate hint: docker | wsl | local-linux."),
-    sessionPath: tool.schema.string().optional().describe("Optional workspace-relative rev_runtime_session.v1 JSON to register the generated dump and helper."),
+    sessionPath: tool.schema
+      .string()
+      .optional()
+      .describe("Optional workspace-relative rev_runtime_session.v1 JSON to register the generated dump and helper."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args, context) {
@@ -118,10 +121,18 @@ export default tool({
     let runtimeSession: unknown = null
     if (args.sessionPath) {
       const sessionFile = resolveInsideWorkspace(workspace, args.sessionPath)
-      if (!(await access(sessionFile).then(() => true).catch(() => false))) {
+      if (
+        !(await access(sessionFile)
+          .then(() => true)
+          .catch(() => false))
+      ) {
         throw new Error(`runtime session not found: ${normalizeRel(path.relative(workspace, sessionFile))}`)
       }
-      if (await access(sessionFile).then(() => true).catch(() => false)) {
+      if (
+        await access(sessionFile)
+          .then(() => true)
+          .catch(() => false)
+      ) {
         runtimeSession = await recordRuntimeArtifact(sessionFile, workspace, {
           path: normalizeRel(path.relative(workspace, path.join(outDir, "payload.dump.bin"))),
           kind: "payload-dump",
@@ -139,7 +150,10 @@ export default tool({
           summary: "Live memory dump helper generated",
           stage: "prepared",
           substrate: { kind: substrateHint === "local-linux" ? "local" : substrateHint, arch: null, mode: null },
-          next_action: ["run helper only in the locked substrate", "record the reached marker and verify payload bytes before replay"],
+          next_action: [
+            "run helper only in the locked substrate",
+            "record the reached marker and verify payload bytes before replay",
+          ],
         })
       }
     }

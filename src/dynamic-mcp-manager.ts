@@ -6,7 +6,6 @@
  * runtime policy and activation details evolve behind the façade.
  */
 
-
 export {
   activateAgentDefaults,
   agentNameToCategory,

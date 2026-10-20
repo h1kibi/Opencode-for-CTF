@@ -74,12 +74,10 @@ export default tool({
     // than discovered from tools/. Recreate the same definitions here so
     // readiness reflects the live runtime registry instead of only static files.
     if (loadedConfig.config.team_mode.enabled) {
-      const teamTools = createTeamTools(
-        createRuntimeClient(directory),
-        directory,
-        context.worktree,
-        { maxWorkers: loadedConfig.config.team_mode.max_workers, maxJobAttempts: loadedConfig.config.team_mode.max_job_attempts },
-      )
+      const teamTools = createTeamTools(createRuntimeClient(directory), directory, context.worktree, {
+        maxWorkers: loadedConfig.config.team_mode.max_workers,
+        maxJobAttempts: loadedConfig.config.team_mode.max_job_attempts,
+      })
       for (const name of EXPERT_TEAM_RUNTIME_TOOLS) {
         if (!exportedTools[name] && teamTools[name]) exportedTools[name] = teamTools[name]
       }

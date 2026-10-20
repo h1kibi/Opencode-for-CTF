@@ -245,12 +245,14 @@ export default tool({
       ? (() => {
           const customRegex = new RegExp(args.flagPattern, "g")
           const customMatches = output.match(customRegex) ?? []
-          return Array.from(new Set(customMatches)).slice(0, 10).map((value) => ({
-            value: value.trim(),
-            confidence: "high" as const,
-            kind: "custom" as const,
-            reason: "matched an explicitly supplied challenge-specific pattern",
-          }))
+          return Array.from(new Set(customMatches))
+            .slice(0, 10)
+            .map((value) => ({
+              value: value.trim(),
+              confidence: "high" as const,
+              kind: "custom" as const,
+              reason: "matched an explicitly supplied challenge-specific pattern",
+            }))
         })()
       : extractFlagCandidates(output, { origin: "solver-output", text: output }).slice(0, 10)
     const flags = flagCandidates.map((candidate) => candidate.value)

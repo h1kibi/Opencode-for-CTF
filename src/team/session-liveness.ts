@@ -16,14 +16,7 @@ function errorText(value: unknown, seen = new Set<object>()): string {
   if (seen.has(value)) return ""
   seen.add(value)
   const record = value as Record<string, unknown>
-  return [
-    record.message,
-    record.error,
-    record.code,
-    record.status,
-    record.statusCode,
-    record.data,
-  ]
+  return [record.message, record.error, record.code, record.status, record.statusCode, record.data]
     .map((item) => errorText(item, seen))
     .filter(Boolean)
     .join(" ")
@@ -33,7 +26,11 @@ function errorText(value: unknown, seen = new Set<object>()): string {
  * Probe a parent session without treating an unavailable SDK surface as proof
  * that the session is gone. Adoption is fail-closed when presence is unknown.
  */
-export async function probeSessionPresence(client: any, directory: string, sessionID: string): Promise<SessionPresence> {
+export async function probeSessionPresence(
+  client: any,
+  directory: string,
+  sessionID: string,
+): Promise<SessionPresence> {
   const session = client?.session
   if (!sessionID || !session) return "unknown"
 

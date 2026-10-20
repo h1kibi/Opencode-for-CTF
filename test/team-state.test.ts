@@ -4,7 +4,14 @@ import os from "node:os"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 import { resolveFileLockPaths, withFileLock } from "../src/file-lock.ts"
-import { inspectTeamLockState, normalizePersistedTeamState, normalizeTeamState, parseTeamState, quarantineTeamState, readTeamState } from "../src/team/team-state.ts"
+import {
+  inspectTeamLockState,
+  normalizePersistedTeamState,
+  normalizeTeamState,
+  parseTeamState,
+  quarantineTeamState,
+  readTeamState,
+} from "../src/team/team-state.ts"
 import type { TeamState } from "../src/team/team-types.ts"
 import { deriveTeamRunStatus } from "../src/team-reducer.ts"
 
@@ -24,68 +31,89 @@ describe("team state recovery", () => {
       schemaVersion: 1,
       revision: 3,
       updatedAt: "2026-07-31T00:00:00.000Z",
-      runs: [{
-        id: "run-orphan",
-        title: "old wave",
-        parentSessionID: "parent-1",
-        status: "running",
-        createdAt: "2026-07-31T00:00:00.000Z",
-        updatedAt: "2026-07-31T00:00:00.000Z",
-        notificationPending: false,
-        jobs: [{
-          id: "job-old",
-          title: "old worker",
-          objective: "recover",
-          agent: "ctf-web-removed",
-          routeId: "R1",
-          concurrency: "independent",
-          sessionID: "worker-old",
-          status: "running",
-          createdAt: "2026-07-31T00:00:00.000Z",
-          updatedAt: "2026-07-31T00:00:00.000Z",
-        }],
-      }],
-    })
-    const job = state.runs[0].jobs[0]
-    expect(job.status).toBe("orphaned")
-    expect(job.orphaned).toMatchObject({ state: "orphaned", reason: "unknown_agent", originalAgent: "ctf-web-removed", recoverable: true })
-    expect(job.originalAgent).toBe("ctf-web-removed")
-  })
-
-  it("persists the orphan marker when normalization is requested", async () => {
-    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-orphan-persist-"))
-    try {
-      await writeFile(path.join(directory, ".ctf-team.json"), JSON.stringify({
-        schemaVersion: 1,
-        revision: 0,
-        updatedAt: "2026-07-31T00:00:00.000Z",
-        runs: [{
-          id: "run-orphan-persist",
+      runs: [
+        {
+          id: "run-orphan",
           title: "old wave",
           parentSessionID: "parent-1",
           status: "running",
           createdAt: "2026-07-31T00:00:00.000Z",
           updatedAt: "2026-07-31T00:00:00.000Z",
           notificationPending: false,
-          jobs: [{
-            id: "job-old",
-            title: "old job",
-            objective: "inspect",
-            agent: "ctf-removed",
-            routeId: "R1",
-            concurrency: "independent",
-            sessionID: "worker-old",
-            status: "running",
-            createdAt: "2026-07-31T00:00:00.000Z",
-            updatedAt: "2026-07-31T00:00:00.000Z",
-          }],
-        }],
-        activeRunID: "run-orphan-persist",
-      }), "utf8")
+          jobs: [
+            {
+              id: "job-old",
+              title: "old worker",
+              objective: "recover",
+              agent: "ctf-web-removed",
+              routeId: "R1",
+              concurrency: "independent",
+              sessionID: "worker-old",
+              status: "running",
+              createdAt: "2026-07-31T00:00:00.000Z",
+              updatedAt: "2026-07-31T00:00:00.000Z",
+            },
+          ],
+        },
+      ],
+    })
+    const job = state.runs[0].jobs[0]
+    expect(job.status).toBe("orphaned")
+    expect(job.orphaned).toMatchObject({
+      state: "orphaned",
+      reason: "unknown_agent",
+      originalAgent: "ctf-web-removed",
+      recoverable: true,
+    })
+    expect(job.originalAgent).toBe("ctf-web-removed")
+  })
+
+  it("persists the orphan marker when normalization is requested", async () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-orphan-persist-"))
+    try {
+      await writeFile(
+        path.join(directory, ".ctf-team.json"),
+        JSON.stringify({
+          schemaVersion: 1,
+          revision: 0,
+          updatedAt: "2026-07-31T00:00:00.000Z",
+          runs: [
+            {
+              id: "run-orphan-persist",
+              title: "old wave",
+              parentSessionID: "parent-1",
+              status: "running",
+              createdAt: "2026-07-31T00:00:00.000Z",
+              updatedAt: "2026-07-31T00:00:00.000Z",
+              notificationPending: false,
+              jobs: [
+                {
+                  id: "job-old",
+                  title: "old job",
+                  objective: "inspect",
+                  agent: "ctf-removed",
+                  routeId: "R1",
+                  concurrency: "independent",
+                  sessionID: "worker-old",
+                  status: "running",
+                  createdAt: "2026-07-31T00:00:00.000Z",
+                  updatedAt: "2026-07-31T00:00:00.000Z",
+                },
+              ],
+            },
+          ],
+          activeRunID: "run-orphan-persist",
+        }),
+        "utf8",
+      )
       const normalized = await normalizePersistedTeamState(directory)
       expect(normalized.repairs.join("\n")).toContain("unknown agent ctf-removed marked orphaned")
       const persisted = JSON.parse(await readFile(path.join(directory, ".ctf-team.json"), "utf8"))
-      expect(persisted.runs[0].jobs[0].orphaned).toMatchObject({ state: "orphaned", reason: "unknown_agent", recoverable: true })
+      expect(persisted.runs[0].jobs[0].orphaned).toMatchObject({
+        state: "orphaned",
+        reason: "unknown_agent",
+        recoverable: true,
+      })
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
@@ -303,7 +331,7 @@ describe("team state fact and intent validation", () => {
         sessionID: "worker-1",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }
+      },
     ],
   }
   const write = async (directory: string, run: Record<string, unknown>) => {
@@ -374,23 +402,145 @@ describe("team state fact and intent validation", () => {
       { facts: [{ id: "fact-1", status: "pending", statement: "s", evidence: "not-an-array" }] },
       { facts: [{ id: "fact-1", status: "nope", statement: "s", evidence: [] }] },
       { intents: [{ id: "intent-1", status: "open", routeId: "R1", concurrency: "exclusive", claimedBy: "ghost" }] },
-      { facts: [{ id: "fact-1", runId: "run-1", routeId: "R1", sourceJobId: "job-1", sourceSessionId: "worker-1", kind: "bogus", statement: "s", evidence: [{ type: "command", value: "v" }], confidence: "observed", status: "pending" }] },
-      { facts: [{ id: "fact-1", runId: "run-1", routeId: "R1", sourceJobId: "job-1", sourceSessionId: "worker-1", kind: "observation", statement: "s", evidence: [{ type: "command", value: "v" }], confidence: "confirmed", status: "pending" }] },
-      { intents: [{ id: "intent-1", status: "claimed", routeId: "R1", title: "t", objective: "o", basedOnFactIds: [], requiredCapabilities: [], concurrency: "exclusive", attempts: 1, maxAttempts: 2, createdBy: "expert" }] },
-      { intents: [{ id: "intent-1", status: "open", routeId: "R1", title: "t", objective: "o", basedOnFactIds: ["f", "f"], requiredCapabilities: [], concurrency: "exclusive", attempts: 0, maxAttempts: 2, createdBy: "expert" }] },
-      { intents: [{ id: "intent-1", runId: "run-1", status: "claimed", routeId: "R1", title: "t", objective: "o", basedOnFactIds: [], requiredCapabilities: [], concurrency: "exclusive", attempts: 1, maxAttempts: 2, createdBy: "expert", stopCondition: "done", claimedBy: "job-1", claimToken: "token-a", claimExpiresAt: new Date(Date.now() + 60_000).toISOString() }] },
-      { intents: [{ id: "intent-1", runId: "run-1", status: "claimed", routeId: "R1", title: "t", objective: "o", basedOnFactIds: [], requiredCapabilities: [], concurrency: "exclusive", attempts: 1, maxAttempts: 2, createdBy: "expert", stopCondition: "done", claimedBy: "job-1" }] }
+      {
+        facts: [
+          {
+            id: "fact-1",
+            runId: "run-1",
+            routeId: "R1",
+            sourceJobId: "job-1",
+            sourceSessionId: "worker-1",
+            kind: "bogus",
+            statement: "s",
+            evidence: [{ type: "command", value: "v" }],
+            confidence: "observed",
+            status: "pending",
+          },
+        ],
+      },
+      {
+        facts: [
+          {
+            id: "fact-1",
+            runId: "run-1",
+            routeId: "R1",
+            sourceJobId: "job-1",
+            sourceSessionId: "worker-1",
+            kind: "observation",
+            statement: "s",
+            evidence: [{ type: "command", value: "v" }],
+            confidence: "confirmed",
+            status: "pending",
+          },
+        ],
+      },
+      {
+        intents: [
+          {
+            id: "intent-1",
+            status: "claimed",
+            routeId: "R1",
+            title: "t",
+            objective: "o",
+            basedOnFactIds: [],
+            requiredCapabilities: [],
+            concurrency: "exclusive",
+            attempts: 1,
+            maxAttempts: 2,
+            createdBy: "expert",
+          },
+        ],
+      },
+      {
+        intents: [
+          {
+            id: "intent-1",
+            status: "open",
+            routeId: "R1",
+            title: "t",
+            objective: "o",
+            basedOnFactIds: ["f", "f"],
+            requiredCapabilities: [],
+            concurrency: "exclusive",
+            attempts: 0,
+            maxAttempts: 2,
+            createdBy: "expert",
+          },
+        ],
+      },
+      {
+        intents: [
+          {
+            id: "intent-1",
+            runId: "run-1",
+            status: "claimed",
+            routeId: "R1",
+            title: "t",
+            objective: "o",
+            basedOnFactIds: [],
+            requiredCapabilities: [],
+            concurrency: "exclusive",
+            attempts: 1,
+            maxAttempts: 2,
+            createdBy: "expert",
+            stopCondition: "done",
+            claimedBy: "job-1",
+            claimToken: "token-a",
+            claimExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+          },
+        ],
+      },
+      {
+        intents: [
+          {
+            id: "intent-1",
+            runId: "run-1",
+            status: "claimed",
+            routeId: "R1",
+            title: "t",
+            objective: "o",
+            basedOnFactIds: [],
+            requiredCapabilities: [],
+            concurrency: "exclusive",
+            attempts: 1,
+            maxAttempts: 2,
+            createdBy: "expert",
+            stopCondition: "done",
+            claimedBy: "job-1",
+          },
+        ],
+      },
     ]
     const validJob = { ...baseRun.jobs[0], sessionID: "worker-1" }
     const validFact = {
-      id: "fact-1", runId: "run-1", routeId: "R1", sourceJobId: "job-1", sourceSessionId: "worker-1",
-      kind: "observation", statement: "s", evidence: [{ type: "command", value: "v" }], confidence: "observed",
-      status: "pending", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      id: "fact-1",
+      runId: "run-1",
+      routeId: "R1",
+      sourceJobId: "job-1",
+      sourceSessionId: "worker-1",
+      kind: "observation",
+      statement: "s",
+      evidence: [{ type: "command", value: "v" }],
+      confidence: "observed",
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
     const validIntent = {
-      id: "intent-1", runId: "run-1", routeId: "R1", title: "t", objective: "o", basedOnFactIds: ["fact-1"],
-      requiredCapabilities: [], concurrency: "exclusive", status: "open", attempts: 0, maxAttempts: 2,
-      createdBy: "expert", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      id: "intent-1",
+      runId: "run-1",
+      routeId: "R1",
+      title: "t",
+      objective: "o",
+      basedOnFactIds: ["fact-1"],
+      requiredCapabilities: [],
+      concurrency: "exclusive",
+      status: "open",
+      attempts: 0,
+      maxAttempts: 2,
+      createdBy: "expert",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
     const duplicateCases = [
       { facts: [validFact, { ...validFact }], intents: [validIntent] },

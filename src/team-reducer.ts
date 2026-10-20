@@ -1,6 +1,13 @@
 import type { TeamJobStatus, TeamRunStatus } from "./team-runtime.ts"
 
-const TERMINAL_JOB_STATES = new Set<TeamJobStatus>(["completed", "failed", "cancelled", "cancel_failed", "interrupted", "orphaned"])
+const TERMINAL_JOB_STATES = new Set<TeamJobStatus>([
+  "completed",
+  "failed",
+  "cancelled",
+  "cancel_failed",
+  "interrupted",
+  "orphaned",
+])
 
 const JOB_TRANSITIONS: Record<TeamJobStatus, readonly TeamJobStatus[]> = {
   queued: ["starting", "cancelled", "cancel_failed", "failed"],

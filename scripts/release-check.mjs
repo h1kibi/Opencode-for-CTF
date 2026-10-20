@@ -133,9 +133,7 @@ for (const required of [
 // Local knowledge retrieval is an external MCP server (ctf_rag), so no corpus
 // should ship. Re-adding these roots would resurrect the retired implementation.
 for (const forbidden of ["rag", "skills-external", "benchmarks", "retros", "patches", "knowledge", "lessons"]) {
-  const listed = (packageJson.files ?? []).some(
-    (entry) => entry === forbidden || entry.startsWith(`${forbidden}/`),
-  )
+  const listed = (packageJson.files ?? []).some((entry) => entry === forbidden || entry.startsWith(`${forbidden}/`))
   if (listed) errors.push(`package files must not include retired knowledge asset root: ${forbidden}`)
 }
 

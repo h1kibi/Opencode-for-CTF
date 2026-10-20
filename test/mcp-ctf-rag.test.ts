@@ -20,11 +20,7 @@ vi.mock("../src/dynamic-mcp-manager.ts", async () => {
 import { AGENT_MCP_DEFAULTS, COMMON_LIGHT_MCPS, getAgentDefaults } from "../src/agent-mcp-profiles.ts"
 import { envPrerequisitesSatisfied, lookupMcpServer } from "../src/mcp-server-registry.ts"
 import { metaToRuntimeConfig } from "../src/mcp/mcp-runtime-adapter.ts"
-import {
-  activateAgentDefaultsOnce,
-  clearActivatedDefaults,
-  hasActivatedDefaults,
-} from "../src/plugin-support.ts"
+import { activateAgentDefaultsOnce, clearActivatedDefaults, hasActivatedDefaults } from "../src/plugin-support.ts"
 import {
   FAST_MCP_SERVER_PREFIXES,
   FAST_MCP_TOOL_NAMES,
@@ -116,9 +112,8 @@ describe("ctf_rag MCP registration", () => {
 
   it("reports missing env instead of activating a half-configured server", () => {
     const server = lookupMcpServer(SERVER_ID)!
-    const missing = withEnv(
-      { CTF_RAG_PYTHON: undefined, CTF_RAG_ROOT: undefined, CTF_RAG_KB_ROOT: undefined },
-      () => envPrerequisitesSatisfied(server),
+    const missing = withEnv({ CTF_RAG_PYTHON: undefined, CTF_RAG_ROOT: undefined, CTF_RAG_KB_ROOT: undefined }, () =>
+      envPrerequisitesSatisfied(server),
     )
     expect(missing.ok).toBe(false)
     expect(missing.missing).toEqual([...REQUIRED_ENV])
@@ -144,7 +139,10 @@ describe("ctf-fast default MCP profile", () => {
     await handleToolExecuteBefore(hookArgs({ sessionID: "session-fast-1", agent: "ctf-fast" }))
 
     expect(activateAgentDefaultsMock).toHaveBeenCalledTimes(1)
-    expect(activateAgentDefaultsMock.mock.calls[0][0]).toMatchObject({ sessionID: "session-fast-1", agentName: "ctf-fast" })
+    expect(activateAgentDefaultsMock.mock.calls[0][0]).toMatchObject({
+      sessionID: "session-fast-1",
+      agentName: "ctf-fast",
+    })
   })
 })
 

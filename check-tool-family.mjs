@@ -4,8 +4,8 @@ const agentName = "ctf-web"
 
 // Extract family from tool name prefix
 const toolPrefix = toolName.match(/^ctf-([^-]+)-/)?.[1]
-const agentSuffix = agentName.replace(/^ctf-/, '')
+const agentSuffix = agentName.replace(/^ctf-/, "")
 
-console.log('Tool prefix:', toolPrefix)
-console.log('Agent suffix:', agentSuffix)
-console.log('Match:', toolPrefix === agentSuffix)
+console.log("Tool prefix:", toolPrefix)
+console.log("Agent suffix:", agentSuffix)
+console.log("Match:", toolPrefix === agentSuffix)

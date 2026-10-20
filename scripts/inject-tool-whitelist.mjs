@@ -39,7 +39,11 @@ async function exportedPluginToolNames() {
   const enabledPacks = resolveEnabledPacks()
   const tools = await loadCtfTools({ packs: [...enabledPacks] })
   return Object.keys(tools).filter(
-    (name) => name.startsWith("ctf-") || name.startsWith("archive-") || name.startsWith("anysearch_") || name.startsWith("ctf_rag"),
+    (name) =>
+      name.startsWith("ctf-") ||
+      name.startsWith("archive-") ||
+      name.startsWith("anysearch_") ||
+      name.startsWith("ctf_rag"),
   )
 }
 

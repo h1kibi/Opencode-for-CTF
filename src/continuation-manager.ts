@@ -263,7 +263,12 @@ export function evaluateFastBudget(
   if (remaining <= 0) {
     const reason = stalled ? "soft_budget_expired_no_promising_progress" : "soft_budget_expired_review_required"
     if (state.fastBudgetStatus === "review") return { shouldPromptReview: false, status: "review", reason }
-    return { shouldPromptReview: true, status: "review", reason, reviewSummary: buildFastBudgetReview(state, summary, reason) }
+    return {
+      shouldPromptReview: true,
+      status: "review",
+      reason,
+      reviewSummary: buildFastBudgetReview(state, summary, reason),
+    }
   }
   if (remaining <= FAST_BUDGET_WARNING_WINDOW_MS) {
     if (state.fastBudgetStatus === "review") return { shouldPromptReview: false, status: "review" }

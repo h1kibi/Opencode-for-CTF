@@ -126,7 +126,10 @@ export default tool({
       has(text, /local_success_signal:\s*true/) && has(text, /remote_failure_signal:\s*true/)
     const driftLibc = has(text, /libc_ld_signal:\s*true|recheck_bundled_libc_ld_pair/)
     const driftPrompt = has(text, /prompt_sync_signal:\s*true|recheck_prompt_sync_buffering_and_newline_handling/)
-    const runnerSummary = has(text, /pwn_runner_summary:|script_ran_ok:|flag_detected:|candidate_detected:|shell_detected:/)
+    const runnerSummary = has(
+      text,
+      /pwn_runner_summary:|script_ran_ok:|flag_detected:|candidate_detected:|shell_detected:/,
+    )
     // `flag_detected` is a legacy/candidate signal. Only an explicit oracle marker
     // may close the route as a solved challenge.
     const oracleVerified =
@@ -529,18 +532,18 @@ export default tool({
       : candidateDetected
         ? "candidate_flag_needs_oracle"
         : shellDetected
-        ? "shell_to_flag_read_before_final"
-        : orwPreferred || seccomp
-          ? "direct_file_read_or_orw"
-          : (writableLongLived && outputPath) || adjacency
-            ? "data_only_or_output_hijack"
-            : win && pie === false
-              ? "direct_win"
-              : ipControlled
-                ? "control_to_leak_or_call_chain"
-                : runnerCrash || crashProbe
-                  ? "stabilize_crash_control"
-                  : "primitive_discovery"
+          ? "shell_to_flag_read_before_final"
+          : orwPreferred || seccomp
+            ? "direct_file_read_or_orw"
+            : (writableLongLived && outputPath) || adjacency
+              ? "data_only_or_output_hijack"
+              : win && pie === false
+                ? "direct_win"
+                : ipControlled
+                  ? "control_to_leak_or_call_chain"
+                  : runnerCrash || crashProbe
+                    ? "stabilize_crash_control"
+                    : "primitive_discovery"
     if (args.jsonOnly) {
       return JSON.stringify(
         {

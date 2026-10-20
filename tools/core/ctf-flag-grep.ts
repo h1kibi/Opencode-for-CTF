@@ -44,13 +44,15 @@ export default tool({
       if (stat.size > 5 * 1024 * 1024) continue
       const text = (await readFile(file)).toString("utf8")
       const candidates = regex
-        ? Array.from(new Set(text.match(regex) ?? [])).slice(0, 20).map((value) => ({
-            value: value.trim(),
-            confidence: "high" as const,
-            kind: "custom" as const,
-            reason: "matched an explicitly supplied challenge-specific pattern",
-            source: file,
-          }))
+        ? Array.from(new Set(text.match(regex) ?? []))
+            .slice(0, 20)
+            .map((value) => ({
+              value: value.trim(),
+              confidence: "high" as const,
+              kind: "custom" as const,
+              reason: "matched an explicitly supplied challenge-specific pattern",
+              source: file,
+            }))
         : extractFlagCandidates(text, { source: file, origin: "file", text })
 
       for (const candidate of candidates) {

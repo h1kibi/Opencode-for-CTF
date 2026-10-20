@@ -193,7 +193,12 @@ export async function createMemberTask(args: {
   const exported = args.runtimeVisibility?.exportedToolNames
   if (exported && exported.length > 0) {
     for (const name of exported) {
-      if (name.startsWith("ctf-") || name.startsWith("archive-") || name.startsWith("anysearch_") || name.startsWith("ctf_rag")) {
+      if (
+        name.startsWith("ctf-") ||
+        name.startsWith("archive-") ||
+        name.startsWith("anysearch_") ||
+        name.startsWith("ctf_rag")
+      ) {
         childTools[name] = true
       }
     }

@@ -454,19 +454,43 @@ describe("lease lifecycle state machine", () => {
     const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-disconnect-race-"))
     let resolveDisconnectStarted!: () => void
     let resolveDisconnectGate!: () => void
-    const disconnectStarted = new Promise<void>((resolve) => { resolveDisconnectStarted = resolve })
-    const disconnectGate = new Promise<void>((resolve) => { resolveDisconnectGate = resolve })
+    const disconnectStarted = new Promise<void>((resolve) => {
+      resolveDisconnectStarted = resolve
+    })
+    const disconnectGate = new Promise<void>((resolve) => {
+      resolveDisconnectGate = resolve
+    })
     const { client, connects } = makeClient({
       disconnect: async () => {
         resolveDisconnectStarted()
         await disconnectGate
       },
     })
-    await ensureNamedServerLeases({ client: client as never, worktree, directory: worktree, sessionID: "session-a", skillName: "agent-default:ctf-web", servers: [SERVER] })
-    releaseSkillMcpLeases({ client: client as never, worktree, directory: worktree, sessionID: "session-a", skillName: "agent-default:ctf-web" })
+    await ensureNamedServerLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-a",
+      skillName: "agent-default:ctf-web",
+      servers: [SERVER],
+    })
+    releaseSkillMcpLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-a",
+      skillName: "agent-default:ctf-web",
+    })
     await disconnectStarted
     expect(loadLeases(worktree).some((lease) => lease.status === "disconnecting")).toBe(true)
-    const acquiring = await ensureNamedServerLeases({ client: client as never, worktree, directory: worktree, sessionID: "session-b", skillName: "agent-default:ctf-web", servers: [SERVER] })
+    const acquiring = await ensureNamedServerLeases({
+      client: client as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-b",
+      skillName: "agent-default:ctf-web",
+      servers: [SERVER],
+    })
     expect(acquiring.activated).toEqual([])
     expect(acquiring.shared).toContain("runtime_test_server")
     expect(connects).toHaveLength(1)

@@ -173,8 +173,7 @@ describe("worker runtime policy", () => {
       expect(result.allowed, JSON.stringify(argv)).toBe(false)
     }
     expect(
-      evaluateWorkerToolPolicy(context, "ctf-python-inline", { code: "print(1)", argv: ["--flag", "./chall"] })
-        .allowed,
+      evaluateWorkerToolPolicy(context, "ctf-python-inline", { code: "print(1)", argv: ["--flag", "./chall"] }).allowed,
     ).toBe(true)
   })
 
@@ -189,8 +188,7 @@ describe("worker runtime policy", () => {
       expect(evaluateWorkerToolPolicy(context, "ctf-python-inline", { code }).allowed, code).toBe(false)
     }
     expect(
-      evaluateWorkerToolPolicy(context, "ctf-python-inline", { code: 'open("solve_out.txt","w").write("ok")' })
-        .allowed,
+      evaluateWorkerToolPolicy(context, "ctf-python-inline", { code: 'open("solve_out.txt","w").write("ok")' }).allowed,
     ).toBe(true)
   })
 

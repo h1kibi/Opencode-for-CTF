@@ -3,7 +3,11 @@ import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
 import { lstat, open, readdir } from "node:fs/promises"
 import path from "node:path"
-import { resolveFromDirectoryInsideWorkspace, workspaceRootFromContext, directoryFromContext } from "../lib/workspace-path.ts"
+import {
+  resolveFromDirectoryInsideWorkspace,
+  workspaceRootFromContext,
+  directoryFromContext,
+} from "../lib/workspace-path.ts"
 
 type ArtifactFile = {
   path: string
@@ -53,7 +57,12 @@ function filenameHints(name: string): string[] {
 function safetensorsMetadata(buffer: Buffer): Record<string, unknown> | undefined {
   if (buffer.length < 8) return undefined
   const headerLength = Number(buffer.readBigUInt64LE(0))
-  if (!Number.isSafeInteger(headerLength) || headerLength <= 0 || headerLength > MAX_HEADER_BYTES || 8 + headerLength > buffer.length)
+  if (
+    !Number.isSafeInteger(headerLength) ||
+    headerLength <= 0 ||
+    headerLength > MAX_HEADER_BYTES ||
+    8 + headerLength > buffer.length
+  )
     return undefined
   try {
     const header = JSON.parse(buffer.subarray(8, 8 + headerLength).toString("utf8")) as Record<string, unknown>
@@ -61,7 +70,10 @@ function safetensorsMetadata(buffer: Buffer): Record<string, unknown> | undefine
     return {
       header_bytes: headerLength,
       tensor_count: tensors.length,
-      metadata_keys: header.__metadata__ && typeof header.__metadata__ === "object" ? Object.keys(header.__metadata__ as object) : [],
+      metadata_keys:
+        header.__metadata__ && typeof header.__metadata__ === "object"
+          ? Object.keys(header.__metadata__ as object)
+          : [],
       tensor_names_sample: tensors.slice(0, 12),
     }
   } catch {
@@ -141,7 +153,8 @@ async function inspectFile(filePath: string, root: string): Promise<ArtifactFile
     kind,
     hints: [...new Set(hints)],
     metadata,
-    unsafe_deserialization_risk: kind === "pickle/protocol" || kind === "torch/pickle-like" || hints.includes("possible_pickle_deserialization"),
+    unsafe_deserialization_risk:
+      kind === "pickle/protocol" || kind === "torch/pickle-like" || hints.includes("possible_pickle_deserialization"),
   }
 }
 
@@ -160,7 +173,9 @@ export default tool({
     if (!stats) return `[ctf-aisec-model-inspect] target not found: ${target}`
     const { files, skipped } = await collectFiles(target)
     const artifacts = await Promise.all(files.map((filePath) => inspectFile(filePath, workspace)))
-    const risks = artifacts.filter((artifact) => artifact.unsafe_deserialization_risk).map((artifact) => artifact.relative_path)
+    const risks = artifacts
+      .filter((artifact) => artifact.unsafe_deserialization_risk)
+      .map((artifact) => artifact.relative_path)
     const output = {
       schema_version: 1,
       target,
@@ -195,5 +210,3 @@ export default tool({
     return lines.join("\n")
   },
 })
-
-

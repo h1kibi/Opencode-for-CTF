@@ -44,8 +44,20 @@ describe("session liveness", () => {
   })
 
   it("treats thrown not-found errors as absence but other failures as unknown", async () => {
-    const absentClient = { session: { get: vi.fn(async () => { throw new Error("404 session not found") }) } }
-    const unknownClient = { session: { get: vi.fn(async () => { throw new Error("network timeout") }) } }
+    const absentClient = {
+      session: {
+        get: vi.fn(async () => {
+          throw new Error("404 session not found")
+        }),
+      },
+    }
+    const unknownClient = {
+      session: {
+        get: vi.fn(async () => {
+          throw new Error("network timeout")
+        }),
+      },
+    }
     await expect(probeSessionPresence(absentClient, "/tmp/ctf", "parent-1")).resolves.toBe("absent")
     await expect(probeSessionPresence(unknownClient, "/tmp/ctf", "parent-1")).resolves.toBe("unknown")
   })

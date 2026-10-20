@@ -9,7 +9,10 @@ describe("aisec specialist tools", () => {
   it("returns a degraded environment matrix without throwing when optional packages are absent", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "ctf-aisec-env-"))
     const mod = await import("../tools/aisec/ctf-aisec-env-check.js")
-    const raw = await mod.default.execute({ packages: ["numpy", "not-a-real-package"], jsonOnly: true }, contextFor(root))
+    const raw = await mod.default.execute(
+      { packages: ["numpy", "not-a-real-package"], jsonOnly: true },
+      contextFor(root),
+    )
     const result = JSON.parse(String(raw))
 
     expect(result.category).toBe("aisec")
@@ -23,13 +26,18 @@ describe("aisec specialist tools", () => {
     const root = await mkdtemp(path.join(tmpdir(), "ctf-aisec-model-"))
     const modelDir = path.join(root, "model")
     await mkdir(modelDir)
-    const header = Buffer.from(JSON.stringify({ __metadata__: { format: "test" }, weight: { dtype: "F32", shape: [1] } }))
+    const header = Buffer.from(
+      JSON.stringify({ __metadata__: { format: "test" }, weight: { dtype: "F32", shape: [1] } }),
+    )
     const safetensors = Buffer.alloc(8 + header.length + 4)
     safetensors.writeBigUInt64LE(BigInt(header.length), 0)
     header.copy(safetensors, 8)
     await writeFile(path.join(modelDir, "model.safetensors"), safetensors)
     await writeFile(path.join(modelDir, "untrusted.pth"), Buffer.from([0x80, 0x04, 0x63, 0x6f, 0x73]))
-    await writeFile(path.join(modelDir, "config.json"), JSON.stringify({ model_type: "test", architectures: ["TestModel"] }))
+    await writeFile(
+      path.join(modelDir, "config.json"),
+      JSON.stringify({ model_type: "test", architectures: ["TestModel"] }),
+    )
 
     const mod = await import("../tools/aisec/ctf-aisec-model-inspect.js")
     const raw = await mod.default.execute({ target: "model", jsonOnly: true }, contextFor(root))
@@ -70,4 +78,3 @@ describe("aisec specialist tools", () => {
     expect(result.runs).toHaveLength(2)
   }, 30_000)
 })
-

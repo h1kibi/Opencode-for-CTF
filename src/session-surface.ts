@@ -43,7 +43,11 @@ export async function restoreSessionSurfaces(worktree: string): Promise<void> {
   const entries = Object.entries(stored)
     .map(([sessionID, value]) => {
       if (!value || (value.surface !== "ctf-fast" && value.surface !== "ctf-expert")) return undefined
-      if (value.version !== 2 || value.source === "legacy" || (value.surface === "ctf-expert" && value.source !== "explicit" && value.source !== "route")) {
+      if (
+        value.version !== 2 ||
+        value.source === "legacy" ||
+        (value.surface === "ctf-expert" && value.source !== "explicit" && value.source !== "route")
+      ) {
         stored[sessionID] = { ...value, surface: "ctf-fast", source: "legacy", version: 2 }
         changed = true
       }
@@ -69,7 +73,10 @@ export async function persistSessionSurface(
   }))
 }
 
-export async function removePersistedSessionSurface(worktree: string, sessionID: string | undefined | null): Promise<void> {
+export async function removePersistedSessionSurface(
+  worktree: string,
+  sessionID: string | undefined | null,
+): Promise<void> {
   if (!sessionID) return
   const file = surfacesFile(worktree)
   await atomicUpdateJsonFile<PersistedSurfaces>(file, {}, (current) => {

@@ -80,9 +80,15 @@ export class CtfRequestBudget {
     if (initialCookie) this.mergeCookieHeader(initialCookie)
   }
 
-  get requests() { return this.observations.length }
-  get stateChangingRequests() { return this.observations.filter((item) => item.stateChanging).length }
-  get currentBudget() { return `${this.requests}/${this.options.maxRequests}` }
+  get requests() {
+    return this.observations.length
+  }
+  get stateChangingRequests() {
+    return this.observations.filter((item) => item.stateChanging).length
+  }
+  get currentBudget() {
+    return `${this.requests}/${this.options.maxRequests}`
+  }
 
   private mergeCookieHeader(value: string) {
     for (const pair of value.split(/;\s*/)) {
@@ -96,23 +102,37 @@ export class CtfRequestBudget {
     return [...this.cookies.entries()].map(([key, value]) => `${key}=${value}`).join("; ")
   }
 
-  async request(url: string | URL, init: RequestInit = {}, stateChanging = false, label = "request", maxBytes = 256_000): Promise<{ text: string; observation: RequestObservation; headers: Headers }> {
+  async request(
+    url: string | URL,
+    init: RequestInit = {},
+    stateChanging = false,
+    label = "request",
+    maxBytes = 256_000,
+  ): Promise<{ text: string; observation: RequestObservation; headers: Headers }> {
     const target = new URL(String(url))
     if (this.options.allowedOrigin && target.origin !== this.options.allowedOrigin) {
-      throw new BudgetStopError("origin_blocked", `Refusing request outside the allowed origin (${this.options.allowedOrigin}).`)
+      throw new BudgetStopError(
+        "origin_blocked",
+        `Refusing request outside the allowed origin (${this.options.allowedOrigin}).`,
+      )
     }
     if (this.routeState !== "ready") {
       const code = this.routeState === "unstable" || this.routeState === "blocked" ? "unstable" : "connection_reset"
       throw new BudgetStopError(code, `Route is ${this.routeState}; refusing further requests.`)
     }
-    if (this.requests >= this.options.maxRequests) throw new BudgetStopError("budget_exhausted", `Request budget exhausted (${this.currentBudget}).`)
+    if (this.requests >= this.options.maxRequests)
+      throw new BudgetStopError("budget_exhausted", `Request budget exhausted (${this.currentBudget}).`)
     if (stateChanging && this.stateChangingRequests >= this.options.maxStateChangingRequests) {
-      throw new BudgetStopError("state_budget_exhausted", `State-changing request budget exhausted (${this.stateChangingRequests}/${this.options.maxStateChangingRequests}).`)
+      throw new BudgetStopError(
+        "state_budget_exhausted",
+        `State-changing request budget exhausted (${this.stateChangingRequests}/${this.options.maxStateChangingRequests}).`,
+      )
     }
     const nowMs = Date.now()
-    const backoffMs = this.consecutiveFailures > 0
-      ? Math.min(this.options.maxBackoffMs, this.options.baseBackoffMs * (2 ** (this.consecutiveFailures - 1)))
-      : 0
+    const backoffMs =
+      this.consecutiveFailures > 0
+        ? Math.min(this.options.maxBackoffMs, this.options.baseBackoffMs * 2 ** (this.consecutiveFailures - 1))
+        : 0
     const waitMs = Math.max(0, Math.max(this.options.minIntervalMs, backoffMs) - (nowMs - this.lastRequestAt))
     if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs))
     const headers = new Headers(init.headers)
@@ -122,7 +142,15 @@ export class CtfRequestBudget {
     const id = `probe-${String(++this.sequence).padStart(3, "0")}`
     const startedAt = new Date().toISOString()
     const started = Date.now()
-    const observation: RequestObservation = { id, label, method, url: String(url), stateChanging, startedAt, elapsedMs: 0 }
+    const observation: RequestObservation = {
+      id,
+      label,
+      method,
+      url: String(url),
+      stateChanging,
+      startedAt,
+      elapsedMs: 0,
+    }
     this.observations.push(observation)
     this.lastRequestAt = started
     try {
@@ -154,7 +182,10 @@ export class CtfRequestBudget {
       }
       if (this.consecutiveFailures >= this.options.maxConsecutiveFailures) {
         this.routeState = "blocked"
-        throw new BudgetStopError("unstable", `${observation.error}; route marked blocked after ${this.consecutiveFailures} consecutive failures.`)
+        throw new BudgetStopError(
+          "unstable",
+          `${observation.error}; route marked blocked after ${this.consecutiveFailures} consecutive failures.`,
+        )
       }
       throw error
     }
@@ -181,7 +212,12 @@ function clamp(value: number, min: number, max: number) {
 }
 
 export async function writeProbeEvidence(directory: string, challenge: string, payload: unknown): Promise<string> {
-  const slug = challenge.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || "web-probe"
+  const slug =
+    challenge
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 64) || "web-probe"
   const root = path.join(directory, "work", "ctf-evidence", slug)
   const probes = path.join(root, "probes")
   await mkdir(probes, { recursive: true })

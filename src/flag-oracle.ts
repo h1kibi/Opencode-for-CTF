@@ -78,7 +78,9 @@ function sha256Hex(value: string): string {
 export async function verifyCandidateFlag(args: VerifyCandidateFlagArgs): Promise<FlagVerification> {
   const candidates = trimCandidates(args.candidates)
   const oracle = buildOracle(args)
-  const defaultAcceptedCandidates = candidates.filter((candidate) => classifyFlagCandidate(candidate, args.candidateContext))
+  const defaultAcceptedCandidates = candidates.filter((candidate) =>
+    classifyFlagCandidate(candidate, args.candidateContext),
+  )
 
   let expected = args.expectedFlag?.trim()
   if (args.flagFile) {

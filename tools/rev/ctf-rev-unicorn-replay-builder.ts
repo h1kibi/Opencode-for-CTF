@@ -152,7 +152,10 @@ export default tool({
       .string()
       .optional()
       .describe("Workspace-relative output directory for generated replay script. Default work/rev-unicorn-replay."),
-    sessionPath: tool.schema.string().optional().describe("Optional workspace-relative rev_runtime_session.v1 JSON to register payload and replay artifacts."),
+    sessionPath: tool.schema
+      .string()
+      .optional()
+      .describe("Optional workspace-relative rev_runtime_session.v1 JSON to register payload and replay artifacts."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
   async execute(args, context) {
@@ -218,10 +221,18 @@ export default tool({
     let runtimeSession: unknown = null
     if (args.sessionPath) {
       const sessionFile = resolveInsideWorkspace(workspace, args.sessionPath)
-      if (!(await access(sessionFile).then(() => true).catch(() => false))) {
+      if (
+        !(await access(sessionFile)
+          .then(() => true)
+          .catch(() => false))
+      ) {
         throw new Error(`runtime session not found: ${normalizeRel(path.relative(workspace, sessionFile))}`)
       }
-      if (await access(sessionFile).then(() => true).catch(() => false)) {
+      if (
+        await access(sessionFile)
+          .then(() => true)
+          .catch(() => false)
+      ) {
         runtimeSession = await recordRuntimeArtifact(sessionFile, workspace, {
           path: normalizeRel(path.relative(workspace, payloadFile)),
           kind: "payload-input",
@@ -239,7 +250,10 @@ export default tool({
           summary: "Unicorn replay script generated",
           stage: "prepared",
           substrate: { kind: "unicorn", arch: target.arch, mode: target.mode },
-          next_action: ["run replay in the same substrate as the captured payload", "record a native-vs-replay oracle before oracle_verified"],
+          next_action: [
+            "run replay in the same substrate as the captured payload",
+            "record a native-vs-replay oracle before oracle_verified",
+          ],
         })
       }
     }

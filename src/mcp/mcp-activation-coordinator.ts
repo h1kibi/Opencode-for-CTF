@@ -20,16 +20,8 @@ import type { OpencodeClient } from "@opencode-ai/sdk"
 import type { RuntimeMcpConfig } from "../skill-mcp-registry.ts"
 import { bindingsForSkill } from "../skill-mcp-registry.ts"
 import { getAgentDefaults } from "../agent-mcp-profiles.ts"
-import {
-  ensureSkillBindingLease,
-  ensureNamedServerLeases,
-  releaseSkillMcpLeases,
-} from "../skill-mcp-manager.ts"
-import {
-  clearMcpActivationIssues,
-  recordMcpActivationIssue,
-  metaToRuntimeConfig,
-} from "../dynamic-mcp-manager.ts"
+import { ensureSkillBindingLease, ensureNamedServerLeases, releaseSkillMcpLeases } from "../skill-mcp-manager.ts"
+import { clearMcpActivationIssues, recordMcpActivationIssue, metaToRuntimeConfig } from "../dynamic-mcp-manager.ts"
 import { lookupMcpServer, envPrerequisitesSatisfied } from "../mcp-server-registry.ts"
 
 // ============================================================================
@@ -85,11 +77,9 @@ export type ReleaseResult = {
  * Called when a skill loads; looks up registered bindings and activates
  * each server through the skill lease mechanism.
  */
-export async function activateSkillMcps(
-  request: SkillActivationRequest,
-): Promise<ActivationResult> {
+export async function activateSkillMcps(request: SkillActivationRequest): Promise<ActivationResult> {
   const bindings = bindingsForSkill(request.skillName)
-  
+
   const activated: string[] = []
   const shared: string[] = []
   const failed: Array<{ serverName: string; message: string }> = []
@@ -151,9 +141,7 @@ export async function activateSkillMcps(
  * Resolves each server through the registry, validates prerequisites,
  * and claims leases through the skill manager.
  */
-export async function activateNamedServers(
-  request: ServerActivationRequest,
-): Promise<ActivationResult> {
+export async function activateNamedServers(request: ServerActivationRequest): Promise<ActivationResult> {
   const activated: string[] = []
   const shared: string[] = []
   const skipped: string[] = []
@@ -185,9 +173,7 @@ export async function activateNamedServers(
   // Claim leases for valid servers
   if (validServers.length > 0) {
     const skillName =
-      request.mode === "agent-default"
-        ? `agent-default:${request.agentName}`
-        : `agent-request:${request.agentName}`
+      request.mode === "agent-default" ? `agent-default:${request.agentName}` : `agent-request:${request.agentName}`
 
     try {
       const result = await ensureNamedServerLeases({
@@ -243,11 +229,9 @@ export async function activateNamedServers(
  * Filters heavy servers from the agent's profile and activates the rest.
  * This is the primary entry point for agent-driven activation in tool-hooks.
  */
-export async function activateAgentProfile(
-  request: Omit<ActivationRequest, "mode">,
-): Promise<ActivationResult> {
+export async function activateAgentProfile(request: Omit<ActivationRequest, "mode">): Promise<ActivationResult> {
   const serverNames = getAgentDefaults(request.agentName)
-  
+
   const servers: Array<{
     serverName: string
     config: RuntimeMcpConfig

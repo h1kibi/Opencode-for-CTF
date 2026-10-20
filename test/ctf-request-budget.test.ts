@@ -19,12 +19,14 @@ describe("CTF request budget", () => {
     }
   })
 
-
   it("blocks cross-origin requests before attaching the session cookie", async () => {
     const fetchMock = vi.fn(async () => new Response("should not run", { status: 200 }))
     vi.stubGlobal("fetch", fetchMock)
     try {
-      const budget = new CtfRequestBudget({ minIntervalMs: 0, allowedOrigin: "http://challenge.local" }, "session=secret")
+      const budget = new CtfRequestBudget(
+        { minIntervalMs: 0, allowedOrigin: "http://challenge.local" },
+        "session=secret",
+      )
       await expect(budget.request("http://outside.local/probe")).rejects.toMatchObject({ code: "origin_blocked" })
       expect(fetchMock).not.toHaveBeenCalled()
       expect(budget.requests).toBe(0)
@@ -34,7 +36,9 @@ describe("CTF request budget", () => {
   })
 
   it("fails closed on a connection reset without retrying the request", async () => {
-    const fetchMock = vi.fn(async () => { throw new Error("ECONNRESET") })
+    const fetchMock = vi.fn(async () => {
+      throw new Error("ECONNRESET")
+    })
     vi.stubGlobal("fetch", fetchMock)
     try {
       const budget = new CtfRequestBudget({ minIntervalMs: 0 })
@@ -48,7 +52,9 @@ describe("CTF request budget", () => {
   })
 
   it("marks a route blocked after repeated ordinary failures", async () => {
-    const fetchMock = vi.fn(async () => { throw new Error("upstream unavailable") })
+    const fetchMock = vi.fn(async () => {
+      throw new Error("upstream unavailable")
+    })
     vi.stubGlobal("fetch", fetchMock)
     try {
       const budget = new CtfRequestBudget({ minIntervalMs: 0, stopOnConnectionReset: false, maxConsecutiveFailures: 2 })

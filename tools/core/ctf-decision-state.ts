@@ -675,7 +675,6 @@ function historyDistanceFromLastGate(state: State, gate: string) {
   return null
 }
 
-
 function hasSourcePressure(state: State) {
   return (
     state.hypotheses.some((h) => h.sourceAvailable === true || h.sourceGuided === true) ||
@@ -788,9 +787,7 @@ function gateCheck(state: State, gate: string, gateJson: AnyRecord) {
     if (gateJson.oneVariable === false) failures.push("probe changes more than one variable")
     const hadKnowledgeGate = state.history.some((x) => x.kind === "gate" && x.gate === "knowledge" && x.pass === true)
     if (gateJson.knowledgeChecked !== true && !hadKnowledgeGate) {
-      failures.push(
-        "knowledge gate not satisfied; run the Phase ② ctf_rag recall and pass gate=knowledge before depth",
-      )
+      failures.push("knowledge gate not satisfied; run the Phase ② ctf_rag recall and pass gate=knowledge before depth")
     }
     if (primitiveLockedActive(state) && gateJson.closureJustification !== true) {
       failures.push(
@@ -804,7 +801,8 @@ function gateCheck(state: State, gate: string, gateJson: AnyRecord) {
     }
   } else if (g === "knowledge") {
     failures.push(...requiredKeys(gateJson, ["queryRun", "matchedSegments"]).map((k) => `missing ${k}`))
-    if (gateJson.queryRun !== true) failures.push("queryRun must be true after actual ctf_rag retrieval/segment matching")
+    if (gateJson.queryRun !== true)
+      failures.push("queryRun must be true after actual ctf_rag retrieval/segment matching")
     const knowledgeMode = String(gateJson.knowledgeMode ?? "").toLowerCase()
     const matched = Array.isArray(gateJson.matchedSegments)
       ? gateJson.matchedSegments.length

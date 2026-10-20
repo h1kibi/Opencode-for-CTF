@@ -472,16 +472,37 @@ describe("agentNameToCategory", () => {
 describe("MCP request lifecycle fencing", () => {
   const baseClient = (presence: "present" | "absent" | "unknown" = "present") => ({
     session: {
-      get: async ({ path: requestPath }: { path: { id: string } }) => presence === "present" ? { data: { id: requestPath.id } } : presence === "absent" ? { error: "404 session not found" } : { error: "temporary gateway failure" },
+      get: async ({ path: requestPath }: { path: { id: string } }) =>
+        presence === "present"
+          ? { data: { id: requestPath.id } }
+          : presence === "absent"
+            ? { error: "404 session not found" }
+            : { error: "temporary gateway failure" },
       status: async () => ({ data: {} }),
     },
-    mcp: { add: async () => ({ data: {} }), connect: async () => ({ data: {} }), disconnect: async () => ({ data: {} }) },
+    mcp: {
+      add: async () => ({ data: {} }),
+      connect: async () => ({ data: {} }),
+      disconnect: async () => ({ data: {} }),
+    },
   })
 
   it("deduplicates requests by session owner and server", async () => {
     const worktree = mkdtempSync(join(tmpdir(), "ctf-mcp-lifecycle-"))
-    const first = await requestMcp({ worktree, sessionID: "session-a", agentName: "ctf-rev", serverNames: ["ctfd-mcp"], reason: "inspect" })
-    const second = await requestMcp({ worktree, sessionID: "session-a", agentName: "ctf-rev", serverNames: ["ctfd-mcp"], reason: "inspect again" })
+    const first = await requestMcp({
+      worktree,
+      sessionID: "session-a",
+      agentName: "ctf-rev",
+      serverNames: ["ctfd-mcp"],
+      reason: "inspect",
+    })
+    const second = await requestMcp({
+      worktree,
+      sessionID: "session-a",
+      agentName: "ctf-rev",
+      serverNames: ["ctfd-mcp"],
+      reason: "inspect again",
+    })
     expect(first.requestIds).toHaveLength(1)
     expect(second.results[0]?.status).toBe("already_pending")
     expect((await getAgentMcpState(worktree)).requests).toHaveLength(1)
@@ -489,28 +510,83 @@ describe("MCP request lifecycle fencing", () => {
 
   it("keeps unknown owner liveness pending and expires explicit absence", async () => {
     const unknownTree = mkdtempSync(join(tmpdir(), "ctf-mcp-unknown-"))
-    await requestMcp({ worktree: unknownTree, sessionID: "unknown-owner", agentName: "ctf-rev", serverNames: ["ctfd-mcp"], reason: "inspect" })
-    const unknown = await processPendingRequests({ client: baseClient("unknown") as never, worktree: unknownTree, directory: unknownTree, sessionID: "unknown-owner" })
+    await requestMcp({
+      worktree: unknownTree,
+      sessionID: "unknown-owner",
+      agentName: "ctf-rev",
+      serverNames: ["ctfd-mcp"],
+      reason: "inspect",
+    })
+    const unknown = await processPendingRequests({
+      client: baseClient("unknown") as never,
+      worktree: unknownTree,
+      directory: unknownTree,
+      sessionID: "unknown-owner",
+    })
     expect(unknown.stillPending).toBe(1)
     expect((await getAgentMcpState(unknownTree)).requests[0]?.status).toBe("pending")
 
     const absentTree = mkdtempSync(join(tmpdir(), "ctf-mcp-absent-"))
-    await requestMcp({ worktree: absentTree, sessionID: "absent-owner", agentName: "ctf-rev", serverNames: ["ctfd-mcp"], reason: "inspect" })
-    await processPendingRequests({ client: baseClient("absent") as never, worktree: absentTree, directory: absentTree, sessionID: "absent-owner" })
+    await requestMcp({
+      worktree: absentTree,
+      sessionID: "absent-owner",
+      agentName: "ctf-rev",
+      serverNames: ["ctfd-mcp"],
+      reason: "inspect",
+    })
+    await processPendingRequests({
+      client: baseClient("absent") as never,
+      worktree: absentTree,
+      directory: absentTree,
+      sessionID: "absent-owner",
+    })
     expect((await getAgentMcpState(absentTree)).requests[0]?.status).toBe("expired")
   })
 
   it("releases only the deleted session owner scope", async () => {
     const worktree = mkdtempSync(join(tmpdir(), "ctf-mcp-release-"))
-    await atomicUpdateJsonFile<AgentMcpState>(agentMcpStateFile(worktree), { version: 1, activeProfiles: [], requests: [], updatedAt: new Date().toISOString() }, (state) => {
-      state.activeProfiles.push({ agent: "ctf-rev", sessionID: "session-a", serverNames: ["x64dbg-mcp"] }, { agent: "ctf-web", sessionID: "session-b", serverNames: ["browser"] })
-      state.requests.push(
-        { id: "request-a", agent: "ctf-rev", sessionID: "session-a", serverName: "x64dbg-mcp", reason: "a", status: "active", activationState: "active", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: "request-b", agent: "ctf-web", sessionID: "session-b", serverName: "browser", reason: "b", status: "active", activationState: "active", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-      )
-      return state
+    await atomicUpdateJsonFile<AgentMcpState>(
+      agentMcpStateFile(worktree),
+      { version: 1, activeProfiles: [], requests: [], updatedAt: new Date().toISOString() },
+      (state) => {
+        state.activeProfiles.push(
+          { agent: "ctf-rev", sessionID: "session-a", serverNames: ["x64dbg-mcp"] },
+          { agent: "ctf-web", sessionID: "session-b", serverNames: ["browser"] },
+        )
+        state.requests.push(
+          {
+            id: "request-a",
+            agent: "ctf-rev",
+            sessionID: "session-a",
+            serverName: "x64dbg-mcp",
+            reason: "a",
+            status: "active",
+            activationState: "active",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            id: "request-b",
+            agent: "ctf-web",
+            sessionID: "session-b",
+            serverName: "browser",
+            reason: "b",
+            status: "active",
+            activationState: "active",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        )
+        return state
+      },
+    )
+    await releaseSessionMcps({
+      client: baseClient() as never,
+      worktree,
+      directory: worktree,
+      sessionID: "session-a",
+      agentName: "wrong-agent",
     })
-    await releaseSessionMcps({ client: baseClient() as never, worktree, directory: worktree, sessionID: "session-a", agentName: "wrong-agent" })
     const state = await getAgentMcpState(worktree)
     expect(state.activeProfiles.map((profile) => profile.sessionID)).toEqual(["session-b"])
     expect(state.requests.find((request) => request.id === "request-a")?.status).toBe("released")
@@ -519,11 +595,28 @@ describe("MCP request lifecycle fencing", () => {
 
   it("returns false for a stale deny after activation has won", async () => {
     const worktree = mkdtempSync(join(tmpdir(), "ctf-mcp-deny-race-"))
-    await atomicUpdateJsonFile<AgentMcpState>(agentMcpStateFile(worktree), { version: 1, activeProfiles: [], requests: [], updatedAt: new Date().toISOString() }, (state) => {
-      state.requests.push({ id: "request-race", agent: "ctf-rev", sessionID: "session-race", serverName: "x64dbg-mcp", reason: "race", status: "active", activationState: "active", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
-      return state
+    await atomicUpdateJsonFile<AgentMcpState>(
+      agentMcpStateFile(worktree),
+      { version: 1, activeProfiles: [], requests: [], updatedAt: new Date().toISOString() },
+      (state) => {
+        state.requests.push({
+          id: "request-race",
+          agent: "ctf-rev",
+          sessionID: "session-race",
+          serverName: "x64dbg-mcp",
+          reason: "race",
+          status: "active",
+          activationState: "active",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        return state
+      },
+    )
+    expect(await denyRequest({ worktree, requestId: "request-race", decidedBy: "ctf-expert" })).toMatchObject({
+      ok: false,
+      requestId: "request-race",
     })
-    expect(await denyRequest({ worktree, requestId: "request-race", decidedBy: "ctf-expert" })).toMatchObject({ ok: false, requestId: "request-race" })
     expect((await getAgentMcpState(worktree)).requests[0]?.status).toBe("active")
   })
 })

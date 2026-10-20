@@ -25,7 +25,6 @@ const HIGH_SIGNAL =
 const PACKER_SIGNAL =
   /(jiagu|bangcle|ijiami|qihoo|tencent|legu|secneo|baiduprotect|sophix|tinker|protect|packer|DexClassLoader|PathClassLoader|loadDex|payload|libshell|stub|shell)/i
 
-
 function u16(buf: Buffer, off: number) {
   return off + 2 <= buf.length ? buf.readUInt16LE(off) : 0
 }
@@ -155,7 +154,6 @@ function route(primarySignals: {
     fallbackProbe: "ctf-rev-team if packed/native/multilayer signals grow",
   }
 }
-
 
 export default tool({
   description:

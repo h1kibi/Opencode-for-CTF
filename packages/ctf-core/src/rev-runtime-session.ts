@@ -309,7 +309,10 @@ export function revRuntimeFingerprintVerification(session: {
 }
 
 export function revRuntimeArtifactProvenanceIssues(
-  session: Pick<RevRuntimeSession, "artifacts" | "observations"> & { evidence_refs?: string[]; observation_contract?: RevRuntimeObservationContract },
+  session: Pick<RevRuntimeSession, "artifacts" | "observations"> & {
+    evidence_refs?: string[]
+    observation_contract?: RevRuntimeObservationContract
+  },
 ): RevRuntimeProvenanceIssue[] {
   const contract = session.observation_contract ?? "legacy"
   const issues: RevRuntimeProvenanceIssue[] = []
@@ -455,7 +458,16 @@ export function revRuntimeOracleObservationIssues(session: RevRuntimeOracleContr
   const sessionMode = session.substrate?.mode?.trim() || null
 
   const comparisonFields: Array<{
-    key: "input_sha256" | "payload_sha256" | "stdout_sha256" | "stderr_sha256" | "registers_sha256" | "memory_sha256" | "trace_sha256" | "exit_code" | "stop_pc"
+    key:
+      | "input_sha256"
+      | "payload_sha256"
+      | "stdout_sha256"
+      | "stderr_sha256"
+      | "registers_sha256"
+      | "memory_sha256"
+      | "trace_sha256"
+      | "exit_code"
+      | "stop_pc"
     label: string
   }> = [
     { key: "input_sha256", label: "input hashes" },
@@ -564,7 +576,8 @@ export type RevRuntimePromotionInput = Pick<RevRuntimeSession, "stage" | "oracle
       | "artifacts"
       | "observations"
       | "substrate"
-      | "evidence_refs"      | "runtime_fingerprint"
+      | "evidence_refs"
+      | "runtime_fingerprint"
       | "evidence_anchor"
     >
   >
@@ -609,7 +622,13 @@ export function revRuntimePromotion(session: RevRuntimePromotionInput) {
     evidence_refs: session.evidence_refs ?? [],
     observation_contract: session.observation_contract,
   }).filter((issue) =>
-    ["missing-artifact-reference", "provenance-missing", "artifact-integrity", "artifact-replaced", "path-collision"].includes(issue.code),
+    [
+      "missing-artifact-reference",
+      "provenance-missing",
+      "artifact-integrity",
+      "artifact-replaced",
+      "path-collision",
+    ].includes(issue.code),
   )
   if (session.observation_contract === "strict" && provenanceIssues.length > 0) {
     return {

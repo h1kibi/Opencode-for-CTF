@@ -134,19 +134,22 @@ export function parseTeamState(value: unknown): TeamState {
         if (!isObject(fact) || typeof fact.id !== "string" || !fact.id) {
           throw new Error(`Invalid CTF team state: run ${run.id} contains a fact without an id.`)
         }
-        if (factIDs.has(fact.id)) throw new Error(`Invalid CTF team state: duplicate fact id ${fact.id} in run ${run.id}.`)
+        if (factIDs.has(fact.id))
+          throw new Error(`Invalid CTF team state: duplicate fact id ${fact.id} in run ${run.id}.`)
         factIDs.add(fact.id)
       }
     }
 
     const intentIDs = new Set<string>()
     if (run.intents !== undefined) {
-      if (!Array.isArray(run.intents)) throw new Error(`Invalid CTF team state: run ${run.id} intents must be an array.`)
+      if (!Array.isArray(run.intents))
+        throw new Error(`Invalid CTF team state: run ${run.id} intents must be an array.`)
       for (const intent of run.intents) {
         if (!isObject(intent) || typeof intent.id !== "string" || !intent.id) {
           throw new Error(`Invalid CTF team state: run ${run.id} contains an intent without an id.`)
         }
-        if (intentIDs.has(intent.id)) throw new Error(`Invalid CTF team state: duplicate intent id ${intent.id} in run ${run.id}.`)
+        if (intentIDs.has(intent.id))
+          throw new Error(`Invalid CTF team state: duplicate intent id ${intent.id} in run ${run.id}.`)
         intentIDs.add(intent.id)
       }
     }
@@ -154,30 +157,78 @@ export function parseTeamState(value: unknown): TeamState {
     for (const fact of run.facts ?? []) {
       if (!isObject(fact)) continue
       if (fact.runId !== run.id) throw new Error(`Invalid CTF team state: fact ${fact.id} belongs to another run.`)
-      if (!isOneOf(TEAM_FACT_STATUSES, fact.status)) throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown status.`)
-      if (!isOneOf(TEAM_ROUTE_IDS, fact.routeId)) throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown route.`)
-      if (!isOneOf(["observation", "measurement", "artifact", "error", "negative", "candidate"] as const, fact.kind)) throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown kind.`)
-      if (!isOneOf(["observed", "probable", "speculative", "confirmed"] as const, fact.confidence)) throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown confidence.`)
-      if (fact.status === "accepted" && fact.confidence !== "confirmed") throw new Error(`Invalid CTF team state: accepted fact ${fact.id} must be confirmed.`)
-      if (fact.status !== "accepted" && fact.confidence === "confirmed") throw new Error(`Invalid CTF team state: unaccepted fact ${fact.id} cannot be confirmed.`)
-      if (fact.status === "accepted" && (typeof fact.reviewedBy !== "string" || !fact.reviewedBy || typeof fact.reviewedAt !== "string" || !fact.reviewedAt)) throw new Error(`Invalid CTF team state: accepted fact ${fact.id} lacks reviewer provenance.`)
-      if (typeof fact.sourceJobId !== "string" || !jobIDs.has(fact.sourceJobId)) throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown source job.`)
+      if (!isOneOf(TEAM_FACT_STATUSES, fact.status))
+        throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown status.`)
+      if (!isOneOf(TEAM_ROUTE_IDS, fact.routeId))
+        throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown route.`)
+      if (!isOneOf(["observation", "measurement", "artifact", "error", "negative", "candidate"] as const, fact.kind))
+        throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown kind.`)
+      if (!isOneOf(["observed", "probable", "speculative", "confirmed"] as const, fact.confidence))
+        throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown confidence.`)
+      if (fact.status === "accepted" && fact.confidence !== "confirmed")
+        throw new Error(`Invalid CTF team state: accepted fact ${fact.id} must be confirmed.`)
+      if (fact.status !== "accepted" && fact.confidence === "confirmed")
+        throw new Error(`Invalid CTF team state: unaccepted fact ${fact.id} cannot be confirmed.`)
+      if (
+        fact.status === "accepted" &&
+        (typeof fact.reviewedBy !== "string" ||
+          !fact.reviewedBy ||
+          typeof fact.reviewedAt !== "string" ||
+          !fact.reviewedAt)
+      )
+        throw new Error(`Invalid CTF team state: accepted fact ${fact.id} lacks reviewer provenance.`)
+      if (typeof fact.sourceJobId !== "string" || !jobIDs.has(fact.sourceJobId))
+        throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown source job.`)
       const sourceJob = run.jobs.find((job) => isObject(job) && job.id === fact.sourceJobId)
       // Allow sourceSessionId to match either the current sessionID or any retrySessionID in the attempt history
       const validSessionIds = new Set([sourceJob?.sessionID, sourceJob?.retrySessionID].filter(Boolean))
-      if (typeof fact.sourceSessionId !== "string" || !fact.sourceSessionId || !validSessionIds.has(fact.sourceSessionId)) throw new Error(`Invalid CTF team state: fact ${fact.id} has an invalid source session.`)
-      if (fact.intentId !== undefined && (typeof fact.intentId !== "string" || !intentIDs.has(fact.intentId))) throw new Error(`Invalid CTF team state: fact ${fact.id} references an unknown intent.`)
+      if (
+        typeof fact.sourceSessionId !== "string" ||
+        !fact.sourceSessionId ||
+        !validSessionIds.has(fact.sourceSessionId)
+      )
+        throw new Error(`Invalid CTF team state: fact ${fact.id} has an invalid source session.`)
+      if (fact.intentId !== undefined && (typeof fact.intentId !== "string" || !intentIDs.has(fact.intentId)))
+        throw new Error(`Invalid CTF team state: fact ${fact.id} references an unknown intent.`)
       if (fact.supersedesFactId !== undefined) {
-        if (typeof fact.supersedesFactId !== "string" || !factIDs.has(fact.supersedesFactId) || fact.supersedesFactId === fact.id) throw new Error(`Invalid CTF team state: fact ${fact.id} has an invalid replacement reference.`)
-        if (fact.status !== "pending" && fact.status !== "accepted") throw new Error(`Invalid CTF team state: replacement fact ${fact.id} has invalid status.`)
-        if (fact.status === "accepted" && (typeof fact.reviewedBy !== "string" || !fact.reviewedBy || typeof fact.reviewedAt !== "string" || !fact.reviewedAt)) throw new Error(`Invalid CTF team state: accepted replacement fact ${fact.id} lacks reviewer provenance.`)
-        const superseded = (run.facts ?? []).find((candidate) => isObject(candidate) && candidate.id === fact.supersedesFactId)
-        if (!superseded || superseded.status !== "superseded") throw new Error(`Invalid CTF team state: fact ${fact.id} replaces a fact that is not superseded.`)
+        if (
+          typeof fact.supersedesFactId !== "string" ||
+          !factIDs.has(fact.supersedesFactId) ||
+          fact.supersedesFactId === fact.id
+        )
+          throw new Error(`Invalid CTF team state: fact ${fact.id} has an invalid replacement reference.`)
+        if (fact.status !== "pending" && fact.status !== "accepted")
+          throw new Error(`Invalid CTF team state: replacement fact ${fact.id} has invalid status.`)
+        if (
+          fact.status === "accepted" &&
+          (typeof fact.reviewedBy !== "string" ||
+            !fact.reviewedBy ||
+            typeof fact.reviewedAt !== "string" ||
+            !fact.reviewedAt)
+        )
+          throw new Error(`Invalid CTF team state: accepted replacement fact ${fact.id} lacks reviewer provenance.`)
+        const superseded = (run.facts ?? []).find(
+          (candidate) => isObject(candidate) && candidate.id === fact.supersedesFactId,
+        )
+        if (!superseded || superseded.status !== "superseded")
+          throw new Error(`Invalid CTF team state: fact ${fact.id} replaces a fact that is not superseded.`)
       }
-      if (typeof fact.statement !== "string" || fact.statement.length === 0 || fact.statement.length > 2_000) throw new Error(`Invalid CTF team state: fact ${fact.id} has an invalid statement.`)
-      if (!Array.isArray(fact.evidence) || (fact.kind !== "error" && fact.evidence.length === 0) || fact.evidence.length > 16) throw new Error(`Invalid CTF team state: fact ${fact.id} evidence must be a bounded non-empty array.`)
+      if (typeof fact.statement !== "string" || fact.statement.length === 0 || fact.statement.length > 2_000)
+        throw new Error(`Invalid CTF team state: fact ${fact.id} has an invalid statement.`)
+      if (
+        !Array.isArray(fact.evidence) ||
+        (fact.kind !== "error" && fact.evidence.length === 0) ||
+        fact.evidence.length > 16
+      )
+        throw new Error(`Invalid CTF team state: fact ${fact.id} evidence must be a bounded non-empty array.`)
       for (const evidence of fact.evidence) {
-        if (!isObject(evidence) || !isOneOf(["command", "file", "response", "hash", "trace"] as const, evidence.type) || typeof evidence.value !== "string" || evidence.value.length === 0 || evidence.value.length > 2_000) {
+        if (
+          !isObject(evidence) ||
+          !isOneOf(["command", "file", "response", "hash", "trace"] as const, evidence.type) ||
+          typeof evidence.value !== "string" ||
+          evidence.value.length === 0 ||
+          evidence.value.length > 2_000
+        ) {
           throw new Error(`Invalid CTF team state: fact ${fact.id} contains invalid evidence.`)
         }
       }
@@ -185,34 +236,101 @@ export function parseTeamState(value: unknown): TeamState {
 
     for (const intent of run.intents ?? []) {
       if (!isObject(intent)) continue
-      if (intent.runId !== run.id) throw new Error(`Invalid CTF team state: intent ${intent.id} belongs to another run.`)
-      if (!isOneOf(TEAM_INTENT_STATUSES, intent.status)) throw new Error(`Invalid CTF team state: intent ${intent.id} has an unknown status.`)
-      if (!isOneOf(TEAM_ROUTE_IDS, intent.routeId)) throw new Error(`Invalid CTF team state: intent ${intent.id} has an unknown route.`)
-      if (!isOneOf(TEAM_INTENT_CONCURRENCIES, intent.concurrency)) throw new Error(`Invalid CTF team state: intent ${intent.id} has an unknown concurrency mode.`)
-      if (typeof intent.createdBy !== "string" || !isOneOf(["expert", "migration"] as const, intent.createdBy)) throw new Error(`Invalid CTF team state: intent ${intent.id} has an unknown creator.`)
-      if (typeof intent.title !== "string" || intent.title.length === 0 || intent.title.length > 160) throw new Error(`Invalid CTF team state: intent ${intent.id} has an invalid title.`)
-      if (typeof intent.objective !== "string" || intent.objective.length === 0 || intent.objective.length > 8_000) throw new Error(`Invalid CTF team state: intent ${intent.id} has an invalid objective.`)
-      if ((typeof intent.expectedObservation !== "undefined" && (typeof intent.expectedObservation !== "string" || intent.expectedObservation.trim().length === 0 || intent.expectedObservation.length > 2_000)) || (typeof intent.stopCondition !== "undefined" && (typeof intent.stopCondition !== "string" || intent.stopCondition.trim().length === 0 || intent.stopCondition.length > 2_000)) || (typeof intent.failureCondition !== "undefined" && (typeof intent.failureCondition !== "string" || intent.failureCondition.trim().length === 0 || intent.failureCondition.length > 2_000))) throw new Error(`Invalid CTF team state: intent ${intent.id} has an invalid convergence condition.`)
-      if ((!intent.expectedObservation || intent.expectedObservation.trim().length === 0) && (!intent.stopCondition || intent.stopCondition.trim().length === 0)) throw new Error(`Invalid CTF team state: intent ${intent.id} has no convergence condition.`)
-      if (!Array.isArray(intent.basedOnFactIds) || new Set(intent.basedOnFactIds).size !== intent.basedOnFactIds.length || intent.basedOnFactIds.some((id) => typeof id !== "string" || !factIDs.has(id))) throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid fact references.`)
-      if (!Array.isArray(intent.requiredCapabilities) || intent.requiredCapabilities.length > 32 || intent.requiredCapabilities.some((capability) => typeof capability !== "string" || capability.length === 0 || capability.length > 128)) throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid capabilities.`)
-      if (typeof intent.attempts !== "number" || !Number.isInteger(intent.attempts) || intent.attempts < 0 || typeof intent.maxAttempts !== "number" || !Number.isInteger(intent.maxAttempts) || intent.maxAttempts < 1 || intent.attempts > intent.maxAttempts) throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid attempt counters.`)
-      if (intent.resultFactIds !== undefined && (!Array.isArray(intent.resultFactIds) || new Set(intent.resultFactIds).size !== intent.resultFactIds.length || intent.resultFactIds.some((id) => typeof id !== "string" || !factIDs.has(id)))) throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid result fact references.`)
-      if (intent.resultArtifacts !== undefined && (!Array.isArray(intent.resultArtifacts) || intent.resultArtifacts.length > 32 || intent.resultArtifacts.some((artifact) => typeof artifact !== "string" || artifact.length === 0 || artifact.length > 1_000))) throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid result artifacts.`)
+      if (intent.runId !== run.id)
+        throw new Error(`Invalid CTF team state: intent ${intent.id} belongs to another run.`)
+      if (!isOneOf(TEAM_INTENT_STATUSES, intent.status))
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has an unknown status.`)
+      if (!isOneOf(TEAM_ROUTE_IDS, intent.routeId))
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has an unknown route.`)
+      if (!isOneOf(TEAM_INTENT_CONCURRENCIES, intent.concurrency))
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has an unknown concurrency mode.`)
+      if (typeof intent.createdBy !== "string" || !isOneOf(["expert", "migration"] as const, intent.createdBy))
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has an unknown creator.`)
+      if (typeof intent.title !== "string" || intent.title.length === 0 || intent.title.length > 160)
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has an invalid title.`)
+      if (typeof intent.objective !== "string" || intent.objective.length === 0 || intent.objective.length > 8_000)
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has an invalid objective.`)
+      if (
+        (typeof intent.expectedObservation !== "undefined" &&
+          (typeof intent.expectedObservation !== "string" ||
+            intent.expectedObservation.trim().length === 0 ||
+            intent.expectedObservation.length > 2_000)) ||
+        (typeof intent.stopCondition !== "undefined" &&
+          (typeof intent.stopCondition !== "string" ||
+            intent.stopCondition.trim().length === 0 ||
+            intent.stopCondition.length > 2_000)) ||
+        (typeof intent.failureCondition !== "undefined" &&
+          (typeof intent.failureCondition !== "string" ||
+            intent.failureCondition.trim().length === 0 ||
+            intent.failureCondition.length > 2_000))
+      )
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has an invalid convergence condition.`)
+      if (
+        (!intent.expectedObservation || intent.expectedObservation.trim().length === 0) &&
+        (!intent.stopCondition || intent.stopCondition.trim().length === 0)
+      )
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has no convergence condition.`)
+      if (
+        !Array.isArray(intent.basedOnFactIds) ||
+        new Set(intent.basedOnFactIds).size !== intent.basedOnFactIds.length ||
+        intent.basedOnFactIds.some((id) => typeof id !== "string" || !factIDs.has(id))
+      )
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid fact references.`)
+      if (
+        !Array.isArray(intent.requiredCapabilities) ||
+        intent.requiredCapabilities.length > 32 ||
+        intent.requiredCapabilities.some(
+          (capability) => typeof capability !== "string" || capability.length === 0 || capability.length > 128,
+        )
+      )
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid capabilities.`)
+      if (
+        typeof intent.attempts !== "number" ||
+        !Number.isInteger(intent.attempts) ||
+        intent.attempts < 0 ||
+        typeof intent.maxAttempts !== "number" ||
+        !Number.isInteger(intent.maxAttempts) ||
+        intent.maxAttempts < 1 ||
+        intent.attempts > intent.maxAttempts
+      )
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid attempt counters.`)
+      if (
+        intent.resultFactIds !== undefined &&
+        (!Array.isArray(intent.resultFactIds) ||
+          new Set(intent.resultFactIds).size !== intent.resultFactIds.length ||
+          intent.resultFactIds.some((id) => typeof id !== "string" || !factIDs.has(id)))
+      )
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid result fact references.`)
+      if (
+        intent.resultArtifacts !== undefined &&
+        (!Array.isArray(intent.resultArtifacts) ||
+          intent.resultArtifacts.length > 32 ||
+          intent.resultArtifacts.some(
+            (artifact) => typeof artifact !== "string" || artifact.length === 0 || artifact.length > 1_000,
+          ))
+      )
+        throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid result artifacts.`)
       if (intent.claimedBy !== undefined) {
-        if (typeof intent.claimedBy !== "string" || !jobIDs.has(intent.claimedBy)) throw new Error(`Invalid CTF team state: intent ${intent.id} is claimed by unknown job ${String(intent.claimedBy)}.`)
+        if (typeof intent.claimedBy !== "string" || !jobIDs.has(intent.claimedBy))
+          throw new Error(
+            `Invalid CTF team state: intent ${intent.id} is claimed by unknown job ${String(intent.claimedBy)}.`,
+          )
         const hasAnyFence = intent.claimToken !== undefined || intent.claimExpiresAt !== undefined
         const hasCompleteFence = intent.claimToken !== undefined && intent.claimExpiresAt !== undefined
-        if (hasAnyFence && !hasCompleteFence) throw new Error(`Invalid CTF team state: intent ${intent.id} has an incomplete claim fence.`)
-        if ((intent.status === "claimed" || intent.status === "running") && !hasCompleteFence) throw new Error(`Invalid CTF team state: active intent ${intent.id} has no complete claim fence.`)
+        if (hasAnyFence && !hasCompleteFence)
+          throw new Error(`Invalid CTF team state: intent ${intent.id} has an incomplete claim fence.`)
+        if ((intent.status === "claimed" || intent.status === "running") && !hasCompleteFence)
+          throw new Error(`Invalid CTF team state: active intent ${intent.id} has no complete claim fence.`)
         if (hasCompleteFence) {
           const claimedJob = run.jobs.find((job) => isObject(job) && job.id === intent.claimedBy)
-          if (!claimedJob || claimedJob.intentId !== intent.id || claimedJob.ownerToken !== intent.claimToken) throw new Error(`Invalid CTF team state: intent ${intent.id} claim fence does not match its job.`)
+          if (!claimedJob || claimedJob.intentId !== intent.id || claimedJob.ownerToken !== intent.claimToken)
+            throw new Error(`Invalid CTF team state: intent ${intent.id} claim fence does not match its job.`)
         }
       } else if (intent.claimToken !== undefined || intent.claimExpiresAt !== undefined) {
         throw new Error(`Invalid CTF team state: intent ${intent.id} has an incomplete claim fence.`)
       }
-      if ((intent.status === "claimed" || intent.status === "running") && !intent.claimedBy) throw new Error(`Invalid CTF team state: active intent ${intent.id} has no claim owner.`)
+      if ((intent.status === "claimed" || intent.status === "running") && !intent.claimedBy)
+        throw new Error(`Invalid CTF team state: active intent ${intent.id} has no claim owner.`)
     }
   }
   return value as TeamState

@@ -686,5 +686,3 @@ describe("additional context-aware CTF tools", () => {
     expect(execSpy.mock.calls[0][2]).toBe(join(workspace, "bin"))
   })
 })
-
-

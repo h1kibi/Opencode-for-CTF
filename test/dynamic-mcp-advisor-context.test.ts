@@ -5,7 +5,9 @@ const { getAgentMcpStateMock, listRecentActivationIssuesMock, requestMcpMock } =
     activeProfiles: [
       { agent: "ctf-web", sessionID: "session-1234567890abcdef", serverNames: ["filesystem", "browser"] },
     ],
-    requests: [{ id: "req-1", status: "pending", agent: "ctf-web", serverName: "flutter-aot", reason: "need reversing" }],
+    requests: [
+      { id: "req-1", status: "pending", agent: "ctf-web", serverName: "flutter-aot", reason: "need reversing" },
+    ],
   })),
   listRecentActivationIssuesMock: vi.fn(async () => [
     {

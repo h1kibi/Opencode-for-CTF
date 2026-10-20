@@ -41,12 +41,14 @@ export default tool({
           source: `${target}:${toolName}`,
           origin: `stego-triage:${toolName}`,
           text: result.output,
-        }).map((candidate) => JSON.stringify({
-          ...candidate,
-          source: `${target}:${toolName}`,
-          origin: `stego-triage:${toolName}`,
-          context: result.output.slice(0, 240),
-        })),
+        }).map((candidate) =>
+          JSON.stringify({
+            ...candidate,
+            source: `${target}:${toolName}`,
+            origin: `stego-triage:${toolName}`,
+            context: result.output.slice(0, 240),
+          }),
+        ),
       ),
     ).map((value) => JSON.parse(value) as Record<string, unknown>)
     const candidateValues = unique(flagCandidates.map((candidate) => String(candidate.value ?? "")))

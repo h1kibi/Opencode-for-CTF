@@ -156,10 +156,7 @@ export async function handleEventHook(args: {
           console.warn(`[plugin] expert-watchdog session=${sessionID.slice(0, 12)}: ${warning}`)
         }
       } catch (err) {
-        console.warn(
-          "[plugin] expert watchdog failed (non-fatal):",
-          err instanceof Error ? err.message : String(err),
-        )
+        console.warn("[plugin] expert watchdog failed (non-fatal):", err instanceof Error ? err.message : String(err))
       }
     }
     return

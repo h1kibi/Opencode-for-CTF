@@ -5,11 +5,7 @@ import { AGENT_MCP_DEFAULTS } from "../src/agent-mcp-profiles.js"
 import { agentNameToCategory } from "../src/dynamic-mcp-manager.js"
 import { skillToAgent } from "../src/plugin-support.js"
 import { TEAM_AGENTS } from "../src/team/team-types.js"
-import {
-  isCtfSubagent,
-  SUBAGENT_LIGHT_TOOLS,
-  toolAllowedForSubagent,
-} from "../src/tool-packs.js"
+import { isCtfSubagent, SUBAGENT_LIGHT_TOOLS, toolAllowedForSubagent } from "../src/tool-packs.js"
 
 const root = process.cwd()
 

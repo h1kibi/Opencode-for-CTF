@@ -6,7 +6,10 @@ import path from "node:path"
 const MOD_PATH = "../tools/misc/ctf-multimodal-triage.ts"
 
 function tinyPng() {
-  return Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000000020001e221bc330000000049454e44ae426082", "hex")
+  return Buffer.from(
+    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360000000020001e221bc330000000049454e44ae426082",
+    "hex",
+  )
 }
 
 function largeDimensionPng() {
@@ -47,10 +50,10 @@ describe("ctf-multimodal-triage", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-image-"))
     await writeFile(path.join(root, "clue.png"), tinyPng())
     const mod = await import(MOD_PATH)
-    const result = await mod.default.execute(
-      { target: "clue.png", ocr: false, jsonOnly: true },
-      { directory: root, worktree: root } as never,
-    )
+    const result = await mod.default.execute({ target: "clue.png", ocr: false, jsonOnly: true }, {
+      directory: root,
+      worktree: root,
+    } as never)
     expect(typeof result).toBe("object")
     const output = JSON.parse((result as { output: string }).output)
     expect(output.schemaVersion).toBe("misc_multimodal.v1")
@@ -59,7 +62,9 @@ describe("ctf-multimodal-triage", () => {
     expect(output.attachments).toHaveLength(1)
     expect(output.reviewChecklist).toEqual(expect.arrayContaining([expect.stringMatching(/visible text/i)]))
     expect((result as { attachments: Array<{ mime: string; url: string }> }).attachments[0].mime).toBe("image/png")
-    expect((result as { attachments: Array<{ mime: string; url: string }> }).attachments[0].url).toMatch(/^data:image\/png;base64,/) 
+    expect((result as { attachments: Array<{ mime: string; url: string }> }).attachments[0].url).toMatch(
+      /^data:image\/png;base64,/,
+    )
   })
 
   it("can expose a bounded alpha-channel preview for transparent images", async () => {
@@ -72,17 +77,21 @@ describe("ctf-multimodal-triage", () => {
     )
     const output = JSON.parse((result as { output: string }).output)
     expect(output.channels).toMatchObject({ format: "png", colorModel: "rgba", alpha: true })
-    expect(output.artifacts).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "channel_preview", filename: "transparent.png.alpha.png" })]))
+    expect(output.artifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "channel_preview", filename: "transparent.png.alpha.png" }),
+      ]),
+    )
   })
 
   it("plans bounded ROI tiles for large images without requiring a decoder", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-large-image-"))
     await writeFile(path.join(root, "poster.png"), largeDimensionPng())
     const mod = await import(MOD_PATH)
-    const result = await mod.default.execute(
-      { target: "poster.png", ocr: false, jsonOnly: true },
-      { directory: root, worktree: root } as never,
-    )
+    const result = await mod.default.execute({ target: "poster.png", ocr: false, jsonOnly: true }, {
+      directory: root,
+      worktree: root,
+    } as never)
     const output = JSON.parse((result as { output: string }).output)
     expect(output.mediaKind).toBe("image")
     expect(output.dimensions).toEqual({ width: 4000, height: 3000 })
@@ -95,10 +104,10 @@ describe("ctf-multimodal-triage", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-audio-"))
     await writeFile(path.join(root, "signal.wav"), tinyWav())
     const mod = await import(MOD_PATH)
-    const result = await mod.default.execute(
-      { target: "signal.wav", spectrogram: false, jsonOnly: true },
-      { directory: root, worktree: root } as never,
-    )
+    const result = await mod.default.execute({ target: "signal.wav", spectrogram: false, jsonOnly: true }, {
+      directory: root,
+      worktree: root,
+    } as never)
     const output = JSON.parse((result as { output: string }).output)
     expect(output.mediaKind).toBe("audio")
     expect(output.sampleRate).toBe(8000)
@@ -113,11 +122,25 @@ describe("ctf-multimodal-triage", () => {
     await writeFile(path.join(root, "clip.mp4"), fakeMp4())
     const mod = await import(MOD_PATH)
     const result = await mod.default.execute(
-      { target: "clip.mp4", maxFrames: 2, frameInterval: 3, startTime: 12, segmentDuration: 6, ocr: false, jsonOnly: true },
+      {
+        target: "clip.mp4",
+        maxFrames: 2,
+        frameInterval: 3,
+        startTime: 12,
+        segmentDuration: 6,
+        ocr: false,
+        jsonOnly: true,
+      },
       { directory: root, worktree: root } as never,
     )
     const output = JSON.parse((result as { output: string }).output)
-    expect(output.sampling).toMatchObject({ mode: "interval", startTime: 12, segmentDuration: 6, endTime: 18, interval: 3 })
+    expect(output.sampling).toMatchObject({
+      mode: "interval",
+      startTime: 12,
+      segmentDuration: 6,
+      endTime: 18,
+      interval: 3,
+    })
     expect(output.sampling.positions).toEqual([12, 15])
     expect(output.signalWindow).toMatchObject({ startTime: 12, duration: 6, endTime: 18 })
     expect(output.reviewChecklist.join(" ")).toMatch(/chronological|timestamped/i)
@@ -134,14 +157,16 @@ describe("ctf-multimodal-triage", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-video-"))
     await writeFile(path.join(root, "clip.mp4"), fakeMp4())
     const mod = await import(MOD_PATH)
-    const result = await mod.default.execute(
-      { target: "clip.mp4", maxFrames: 99, ocr: false, jsonOnly: true },
-      { directory: root, worktree: root } as never,
-    )
+    const result = await mod.default.execute({ target: "clip.mp4", maxFrames: 99, ocr: false, jsonOnly: true }, {
+      directory: root,
+      worktree: root,
+    } as never)
     const output = JSON.parse((result as { output: string }).output)
     expect(output.mediaKind).toBe("video")
     expect(output.nextTool).toBe("ctf-multimodal-triage")
-    expect(output.artifacts.filter((item: { kind: string }) => item.kind === "video_frame").length).toBeLessThanOrEqual(12)
+    expect(output.artifacts.filter((item: { kind: string }) => item.kind === "video_frame").length).toBeLessThanOrEqual(
+      12,
+    )
   })
 
   it("enforces a combined attachment budget and reports skipped evidence", async () => {

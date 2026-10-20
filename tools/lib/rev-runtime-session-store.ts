@@ -75,7 +75,10 @@ function cleanIntegerMap(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {}
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
-      .map(([key, item]) => [cleanString(key), typeof item === "number" && Number.isInteger(item) && item > 0 ? item : null])
+      .map(([key, item]) => [
+        cleanString(key),
+        typeof item === "number" && Number.isInteger(item) && item > 0 ? item : null,
+      ])
       .filter(([key, item]) => Boolean(key) && item !== null),
   ) as Record<string, number>
 }
@@ -94,7 +97,11 @@ function normalizedRelative(workspace: string, file: string) {
 }
 
 function sessionSlug(target: string) {
-  const base = path.basename(target).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "target"
+  const base =
+    path
+      .basename(target)
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "target"
   const digest = createHash("sha256").update(target).digest("hex").slice(0, 10)
   return `${base.slice(0, 48)}-${digest}`
 }
@@ -165,8 +172,10 @@ function normalizeArtifact(raw: unknown, workspace: string, at = now()): RevRunt
   }
   if (typeof value.size === "number" && Number.isFinite(value.size)) artifact.size = value.size
   if (cleanString(value.sha256)) artifact.sha256 = cleanString(value.sha256)
-  if (typeof value.generation === "number" && Number.isInteger(value.generation) && value.generation > 0) artifact.generation = value.generation
-  if (cleanString(value.replaces_artifact_id ?? value.replacesArtifactId)) artifact.replaces_artifact_id = cleanString(value.replaces_artifact_id ?? value.replacesArtifactId)
+  if (typeof value.generation === "number" && Number.isInteger(value.generation) && value.generation > 0)
+    artifact.generation = value.generation
+  if (cleanString(value.replaces_artifact_id ?? value.replacesArtifactId))
+    artifact.replaces_artifact_id = cleanString(value.replaces_artifact_id ?? value.replacesArtifactId)
   if (cleanString(value.notes)) artifact.notes = cleanString(value.notes)
   return artifact
 }
@@ -206,9 +215,12 @@ function normalizeFingerprint(raw: unknown, at = now(), preserveStatus = false):
   const value = (raw ?? {}) as Record<string, unknown>
   const observed = normalizeRuntimeMetadata(value.observed ?? value.runtime ?? value)
   const requestedStatus = cleanString(value.status).toLowerCase()
-  const status = preserveStatus && ["unrecorded", "verified", "mismatch", "unavailable", "legacy"].includes(requestedStatus)
-    ? requestedStatus as RevRuntimeFingerprint["status"]
-    : requestedStatus === "unavailable" ? "unavailable" : "unrecorded"
+  const status =
+    preserveStatus && ["unrecorded", "verified", "mismatch", "unavailable", "legacy"].includes(requestedStatus)
+      ? (requestedStatus as RevRuntimeFingerprint["status"])
+      : requestedStatus === "unavailable"
+        ? "unavailable"
+        : "unrecorded"
   return {
     status,
     observed,
@@ -224,21 +236,31 @@ function normalizeDoctor(raw: unknown, at = now()): RevRuntimeDoctor | null {
   const status = cleanString(value.status, "unavailable").toLowerCase() as RevRuntimeDoctor["status"]
   const safeStatus = ["pass", "partial", "fail", "unavailable"].includes(status) ? status : "unavailable"
   const checks = Array.isArray(value.checks)
-    ? value.checks.filter((item) => item && typeof item === "object").map((item) => {
-      const check = item as Record<string, unknown>
-      const checkStatus = cleanString(check.status, "skipped").toLowerCase() as RevRuntimeDoctor["checks"][number]["status"]
-      const requirement = cleanString(check.requirement, "optional").toLowerCase() as RevRuntimeDoctor["checks"][number]["requirement"]
-      return {
-        id: cleanString(check.id, "unknown-check"),
-        requirement: requirement === "required" ? "required" as const : "optional" as const,
-        command: cleanString(check.command),
-        args: Array.isArray(check.args) ? check.args.map((arg) => cleanString(arg)).filter(Boolean) : [],
-        status: ["available", "missing", "error", "skipped"].includes(checkStatus) ? checkStatus : "skipped" as const,
-        version: cleanString(check.version) || null,
-        output_sha256: cleanString(check.output_sha256 ?? check.outputSha256) || null,
-        detail: cleanString(check.detail) || null,
-      }
-    })
+    ? value.checks
+        .filter((item) => item && typeof item === "object")
+        .map((item) => {
+          const check = item as Record<string, unknown>
+          const checkStatus = cleanString(
+            check.status,
+            "skipped",
+          ).toLowerCase() as RevRuntimeDoctor["checks"][number]["status"]
+          const requirement = cleanString(
+            check.requirement,
+            "optional",
+          ).toLowerCase() as RevRuntimeDoctor["checks"][number]["requirement"]
+          return {
+            id: cleanString(check.id, "unknown-check"),
+            requirement: requirement === "required" ? ("required" as const) : ("optional" as const),
+            command: cleanString(check.command),
+            args: Array.isArray(check.args) ? check.args.map((arg) => cleanString(arg)).filter(Boolean) : [],
+            status: ["available", "missing", "error", "skipped"].includes(checkStatus)
+              ? checkStatus
+              : ("skipped" as const),
+            version: cleanString(check.version) || null,
+            output_sha256: cleanString(check.output_sha256 ?? check.outputSha256) || null,
+            detail: cleanString(check.detail) || null,
+          }
+        })
     : []
   return {
     status: safeStatus,
@@ -254,7 +276,9 @@ function normalizeEvidenceAnchor(raw: unknown, at = now()): RevRuntimeEvidenceAn
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null
   const value = raw as Record<string, unknown>
   const requested = cleanString(value.status, "legacy").toLowerCase() as RevRuntimeEvidenceAnchorStatus
-  const status: RevRuntimeEvidenceAnchorStatus = ["pending", "verified", "missing", "mismatch", "legacy"].includes(requested)
+  const status: RevRuntimeEvidenceAnchorStatus = ["pending", "verified", "missing", "mismatch", "legacy"].includes(
+    requested,
+  )
     ? requested
     : "legacy"
   const anchorPath = cleanString(value.path)
@@ -273,7 +297,12 @@ function hasOwn(value: Record<string, unknown>, key: string) {
   return Object.prototype.hasOwnProperty.call(value, key) && value[key] !== undefined && value[key] !== null
 }
 
-function digestRawObservationField(value: Record<string, unknown>, explicitKeys: string[], rawKey: string, digestSources: Set<string>) {
+function digestRawObservationField(
+  value: Record<string, unknown>,
+  explicitKeys: string[],
+  rawKey: string,
+  digestSources: Set<string>,
+) {
   const explicit = explicitKeys.map((key) => cleanString(value[key])).find(Boolean)
   if (explicit) return explicit
   if (!hasOwn(value, rawKey)) return null
@@ -297,7 +326,12 @@ function normalizeObservation(raw: unknown, at = now()): RevRuntimeObservation {
     payload_sha256: digestRawObservationField(value, ["payload_sha256", "payloadSha256"], "payload", digestSources),
     stdout_sha256: digestRawObservationField(value, ["stdout_sha256", "stdoutSha256"], "stdout", digestSources),
     stderr_sha256: digestRawObservationField(value, ["stderr_sha256", "stderrSha256"], "stderr", digestSources),
-    registers_sha256: digestRawObservationField(value, ["registers_sha256", "registersSha256"], "registers", digestSources),
+    registers_sha256: digestRawObservationField(
+      value,
+      ["registers_sha256", "registersSha256"],
+      "registers",
+      digestSources,
+    ),
     memory_sha256: digestRawObservationField(value, ["memory_sha256", "memorySha256"], "memory", digestSources),
     trace_sha256: digestRawObservationField(value, ["trace_sha256", "traceSha256"], "trace", digestSources),
     exit_code: typeof value.exit_code === "number" && Number.isInteger(value.exit_code) ? value.exit_code : null,
@@ -355,7 +389,9 @@ export function normalizeRuntimeSession(raw: unknown, workspace = process.cwd())
     },
     artifacts: Array.isArray(value.artifacts) ? value.artifacts.map((item) => normalizeArtifact(item, workspace)) : [],
     markers: Array.isArray(value.markers) ? value.markers.map((item) => normalizeMarker(item, nowValue)) : [],
-    observations: Array.isArray(value.observations) ? value.observations.map((item) => normalizeObservation(item, nowValue)) : [],
+    observations: Array.isArray(value.observations)
+      ? value.observations.map((item) => normalizeObservation(item, nowValue))
+      : [],
     oracle: {
       status: safeOracleStatus(oracleValue.status),
       command: cleanString(oracleValue.command) || null,
@@ -369,17 +405,22 @@ export function normalizeRuntimeSession(raw: unknown, workspace = process.cwd())
     promotion: { allowed: false, reason: "" },
     decision_state_path: cleanString(value.decision_state_path) || null,
     evidence_board_path: cleanString(value.evidence_board_path) || null,
-    runtime_fingerprint: value.runtime_fingerprint && typeof value.runtime_fingerprint === "object"
-      ? normalizeFingerprint(value.runtime_fingerprint, nowValue, true)
-      : null,
-    runtime_doctor: value.runtime_doctor && typeof value.runtime_doctor === "object"
-      ? normalizeDoctor(value.runtime_doctor, nowValue)
-      : null,
-    evidence_anchor: value.evidence_anchor && typeof value.evidence_anchor === "object"
-      ? normalizeEvidenceAnchor(value.evidence_anchor, nowValue)
-      : null,
+    runtime_fingerprint:
+      value.runtime_fingerprint && typeof value.runtime_fingerprint === "object"
+        ? normalizeFingerprint(value.runtime_fingerprint, nowValue, true)
+        : null,
+    runtime_doctor:
+      value.runtime_doctor && typeof value.runtime_doctor === "object"
+        ? normalizeDoctor(value.runtime_doctor, nowValue)
+        : null,
+    evidence_anchor:
+      value.evidence_anchor && typeof value.evidence_anchor === "object"
+        ? normalizeEvidenceAnchor(value.evidence_anchor, nowValue)
+        : null,
     history: Array.isArray(value.history)
-      ? value.history.filter((item): item is RevRuntimeSession["history"][number] => Boolean(item && typeof item === "object"))
+      ? value.history.filter((item): item is RevRuntimeSession["history"][number] =>
+          Boolean(item && typeof item === "object"),
+        )
       : [],
     created_at: cleanString(value.created_at, nowValue),
     updated_at: cleanString(value.updated_at, nowValue),
@@ -429,7 +470,12 @@ export async function recordRuntimeDoctor(file: string, workspace: string, docto
     if (!raw) throw new Error(`runtime session not found: ${normalizedRelative(workspace, file)}`)
     const session = normalizeRuntimeSession(raw, workspace)
     session.runtime_doctor = doctor
-    appendEvent(session, "record_runtime_doctor", `runtime doctor recorded: ${doctor.status}`, doctor as unknown as Record<string, unknown>)
+    appendEvent(
+      session,
+      "record_runtime_doctor",
+      `runtime doctor recorded: ${doctor.status}`,
+      doctor as unknown as Record<string, unknown>,
+    )
     refresh(session)
     return session
   })
@@ -449,12 +495,16 @@ async function checkRuntimeEvidenceAnchor(session: RevRuntimeSession, file: stri
   const issues: string[] = []
   const digest = revRuntimeSessionDigest(session)
   const historyHead = session.history.at(-1)?.event_hash ?? null
-  if (cleanString(sidecar.session_sha256 ?? sidecar.sessionSha256) !== digest) issues.push("anchored session digest differs from current session")
-  if ((cleanString(sidecar.history_head ?? sidecar.historyHead) || null) !== historyHead) issues.push("anchored history head differs from current session")
-  if (cleanString(sidecar.session_id ?? sidecar.sessionId) && cleanString(sidecar.session_id ?? sidecar.sessionId) !== session.session_id) issues.push("anchor session_id differs from current session")
-  return issues.length > 0
-    ? { status: "mismatch" as const, issues }
-    : { status: "verified" as const, issues: [] }
+  if (cleanString(sidecar.session_sha256 ?? sidecar.sessionSha256) !== digest)
+    issues.push("anchored session digest differs from current session")
+  if ((cleanString(sidecar.history_head ?? sidecar.historyHead) || null) !== historyHead)
+    issues.push("anchored history head differs from current session")
+  if (
+    cleanString(sidecar.session_id ?? sidecar.sessionId) &&
+    cleanString(sidecar.session_id ?? sidecar.sessionId) !== session.session_id
+  )
+    issues.push("anchor session_id differs from current session")
+  return issues.length > 0 ? { status: "mismatch" as const, issues } : { status: "verified" as const, issues: [] }
 }
 
 export async function verifyRuntimeEvidenceAnchor(file: string, workspace: string) {
@@ -479,7 +529,10 @@ export async function anchorRuntimeEvidence(file: string, workspace: string, inp
     const updated = await atomicUpdateJsonFile<unknown>(file, null, async (raw) => {
       if (!raw) throw new Error(`runtime session not found: ${normalizedRelative(workspace, file)}`)
       const session = normalizeRuntimeSession(raw, workspace)
-      appendEvent(session, "anchor_evidence", `external evidence anchor created: ${anchorPath}`, { path: anchorPath, source })
+      appendEvent(session, "anchor_evidence", `external evidence anchor created: ${anchorPath}`, {
+        path: anchorPath,
+        source,
+      })
       refresh(session)
       const createdAt = now()
       const digest = revRuntimeSessionDigest(session)
@@ -519,7 +572,11 @@ export async function verifyRuntimeSessionHistory(file: string, workspace: strin
   return { session, verification: revRuntimeHistoryVerification(session.history) }
 }
 
-export async function recordRuntimeFingerprint(file: string, workspace: string, fingerprintInput: Record<string, unknown>) {
+export async function recordRuntimeFingerprint(
+  file: string,
+  workspace: string,
+  fingerprintInput: Record<string, unknown>,
+) {
   const requested = normalizeFingerprint(fingerprintInput)
   const updated = await atomicUpdateJsonFile<unknown>(file, null, async (raw) => {
     if (!raw) throw new Error(`runtime session not found: ${normalizedRelative(workspace, file)}`)
@@ -532,14 +589,23 @@ export async function recordRuntimeFingerprint(file: string, workspace: string, 
       issues: verification.issues,
     }
     session.runtime_fingerprint = fingerprint
-    appendEvent(session, "record_runtime_fingerprint", `runtime fingerprint recorded: ${fingerprint.status}`, fingerprint as unknown as Record<string, unknown>)
+    appendEvent(
+      session,
+      "record_runtime_fingerprint",
+      `runtime fingerprint recorded: ${fingerprint.status}`,
+      fingerprint as unknown as Record<string, unknown>,
+    )
     refresh(session)
     return session
   })
   return normalizeRuntimeSession(updated, workspace)
 }
 
-export async function verifyRuntimeFingerprint(file: string, workspace: string, fingerprintInput?: Record<string, unknown>) {
+export async function verifyRuntimeFingerprint(
+  file: string,
+  workspace: string,
+  fingerprintInput?: Record<string, unknown>,
+) {
   const session = await readRuntimeSession(file, workspace)
   const candidate = fingerprintInput
     ? { ...session, runtime_fingerprint: normalizeFingerprint(fingerprintInput) }
@@ -593,8 +659,8 @@ export async function initRuntimeSession(
     },
     artifacts: [],
     markers: [],
-     observations: [],
-     oracle: { status: "unknown", command: null, evidence: null, at: null, observation_ids: [] },
+    observations: [],
+    oracle: { status: "unknown", command: null, evidence: null, at: null, observation_ids: [] },
     evidence_refs: [],
     next_action: cleanList(input.nextAction),
     blocking: cleanList(input.blocking),
@@ -636,7 +702,8 @@ export async function updateRuntimeSession(
         fingerprint: cleanString(substrate.fingerprint ?? session.substrate.fingerprint) || null,
         tool: cleanString(substrate.tool ?? session.substrate.tool) || null,
         version: cleanString(substrate.version ?? session.substrate.version) || null,
-        image_digest: cleanString(substrate.image_digest ?? substrate.imageDigest ?? session.substrate.image_digest) || null,
+        image_digest:
+          cleanString(substrate.image_digest ?? substrate.imageDigest ?? session.substrate.image_digest) || null,
       }
     }
     if (patch.next_action !== undefined || patch.nextAction !== undefined) {
@@ -646,7 +713,10 @@ export async function updateRuntimeSession(
     if (patch.oracle && typeof patch.oracle === "object") {
       const oracle = patch.oracle as Record<string, unknown>
       const observationIdsValue = oracle.observation_ids ?? oracle.observationIds
-      if (observationIdsValue !== undefined && (!Array.isArray(observationIdsValue) || observationIdsValue.some((item) => typeof item !== "string"))) {
+      if (
+        observationIdsValue !== undefined &&
+        (!Array.isArray(observationIdsValue) || observationIdsValue.some((item) => typeof item !== "string"))
+      ) {
         throw new Error("oracle.observation_ids must be an array of strings")
       }
       session.oracle = {
@@ -654,9 +724,8 @@ export async function updateRuntimeSession(
         command: cleanString(oracle.command ?? session.oracle.command) || null,
         evidence: cleanString(oracle.evidence ?? session.oracle.evidence) || null,
         at: cleanString(oracle.at, now()) || now(),
-        observation_ids: observationIdsValue === undefined
-          ? session.oracle.observation_ids
-          : cleanList(observationIdsValue),
+        observation_ids:
+          observationIdsValue === undefined ? session.oracle.observation_ids : cleanList(observationIdsValue),
       }
       const observationIssues = revRuntimeOracleObservationIssues(session)
       if (observationIssues.length > 0) {
@@ -676,10 +745,17 @@ export async function updateRuntimeSession(
       session.stage = nextStage
     }
     if (patch.evidence_refs !== undefined || patch.evidenceRefs !== undefined) {
-      session.evidence_refs = cleanList([...(session.evidence_refs || []), ...(Array.isArray(patch.evidence_refs ?? patch.evidenceRefs) ? (patch.evidence_refs ?? patch.evidenceRefs) as unknown[] : [])])
+      session.evidence_refs = cleanList([
+        ...(session.evidence_refs || []),
+        ...(Array.isArray(patch.evidence_refs ?? patch.evidenceRefs)
+          ? ((patch.evidence_refs ?? patch.evidenceRefs) as unknown[])
+          : []),
+      ])
     }
-    if (patch.decision_state_path !== undefined) session.decision_state_path = cleanString(patch.decision_state_path) || null
-    if (patch.evidence_board_path !== undefined) session.evidence_board_path = cleanString(patch.evidence_board_path) || null
+    if (patch.decision_state_path !== undefined)
+      session.decision_state_path = cleanString(patch.decision_state_path) || null
+    if (patch.evidence_board_path !== undefined)
+      session.evidence_board_path = cleanString(patch.evidence_board_path) || null
     refresh(session)
     appendEvent(session, operation, cleanString(patch.summary, `session updated: ${operation}`), patch)
     if (beforeStage !== session.stage) appendEvent(session, "stage_transition", `${beforeStage} -> ${session.stage}`)
@@ -688,31 +764,38 @@ export async function updateRuntimeSession(
   return normalizeRuntimeSession(result, workspace)
 }
 
-export async function recordRuntimeArtifact(
-  file: string,
-  workspace: string,
-  artifactInput: Record<string, unknown>,
-) {
+export async function recordRuntimeArtifact(file: string, workspace: string, artifactInput: Record<string, unknown>) {
   const requested = normalizeArtifact(artifactInput, workspace)
   const updated = await atomicUpdateJsonFile<unknown>(file, null, async (raw) => {
     if (!raw) throw new Error(`runtime session not found: ${normalizedRelative(workspace, file)}`)
     const session = normalizeRuntimeSession(raw, workspace)
     const previous = session.artifacts.find((item) => item.path === requested.path)
-    const explicitGeneration = typeof artifactInput.generation === "number" && Number.isInteger(artifactInput.generation) && artifactInput.generation > 0
+    const explicitGeneration =
+      typeof artifactInput.generation === "number" &&
+      Number.isInteger(artifactInput.generation) &&
+      artifactInput.generation > 0
     const generation = explicitGeneration
-      ? artifactInput.generation as number
+      ? (artifactInput.generation as number)
       : previous && previous.id === requested.id
-        ? previous.generation ?? 1
+        ? (previous.generation ?? 1)
         : previous
           ? (previous.generation ?? 1) + 1
-          : requested.generation ?? 1
+          : (requested.generation ?? 1)
     const artifact: RevRuntimeArtifact = {
       ...requested,
       generation,
       ...(previous && previous.id !== requested.id ? { replaces_artifact_id: previous.id } : {}),
     }
-    session.artifacts = [...session.artifacts.filter((item) => item.id !== artifact.id && item.path !== artifact.path), artifact]
-    appendEvent(session, "record_artifact", `artifact recorded: ${artifact.path}${artifact.replaces_artifact_id ? ` (replaces ${artifact.replaces_artifact_id})` : ""}`, artifact as unknown as Record<string, unknown>)
+    session.artifacts = [
+      ...session.artifacts.filter((item) => item.id !== artifact.id && item.path !== artifact.path),
+      artifact,
+    ]
+    appendEvent(
+      session,
+      "record_artifact",
+      `artifact recorded: ${artifact.path}${artifact.replaces_artifact_id ? ` (replaces ${artifact.replaces_artifact_id})` : ""}`,
+      artifact as unknown as Record<string, unknown>,
+    )
     refresh(session)
     return session
   })
@@ -724,7 +807,12 @@ export async function recordRuntimeMarker(file: string, workspace: string, marke
     if (!raw) throw new Error(`runtime session not found: ${normalizedRelative(workspace, file)}`)
     const session = normalizeRuntimeSession(raw, workspace)
     session.markers = [...session.markers.filter((item) => item.id !== marker.id && item.name !== marker.name), marker]
-    appendEvent(session, "record_marker", `marker recorded: ${marker.name}`, marker as unknown as Record<string, unknown>)
+    appendEvent(
+      session,
+      "record_marker",
+      `marker recorded: ${marker.name}`,
+      marker as unknown as Record<string, unknown>,
+    )
     refresh(session)
     return session
   })
@@ -741,7 +829,12 @@ export async function recordRuntimeObservation(
     if (!raw) throw new Error(`runtime session not found: ${normalizedRelative(workspace, file)}`)
     const session = normalizeRuntimeSession(raw, workspace)
     session.observations = [...session.observations.filter((item) => item.id !== observation.id), observation]
-    appendEvent(session, "record_observation", `observation recorded: ${observation.kind}/${observation.status}`, observation as unknown as Record<string, unknown>)
+    appendEvent(
+      session,
+      "record_observation",
+      `observation recorded: ${observation.kind}/${observation.status}`,
+      observation as unknown as Record<string, unknown>,
+    )
     refresh(session)
     return session
   })
@@ -760,18 +853,25 @@ export async function inspectRuntimeArtifacts(file: string, workspace: string) {
         const bytes = await readFile(absolute)
         const sha256 = createHash("sha256").update(bytes).digest("hex")
         const contentChanged = Boolean(artifact.sha256 && artifact.sha256 !== sha256)
-        const nextStatus: RevRuntimeArtifact["status"] = artifact.status === "stale"
-          ? "stale"
-          : contentChanged
+        const nextStatus: RevRuntimeArtifact["status"] =
+          artifact.status === "stale"
             ? "stale"
-            : artifact.status === "verified" && artifact.sha256 === sha256
-              ? "verified"
-              : "available"
-        const nextGeneration = contentChanged ? (artifact.generation ?? 1) + 1 : artifact.generation ?? 1
+            : contentChanged
+              ? "stale"
+              : artifact.status === "verified" && artifact.sha256 === sha256
+                ? "verified"
+                : "available"
+        const nextGeneration = contentChanged ? (artifact.generation ?? 1) + 1 : (artifact.generation ?? 1)
         const next = { ...artifact, generation: nextGeneration, size: bytes.byteLength, sha256, status: nextStatus }
         artifacts.push(next)
         if (artifact.status !== next.status || artifact.sha256 !== sha256 || artifact.size !== bytes.byteLength) {
-          changes.push({ path: artifact.path, status: next.status, generation: nextGeneration, size: bytes.byteLength, sha256 })
+          changes.push({
+            path: artifact.path,
+            status: next.status,
+            generation: nextGeneration,
+            size: bytes.byteLength,
+            sha256,
+          })
         }
       } catch {
         const next = { ...artifact, status: "missing" as const }

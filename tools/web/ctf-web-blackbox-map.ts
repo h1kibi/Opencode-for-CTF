@@ -443,7 +443,9 @@ export default tool({
 
     const recommendations: string[] = []
     if (flagCandidates.length)
-      recommendations.push("candidate flag found in web response; preserve URL/response context and verify with an independent oracle before stopping")
+      recommendations.push(
+        "candidate flag found in web response; preserve URL/response context and verify with an independent oracle before stopping",
+      )
     if (jsFindings.some((x) => /source_map_hint/.test(x)))
       recommendations.push("fetch source maps before fuzzing; then pivot to source-guided audit bridge")
     if (browserNeeds.length || mode !== "light")
@@ -460,7 +462,11 @@ export default tool({
         "next cheapest orthogonal checks: compare curl vs browser-rendered DOM, inspect JS-discovered routes, then one-variable oracle probes",
       )
 
-    const verdict = flagCandidates.length ? "flag_candidate" : queue.length ? "blackbox_attack_queue_v8" : "blackbox_recon_v8"
+    const verdict = flagCandidates.length
+      ? "flag_candidate"
+      : queue.length
+        ? "blackbox_attack_queue_v8"
+        : "blackbox_recon_v8"
     return [
       `url: ${base}`,
       `mode: ${mode}`,

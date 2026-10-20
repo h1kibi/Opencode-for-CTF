@@ -143,7 +143,7 @@ export function boundedSamplingPositions(
     }
   } else if (endTime !== undefined && endTime > startTime && safeCount > 1) {
     for (let index = 0; index < safeCount; index++) {
-      pushUnique(startTime + (endTime - startTime) * index / (safeCount - 1))
+      pushUnique(startTime + ((endTime - startTime) * index) / (safeCount - 1))
     }
   } else {
     pushUnique(startTime)
@@ -314,9 +314,7 @@ async function probeBarcodes(inputPaths: BarcodeInput[], cwd: string, maxChars: 
     const decoded = await runOptional("zbarimg", ["--quiet", "--raw", input.path], cwd, 12_000)
     const text = decoded.stdout.trim()
     if (text) {
-      const source = input.timestamp === undefined
-        ? input.label
-        : `${input.label} @ ${input.timestamp.toFixed(3)}s`
+      const source = input.timestamp === undefined ? input.label : `${input.label} @ ${input.timestamp.toFixed(3)}s`
       results.push(`${source}: ${text.slice(0, maxChars)}`)
     }
   }
@@ -324,7 +322,9 @@ async function probeBarcodes(inputPaths: BarcodeInput[], cwd: string, maxChars: 
     available: true,
     decoder: "zbarimg",
     results,
-    detail: results.length ? `decoded ${results.length} barcode/QR candidate(s)` : "decoder available; no barcode/QR payload was returned",
+    detail: results.length
+      ? `decoded ${results.length} barcode/QR candidate(s)`
+      : "decoder available; no barcode/QR payload was returned",
   }
 }
 
@@ -335,7 +335,8 @@ async function readFfprobe(target: string, cwd: string): Promise<{ data?: Ffprob
     cwd,
     15_000,
   )
-  if (!result.ok) return { capability: { available: false, detail: result.text.slice(0, 400) || "ffprobe unavailable" } }
+  if (!result.ok)
+    return { capability: { available: false, detail: result.text.slice(0, 400) || "ffprobe unavailable" } }
   try {
     return { data: JSON.parse(result.stdout) as Ffprobe, capability: { available: true } }
   } catch {
@@ -399,16 +400,35 @@ function parseImageInfo(text: string) {
   }
 }
 
-function detectImageChannels(target: string, sample: Buffer): { format?: string; colorModel?: string; alpha: boolean; alphaReason?: string } {
+function detectImageChannels(
+  target: string,
+  sample: Buffer,
+): { format?: string; colorModel?: string; alpha: boolean; alphaReason?: string } {
   const ext = path.extname(target).toLowerCase()
-  if (sample.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) && sample.length >= 26) {
+  if (
+    sample.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) &&
+    sample.length >= 26
+  ) {
     const colorType = sample[25]
     const models: Record<number, string> = { 0: "gray", 2: "rgb", 3: "indexed", 4: "gray+alpha", 6: "rgba" }
     const alpha = colorType === 4 || colorType === 6 || sample.includes(Buffer.from("tRNS", "ascii"))
-    return { format: "png", colorModel: models[colorType] ?? `unknown(${colorType})`, alpha, alphaReason: alpha ? "PNG color type or tRNS transparency" : undefined }
+    return {
+      format: "png",
+      colorModel: models[colorType] ?? `unknown(${colorType})`,
+      alpha,
+      alphaReason: alpha ? "PNG color type or tRNS transparency" : undefined,
+    }
   }
-  if (ext === ".gif" && (sample.includes(Buffer.from("NETSCAPE", "ascii")) || sample.includes(Buffer.from([0x21, 0xf9, 0x04])))) {
-    return { format: "gif", colorModel: "indexed", alpha: true, alphaReason: "GIF transparency/graphic-control extension may be present" }
+  if (
+    ext === ".gif" &&
+    (sample.includes(Buffer.from("NETSCAPE", "ascii")) || sample.includes(Buffer.from([0x21, 0xf9, 0x04])))
+  ) {
+    return {
+      format: "gif",
+      colorModel: "indexed",
+      alpha: true,
+      alphaReason: "GIF transparency/graphic-control extension may be present",
+    }
   }
   if (ext === ".jpg" || ext === ".jpeg") return { format: "jpeg", colorModel: "rgb", alpha: false }
   return { format: ext.replace(/^\./, "") || undefined, alpha: false }
@@ -444,10 +464,22 @@ async function inspectImage(
   const ocrCapability: OcrCapability = args.ocr
     ? await prepareOcr(args.ocrLanguage, context.directory)
     : { available: false, requested: normalizeOcrLanguage(args.ocrLanguage), detail: "not requested", languages: [] }
-  const original = await attachmentFromFile(target, mimeFor(target, "image"), path.basename(target), args.maxAttachmentBytes, args.budget)
+  const original = await attachmentFromFile(
+    target,
+    mimeFor(target, "image"),
+    path.basename(target),
+    args.maxAttachmentBytes,
+    args.budget,
+  )
   if (original.attachment) {
     attachments.push(original.attachment)
-    artifacts.push({ kind: "original", filename: path.basename(target), mime: original.attachment.mime, attached: true, bytes: original.bytes })
+    artifacts.push({
+      kind: "original",
+      filename: path.basename(target),
+      mime: original.attachment.mime,
+      attached: true,
+      bytes: original.bytes,
+    })
   } else {
     const preview = path.join(tempDir, "image-preview.png")
     const previewResult = await runOptional(
@@ -457,7 +489,13 @@ async function inspectImage(
       20_000,
     )
     if (previewResult.ok) {
-      const previewAttachment = await attachmentFromFile(preview, "image/png", `${path.basename(target)}.preview.png`, args.maxAttachmentBytes, args.budget)
+      const previewAttachment = await attachmentFromFile(
+        preview,
+        "image/png",
+        `${path.basename(target)}.preview.png`,
+        args.maxAttachmentBytes,
+        args.budget,
+      )
       if (previewAttachment.attachment) attachments.push(previewAttachment.attachment)
       artifacts.push({
         kind: "thumbnail",
@@ -468,7 +506,14 @@ async function inspectImage(
         reason: previewAttachment.reason,
       })
     } else {
-      artifacts.push({ kind: "original", filename: path.basename(target), mime: mimeFor(target, "image"), attached: false, bytes: original.bytes, reason: original.reason || "preview generation unavailable" })
+      artifacts.push({
+        kind: "original",
+        filename: path.basename(target),
+        mime: mimeFor(target, "image"),
+        attached: false,
+        bytes: original.bytes,
+        reason: original.reason || "preview generation unavailable",
+      })
     }
   }
 
@@ -476,19 +521,51 @@ async function inspectImage(
     const alphaPath = path.join(tempDir, "image-alpha.png")
     const alphaResult = await runOptional(
       "ffmpeg",
-      ["-y", "-i", target, "-vf", "format=rgba,alphaextract,scale=1600:1600:force_original_aspect_ratio=decrease", "-frames:v", "1", alphaPath],
+      [
+        "-y",
+        "-i",
+        target,
+        "-vf",
+        "format=rgba,alphaextract,scale=1600:1600:force_original_aspect_ratio=decrease",
+        "-frames:v",
+        "1",
+        alphaPath,
+      ],
       context.directory,
       25_000,
     )
     const alphaFilename = `${path.basename(target)}.alpha.png`
     if (alphaResult.ok) {
-      const alphaAttachment = await attachmentFromFile(alphaPath, "image/png", alphaFilename, args.maxAttachmentBytes, args.budget)
-      artifacts.push({ kind: "channel_preview", filename: alphaFilename, mime: "image/png", attached: Boolean(alphaAttachment.attachment), bytes: alphaAttachment.bytes, reason: alphaAttachment.reason })
+      const alphaAttachment = await attachmentFromFile(
+        alphaPath,
+        "image/png",
+        alphaFilename,
+        args.maxAttachmentBytes,
+        args.budget,
+      )
+      artifacts.push({
+        kind: "channel_preview",
+        filename: alphaFilename,
+        mime: "image/png",
+        attached: Boolean(alphaAttachment.attachment),
+        bytes: alphaAttachment.bytes,
+        reason: alphaAttachment.reason,
+      })
       if (alphaAttachment.attachment) attachments.push(alphaAttachment.attachment)
-      observations.push("Generated an alpha-channel preview; inspect it for transparent text, masks, or hidden payload geometry separately from the visible composite.")
+      observations.push(
+        "Generated an alpha-channel preview; inspect it for transparent text, masks, or hidden payload geometry separately from the visible composite.",
+      )
     } else {
-      artifacts.push({ kind: "channel_preview", filename: alphaFilename, mime: "image/png", attached: false, reason: alphaResult.text.slice(0, 400) || "alpha preview generation failed" })
-      observations.push("The image appears to contain transparency, but the alpha-channel preview could not be generated.")
+      artifacts.push({
+        kind: "channel_preview",
+        filename: alphaFilename,
+        mime: "image/png",
+        attached: false,
+        reason: alphaResult.text.slice(0, 400) || "alpha preview generation failed",
+      })
+      observations.push(
+        "The image appears to contain transparency, but the alpha-channel preview could not be generated.",
+      )
     }
   }
 
@@ -526,7 +603,13 @@ async function inspectImage(
       if (!tileResult.ok) break
       const tileFilename = `${path.basename(target)}.${label}.png`
       barcodeInputs.push({ path: tilePath, label: tileFilename })
-      const tileAttachment = await attachmentFromFile(tilePath, "image/png", tileFilename, args.maxAttachmentBytes, args.budget)
+      const tileAttachment = await attachmentFromFile(
+        tilePath,
+        "image/png",
+        tileFilename,
+        args.maxAttachmentBytes,
+        args.budget,
+      )
       artifacts.push({
         kind: "image_tile",
         filename: tileFilename,
@@ -540,19 +623,35 @@ async function inspectImage(
         tileAttached++
       }
       if (args.ocr) {
-        const tileOcrResult = await runOptional("tesseract", [tilePath, "stdout", ...ocrArgs(ocrCapability.effective)], context.directory, 15_000)
+        const tileOcrResult = await runOptional(
+          "tesseract",
+          [tilePath, "stdout", ...ocrArgs(ocrCapability.effective)],
+          context.directory,
+          15_000,
+        )
         if (tileOcrResult.ok && tileOcrResult.stdout.trim()) {
           tileOcr.push(`${label}: ${tileOcrResult.stdout.trim().slice(0, args.maxChars)}`)
         }
       }
     }
-    if (tileAttached > 0) observations.push(`Generated ${tileAttached} bounded large-image ROI tile(s); inspect small text and corner regions separately from the full image.`)
-    else observations.push("Large-image ROI tiling was requested, but ffmpeg was unavailable or the tile evidence exceeded the attachment budget.")
+    if (tileAttached > 0)
+      observations.push(
+        `Generated ${tileAttached} bounded large-image ROI tile(s); inspect small text and corner regions separately from the full image.`,
+      )
+    else
+      observations.push(
+        "Large-image ROI tiling was requested, but ffmpeg was unavailable or the tile evidence exceeded the attachment budget.",
+      )
   }
 
   let ocr: string | undefined
   if (args.ocr) {
-    const ocrResult = await runOptional("tesseract", [target, "stdout", ...ocrArgs(ocrCapability.effective)], context.directory, 20_000)
+    const ocrResult = await runOptional(
+      "tesseract",
+      [target, "stdout", ...ocrArgs(ocrCapability.effective)],
+      context.directory,
+      20_000,
+    )
     if (ocrResult.ok && ocrResult.stdout.trim()) {
       ocr = ocrResult.stdout.trim().slice(0, args.maxChars)
     } else {
@@ -567,14 +666,26 @@ async function inspectImage(
         ocr = undefined
       }
     }
-    if (ocr) observations.push(`OCR output was requested with language ${ocrCapability.effective ?? ocrCapability.requested}; inspect it together with the attached image.`)
+    if (ocr)
+      observations.push(
+        `OCR output was requested with language ${ocrCapability.effective ?? ocrCapability.requested}; inspect it together with the attached image.`,
+      )
   }
   const barcode = args.barcode
     ? await probeBarcodes(barcodeInputs, context.directory, args.maxChars)
-    : { available: false, results: [], detail: "not requested" } satisfies BarcodeProbe
-  if (/qr|barcode|datamatrix|aztec/i.test(info.raw) || barcode.results.length) observations.push("Metadata or a dedicated barcode probe indicates QR/barcode evidence; verify decoded payloads against the visual regions before treating them as a flag.")
-  if (info.raw.includes("trailing data") || info.raw.includes("embedded zip")) observations.push("Image metadata indicates possible appended or embedded data; preserve the visual evidence before stego extraction.")
-  if (!observations.length) observations.push("Use the attached image for visual inspection; metadata alone is not sufficient to rule out visual steganography.")
+    : ({ available: false, results: [], detail: "not requested" } satisfies BarcodeProbe)
+  if (/qr|barcode|datamatrix|aztec/i.test(info.raw) || barcode.results.length)
+    observations.push(
+      "Metadata or a dedicated barcode probe indicates QR/barcode evidence; verify decoded payloads against the visual regions before treating them as a flag.",
+    )
+  if (info.raw.includes("trailing data") || info.raw.includes("embedded zip"))
+    observations.push(
+      "Image metadata indicates possible appended or embedded data; preserve the visual evidence before stego extraction.",
+    )
+  if (!observations.length)
+    observations.push(
+      "Use the attached image for visual inspection; metadata alone is not sufficient to rule out visual steganography.",
+    )
 
   return {
     dimensions: { width: info.width, height: info.height },
@@ -629,17 +740,20 @@ async function inspectVideo(
 
   const frameCountToExtract = Math.max(1, Math.min(MAX_FRAMES_LIMIT, args.maxFrames))
   const startTime = Math.max(0, finiteNumber(args.startTime) ?? 0)
-  const requestedSegmentDuration = args.segmentDuration === undefined
-    ? undefined
-    : Math.max(0, finiteNumber(args.segmentDuration) ?? 0)
-  const segmentEnd = duration > 0
-    ? Math.min(duration, startTime + (requestedSegmentDuration ?? Math.max(0, duration - startTime)))
-    : requestedSegmentDuration !== undefined
-      ? startTime + requestedSegmentDuration
-      : undefined
+  const requestedSegmentDuration =
+    args.segmentDuration === undefined ? undefined : Math.max(0, finiteNumber(args.segmentDuration) ?? 0)
+  const segmentEnd =
+    duration > 0
+      ? Math.min(duration, startTime + (requestedSegmentDuration ?? Math.max(0, duration - startTime)))
+      : requestedSegmentDuration !== undefined
+        ? startTime + requestedSegmentDuration
+        : undefined
   const interval = args.frameInterval === undefined ? undefined : Math.max(0, finiteNumber(args.frameInterval) ?? 0)
   const positions = boundedSamplingPositions(startTime, segmentEnd, frameCountToExtract, interval)
-  if (duration > 0 && startTime >= duration) observations.push(`Requested video startTime ${startTime}s is at or beyond the ${duration}s duration; frame extraction may be empty.`)
+  if (duration > 0 && startTime >= duration)
+    observations.push(
+      `Requested video startTime ${startTime}s is at or beyond the ${duration}s duration; frame extraction may be empty.`,
+    )
   const ocrCapability: OcrCapability = args.ocr
     ? await prepareOcr(args.ocrLanguage, context.directory)
     : { available: false, requested: normalizeOcrLanguage(args.ocrLanguage), detail: "not requested", languages: [] }
@@ -649,28 +763,67 @@ async function inspectVideo(
     const framePath = path.join(tempDir, `frame-${String(index + 1).padStart(2, "0")}.png`)
     const frameResult = await runOptional(
       "ffmpeg",
-      ["-y", "-ss", String(Math.max(0, positions[index])), "-i", target, "-vf", "scale=1600:1600:force_original_aspect_ratio=decrease", "-frames:v", "1", framePath],
+      [
+        "-y",
+        "-ss",
+        String(Math.max(0, positions[index])),
+        "-i",
+        target,
+        "-vf",
+        "scale=1600:1600:force_original_aspect_ratio=decrease",
+        "-frames:v",
+        "1",
+        framePath,
+      ],
       context.directory,
       25_000,
     )
     if (!frameResult.ok) {
-      if (!probe.capability.available) observations.push("ffprobe and ffmpeg are unavailable; video metadata/frame extraction could not run.")
-      else observations.push(`Frame extraction stopped at frame ${index + 1}; preserve the video and use an external frame viewer if needed.`)
+      if (!probe.capability.available)
+        observations.push("ffprobe and ffmpeg are unavailable; video metadata/frame extraction could not run.")
+      else
+        observations.push(
+          `Frame extraction stopped at frame ${index + 1}; preserve the video and use an external frame viewer if needed.`,
+        )
       break
     }
     frameExtractionAvailable = true
-    barcodeInputs.push({ path: framePath, label: `${path.basename(target)}.frame-${index + 1}.png`, timestamp: positions[index] })
-    const frameAttachment = await attachmentFromFile(framePath, "image/png", `${path.basename(target)}.frame-${index + 1}.png`, args.maxAttachmentBytes, args.budget)
-    artifacts.push({ kind: "video_frame", filename: `${path.basename(target)}.frame-${index + 1}.png`, mime: "image/png", attached: Boolean(frameAttachment.attachment), bytes: frameAttachment.bytes, reason: frameAttachment.reason, timestamp: positions[index] })
+    barcodeInputs.push({
+      path: framePath,
+      label: `${path.basename(target)}.frame-${index + 1}.png`,
+      timestamp: positions[index],
+    })
+    const frameAttachment = await attachmentFromFile(
+      framePath,
+      "image/png",
+      `${path.basename(target)}.frame-${index + 1}.png`,
+      args.maxAttachmentBytes,
+      args.budget,
+    )
+    artifacts.push({
+      kind: "video_frame",
+      filename: `${path.basename(target)}.frame-${index + 1}.png`,
+      mime: "image/png",
+      attached: Boolean(frameAttachment.attachment),
+      bytes: frameAttachment.bytes,
+      reason: frameAttachment.reason,
+      timestamp: positions[index],
+    })
     if (frameAttachment.attachment) attachments.push(frameAttachment.attachment)
     if (args.ocr) {
-      const ocrResult = await runOptional("tesseract", [framePath, "stdout", ...ocrArgs(ocrCapability.effective)], context.directory, 15_000)
-      if (ocrResult.ok && ocrResult.stdout.trim()) ocrResults.push(`frame ${index + 1}: ${ocrResult.stdout.trim().slice(0, args.maxChars)}`)
+      const ocrResult = await runOptional(
+        "tesseract",
+        [framePath, "stdout", ...ocrArgs(ocrCapability.effective)],
+        context.directory,
+        15_000,
+      )
+      if (ocrResult.ok && ocrResult.stdout.trim())
+        ocrResults.push(`frame ${index + 1}: ${ocrResult.stdout.trim().slice(0, args.maxChars)}`)
     }
   }
   const barcode = args.barcode
     ? await probeBarcodes(barcodeInputs, context.directory, args.maxChars)
-    : { available: false, results: [], detail: "not requested" } satisfies BarcodeProbe
+    : ({ available: false, results: [], detail: "not requested" } satisfies BarcodeProbe)
   let audioSignalCapability: Capability = audio
     ? { available: false, detail: "ffmpeg waveform/spectrogram not generated" }
     : { available: false, detail: "video has no audio stream" }
@@ -683,7 +836,20 @@ async function inspectVideo(
       const durationArgs = signalDuration !== undefined ? ["-t", String(signalDuration)] : []
       const signalResult = await runOptional(
         "ffmpeg",
-        ["-y", ...seek, "-i", target, ...durationArgs, "-filter_complex", `[0:a]${filter}[v]`, "-map", "[v]", "-frames:v", "1", outputPath],
+        [
+          "-y",
+          ...seek,
+          "-i",
+          target,
+          ...durationArgs,
+          "-filter_complex",
+          `[0:a]${filter}[v]`,
+          "-map",
+          "[v]",
+          "-frames:v",
+          "1",
+          outputPath,
+        ],
         context.directory,
         30_000,
       )
@@ -714,17 +880,42 @@ async function inspectVideo(
       }
     }
     await makeSignalImage("waveform", "showwavespic=s=1600x400:colors=white", "audio-waveform.png")
-    await makeSignalImage("spectrogram", "showspectrumpic=s=1600x900:legend=disabled:color=rainbow", "audio-spectrogram.png")
+    await makeSignalImage(
+      "spectrogram",
+      "showspectrumpic=s=1600x900:legend=disabled:color=rainbow",
+      "audio-spectrogram.png",
+    )
   }
-  if (subtitleCount > 0) observations.push(`Detected ${subtitleCount} subtitle stream(s); extract/render subtitles only after checking the frame evidence.`)
+  if (subtitleCount > 0)
+    observations.push(
+      `Detected ${subtitleCount} subtitle stream(s); extract/render subtitles only after checking the frame evidence.`,
+    )
   if (audio) {
-    if (audioSignalCapability.available) observations.push("Video audio was rendered as bounded waveform/spectrogram attachments; inspect them before speech or signal decoding.")
-    else if (args.analyzeAudio) observations.push("Video contains an audio stream, but waveform/spectrogram rendering was unavailable or over the attachment budget.")
-    else observations.push("Video contains an audio stream; rerun with analyzeAudio enabled for waveform/spectrogram evidence.")
+    if (audioSignalCapability.available)
+      observations.push(
+        "Video audio was rendered as bounded waveform/spectrogram attachments; inspect them before speech or signal decoding.",
+      )
+    else if (args.analyzeAudio)
+      observations.push(
+        "Video contains an audio stream, but waveform/spectrogram rendering was unavailable or over the attachment budget.",
+      )
+    else
+      observations.push(
+        "Video contains an audio stream; rerun with analyzeAudio enabled for waveform/spectrogram evidence.",
+      )
   }
-  if (ocrResults.length) observations.push(`Frame OCR produced text candidates with language ${ocrCapability.effective ?? ocrCapability.requested}; treat them as untrusted evidence and verify against the attached frames.`)
-  if (barcode.results.length) observations.push("A dedicated barcode probe returned payload candidates from one or more sampled frames; verify the timestamp and visible geometry before decoding further.")
-  if (!observations.length) observations.push("Inspect the bounded key-frame set first; do not scan every frame unless a temporal clue is established.")
+  if (ocrResults.length)
+    observations.push(
+      `Frame OCR produced text candidates with language ${ocrCapability.effective ?? ocrCapability.requested}; treat them as untrusted evidence and verify against the attached frames.`,
+    )
+  if (barcode.results.length)
+    observations.push(
+      "A dedicated barcode probe returned payload candidates from one or more sampled frames; verify the timestamp and visible geometry before decoding further.",
+    )
+  if (!observations.length)
+    observations.push(
+      "Inspect the bounded key-frame set first; do not scan every frame unless a temporal clue is established.",
+    )
 
   return {
     duration: duration || undefined,
@@ -733,7 +924,9 @@ async function inspectVideo(
     fps,
     frameCount,
     codec: video?.codec_name,
-    audio: audio ? { codec: audio.codec_name, sampleRate: finiteNumber(audio.sample_rate), channels: audio.channels } : undefined,
+    audio: audio
+      ? { codec: audio.codec_name, sampleRate: finiteNumber(audio.sample_rate), channels: audio.channels }
+      : undefined,
     subtitleCount,
     sampling: {
       mode: interval !== undefined ? "interval" : "uniform",
@@ -751,7 +944,13 @@ async function inspectVideo(
     observations,
     capabilities: {
       ffprobe: probe.capability,
-      ffmpeg: { available: frameExtractionAvailable || audioSignalCapability.available, detail: frameExtractionAvailable || audioSignalCapability.available ? undefined : "no bounded frame or signal render succeeded" },
+      ffmpeg: {
+        available: frameExtractionAvailable || audioSignalCapability.available,
+        detail:
+          frameExtractionAvailable || audioSignalCapability.available
+            ? undefined
+            : "no bounded frame or signal render succeeded",
+      },
       ocr: { ...ocrCapability, available: ocrCapability.available || ocrResults.length > 0 },
       barcode: { available: barcode.available, detail: barcode.detail },
       audioSignals: audioSignalCapability,
@@ -772,11 +971,30 @@ async function analyzeAudioSignal(
   const durationArgs = duration !== undefined ? ["-t", String(duration)] : []
   const result = await runOptional(
     "ffmpeg",
-    ["-hide_banner", "-loglevel", "info", ...seek, "-i", target, ...durationArgs, "-af", "silencedetect=noise=-35dB:d=0.05", "-f", "null", "-"],
+    [
+      "-hide_banner",
+      "-loglevel",
+      "info",
+      ...seek,
+      "-i",
+      target,
+      ...durationArgs,
+      "-af",
+      "silencedetect=noise=-35dB:d=0.05",
+      "-f",
+      "null",
+      "-",
+    ],
     cwd,
     30_000,
   )
-  if (!result.ok) return { available: false, silenceSegments: [], candidatePatterns: [], detail: result.text.slice(0, 400) || "ffmpeg signal analysis unavailable" }
+  if (!result.ok)
+    return {
+      available: false,
+      silenceSegments: [],
+      candidatePatterns: [],
+      detail: result.text.slice(0, 400) || "ffmpeg signal analysis unavailable",
+    }
   const silenceSegments: SilenceSegment[] = []
   let pendingStart: number | undefined
   for (const line of result.stderr.split(/\r?\n/)) {
@@ -797,16 +1015,19 @@ async function analyzeAudioSignal(
     }
   }
   if (pendingStart !== undefined) silenceSegments.push({ startTime: pendingStart })
-  const candidatePatterns = silenceSegments.length >= 3
-    ? ["repeated silence/pulse timing candidate; inspect Morse/DTMF/FSK hypotheses against the spectrogram"]
-    : silenceSegments.length > 0
-      ? ["silence boundary candidate; compare timing with waveform and spectrogram before decoding"]
-      : []
+  const candidatePatterns =
+    silenceSegments.length >= 3
+      ? ["repeated silence/pulse timing candidate; inspect Morse/DTMF/FSK hypotheses against the spectrogram"]
+      : silenceSegments.length > 0
+        ? ["silence boundary candidate; compare timing with waveform and spectrogram before decoding"]
+        : []
   return {
     available: true,
     silenceSegments: silenceSegments.slice(0, 64),
     candidatePatterns,
-    detail: silenceSegments.length ? `detected ${silenceSegments.length} bounded silence segment(s)` : "no silence segment crossed the configured threshold",
+    detail: silenceSegments.length
+      ? `detected ${silenceSegments.length} bounded silence segment(s)`
+      : "no silence segment crossed the configured threshold",
   }
 }
 
@@ -832,24 +1053,45 @@ async function inspectAudio(
   const sampleRate = finiteNumber(stream?.sample_rate) ?? fallback?.sampleRate
   const channels = stream?.channels ?? fallback?.channels
   const signalStartTime = Math.max(0, finiteNumber(args.signalStartTime) ?? 0)
-  const requestedSignalDuration = args.signalDuration === undefined
-    ? undefined
-    : Math.max(0, finiteNumber(args.signalDuration) ?? 0)
-  const signalEndTime = duration !== undefined
-    ? Math.min(duration, signalStartTime + (requestedSignalDuration ?? Math.max(0, duration - signalStartTime)))
-    : signalStartTime + (requestedSignalDuration ?? 0)
+  const requestedSignalDuration =
+    args.signalDuration === undefined ? undefined : Math.max(0, finiteNumber(args.signalDuration) ?? 0)
+  const signalEndTime =
+    duration !== undefined
+      ? Math.min(duration, signalStartTime + (requestedSignalDuration ?? Math.max(0, duration - signalStartTime)))
+      : signalStartTime + (requestedSignalDuration ?? 0)
   const attachments: ToolAttachment[] = []
   const artifacts: Artifact[] = []
   const observations: string[] = []
-  let signalCapability: Capability = { available: false, detail: args.spectrogram ? "ffmpeg waveform/spectrogram not generated" : "not requested" }
-  let signalAnalysis: SignalAnalysis = { available: false, silenceSegments: [], candidatePatterns: [], detail: args.spectrogram ? "ffmpeg signal analysis not generated" : "not requested" }
+  let signalCapability: Capability = {
+    available: false,
+    detail: args.spectrogram ? "ffmpeg waveform/spectrogram not generated" : "not requested",
+  }
+  let signalAnalysis: SignalAnalysis = {
+    available: false,
+    silenceSegments: [],
+    candidatePatterns: [],
+    detail: args.spectrogram ? "ffmpeg signal analysis not generated" : "not requested",
+  }
   const makeSignalImage = async (kind: "waveform" | "spectrogram", filter: string, filename: string) => {
     const outputPath = path.join(tempDir, filename)
     const seek = signalStartTime > 0 ? ["-ss", String(signalStartTime)] : []
     const durationArgs = requestedSignalDuration !== undefined ? ["-t", String(requestedSignalDuration)] : []
     const result = await runOptional(
       "ffmpeg",
-      ["-y", ...seek, "-i", target, ...durationArgs, "-filter_complex", `[0:a]${filter}[v]`, "-map", "[v]", "-frames:v", "1", outputPath],
+      [
+        "-y",
+        ...seek,
+        "-i",
+        target,
+        ...durationArgs,
+        "-filter_complex",
+        `[0:a]${filter}[v]`,
+        "-map",
+        "[v]",
+        "-frames:v",
+        "1",
+        outputPath,
+      ],
       context.directory,
       30_000,
     )
@@ -857,8 +1099,21 @@ async function inspectAudio(
       signalCapability = { available: false, detail: result.text.slice(0, 400) || "ffmpeg unavailable" }
       return
     }
-    const artifact = await attachmentFromFile(outputPath, "image/png", `${path.basename(target)}.${filename}`, args.maxAttachmentBytes, args.budget)
-    artifacts.push({ kind, filename: `${path.basename(target)}.${filename}`, mime: "image/png", attached: Boolean(artifact.attachment), bytes: artifact.bytes, reason: artifact.reason })
+    const artifact = await attachmentFromFile(
+      outputPath,
+      "image/png",
+      `${path.basename(target)}.${filename}`,
+      args.maxAttachmentBytes,
+      args.budget,
+    )
+    artifacts.push({
+      kind,
+      filename: `${path.basename(target)}.${filename}`,
+      mime: "image/png",
+      attached: Boolean(artifact.attachment),
+      bytes: artifact.bytes,
+      reason: artifact.reason,
+    })
     if (artifact.attachment) {
       attachments.push(artifact.attachment)
       signalCapability = { available: true }
@@ -871,17 +1126,50 @@ async function inspectAudio(
     await makeSignalImage("spectrogram", "showspectrumpic=s=1600x900:legend=disabled:color=rainbow", "spectrogram.png")
     signalAnalysis = await analyzeAudioSignal(target, context.directory, signalStartTime, requestedSignalDuration)
   }
-  const original = await attachmentFromFile(target, mimeFor(target, "audio"), path.basename(target), args.maxAttachmentBytes, args.budget)
+  const original = await attachmentFromFile(
+    target,
+    mimeFor(target, "audio"),
+    path.basename(target),
+    args.maxAttachmentBytes,
+    args.budget,
+  )
   if (original.attachment) {
     attachments.push(original.attachment)
-    artifacts.push({ kind: "original", filename: path.basename(target), mime: original.attachment.mime, attached: true, bytes: original.bytes })
-  } else artifacts.push({ kind: "original", filename: path.basename(target), mime: mimeFor(target, "audio"), attached: false, bytes: original.bytes, reason: original.reason })
+    artifacts.push({
+      kind: "original",
+      filename: path.basename(target),
+      mime: original.attachment.mime,
+      attached: true,
+      bytes: original.bytes,
+    })
+  } else
+    artifacts.push({
+      kind: "original",
+      filename: path.basename(target),
+      mime: mimeFor(target, "audio"),
+      attached: false,
+      bytes: original.bytes,
+      reason: original.reason,
+    })
 
-  if (args.transcribe) observations.push("Transcription was not assumed automatically; use the attached waveform/spectrogram and an authorized local speech backend only when speech evidence is present.")
-  if (sampleRate || channels || duration) observations.push("Audio metadata is available; inspect waveform and spectrogram for Morse, DTMF, hidden bands, or visually encoded text before decoding.")
-  if (signalAnalysis.candidatePatterns.length) observations.push(...signalAnalysis.candidatePatterns.map((candidate) => `Signal probe: ${candidate}.`))
-  if (signalStartTime > 0 || requestedSignalDuration !== undefined) observations.push(`Signal visualization is focused on ${signalStartTime}s-${signalEndTime}s; widen the window if the clue may cross its boundaries.`)
-  if (!observations.length) observations.push("Audio metadata and signal images are incomplete; check ffmpeg/ffprobe capability before widening to specialized signal tooling.")
+  if (args.transcribe)
+    observations.push(
+      "Transcription was not assumed automatically; use the attached waveform/spectrogram and an authorized local speech backend only when speech evidence is present.",
+    )
+  if (sampleRate || channels || duration)
+    observations.push(
+      "Audio metadata is available; inspect waveform and spectrogram for Morse, DTMF, hidden bands, or visually encoded text before decoding.",
+    )
+  if (signalAnalysis.candidatePatterns.length)
+    observations.push(...signalAnalysis.candidatePatterns.map((candidate) => `Signal probe: ${candidate}.`))
+  if (signalStartTime > 0 || requestedSignalDuration !== undefined)
+    observations.push(
+      `Signal visualization is focused on ${signalStartTime}s-${signalEndTime}s; widen the window if the clue may cross its boundaries.`,
+    )
+  if (!observations.length)
+    observations.push(
+      "Audio metadata and signal images are incomplete; check ffmpeg/ffprobe capability before widening to specialized signal tooling.",
+    )
 
   return {
     duration,
@@ -911,21 +1199,33 @@ async function inspectAudio(
 
 function resultFor(payload: Record<string, unknown>, attachments: ToolAttachment[], jsonOnly: boolean): ToolResult {
   const output = jsonOnly
-    ? JSON.stringify({ ...payload, attachments: attachments.map(({ type, mime, filename }) => ({ type, mime, filename })) }, null, 2)
+    ? JSON.stringify(
+        { ...payload, attachments: attachments.map(({ type, mime, filename }) => ({ type, mime, filename })) },
+        null,
+        2,
+      )
     : [
         "CTF_MULTIMODAL_TRIAGE:",
         `- target: ${String(payload.target)}`,
         `- media_kind: ${String(payload.mediaKind)}`,
         `- mime: ${String(payload.mime)}`,
         ...(payload.duration !== undefined ? [`- duration: ${payload.duration}s`] : []),
-        ...(payload.width !== undefined && payload.height !== undefined ? [`- dimensions: ${payload.width}x${payload.height}`] : []),
+        ...(payload.width !== undefined && payload.height !== undefined
+          ? [`- dimensions: ${payload.width}x${payload.height}`]
+          : []),
         `- artifacts_attached: ${attachments.length}`,
         "- observations:",
-        ...(Array.isArray(payload.observations) && payload.observations.length ? payload.observations.map((item) => `  - ${String(item)}`) : ["  - none"]),
+        ...(Array.isArray(payload.observations) && payload.observations.length
+          ? payload.observations.map((item) => `  - ${String(item)}`)
+          : ["  - none"]),
         `- next_tool: ${String(payload.nextTool)}`,
         `- first_probe: ${String(payload.firstProbe)}`,
         "- structured_output:",
-        JSON.stringify({ ...payload, attachments: attachments.map(({ type, mime, filename }) => ({ type, mime, filename })) }, null, 2)
+        JSON.stringify(
+          { ...payload, attachments: attachments.map(({ type, mime, filename }) => ({ type, mime, filename })) },
+          null,
+          2,
+        )
           .split(/\r?\n/)
           .map((line) => `  ${line}`)
           .join("\n"),
@@ -947,26 +1247,85 @@ export default tool({
     "CTF Misc multimodal triage: inspect an image, video, or audio artifact, attach bounded visual/signal evidence for a vision-capable model, and return structured metadata plus the safest next probe.",
   args: {
     target: tool.schema.string().describe("Workspace-relative image, video, audio, or document path."),
-    mode: tool.schema.enum(["auto", "image", "video", "audio"]).optional().describe("Override media-kind detection when the suffix/container is misleading."),
-    maxFrames: tool.schema.number().optional().describe("Maximum bounded video frames to attach. Default 6, hard cap 12."),
-    frameInterval: tool.schema.number().optional().describe("Optional seconds between video frames; otherwise sample the selected segment evenly."),
-    startTime: tool.schema.number().optional().describe("Optional video segment start in seconds. Also scopes video audio-signal renders. Default 0."),
-    segmentDuration: tool.schema.number().optional().describe("Optional duration in seconds for focused video sampling and video audio-signal renders. Defaults to the remaining video duration."),
-    signalStartTime: tool.schema.number().optional().describe("Optional start time in seconds for standalone audio waveform/spectrogram renders. Default 0."),
-    signalDuration: tool.schema.number().optional().describe("Optional duration in seconds for standalone audio waveform/spectrogram renders."),
+    mode: tool.schema
+      .enum(["auto", "image", "video", "audio"])
+      .optional()
+      .describe("Override media-kind detection when the suffix/container is misleading."),
+    maxFrames: tool.schema
+      .number()
+      .optional()
+      .describe("Maximum bounded video frames to attach. Default 6, hard cap 12."),
+    frameInterval: tool.schema
+      .number()
+      .optional()
+      .describe("Optional seconds between video frames; otherwise sample the selected segment evenly."),
+    startTime: tool.schema
+      .number()
+      .optional()
+      .describe("Optional video segment start in seconds. Also scopes video audio-signal renders. Default 0."),
+    segmentDuration: tool.schema
+      .number()
+      .optional()
+      .describe(
+        "Optional duration in seconds for focused video sampling and video audio-signal renders. Defaults to the remaining video duration.",
+      ),
+    signalStartTime: tool.schema
+      .number()
+      .optional()
+      .describe("Optional start time in seconds for standalone audio waveform/spectrogram renders. Default 0."),
+    signalDuration: tool.schema
+      .number()
+      .optional()
+      .describe("Optional duration in seconds for standalone audio waveform/spectrogram renders."),
     ocr: tool.schema.boolean().optional().describe("Request OCR for images/video frames. Default true."),
-    ocrLanguage: tool.schema.string().optional().describe("Tesseract language or language combination, for example eng, chi_sim, eng+chi_sim, or jpn. Default eng."),
-    barcode: tool.schema.boolean().optional().describe("Probe images and sampled video frames with a local zbarimg QR/barcode decoder when installed. Default true."),
-    channelPreviews: tool.schema.boolean().optional().describe("For images with detected transparency, attach a bounded alpha-channel preview. Default false to preserve attachment budget."),
-    imageTiles: tool.schema.boolean().optional().describe("For images at least 2400px wide or tall, generate bounded 2x2 ROI tiles. Default true."),
+    ocrLanguage: tool.schema
+      .string()
+      .optional()
+      .describe(
+        "Tesseract language or language combination, for example eng, chi_sim, eng+chi_sim, or jpn. Default eng.",
+      ),
+    barcode: tool.schema
+      .boolean()
+      .optional()
+      .describe(
+        "Probe images and sampled video frames with a local zbarimg QR/barcode decoder when installed. Default true.",
+      ),
+    channelPreviews: tool.schema
+      .boolean()
+      .optional()
+      .describe(
+        "For images with detected transparency, attach a bounded alpha-channel preview. Default false to preserve attachment budget.",
+      ),
+    imageTiles: tool.schema
+      .boolean()
+      .optional()
+      .describe("For images at least 2400px wide or tall, generate bounded 2x2 ROI tiles. Default true."),
     maxImageTiles: tool.schema.number().optional().describe("Maximum large-image ROI tiles. Default 4, hard cap 4."),
-    spectrogram: tool.schema.boolean().optional().describe("Generate waveform and spectrogram attachments for audio. Default true."),
-    transcribe: tool.schema.boolean().optional().describe("Record transcription capability/fallback guidance. Does not invoke an unconfigured remote service."),
+    spectrogram: tool.schema
+      .boolean()
+      .optional()
+      .describe("Generate waveform and spectrogram attachments for audio. Default true."),
+    transcribe: tool.schema
+      .boolean()
+      .optional()
+      .describe("Record transcription capability/fallback guidance. Does not invoke an unconfigured remote service."),
     maxChars: tool.schema.number().optional().describe("Maximum OCR text retained. Default 12000."),
-    maxAttachmentBytes: tool.schema.number().optional().describe("Maximum bytes per data-url attachment. Default 6 MiB."),
-    maxTotalAttachmentBytes: tool.schema.number().optional().describe("Maximum combined raw bytes across all returned attachments. Default 16 MiB, hard cap 32 MiB."),
-    analyzeAudio: tool.schema.boolean().optional().describe("For videos with an audio stream, generate bounded waveform/spectrogram attachments. Default true."),
-    jsonOnly: tool.schema.boolean().optional().describe("Use structured JSON in output instead of the readable summary."),
+    maxAttachmentBytes: tool.schema
+      .number()
+      .optional()
+      .describe("Maximum bytes per data-url attachment. Default 6 MiB."),
+    maxTotalAttachmentBytes: tool.schema
+      .number()
+      .optional()
+      .describe("Maximum combined raw bytes across all returned attachments. Default 16 MiB, hard cap 32 MiB."),
+    analyzeAudio: tool.schema
+      .boolean()
+      .optional()
+      .describe("For videos with an audio stream, generate bounded waveform/spectrogram attachments. Default true."),
+    jsonOnly: tool.schema
+      .boolean()
+      .optional()
+      .describe("Use structured JSON in output instead of the readable summary."),
   },
   async execute(args, context) {
     const workspace = workspaceRootFromContext(context)
@@ -995,7 +1354,10 @@ export default tool({
       Math.min(args.maxAttachmentBytes ?? DEFAULT_MAX_ATTACHMENT_BYTES, MAX_DATA_URL_BYTES),
     )
     const attachmentBudget: AttachmentBudget = {
-      limit: Math.max(64 * 1024, Math.min(args.maxTotalAttachmentBytes ?? DEFAULT_MAX_TOTAL_ATTACHMENT_BYTES, MAX_TOTAL_ATTACHMENT_BYTES)),
+      limit: Math.max(
+        64 * 1024,
+        Math.min(args.maxTotalAttachmentBytes ?? DEFAULT_MAX_TOTAL_ATTACHMENT_BYTES, MAX_TOTAL_ATTACHMENT_BYTES),
+      ),
       used: 0,
       skipped: [],
     }
@@ -1013,7 +1375,10 @@ export default tool({
             maxChars: args.maxChars ?? 12_000,
             maxAttachmentBytes,
             imageTiles: args.imageTiles !== false,
-            maxImageTiles: Math.max(0, Math.min(MAX_IMAGE_TILES, Math.floor(args.maxImageTiles ?? DEFAULT_MAX_IMAGE_TILES))),
+            maxImageTiles: Math.max(
+              0,
+              Math.min(MAX_IMAGE_TILES, Math.floor(args.maxImageTiles ?? DEFAULT_MAX_IMAGE_TILES)),
+            ),
             budget: attachmentBudget,
           },
           baseContext,
@@ -1129,5 +1494,3 @@ export default tool({
     }
   },
 })
-
-

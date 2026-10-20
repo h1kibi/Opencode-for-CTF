@@ -171,7 +171,8 @@ async function claimServerLease(
     // lease was finalized. Keep both the same-session retry and other-session
     // claimant pending until the disconnect finalizer records a safe state.
     const disconnecting = state.leases.some(
-      (lease) => lease.serverName === args.serverName && lease.status === "disconnecting" && isFreshDisconnecting(lease),
+      (lease) =>
+        lease.serverName === args.serverName && lease.status === "disconnecting" && isFreshDisconnecting(lease),
     )
     if (disconnecting) {
       if (!own) state.leases.push(makeLease(args, "pending"))

@@ -5,7 +5,10 @@ import { directoryFromContext } from "../lib/workspace-path.ts"
 
 function classify(text: string, target: string) {
   const compact = text.replace(/\s+/g, " ").slice(0, 2_000)
-  const traceback = [...text.matchAll(/(?:File|file)\s+["']([^"']+)["']\s*,?\s*line\s+(\d+)/gi)].map((m) => ({ file: m[1], line: Number(m[2]) }))
+  const traceback = [...text.matchAll(/(?:File|file)\s+["']([^"']+)["']\s*,?\s*line\s+(\d+)/gi)].map((m) => ({
+    file: m[1],
+    line: Number(m[2]),
+  }))
   if (!text.trim()) return { state: "file_empty_or_no_echo", reason: "response contains no text", traceback }
   if (/StartTag|invalid element name|not well-formed|parseerror|syntaxerror/i.test(compact)) {
     return { state: "file_read_success_parser_conflict", reason: "content reached a parser error boundary", traceback }
@@ -29,7 +32,9 @@ function keywordHits(text: string) {
     /kubernetes|k8s|secret(?:s)?\/[A-Za-z0-9._-]+/gi,
     /(?:sqlite|postgres|mysql|mongodb)[^\n]{0,160}/gi,
   ]
-  return [...new Set(expressions.flatMap((pattern) => Array.from(text.matchAll(pattern), (match) => match[0].trim())))].slice(0, 100)
+  return [
+    ...new Set(expressions.flatMap((pattern) => Array.from(text.matchAll(pattern), (match) => match[0].trim()))),
+  ].slice(0, 100)
 }
 
 export default tool({
@@ -55,9 +60,15 @@ export default tool({
       keyword_hits: keywordHits(args.responseText),
       chunk_plan: {
         chunkSize: Math.max(512, Math.min(Math.floor(args.chunkSize ?? 4096), 64_000)),
-        strategy: classification.state === "file_read_success_parser_conflict" ? "preserve parser error and request bounded source/config targets individually" : "no blind retry",
+        strategy:
+          classification.state === "file_read_success_parser_conflict"
+            ? "preserve parser error and request bounded source/config targets individually"
+            : "no blind retry",
       },
-      next_probe: classification.state === "file_read_success_parser_conflict" ? "try a source/config target or a server-supported base64/OOB transform; do not treat parser error as XXE failure" : "promote only after an independent oracle or flag verification",
+      next_probe:
+        classification.state === "file_read_success_parser_conflict"
+          ? "try a source/config target or a server-supported base64/OOB transform; do not treat parser error as XXE failure"
+          : "promote only after an independent oracle or flag verification",
     }
     const evidenceRef = await writeProbeEvidence(directory, args.challenge || "file-read-parser", payload)
     return JSON.stringify({ ...payload, evidence_ref: evidenceRef }, null, 2)

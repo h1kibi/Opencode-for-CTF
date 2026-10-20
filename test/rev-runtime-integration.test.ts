@@ -11,7 +11,12 @@ async function initSession(root: string) {
   const runtime = await import("../tools/rev/ctf-rev-runtime-session.ts")
   const context = { directory: root, worktree: root } as never
   const result = JSON.parse(
-    String(await runtime.default.execute({ command: "init", target: "challenge.bin", family: "elf", substrate: "docker", jsonOnly: true }, context)),
+    String(
+      await runtime.default.execute(
+        { command: "init", target: "challenge.bin", family: "elf", substrate: "docker", jsonOnly: true },
+        context,
+      ),
+    ),
   )
   return { runtime, context, sessionPath: result.session_path as string }
 }
@@ -117,38 +122,54 @@ describe("Rev runtime tool integration", () => {
     await writeFile(artifactPath, Buffer.from("before"))
     const { runtime, context, sessionPath } = await initSession(root)
 
-    await runtime.default.execute({
-      command: "record-artifact",
-      sessionPath,
-      artifactJson: JSON.stringify({ path: "payload.bin", kind: "payload", source: "test", status: "generated" }),
-      jsonOnly: true,
-    }, context)
-    const available = JSON.parse(String(await runtime.default.execute({ command: "inspect-artifacts", sessionPath, jsonOnly: true }, context)))
+    await runtime.default.execute(
+      {
+        command: "record-artifact",
+        sessionPath,
+        artifactJson: JSON.stringify({ path: "payload.bin", kind: "payload", source: "test", status: "generated" }),
+        jsonOnly: true,
+      },
+      context,
+    )
+    const available = JSON.parse(
+      String(await runtime.default.execute({ command: "inspect-artifacts", sessionPath, jsonOnly: true }, context)),
+    )
     expect(available.session.artifacts[0]).toMatchObject({ status: "available", size: 6 })
     expect(available.session.artifacts[0].sha256).toMatch(/^[a-f0-9]{64}$/)
 
     await writeFile(artifactPath, Buffer.from("after-change"))
-    const stale = JSON.parse(String(await runtime.default.execute({ command: "inspect-artifacts", sessionPath, jsonOnly: true }, context)))
-    expect(stale.session.artifacts[0].status).toBe("stale")
-    const staleAgain = JSON.parse(String(await runtime.default.execute({ command: "inspect-artifacts", sessionPath, jsonOnly: true }, context)))
-    expect(staleAgain.session.artifacts[0].status).toBe("stale")
-    await runtime.default.execute({
-      command: "set-oracle",
-      sessionPath,
-      oracleStatus: "pass",
-      oracleEvidence: "oracle captured before artifact changed",
-      jsonOnly: true,
-    }, context)
-    await expect(runtime.default.execute({ command: "set-stage", sessionPath, stage: "closed", jsonOnly: true }, context)).rejects.toThrow(
-      "runtime artifact integrity is stale",
+    const stale = JSON.parse(
+      String(await runtime.default.execute({ command: "inspect-artifacts", sessionPath, jsonOnly: true }, context)),
     )
+    expect(stale.session.artifacts[0].status).toBe("stale")
+    const staleAgain = JSON.parse(
+      String(await runtime.default.execute({ command: "inspect-artifacts", sessionPath, jsonOnly: true }, context)),
+    )
+    expect(staleAgain.session.artifacts[0].status).toBe("stale")
+    await runtime.default.execute(
+      {
+        command: "set-oracle",
+        sessionPath,
+        oracleStatus: "pass",
+        oracleEvidence: "oracle captured before artifact changed",
+        jsonOnly: true,
+      },
+      context,
+    )
+    await expect(
+      runtime.default.execute({ command: "set-stage", sessionPath, stage: "closed", jsonOnly: true }, context),
+    ).rejects.toThrow("runtime artifact integrity is stale")
     expect(stale.session.history.map((event: { operation: string }) => event.operation)).toEqual(
       expect.arrayContaining(["record_artifact", "inspect_artifacts"]),
     )
 
     await (await import("node:fs/promises")).unlink(artifactPath)
-    const missing = JSON.parse(String(await runtime.default.execute({ command: "inspect-artifacts", sessionPath, jsonOnly: true }, context)))
+    const missing = JSON.parse(
+      String(await runtime.default.execute({ command: "inspect-artifacts", sessionPath, jsonOnly: true }, context)),
+    )
     expect(missing.session.artifacts[0].status).toBe("missing")
-    expect(missing.session.history.filter((event: { operation: string }) => event.operation === "inspect_artifacts").length).toBe(4)
+    expect(
+      missing.session.history.filter((event: { operation: string }) => event.operation === "inspect_artifacts").length,
+    ).toBe(4)
   })
 })
