@@ -12,23 +12,24 @@ export default defineConfig({
       exclude: ["src/types.ts", "src/sdk.ts", "src/asset-paths.ts"],
       reporter: ["text", "lcov"],
       thresholds: {
-        // Ratchet: only raise these, never lower. Global floor reflects the
-        // largely contract-tested tools/ surface; src/ keeps the stricter bar.
-        lines: 30,
-        functions: 25,
-        branches: 55,
-        statements: 30,
+        // Ratchet: only raise these, never lower. Each floor sits a few points
+        // under the measured value so an intentional refactor can land, while a
+        // dropped test suite fails the build.
+        lines: 48,
+        functions: 50,
+        branches: 64,
+        statements: 48,
         "src/**/*.ts": {
-          lines: 55,
-          functions: 50,
-          branches: 75,
-          statements: 55,
+          lines: 72,
+          functions: 78,
+          branches: 74,
+          statements: 72,
         },
         "tools/lib/**/*.ts": {
-          lines: 50,
-          functions: 40,
+          lines: 74,
+          functions: 65,
           branches: 70,
-          statements: 50,
+          statements: 74,
         },
       },
     },

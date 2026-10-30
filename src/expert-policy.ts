@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises"
 import path from "node:path"
+import { INACTIVE_ROUTE_STATE } from "ctf-core"
 import { getEvidenceDir, readCurrentEvidenceSlug } from "../scripts/evidence-helper.ts"
-import { readTeamState } from "./team/team-state.ts"
+import { DEFAULT_ROUTE_POLICY, type RoutePolicy } from "./plugin-config.ts"
+import { emptyTeamState, readTeamState, teamStatePath } from "./team/team-state.ts"
 import type { TeamRunStatus, TeamState } from "./team/team-types.ts"
 
 export type ExpertPolicySnapshot = {
@@ -14,6 +16,8 @@ export type ExpertPolicySnapshot = {
   teamStateReadable: boolean
   evidenceError?: string
   teamError?: string
+  /** Active-route band; defaults to DEFAULT_ROUTE_POLICY when not injected. */
+  routePolicy?: RoutePolicy
 }
 
 type ToolArgs = Record<string, unknown>
@@ -27,11 +31,6 @@ const TEAM_CONTROL_TOOLS = new Set([
   "ctf-team-close",
   "ctf-team-recover",
   "ctf-team-adopt",
-  "ctf-team-facts",
-  "ctf-team-intent",
-  // Repair is the documented remedy for a stale/corrupt run, so it must be
-  // reachable in exactly the states it exists to fix: before any wave, and
-  // while a wave is stuck, degraded, or owned by a previous parent session.
   "ctf-team-repair",
 ])
 
@@ -69,29 +68,35 @@ function activeRouteIdsFromBoard(raw: unknown): { routeIds: string[]; activeRout
   const routes = raw.routes.filter(isRecord)
   const routeIds = routes.map((route) => safeString(route.id)).filter(Boolean)
   const activeRouteIds = routes
-    .filter((route) => safeString(route.state) !== "dead")
+    .filter((route) => safeString(route.state) !== INACTIVE_ROUTE_STATE)
     .map((route) => safeString(route.id))
     .filter(Boolean)
   return { routeIds, activeRouteIds }
 }
 
-async function readEvidenceSnapshot(directory: string) {
+async function readEvidenceSnapshot(directory: string): Promise<{
+  initialized: boolean
+  routeIds: string[]
+  activeRouteIds: string[]
+  error?: string
+}> {
   const slug = readCurrentEvidenceSlug(directory)
   if (!slug) {
-    return { initialized: false, routeIds: [], activeRouteIds: [] as string[] }
+    return { initialized: false, routeIds: [], activeRouteIds: [] }
   }
 
   const boardPath = path.join(getEvidenceDir(directory, slug), ".ctf-evidence-board.json")
   try {
     const raw = JSON.parse(await readFile(boardPath, "utf8")) as unknown
-    const routes = activeRouteIdsFromBoard(raw)
-    return { initialized: true, ...routes }
+    return { initialized: true, ...activeRouteIdsFromBoard(raw) }
   } catch (error) {
+    // A slug with an unreadable board is not an initialized case: the Expert
+    // must re-init instead of dispatching against routes we cannot read.
     return {
       initialized: false,
       routeIds: [],
       activeRouteIds: [],
-      error: `Evidence board is unavailable at ${boardPath}: ${error instanceof Error ? error.message : String(error)}`,
+      error: `Evidence board ${boardPath} is unreadable (${error instanceof Error ? error.message : String(error)}).`,
     }
   }
 }
@@ -100,16 +105,22 @@ function teamRunsForSession(state: TeamState, sessionID: string) {
   return state.runs.filter((run) => run.parentSessionID === sessionID)
 }
 
-export async function loadExpertPolicySnapshot(directory: string, sessionID?: string): Promise<ExpertPolicySnapshot> {
+export async function loadExpertPolicySnapshot(
+  directory: string,
+  sessionID?: string,
+  routePolicy?: RoutePolicy,
+): Promise<ExpertPolicySnapshot> {
   const evidence = await readEvidenceSnapshot(directory)
+
   let teamState: TeamState
   let teamError: string | undefined
-
+  let teamStateReadable = true
   try {
     teamState = await readTeamState(directory)
   } catch (error) {
-    teamState = { schemaVersion: 1, revision: 0, updatedAt: new Date(0).toISOString(), runs: [] }
-    teamError = `Team state is unavailable: ${error instanceof Error ? error.message : String(error)}`
+    teamState = emptyTeamState()
+    teamStateReadable = false
+    teamError = `Team state ${teamStatePath(directory)} is unreadable (${error instanceof Error ? error.message : String(error)}).`
   }
 
   const ownedRuns = sessionID ? teamRunsForSession(teamState, sessionID) : []
@@ -122,9 +133,10 @@ export async function loadExpertPolicySnapshot(directory: string, sessionID?: st
     teamDispatched: teamRunIds.length > 0,
     teamRunIds,
     teamRunStatus: latestRun?.status,
-    teamStateReadable: !teamError,
-    evidenceError: evidence.error,
-    teamError,
+    teamStateReadable,
+    ...(evidence.error ? { evidenceError: evidence.error } : {}),
+    ...(teamError ? { teamError } : {}),
+    routePolicy: routePolicy ?? { ...DEFAULT_ROUTE_POLICY },
   }
 }
 
@@ -133,16 +145,20 @@ export type ExpertPolicyDecision = {
   reason?: string
 }
 
-function dispatchJobs(args: ToolArgs): Array<Record<string, unknown>> {
-  return Array.isArray(args.jobs) ? args.jobs.filter(isRecord) : []
+function dispatchProbes(args: ToolArgs): Array<Record<string, unknown>> {
+  return Array.isArray(args.probes) ? args.probes.filter(isRecord) : []
 }
 
-function hasExactlyThreeActiveRoutes(snapshot: ExpertPolicySnapshot): boolean {
+function hasRequiredActiveRoutes(snapshot: ExpertPolicySnapshot): boolean {
+  const band = snapshot.routePolicy ?? DEFAULT_ROUTE_POLICY
+  const { routeIds, activeRouteIds } = snapshot
   return (
-    snapshot.routeIds.length === 3 &&
-    snapshot.activeRouteIds.length === 3 &&
-    new Set(snapshot.routeIds).size === 3 &&
-    new Set(snapshot.activeRouteIds).size === 3
+    routeIds.length >= band.min &&
+    routeIds.length <= band.max &&
+    activeRouteIds.length >= band.min &&
+    activeRouteIds.length <= band.max &&
+    new Set(routeIds).size === routeIds.length &&
+    new Set(activeRouteIds).size === activeRouteIds.length
   )
 }
 
@@ -168,7 +184,7 @@ export function evaluateExpertToolPolicy(
       allowed: false,
       reason:
         `ExpertPolicyError: ordinary ${toolName} is not allowed for ctf-expert. ` +
-        `Use ctf-team-dispatch with at least two route-bound jobs instead.`,
+        `Use ctf-team-dispatch for a bounded, route-bound Probe.`,
     }
   }
 
@@ -182,34 +198,37 @@ export function evaluateExpertToolPolicy(
           (snapshot.evidenceError ? ` ${snapshot.evidenceError}` : ""),
       }
     }
-    if (!hasExactlyThreeActiveRoutes(snapshot)) {
+    if (!hasRequiredActiveRoutes(snapshot)) {
+      const band = snapshot.routePolicy ?? DEFAULT_ROUTE_POLICY
+      const distinct =
+        new Set(snapshot.routeIds).size === snapshot.routeIds.length &&
+        new Set(snapshot.activeRouteIds).size === snapshot.activeRouteIds.length
       return {
         allowed: false,
         reason:
-          `ExpertPolicyError: ctf-team-dispatch requires exactly 3 active Evidence routes. ` +
-          `Current routes=${snapshot.routeIds.length}, active=${snapshot.activeRouteIds.length}. ` +
-          `Call ctf-evidence-board command=set-routes with exactly 3 routes first.`,
+          `ExpertPolicyError: ctf-team-dispatch requires ${band.min}-${band.max} distinct active Evidence routes ` +
+          `(route_policy). Current routes=${snapshot.routeIds.length}, active=${snapshot.activeRouteIds.length}` +
+          (distinct ? "" : ", with duplicate route ids") +
+          `. Call ctf-evidence-board command=set-routes with ${band.min}-${band.max} distinct routes first.`,
       }
     }
 
-    const jobs = dispatchJobs(args)
-    if (jobs.length < 2) {
+    const probes = dispatchProbes(args)
+    if (probes.length < 1) {
       return {
         allowed: false,
-        reason:
-          `ExpertPolicyError: ctf-team-dispatch requires at least 2 route-bound jobs. ` +
-          `Dispatch a real parallel Team Mode wave instead of an empty or single-worker run.`,
+        reason: "ExpertPolicyError: ctf-team-dispatch requires at least one explicit route-bound Probe.",
       }
     }
-    const invalidRoute = jobs.find((job) => {
-      const routeId = safeString(job.routeId)
+    const invalidRoute = probes.find((probe) => {
+      const routeId = safeString(probe.routeId)
       return !ROUTE_EXCEPTIONS.has(routeId) && !snapshot.activeRouteIds.includes(routeId)
     })
     if (invalidRoute) {
       return {
         allowed: false,
         reason:
-          `ExpertPolicyError: every Team job must bind to one of the current Evidence routes ` +
+          `ExpertPolicyError: every Probe must bind to one of the current Evidence routes ` +
           `(${snapshot.activeRouteIds.join(", ")}) or recon/general.`,
       }
     }
@@ -218,18 +237,6 @@ export function evaluateExpertToolPolicy(
 
   if (TEAM_CONTROL_TOOLS.has(toolName) || PRE_TEAM_TOOLS.has(toolName)) {
     return { allowed: true }
-  }
-
-  // Generic shell and every non-core CTF tool are active investigation tools.
-  // They are available only after a Team wave has been dispatched.
-  if (!snapshot.teamDispatched) {
-    return {
-      allowed: false,
-      reason:
-        `ExpertPolicyError: tool "${toolName}" is blocked before the first Team Mode wave. ` +
-        `Complete this sequence: evidence-board init → recall → set-routes (3) → ` +
-        `ctf-team-dispatch (at least 2 jobs).`,
-    }
   }
 
   if (!snapshot.teamStateReadable) {
@@ -241,12 +248,21 @@ export function evaluateExpertToolPolicy(
     }
   }
 
+  if (!snapshot.teamDispatched) {
+    return {
+      allowed: false,
+      reason:
+        `ExpertPolicyError: tool "${toolName}" is blocked before the first Team Probe. ` +
+        `Complete this sequence: evidence-board init → set-routes → ctf-team-dispatch (one or more Probes).`,
+    }
+  }
+
   if (snapshot.teamRunStatus && !["completed", "cancelled"].includes(snapshot.teamRunStatus)) {
     return {
       allowed: false,
       reason:
-        `ExpertPolicyError: Team wave is still ${snapshot.teamRunStatus}; direct investigation tool "${toolName}" is blocked. ` +
-        `Use ctf-team-status, then collect/cancel/close the current wave before starting another investigation action.`,
+        `ExpertPolicyError: Team run is still ${snapshot.teamRunStatus}; direct investigation tool "${toolName}" is blocked. ` +
+        `Use ctf-team-status, then collect/cancel/close the current run before dispatching another Probe.`,
     }
   }
 
@@ -259,9 +275,10 @@ export async function enforceExpertToolPolicy(args: {
   agentName: string
   toolName: string
   toolArgs?: ToolArgs
+  routePolicy?: RoutePolicy
 }) {
   if (args.agentName !== "ctf-expert") return
-  const snapshot = await loadExpertPolicySnapshot(args.directory, args.sessionID)
+  const snapshot = await loadExpertPolicySnapshot(args.directory, args.sessionID, args.routePolicy)
   const decision = evaluateExpertToolPolicy(snapshot, args.toolName, args.toolArgs)
   if (!decision.allowed) {
     console.warn(

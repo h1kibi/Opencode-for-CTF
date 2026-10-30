@@ -192,6 +192,22 @@ function createFencedFs(paths: FileLockPaths) {
  * and callers that need a shorter bounded failure window. Production callers
  * should normally use the defaults.
  */
+/**
+ * Create the sentinel without racing concurrent first-time callers.
+ *
+ * Windows rejects one of several simultaneous append-opens of the same
+ * not-yet-existing path with EPERM. Exclusive creation makes the loser of the
+ * race fail with EEXIST instead, which is the expected outcome.
+ */
+async function ensureSentinelFile(sentinel: string): Promise<void> {
+  try {
+    const handle = await open(sentinel, "wx")
+    await handle.close()
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error
+  }
+}
+
 export async function withFileLock<T>(
   key: string,
   fn: (lease: FileLockLease) => Promise<T>,
@@ -199,8 +215,7 @@ export async function withFileLock<T>(
 ): Promise<T> {
   const paths = resolveFileLockPaths(key)
   await mkdir(paths.directory, { recursive: true })
-  const sentinelHandle = await open(paths.sentinel, "a")
-  await sentinelHandle.close()
+  await ensureSentinelFile(paths.sentinel)
 
   const leaveMemQueue = await acquireMemQueue(paths.key)
 

@@ -1,12 +1,13 @@
 import { appendFile, mkdir, readFile } from "node:fs/promises"
 import path from "node:path"
 import { randomUUID } from "node:crypto"
+import type { CaseRouteState } from "ctf-core"
 import { withFileLock } from "./file-lock.ts"
 import { atomicUpdateJsonFile, loadJsonFile, nowIso, saveJsonFile } from "./state-store.ts"
 
 export const CASE_SCHEMA_VERSION = 1
 
-export type CaseRouteState = "untested" | "blocked" | "dead" | "live"
+export type { CaseRouteState }
 
 export type CaseRoute = {
   id: string

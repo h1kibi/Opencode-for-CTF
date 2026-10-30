@@ -33,10 +33,12 @@ export function clampScore(value: number): number {
   return Math.max(1, Math.min(5, value))
 }
 
+export { CASE_ROUTE_STATES, INACTIVE_ROUTE_STATE, type CaseRouteState } from "./route-state.ts"
 export {
   COMMAND_SURFACE,
   decideRoute,
   formatRouteDecision,
+  pickMode,
   probeFileMagic,
   probeFileTree,
   scoreCategories,
@@ -54,7 +56,15 @@ export {
   revRuntimeHistoryVerification,
   revRuntimeOracleObservationIssues,
   revRuntimePromotion,
+  revRuntimeSessionDigest,
+  revRuntimeValueSha256,
   type RevRuntimeArtifact,
+  type RevRuntimeDoctor,
+  type RevRuntimeDoctorCheck,
+  type RevRuntimeDoctorCheckStatus,
+  type RevRuntimeDoctorRequirement,
+  type RevRuntimeEvidenceAnchor,
+  type RevRuntimeEvidenceAnchorStatus,
   type RevRuntimeEvent,
   type RevRuntimeFingerprint,
   type RevRuntimeFingerprintStatus,

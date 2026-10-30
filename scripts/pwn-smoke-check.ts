@@ -25,7 +25,7 @@ const checks: Check[] = [
   },
   {
     file: "commands/help.md",
-    needles: ["/ctf", "/help", "/ctf-pwn", "Historical compatibility aliases"],
+    needles: ["/ctf", "/help", "/ctf-fast", "/ctf-expert", "/resume", "Historical compatibility aliases"],
   },
   {
     file: "tools/pwn/ctf-pwn-probe.ts",

@@ -8,11 +8,14 @@ on:
 
 jobs:
   quality:
-    runs-on: ubuntu-latest
-
+    # The project is developed on Windows and run in both environments;
+    # cross-platform regressions (paths, shells, signals) are the most common
+    # breakage class, so PRs gate on both OSes.
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest]
         node-version: [22]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +40,15 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Verify tool runtime dependencies
+        run: npm run tools:verify
+
+      - name: Family benchmark rule checks
+        run: npm run benchmark:lint
+
+      - name: Benchmark scenario contracts (replay)
+        run: npm run benchmark:replay
 
       - name: Build plugin bundle
         run: npm run build:plugin

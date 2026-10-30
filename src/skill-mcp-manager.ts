@@ -297,6 +297,18 @@ export function describeMcpActivationError(serverName: string, error: unknown): 
   }
 }
 
+/**
+ * `mcp.add` fails when the server is already registered for this directory,
+ * which is expected when a second session claims a global server. Any other
+ * failure — malformed config, SDK shape change — must surface as a real
+ * activation error instead of an informational log.
+ */
+function isDuplicateServerError(error: unknown): boolean {
+  const described =
+    error instanceof Error ? error.message : typeof error === "string" ? error : JSON.stringify(error ?? "")
+  return /already exists|already registered|already defined|EEXIST|duplicate/i.test(described)
+}
+
 async function addAndConnect(client: OpencodeClient, directory: string, serverName: string, config: RuntimeMcpConfig) {
   try {
     await client.mcp.add({
@@ -307,8 +319,8 @@ async function addAndConnect(client: OpencodeClient, directory: string, serverNa
       query: { directory },
     })
   } catch (err) {
-    // Server may already exist globally or from another session lease; connect below.
-    console.warn(`[skill-mcp] add server "${serverName}" failed (may already exist):`, err)
+    if (!isDuplicateServerError(err)) throw err
+    console.warn(`[skill-mcp] server "${serverName}" is already registered for ${directory}; reusing it`)
   }
   try {
     await client.mcp.connect({

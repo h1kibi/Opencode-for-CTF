@@ -1,8 +1,9 @@
-import { access, readFile, readdir } from "node:fs/promises"
+import { access, readFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import type { ToolDefinition } from "@opencode-ai/plugin"
 import { PLUGIN_ROOT } from "./asset-paths.ts"
+import { discoverToolEntries } from "../scripts/lib/tool-discovery.mjs"
 import { packForTool, resolveEnabledPacks, summarizePacks, toolAllowedByPacks, type ToolPackId } from "./tool-packs.ts"
 import { toolRequires } from "./tool-metadata.ts"
 
@@ -61,40 +62,7 @@ async function resolveToolRoot(root?: string): Promise<string> {
 }
 
 async function discoverToolFiles(toolRoot: string): Promise<ToolFile[]> {
-  const files: ToolFile[] = []
-
-  async function walk(dir: string): Promise<void> {
-    const entries = await readdir(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        if (entry.name === "lib") continue
-        await walk(path.join(dir, entry.name))
-        continue
-      }
-      if (!entry.isFile() || !(entry.name.endsWith(".ts") || entry.name.endsWith(".js"))) continue
-      if (entry.name.endsWith(".d.ts")) continue
-      const filePath = path.join(dir, entry.name)
-      files.push({
-        name: entry.name.replace(/\.(ts|js)$/, ""),
-        path: filePath,
-        relative: path.relative(toolRoot, filePath),
-      })
-    }
-  }
-
-  await walk(toolRoot)
-  files.sort((a, b) => a.name.localeCompare(b.name) || a.relative.localeCompare(b.relative))
-
-  const seen = new Map<string, string>()
-  for (const file of files) {
-    const existing = seen.get(file.name)
-    if (existing) {
-      throw new Error(`duplicate CTF tool basename "${file.name}": ${existing} and ${file.relative}`)
-    }
-    seen.set(file.name, file.relative)
-  }
-
-  return files
+  return discoverToolEntries(toolRoot)
 }
 
 /** List tool basenames available on disk (no import). */
@@ -128,6 +96,8 @@ export type ToolLoadReport = {
   registered: string[]
   /** Tools skipped because their pack is not enabled. */
   deferred: string[]
+  /** Tools present on disk but absent from the registered_tools whitelist. */
+  undeclared: string[]
   failed: ToolLoadFailure[]
   /** Non-optional external dependencies declared by registered tools. */
   runtimeDependencies: string[]
@@ -135,14 +105,32 @@ export type ToolLoadReport = {
   criticalMissing: string[]
 }
 
-/** Known safe fallbacks for external-tool-heavy tools. */
-const TOOL_FALLBACKS: Record<string, string> = {
-  "ctf-pwn-docker-runner": "ctf-pwn-wsl-runner",
-  "ctf-pwn-wsl-runner": "ctf-pwn-docker-runner",
-  "ctf-pwn-runbox": "ctf-pwn-docker-runner",
-}
-
 let criticalToolCache: Set<string> | null = null
+let registeredToolsCache: Set<string> | null = null
+
+/** Explicit registered-tool whitelist from ctf-agent.manifest.json (D5). */
+export async function registeredToolNames(): Promise<Set<string>> {
+  if (registeredToolsCache) return registeredToolsCache
+  const candidates = [
+    path.join(PLUGIN_ROOT, "ctf-agent.manifest.json"),
+    path.resolve(process.cwd(), "ctf-agent.manifest.json"),
+  ]
+  registeredToolsCache = new Set()
+  for (const manifestPath of candidates) {
+    try {
+      const raw = JSON.parse(await readFile(manifestPath, "utf8")) as { registered_tools?: string[] }
+      const list = raw.registered_tools
+      if (Array.isArray(list) && list.length) registeredToolsCache = new Set(list)
+      break
+    } catch {
+      // try next candidate
+    }
+  }
+  if (registeredToolsCache.size === 0) {
+    console.warn("[plugin] ctf-agent.manifest.json not found; registered_tools whitelist is disabled")
+  }
+  return registeredToolsCache
+}
 
 /** Critical tool names from ctf-agent.manifest.json (best effort). */
 export async function criticalToolNames(): Promise<Set<string>> {
@@ -187,6 +175,11 @@ export async function loadCtfToolsWithReport(
 
   const toolRoot = await resolveToolRoot(options.root)
   const enabled = options.all ? null : options.packs ? resolveEnabledPacks([...options.packs]) : resolveEnabledPacks()
+  // D5 explicit product surface: when the manifest declares registered_tools
+  // for this root, files outside the list stay unregistered (deferred as
+  // undeclared) — adding a file no longer auto-expands the agent tool surface.
+  const declaredTools = (await registeredToolNames()).size ? await registeredToolNames() : null
+  const enforceRegistered = declaredTools ? await manifestCriticalsApplyToRoot(toolRoot, options.root) : false
 
   const tools: Record<string, ToolDefinition> = {}
   const files = await discoverToolFiles(toolRoot)
@@ -200,38 +193,22 @@ export async function loadCtfToolsWithReport(
     : new Set([...critical].filter((name) => discoveredNames.has(name)))
   const activeCritical = new Set([...criticalSurface].filter((name) => !enabled || toolAllowedByPacks(name, enabled)))
 
+  const undeclared: string[] = []
   for (const file of files) {
     const name = file.name
+    if (enforceRegistered && declaredTools && !declaredTools.has(name)) {
+      undeclared.push(name)
+      continue
+    }
     if (enabled && !toolAllowedByPacks(name, enabled)) {
       deferred.push(name)
       continue
     }
-    try {
-      const module = (await import(pathToFileURL(file.path).href)) as ToolModule
-      if (isToolDefinition(module.default)) {
-        tools[name] = module.default
-      } else {
-        failed.push({
-          name,
-          path: file.path,
-          relative: file.relative,
-          stage: "export-contract",
-          error: "default export is not an OpenCode tool definition",
-          critical: activeCritical.has(name),
-          fallback: TOOL_FALLBACKS[name],
-        })
-      }
-    } catch (error) {
-      failed.push({
-        name,
-        path: file.path,
-        relative: file.relative,
-        stage: "import",
-        error: error instanceof Error ? error.message : String(error),
-        critical: activeCritical.has(name),
-        fallback: TOOL_FALLBACKS[name],
-      })
+    const module = (await import(pathToFileURL(file.path).href)) as ToolModule
+    if (!isToolDefinition(module.default)) {
+      throw new Error(`Tool ${name} has an invalid default export.`)
     }
+    tools[name] = module.default
   }
 
   const registered = Object.keys(tools).sort()
@@ -245,6 +222,7 @@ export async function loadCtfToolsWithReport(
     enabledPacks: enabled ? [...enabled].sort() : ["all"],
     registered,
     deferred: deferred.sort(),
+    undeclared: undeclared.sort(),
     failed,
     runtimeDependencies,
     criticalRegistered: registered.filter((name) => activeCritical.has(name)).sort(),
@@ -253,9 +231,14 @@ export async function loadCtfToolsWithReport(
 
   if (enabled) {
     const packs = [...enabled].sort().join(",")
+    const quarantined = files.filter((file) => packForTool(file.name) === "quarantine")
     console.log(
       `[plugin] tools: registered ${registered.length} (packs=${packs}` +
         (deferred.length ? `, deferred ${deferred.length} from other packs` : "") +
+        (undeclared.length ? `, undeclared ${undeclared.length} (add to manifest registered_tools to register)` : "") +
+        (quarantined.length
+          ? `, quarantined ${quarantined.length} (not in any pack; tool_packs:["all"|"quarantine"] re-enables)`
+          : "") +
         (failed.length ? `, failed ${failed.length}` : "") +
         ")",
     )

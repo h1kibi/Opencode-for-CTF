@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { AGENT_MCP_DEFAULTS } from "../src/agent-mcp-profiles.js"
 import { CTF_FAMILIES, FAMILY_CAPABILITY_CONTRACTS } from "../src/family-capability-contracts.js"
 import { FAST_TOOL_ALLOWLIST, SUBAGENT_LIGHT_TOOLS } from "../src/tool-packs.js"
+import { toolTier } from "../src/tool-metadata.js"
 
 const rule = readFileSync("rules/agent-equipment.md", "utf8")
 const fastAgent = readFileSync("agents/ctf-fast.md", "utf8")
@@ -56,6 +57,11 @@ describe("agent equipment rule", () => {
       expect(FAST_TOOL_ALLOWLIST.has(toolName)).toBe(true)
       expect(rule).toContain(toolName)
     }
+  })
+
+  it("keeps every fast-allowlist tool on a light or compatibility tier", () => {
+    const heavy = [...FAST_TOOL_ALLOWLIST].filter((toolName) => !["light", "compat"].includes(toolTier(toolName)))
+    expect(heavy).toEqual([])
   })
 
   it("documents facade-first fast routing while keeping direct probes as fallbacks", () => {
