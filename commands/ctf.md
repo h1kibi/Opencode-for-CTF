@@ -28,7 +28,7 @@ $ARGUMENTS
 4. **Optional refresh** — `ctf-route-plan` if new signals (`hasEvidenceBranch=true` when evidence branch exists).
 5. **Execute the lane**
    - **fast** → lightweight allowlist, intuition-first, no Team Mode / Evidence ceremony.
-   - **expert** → Evidence.md, exactly 3 routes, concurrent workers with `routeId`, dynamic MCP approve.
+   - **expert** → Evidence.md, routes within the `route_policy` band (default 2-6), concurrent workers with `routeId`, dynamic MCP approve.
 6. **Solve** — flag, exhausted routes, or blocked on user resource. If the fast lane cannot close, stop and report the blocker, strongest evidence, and best next direction; the user decides whether to switch to `ctf-expert`.
 
 ## Entry taxonomy
@@ -43,7 +43,7 @@ $ARGUMENTS
 | Route result | Meaning |
 | --- | --- |
 | `fast` | Intuition-first, minimal tooling, 15-minute soft self-review horizon; usable indefinitely |
-| `expert` | Evidence.md, 3-route plan, Team Mode concurrency |
+| `expert` | Evidence.md, routes within the `route_policy` band (default 2-6), Team Mode concurrency |
 | `resume` | Continue existing evidence branch (expert) |
 
 ## Config

@@ -1,7 +1,7 @@
 ---
 "description": "Solve authorized reverse engineering and mobile CTF challenges using static analysis, decompilation, tracing, and controlled dynamic instrumentation."
 "mode": "subagent"
-"temperature": 0
+"temperature": 0.8
 "steps": 100
 "permission":
   "webfetch": "deny"
@@ -323,7 +323,7 @@
   "chrome_chrome_bookmark_delete": "deny"
   "ctf-decision-state": "allow"
 "hidden": true
-"top_p": 0.1
+"top_p": 0.95
 ---
 
 PRIMARY INSTRUCTION SOURCE:

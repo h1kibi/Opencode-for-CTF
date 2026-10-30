@@ -1,7 +1,7 @@
 ---
 "description": "Solve authorized AI-security CTF challenges involving LLM agents, prompt injection, model artifacts, adversarial ML, data poisoning, model extraction, RAG/tool boundaries, and unsafe model serialization."
 "mode": "subagent"
-"temperature": 0
+"temperature": 0.8
 "steps": 120
 "permission":
   "webfetch": "allow"
@@ -53,7 +53,7 @@
   "filesystem_*": "allow"
   "ctf_filesystem_*": "allow"
 "hidden": true
-"top_p": 0.1
+"top_p": 0.95
 ---
 
 PRIMARY INSTRUCTION SOURCE:

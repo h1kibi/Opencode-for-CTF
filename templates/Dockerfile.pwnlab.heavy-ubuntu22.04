@@ -106,7 +106,7 @@ RUN git clone --depth=1 https://github.com/io12/pwninit /opt/pwninit-src || true
     && git clone --depth=1 https://github.com/sashs/Ropper /opt/ropper-src || true \
     && git clone --depth=1 https://github.com/radareorg/radare2 /opt/radare2-src || true
 
-RUN printf '#!/usr/bin/env bash\nset +e\necho "[pwnlab-heavy] tool check"\nfor c in file readelf objdump nm strings checksec gdb gdbserver python3 ROPgadget ropper one_gadget patchelf qemu-x86_64 qemu-i386 strace ltrace tmux vim git curl wget socat seccomp-tools valgrind lldb afl-fuzz binwalk tcpdump yara; do command -v "$c" >/dev/null 2>&1 && echo "OK $c" || echo "MISS $c"; done\npython3 - <<"PY"\nmods = ["pwn", "angr", "claripy", "qiling", "frida", "capstone", "unicorn", "keystone", "z3", "r2pipe", "scapy"]\nfor m in mods:\n    try:\n        __import__(m)\n        print("OK python", m)\n    except Exception as exc:\n        print("MISS python", m, exc)\nPY\n' > /usr/local/bin/pwnlab-heavy-check \
+RUN printf '#!/usr/bin/env bash\nset +e\necho "[pwnlab-heavy] tool check"\nfor c in file readelf objdump nm strings checksec gdb gdbserver python3 ROPgadget ropper one_gadget patchelf qemu-x86_64 qemu-i386 strace ltrace tmux vim git curl wget socat seccomp-tools valgrind lldb afl-fuzz binwalk tcpdump yara; do command -v "$c" >/dev/null 2>&1 && echo "OK $c" || echo "MISS $c"; done\nfor m in pwn angr claripy qiling frida capstone unicorn keystone z3 r2pipe scapy; do python3 -c "import $m" 2>/dev/null && echo "OK python $m" || echo "MISS python $m"; done\n' > /usr/local/bin/pwnlab-heavy-check \
     && chmod +x /usr/local/bin/pwnlab-heavy-check
 
 WORKDIR /work

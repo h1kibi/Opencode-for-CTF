@@ -1,7 +1,7 @@
 ---
 "description": "Solve authorized Web CTF challenges using source review, browser interaction, HTTP probing, local reproduction, and exploit scripting."
 "mode": "subagent"
-"temperature": 0
+"temperature": 0.8
 "steps": 100
 "permission":
   "websearch": "deny"
@@ -332,7 +332,7 @@
   "ctf-web-url-corpus": "allow"
   "ctf-web-template-check": "allow"
 "hidden": true
-"top_p": 0.1
+"top_p": 0.95
 ---
 
 PRIMARY INSTRUCTION SOURCE:

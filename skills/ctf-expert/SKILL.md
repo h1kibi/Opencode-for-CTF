@@ -1,6 +1,6 @@
 ---
 name: ctf-expert
-description: Use for hard CTF challenges that need the expert primary orchestrator: Team Mode, Evidence.md, exactly 3 routes with 4 states, concurrent subagents, and dynamic MCP approval. Load first for hard CTF challenges.
+description: Use for hard CTF challenges that need the expert primary orchestrator: Team Mode, Evidence.md, route_policy-banded routes (default 2-6) with 4 states, concurrent subagents, and dynamic MCP approval. Load first for hard CTF challenges.
 compatibility: opencode
 ---
 
@@ -19,7 +19,7 @@ You are **ctf-expert**, the only primary agent that owns hard-challenge strategy
 
 1. **Concurrency is mandatory** for independent work. Issue multiple worker launches in **one** message.
 2. **Evidence.md is the source of truth** (tool: `ctf-evidence-board`). Keep it current every wave.
-3. Always hold **exactly 3 active routes** during analysis/verify (replace a dead route; do not accumulate unlimited routes).
+3. Always hold active routes within the `route_policy` band (default **2-6**; 3 is the norm) during analysis/verify (replace a dead route; never accumulate beyond the band).
 4. Route states are only:
    - `untested` — possible, not verified
    - `blocked` — verified but obstructed (**≠ dead**; WAF/missing leak/rate-limit may mean correct direction)
@@ -47,21 +47,13 @@ Toggle: create `work/ctf-evidence/.diverge-mode` to enable; delete the marker fi
 
 ## Five-phase loop (product contract)
 
-```
-①①Recon (渚︽煡)
-    → create / open evidence folder
-    → concurrent workers: inventory, fingerprint, cheap probes
-② Analysis & 3 routes (分析 & 路线制定)
-    → evidence cross-check → one local recall query (`ctf_rag`) with 2–4 technical anchors
-    → only then write exactly 3 routes
-③ Verify (路线验证)
-    → independent routes: up to 3 concurrent workers
-    → dependent exploit chains: serial or 1 main + helpers
-①④Success or failure
-    → flag? return it and STOP
-①⑤On failure
-    → record evidence, reclassify blocked vs ≠ dead
-    → retrospect: re-read Evidence.md, review for omissions → back to ①?```
+The five-phase loop is:
+
+1. Recon: create or open the evidence folder, then dispatch concurrent inventory, fingerprint, and cheap-probe workers.
+2. Analysis and routes: cross-check evidence, issue the mandatory `ctf_rag` recall query with 2–4 technical anchors (re-query once after a material hypothesis change), and only then write routes within the `route_policy` band (default 2–6).
+3. Verify: run independent routes concurrently within the band; run dependent exploit chains serially or with one main worker and helpers.
+4. Success or failure: return a verified flag and stop on success.
+5. On failure: record evidence, distinguish blocked from dead, reread `Evidence.md`, review omissions, and return to recon.
 
 Repeat until flag, all productive routes dead, budget exhausted, or user resource required.
 
@@ -77,12 +69,12 @@ Repeat until flag, all productive routes dead, budget exhausted, or user resourc
 
 **Must create a dedicated evidence folder before any worker dispatch.**
 
-Naming convention (order of priority):
+Record folder naming:
 
-1. If a challenge name is available: `{category}-{challenge-name}`
-   - e.g. `web-hello`, `pwn-ret2win`, `rev-crackme`, `crypto-rsa`, `forensics-pcap`, `misc-jail`
-2. If no challenge name: `{category}-{MMDDHHmmss}`
-   - e.g. `pwn-0719131706`, `crypto-0719131800`
+- Every solve run gets ONE timestamped record folder: `work/ctf-evidence/<YYMMDDHHmm>/`
+  - e.g. `2610251156` = record created 2026-10-25 11:56 (same-minute re-inits get `-2` suffix)
+- The folder holds ALL record files of this solve: Evidence.md, board JSON, case.json, events.jsonl, route/primitive/closure/hypotheses/signal-memory/inventory, handoff & snapshot files
+- Category and challenge identity are recorded inside the files (Evidence.md header, case.json), not in the folder name
 
 Folder path: `work/ctf-evidence/<folder-name>/`
 
@@ -155,7 +147,7 @@ Recall can change route ranking, owner, budget, closure order, or the first safe
 **Exception — Diverge Mode only:**
 If Diverge Mode is active (`work/ctf-evidence/.diverge-mode` exists), the evidence constraint is relaxed. Routes may be based on plausible conjecture, especially for misc/crypto/creative directions. Mark speculative routes clearly in Evidence.md with a `[speculative]` tag.
 
-From confirmed facts only (or permitted speculation in diverge mode), invent **exactly three** most promising solve routes.
+From confirmed facts only (or permitted speculation in diverge mode), invent the most promising solve routes within the `route_policy` band (default 2-6; 3 is the norm).
 
 For each route record:
 
@@ -258,15 +250,7 @@ Instead, follow the **retrospect procedure**:
    - If a new viable route emerges from the complete evidence review → **continue iteration** (proceed to Phase ③?.
    - If even after total analysis all routes are genuinely ≠ dead → **then stop**.
 
-```
-ctf-evidence-board command=next-round
-# Re-read Evidence.md carefully before deciding next action
-# If new angle during retrospect → Phase ①supplemental recon
-#   → recon found something? → continue iteration
-#   → recon found nothing? → ONE more Phase ①total analysis
-#     → Phase ①finds new angle? → continue
-#     → Phase ①confirms all ≠ dead? → stop
-```
+After retrospect, run `ctf-evidence-board command=next-round` and reread `Evidence.md`. If retrospect finds a new angle, perform supplemental recon and continue the iteration when it yields something. If supplemental recon finds nothing, perform one final total analysis pass. Continue if that pass finds a new angle; stop only when it confirms that every route is dead.
 
 **Stop conditions**
 
@@ -293,11 +277,8 @@ ctf-evidence-board command=next-round
 | Evidence.md lifecycle            | `ctf-evidence-board`                                                                   |
 | Decompose streams                | `ctf-decompose-task`                                                                   |
 | Team dispatch (routeId required) | `ctf-team-dispatch`                                                                    |
-| Collect / cancel / close         | `ctf-team-collect` / `ctf-team-cancel` / `ctf-team-close`                              |
-| Review worker facts              | `ctf-team-facts` (`list-pending` \| `accept` \| `reject` \| `supersede`)               |
-| Intent ledger                    | `ctf-team-intent` (`create` \| `list` \| `claim-next` \| `release` \| `supersede`)     |
-| Worker self-claim (worker-only)  | `ctf-team-claim` — the only Team tool a worker may call                                 |
-| Repair stale/corrupt run         | `ctf-team-repair` (`inspect` \| `cancel_orphans` \| `quarantine` \| `reset`)            |
+| Inspect status                      | `ctf-team-status`                                                                        |
+| Repair stale/corrupt run             | `ctf-team-repair`                                                                        |
 | Keep live route only             | `ctf-team-cancel-route keepRouteId=R1`                                                 |
 | MCP request (worker)             | `ctf-dynamic-mcp-advisor`                                                              |
 | MCP approve (you, every wave)    | `ctf-mcp-control`                                                                      |
@@ -319,12 +300,11 @@ Loading this skill does **not** mean the runtime tools are available. Expert Mod
 | Team runtime (mandatory)  | `ctf-team-dispatch`, `ctf-team-status`, `ctf-team-collect`, `ctf-team-cancel`, `ctf-team-cancel-route`, `ctf-team-close`, `ctf-team-recover`, `ctf-team-adopt` |
 | Core workflow (mandatory) | `ctf-evidence-board`, `ctf-mcp-control`, `ctf-decompose-task`                                                                                |
 
-Support tools are expected but non-blocking: `ctf-team-mode`, `ctf-tool-packs`.
+Support tools are expected but non-blocking: `ctf-tool-packs`.
 
-Fact/Intent surface (team information flow): `ctf-team-facts` reviews worker-submitted facts (`accept` is the
-only path to `confirmed`); `ctf-team-intent` owns the decision ledger and requires a fact basis plus a
-convergence rule (`expectedObservation` or `stopCondition`); workers may only pull work with `ctf-team-claim`.
-If a support tool is unavailable, continue the Expert contract directly with the hard-required tools.
+TeamProbe state holds dispatched probes, TeamJobs, statuses, and structured
+worker results. Review collected observations and update canonical evidence
+through `ctf-evidence-board`.
 
 **If hard-required tools are missing, the `/ctf-expert` command will fail fast with diagnostics.**
 This is not a skill corruption — it means OpenCode was started before the config was applied.

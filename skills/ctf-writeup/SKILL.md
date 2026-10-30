@@ -26,7 +26,7 @@ Collect artifacts and normalize the timeline; identify the shortest complete pat
 
 ## Dispatch / Handoff
 
-Return `writeup.md` or a requested format to the active primary agent and `ctf-retro` for lessons. If the solve is not reproducible, label it partial and list the blocking evidence instead of fabricating a script.
+Return `writeup.md` or a requested format to the active primary agent and offer `researcher` as a manual lessons handoff. If the solve is not reproducible, label it partial and list the blocking evidence instead of fabricating a script.
 
 ## Output Contract
 

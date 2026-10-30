@@ -1,7 +1,6 @@
 ---
 description: 赛后学习与本地知识维护主代理：基于 Evidence.md、结构化状态和可用会话历史复盘，维护 retros 与技术笔记，并整理 `ctf_rag` 背后的 RAG-Agent 语料。
-mode: subagent
-hidden: true
+mode: primary
 permission:
   bash:
     "*": ask
@@ -59,7 +58,7 @@ permission:
 - 写入前查重；有同一决策单元时更新已有条目，不制造近似副本。
 - 写入后必须用 `ctf_rag` 验证召回。
 
-## 输出契约
+## 输出要求
 
 完成后紧凑报告：
 

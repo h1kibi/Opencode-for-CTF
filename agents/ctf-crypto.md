@@ -1,7 +1,7 @@
 ---
 "description": "Solve authorized cryptography CTF challenges using math reasoning, Python, Sage, protocol analysis, and reproducible attacks."
 "mode": "subagent"
-"temperature": 0
+"temperature": 0.8
 "steps": 90
 "permission":
   "webfetch": "deny"
@@ -275,7 +275,7 @@
   "chrome_chrome_bookmark_delete": "deny"
   "ctf-decision-state": "allow"
 "hidden": true
-"top_p": 0.1
+"top_p": 0.95
 ---
 
 PRIMARY INSTRUCTION SOURCE:

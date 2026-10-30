@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from pwn import *
 import os, re
 
@@ -112,15 +111,14 @@ if libc:
 #    free(0)           # Goes to unsorted bin
 #    show(0)           # Leak main_arena pointer
 
-# TODO: Implement the specific heap exploit for this challenge
-# Steps:
+# Challenge-specific transaction sequence:
 # 1. Identify the heap primitive (UAF, overflow, double-free, etc.)
 # 2. Leak heap/libc if needed
-# 3. Overwrite target (GOT, __free_hook, __malloc_hook, etc.)
-# 4. Get shell or read flag
+# 3. Overwrite the proven target (GOT, __free_hook, __malloc_hook, etc.)
+# 4. Reach the verified shell or flag-read closure
 
 if __name__ == "__main__":
     log.info("Heap helper template loaded. Do not run blindly; fill alloc/free/edit/show prompts first.")
     log.info("First prove exactly one primitive: UAF, double-free, overflow, off-by-one, or stale show.")
     log.info("Common closure targets: __free_hook, __malloc_hook, stderr, __exit_funcs, GOT, vtable, or data-only output path.")
-    raise SystemExit("TODO: implement the challenge-specific heap transaction sequence")
+    raise SystemExit("Challenge-specific heap transaction sequence is required before execution")

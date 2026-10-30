@@ -26,10 +26,10 @@ $ARGUMENTS
 
 0. Recognize the startup environment before route work: identify OS / shell / substrate first. If the host is Kali, remember its built-in tool environment is likely available. If the host is Windows / PowerShell, keep command syntax PowerShell-safe and prefer script-first handling for complex requests.
 1. Load skill `ctf-expert`.
-2. `ctf-evidence-board command=init category=<direction> challengeName=<name-if-known> target=<target> ...` → creates `work/ctf-evidence/<direction-name|direction-MMDDHHmmss>/Evidence.md` plus structured state files. Folder names must be `web-hello` style when the title is known, otherwise `pwn-0719131706` style.
+2. `ctf-evidence-board command=init category=<direction> challengeName=<name-if-known> target=<target> ...` → creates one timestamped record folder `work/ctf-evidence/<YYMMDDHHmm>/` (e.g. `2610251156` = created 2026-10-25 11:56) holding Evidence.md plus all structured state files. Folder name is always the creation timestamp; category/challenge identity lives inside Evidence.md and case.json, so re-solving never overwrites a previous run's records.
 3. **① Recon** — concurrent workers (team dispatch); collect with `add-fact` / `add-clue`.
-4. **② Analysis** — before `set-routes`, run the mandatory order: evidence/machine-state cross-check → one `ctf_rag` query built from 2–4 concrete technical anchors of the current case (cite `source` + `chunk_id`; a no-hit result is valid but must still be recorded in the evidence decision log, and the step must never be skipped). Then set **exactly 3** routes (`untested`).
-5. **③ Verify** — independent routes concurrent (≤3); dependent chains serial.
+4. **② Analysis** — before `set-routes`, run the mandatory order: evidence/machine-state cross-check → the mandatory `ctf_rag` query built from 2–4 concrete technical anchors of the current case (re-query allowed once per material hypothesis change: route dead/live, category fix, new primitive class) (cite `source` + `chunk_id`; a no-hit result is valid but must still be recorded in the evidence decision log, and the step must never be skipped). Then set routes within the `route_policy` band (default **2–6**, 3 is the norm; `untested`).
+5. **③ Verify** — independent routes concurrent (within the band); dependent chains serial.
    - Update states: `set-route-state routeId=R1 routeState=blocked|dead|live`
    - **blocked ≠ dead** (WAF/obstacles may mean correct path)
 6. **④ Success** — return flag **directly** and stop active exploitation (no mandatory flag file). Mention that the user may manually invoke `researcher` with the evidence-case path; do not dispatch or await researcher.
@@ -59,11 +59,9 @@ The following hard-required tools must be registered in the process tool registr
 | Category | Tools |
 |----------|-------|
 | Team runtime | `ctf-team-dispatch`, `ctf-team-status`, `ctf-team-collect`, `ctf-team-cancel`, `ctf-team-cancel-route`, `ctf-team-close`, `ctf-team-recover`, `ctf-team-adopt`, `ctf-team-repair` |
-| Fact / Intent ledger | `ctf-team-facts` (list-pending/accept/reject/supersede), `ctf-team-intent` (create/list/claim-next/release/supersede) |
-| Worker self-claim | `ctf-team-claim` (worker-only; the expert never uses it) |
-| Core workflow | `ctf-evidence-board`, `ctf-mcp-control`, `ctf-decompose-task` |
+| Evidence and MCP | `ctf-evidence-board`, `ctf-mcp-control`, `ctf-decompose-task` |
 
-Support tools are helpful but non-blocking outside Phase ②: `ctf-team-mode`, `ctf-tool-packs`.
+Support tools are helpful but non-blocking outside Phase ②: `ctf-tool-packs`.
 Phase ② local recall requires `ctf_rag` (hosts that namespace MCP tools expose `ctf_rag_ctf_rag`; both are allowed). It is a mandatory step: a no-hit result is valid, but it must still be recorded in the evidence decision log. If `ctf_rag` is unavailable (unset `CTF_RAG_PYTHON` / `CTF_RAG_ROOT` / `CTF_RAG_KB_ROOT` records a non-fatal `missing env` skip), note the skip and continue without local recall.
 If a support tool is unavailable, continue the Expert contract directly with the hard-required tools.
 

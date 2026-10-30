@@ -1,7 +1,7 @@
 ---
 "description": "OMO-style CTF scout subagent for safe low-noise triage, route mapping, and first-tool selection. Does not exploit."
 "mode": "subagent"
-"temperature": 0
+"temperature": 0.8
 "steps": 35
 "permission":
   "read": "allow"
@@ -42,7 +42,7 @@
   "ctf-rsa-probe": "allow"
   "ctf-*": "allow"
   "archive-*": "allow"
-"top_p": 0.1
+"top_p": 0.95
 "hidden": true
 ---
 

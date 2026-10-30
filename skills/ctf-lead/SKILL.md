@@ -64,7 +64,7 @@ Unknown challenges start in `triage`.
    - `ctf-forensics`
    - `ctf-misc`
 4. When a critical primitive or two high primitives are confirmed, stop broad exploration and switch to closure behavior.
-5. When solved or timed out, route to `ctf-retro`.
+5. When solved or timed out, offer a manual handoff to `researcher` for post-solve reflection.
 
 ## State Files
 

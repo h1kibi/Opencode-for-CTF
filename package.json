@@ -66,12 +66,13 @@
     "README.md",
     "LICENSE",
     ".env.example",
+    "ctf-agent.manifest.json",
     "opencode-for-ctf.example.jsonc"
   ],
   "scripts": {
-    "check": "tsc --noEmit && npm run check:content && vitest run && npm run benchmark:scenarios",
+    "check": "tsc --noEmit && npm run check:content && vitest run && npm run benchmark:replay",
     "check:content": "node scripts/validate-content.mjs",
-    "check:benchmarks": "node scripts/ctf-benchmark.ts web && node scripts/ctf-benchmark.ts pwn && node scripts/ctf-benchmark.ts rev && node scripts/ctf-benchmark.ts crypto && node scripts/ctf-benchmark.ts forensics && node scripts/ctf-benchmark.ts misc",
+    "benchmark:lint": "node scripts/ctf-benchmark.ts web && node scripts/ctf-benchmark.ts pwn && node scripts/ctf-benchmark.ts rev && node scripts/ctf-benchmark.ts crypto && node scripts/ctf-benchmark.ts forensics && node scripts/ctf-benchmark.ts misc",
     "build:plugin": "node scripts/build-plugin.mjs",
     "lint": "tsc --noEmit && eslint .",
     "lint:fix": "eslint . --fix",
@@ -100,20 +101,25 @@
     "doctor:revlab": "tsx scripts/doctor-revlab.ts",
     "doctor:godot-rev": "tsx scripts/doctor-godot-rev.ts",
     "ctf:evidence-doctor": "tsx scripts/ctf-evidence-doctor.ts",
-    "benchmark:nyu": "tsx scripts/ctf-benchmark-nyu.ts",
-    "benchmark:nyu:setup": "node scripts/setup-nyu-benchmark.mjs",
-    "benchmark:scenarios": "node scripts/ctf-benchmark-scenarios.ts"
+    "benchmark:solve": "tsx scripts/ctf-benchmark-nyu.ts",
+    "benchmark:nyu": "npm run benchmark:solve",
+    "benchmark:solve:setup": "node scripts/setup-nyu-benchmark.mjs",
+    "benchmark:nyu:setup": "npm run benchmark:solve:setup",
+    "benchmark:replay": "node scripts/ctf-benchmark-scenarios.ts",
+    "benchmark:scenarios": "npm run benchmark:replay"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "@opencode-ai/plugin": "1.19.3",
-    "@opencode-ai/sdk": "^1.0.0",
+    "@opencode-ai/plugin": "1.19.4",
+    "@opencode-ai/sdk": "1.19.4",
     "jsonc-parser": "^3.3.1",
     "proper-lockfile": "^4.1.2",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
+    "ctf-benchmark-core": "file:packages/ctf-benchmark-core",
+    "ctf-core": "file:packages/ctf-core",
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.9.1",
     "@types/proper-lockfile": "^4.1.4",

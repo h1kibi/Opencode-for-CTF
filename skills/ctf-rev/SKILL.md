@@ -364,19 +364,7 @@ Ask or stop when execution requires unsafe privileges, malware-like behavior is 
 
 For packed, self-modifying, runtime-generated, or isolated-checker branches, use one workspace-relative `rev_runtime_session.v1` session instead of scattering runtime facts across ad-hoc notes:
 
-```text
-ctf-rev-analyze
-  -> ctf-rev-capability-check
-  -> ctf-rev-runtime-session init
-  -> ctf-rev-live-memory-dump / ctf-rev-unicorn-replay-builder
-  -> ctf-rev-runtime-session record-marker / record-observation
-  -> ctf-rev-runtime-session inspect-artifacts
-  -> ctf-rev-runtime-session verify-history
-  -> ctf-rev-closure-ladder
-  -> ctf-rev-runtime-session set-oracle (link observation IDs)
-  -> ctf-rev-runtime-session set-stage through the runtime ladder
-  -> ctf-rev-runtime-session sync
-```
+The runtime workflow starts with `ctf-rev-analyze`, then runs `ctf-rev-capability-check` when needed and initializes `ctf-rev-runtime-session`. Next use `ctf-rev-live-memory-dump` or `ctf-rev-unicorn-replay-builder`, record markers and observations, inspect artifacts, record or verify the runtime fingerprint, inspect provenance, verify history, run `ctf-rev-closure-ladder`, set the oracle and stage, and synchronize with `ctf-rev-runtime-session sync`.
 
 - `ctf-rev-runtime-session` is a state/evidence manager; it never executes the target.
 - `verify-history` is read-only. New events carry a SHA-256 `event_hash` chained through `previous_hash`; `verified` means the chain matches the stored events, `invalid` means tampering/reordering is detected, and hashless legacy history is reported as `legacy` rather than upgraded silently.

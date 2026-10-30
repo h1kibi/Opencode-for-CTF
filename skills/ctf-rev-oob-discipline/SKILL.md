@@ -45,27 +45,11 @@ Before committing to a route that depends on OOB:
 
 ## Triage Decision Tree
 
-```text
-Does the binary make ANY network call?
-├── No → standard REV (no OOB needed)
-└── Yes
-    ├── Is the call essential for the validation path?
-    │   ├── No → patch/stub the call (rank 9: patch_bypass)
-    │   └── Yes
-    │       ├── Is the response deterministic (key/bytecode)?
-    │       │   ├── Yes → capture once via pcap, then offline-replay
-    │       │   └── No (depends on input) → need response-serving OOB
-    │       │       ├── User has VPS? → use user's VPS
-    │       │       └── No VPS → ask for VPS, OR pivot to static patch
-    └── Does the binary fetch its REAL payload from network?
-        ├── Yes → pcap-based extraction:
-        │   1. Run binary in revlab container with `tcpdump`
-        │   2. Capture full pcap including TLS keys (SSLKEYLOGFILE)
-        │   3. Decrypt with `tshark -o tls.keylog_file:...`
-        │   4. Carve payload with `ctf-pcap-carve`
-        │   5. Continue REV on extracted payload
-        └── No → standard local REV
-```
+Use this triage sequence:
+
+1. If the binary makes no network call, use standard REV; OOB is unnecessary.
+2. If it makes a network call, determine whether the call is essential to validation. If it is not essential, patch or stub it (`patch_bypass`, rank 9). If it is essential, determine whether the response is deterministic. Capture deterministic responses once with pcap and offline-replay them. For input-dependent responses, use response-serving OOB; use the user's VPS when available, otherwise ask for a VPS or pivot to a static patch.
+3. Separately determine whether the binary fetches its real payload from the network. If it does, run it in the revlab container with `tcpdump`, capture a full pcap including TLS keys through `SSLKEYLOGFILE`, decrypt with `tshark -o tls.keylog_file:...`, carve the payload with `ctf-pcap-carve`, and continue REV on the extracted payload. If it does not, use standard local REV.
 
 ## Self-Decrypting Binary (No Network)
 

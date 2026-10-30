@@ -30,12 +30,11 @@ else
 fi
 
 # Level 4: Compile capability
-TEST_C="/tmp/wsl_compile_test.c"
-TEST_OUT="/tmp/wsl_compile_test"
-cat > "$TEST_C" << 'CEOF'
-#include <stdio.h>
-int main() { printf("compile_ok\n"); return 0; }
-CEOF
+WORK_DIR="${PWD}/work/wsl-env"
+mkdir -p "$WORK_DIR"
+TEST_C="$WORK_DIR/wsl_compile_test.c"
+TEST_OUT="$WORK_DIR/wsl_compile_test"
+printf '%s\n' '#include <stdio.h>' 'int main() { printf("compile_ok\\n"); return 0; }' > "$TEST_C"
 gcc "$TEST_C" -o "$TEST_OUT" 2>/dev/null && "$TEST_OUT" 2>/dev/null
 if [ $? -eq 0 ]; then
     echo "LEVEL_4_COMPILE: OK (gcc works)"
@@ -45,17 +44,10 @@ fi
 rm -f "$TEST_C" "$TEST_OUT"
 
 # Level 5: CMake/Ninja build
-TEST_CMAKE_DIR="/tmp/wsl_cmake_test"
+TEST_CMAKE_DIR="$WORK_DIR/wsl_cmake_test"
 mkdir -p "$TEST_CMAKE_DIR"
-cat > "$TEST_CMAKE_DIR/CMakeLists.txt" << 'CMEOF'
-cmake_minimum_required(VERSION 3.10)
-project(wsl_test)
-add_executable(wsl_test main.c)
-CMEOF
-cat > "$TEST_CMAKE_DIR/main.c" << 'MEOF'
-#include <stdio.h>
-int main() { printf("cmake_build_ok\n"); return 0; }
-MEOF
+printf '%s\n' 'cmake_minimum_required(VERSION 3.10)' 'project(wsl_test)' 'add_executable(wsl_test main.c)' > "$TEST_CMAKE_DIR/CMakeLists.txt"
+printf '%s\n' '#include <stdio.h>' 'int main() { printf("cmake_build_ok\\n"); return 0; }' > "$TEST_CMAKE_DIR/main.c"
 cd "$TEST_CMAKE_DIR"
 cmake -G Ninja . 2>/dev/null && ninja 2>/dev/null
 if [ $? -eq 0 ]; then

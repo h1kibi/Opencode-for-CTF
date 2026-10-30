@@ -1,6 +1,6 @@
 # Android 动态调试最小闭环模板
 
-适用场景：Android 壳题 / APK 运行时落地 dex / JNI loader / 需要 logcat + `run-as` + Frida 观察的 CTF REV 题。
+适用场景：Android 壳题 / APK 运行时释放 dex / JNI loader / 需要 logcat + `run-as` + Frida 观察的 CTF REV 题。
 
 ## 文件
 

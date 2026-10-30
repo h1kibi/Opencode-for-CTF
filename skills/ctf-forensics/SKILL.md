@@ -47,9 +47,7 @@ Dispatch to disk, memory, network, stego, or document/audio references only afte
 
 ## Phase Workflow
 
-```text
-preserve → triage → classify → extract → reconstruct → verify → retro
-```
+The phase workflow is `preserve → triage → classify → extract → reconstruct → verify → retro`.
 
 ### Phase: Preserve
 
@@ -95,40 +93,19 @@ Route to sub-discipline based on triage results:
 For each sub-discipline, follow the specific extraction flow:
 
 #### Disk Forensics
-```text
-mmls <image>           → partition layout
-fls -r <image>         → full file listing
-icat <image> <inode>   → extract specific file
-blkls <image>          → unallocated space
-sigfind <sig> <image>  → search for file signatures
-```
+For disk forensics, run `mmls <image>` to inspect the partition layout, `fls -r <image>` for a full file listing, `icat <image> <inode>` to extract a specific file, `blkls <image>` for unallocated space, and `sigfind <sig> <image>` to search for file signatures.
 - Recover deleted files
 - Extract registry hives for Windows images
 - Check for hidden partitions, unallocated space
 
 #### Memory Forensics
-```text
-volatility -f <dump> imageinfo             → profile identification
-volatility -f <dump> --profile=<p> pslist  → process list
-volatility -f <dump> --profile=<p> cmdline → command line history
-volatility -f <dump> --profile=<p> netscan → network connections
-volatility -f <dump> --profile=<p> clipboard → clipboard contents
-volatility -f <dump> --profile=<p> filescan → open file handles
-volatility -f <dump> --profile=<p> mimikatz → credential extraction
-volatility -f <dump> --profile=<p> dumpfiles → dump process memory
-```
+For memory forensics, use the listed Volatility commands: `volatility -f <dump> imageinfo` for profile identification; `pslist` for processes; `cmdline` for command-line history; `netscan` for network connections; `clipboard` for clipboard contents; `filescan` for open handles; `mimikatz` for credential extraction; and `dumpfiles` to dump process memory.
 - Volatility 3 uses `vol -f <dump> <plugin>` syntax
 - Check for injected code (`malfind`, `hollowfind`)
 - Extract encryption keys, clipboard data, command histories
 
 #### Network Forensics
-```text
-tshark -r <pcap> -Y "http" -T fields -e http.host -e http.request.uri
-tshark -r <pcap> -Y "dns" -T fields -e dns.qry.name
-tshark -r <pcap> -Y "tcp.flags.syn==1 and tcp.flags.ack==0" -T fields -e tcp.srcport
-tcpdump -r <pcap> -X          → hex+ASCII packet content
-tcpdump -r <pcap> -A          → ASCII packet content
-```
+For network forensics, use the three `tshark` filters above, then use `tcpdump -r <pcap> -X` for hex and ASCII packet content or `tcpdump -r <pcap> -A` for ASCII packet content.
 - Extract transferred files: `tshark -r <pcap> --export-objects http,<dir>`
 - Follow TCP streams
 - Check for DNS tunneling, covert channels

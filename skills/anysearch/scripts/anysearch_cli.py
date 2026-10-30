@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-"""AnySearch CLI - Unified search client for AnySearch API."""
 
 import argparse
 import io

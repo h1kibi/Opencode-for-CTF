@@ -130,27 +130,26 @@ RUN set +e; \
       apt-get install -y --no-install-recommends radare2; \
       if [ $? -ne 0 ]; then \
         echo "==> apt radare2 failed, trying git build (3-5 min)"; \
-        git clone --depth=1 https://github.com/radareorg/radare2 /tmp/r2 && \
-        cd /tmp/r2 && sys/install.sh && \
-        if [ -x /tmp/r2/binr/radare2/radare2 ]; then \
-          install -m 0755 /tmp/r2/binr/radare2/radare2 /usr/local/bin/radare2 && \
+        mkdir -p /work/r2 && git clone --depth=1 https://github.com/radareorg/radare2 /work/r2 && \
+        cd /work/r2 && sys/install.sh && \
+        if [ -x /work/r2/binr/radare2/radare2 ]; then \
+          install -m 0755 /work/r2/binr/radare2/radare2 /usr/local/bin/radare2 && \
           ln -sf /usr/local/bin/radare2 /usr/local/bin/r2; \
         fi && \
-        rm -rf /tmp/r2; \
+        rm -rf /work/r2; \
       fi; \
       rm -rf /var/lib/apt/lists/*; \
     fi; \
     command -v r2 && r2 -v | head -1 || echo "WARN: radare2 not installed (rizin/lief still available)"
-
 # rizin: Ubuntu 22.04 官方仓库通常无包,优先尝试 RizinOrg 的 OBS 仓库
 RUN set +e; \
     if ! command -v rizin >/dev/null 2>&1; then \
-      curl -fsSL https://cdn.opensuse.org/repositories/home:/RizinOrg/xUbuntu_22.04/Release.key -o /tmp/rizin.key && \
-      gpg --dearmor < /tmp/rizin.key > /usr/share/keyrings/rizin.gpg && \
+      mkdir -p /work && curl -fsSL https://cdn.opensuse.org/repositories/home:/RizinOrg/xUbuntu_22.04/Release.key -o /work/rizin.key && \
+      gpg --dearmor < /work/rizin.key > /usr/share/keyrings/rizin.gpg && \
       echo 'deb [signed-by=/usr/share/keyrings/rizin.gpg] https://cdn.opensuse.org/repositories/home:/RizinOrg/xUbuntu_22.04/ /' > /etc/apt/sources.list.d/rizin.list && \
       apt-get update && \
       apt-get install -y --no-install-recommends rizin && \
-      rm -f /tmp/rizin.key; \
+      rm -f /work/rizin.key; \
       rm -rf /var/lib/apt/lists/*; \
     fi; \
     command -v rizin && rizin -v | head -1 || echo "WARN: rizin not installed (radare2 remains available)"
@@ -227,7 +226,7 @@ RUN set -eux; \
 RUN python3 -m pip install sasquatch 2>&1 || echo "WARN: sasquatch pip install failed (optional binwalk plugin)"
 
 # update revlab-check to include v2 tools
-RUN printf '#!/usr/bin/env bash\nset +e\necho "[revlab] tool check (v2)"\nfor c in file strings tshark capinfos tcpdump binwalk upx readelf objdump nm gdb strace ltrace python3 scapy r2 rizin go unzip xxd jq patchelf radare2 qemu-aarch64-static qemu-mips-static qemu-riscv64-static one_gadget seccomp-tools uncompyle6 decompyle3 wasm-objdump wasm2wat GoReSym apktool aapt rr; do\n  command -v "$c" >/dev/null 2>&1 && echo "OK $c" || echo "MISS $c"\ndone\ncommand -v go >/dev/null 2>&1 && go version | sed "s/^/GO /"\necho "[revlab] python packages"\npython3 - <<"PY"\nfrom importlib import util\nfor m in ["Crypto", "Cryptodome", "scapy", "pyshark", "dpkt", "lief", "frida", "capstone", "unicorn", "z3", "angr", "claripy", "pwn", "pwnlib", "qiling", "triton", "uncompyle6", "decompyle3"]:\n    name = "Cryptodome" if m == "Cryptodome" else m\n    spec = util.find_spec(name)\n    print(("OK" if spec else "MISS") + " " + m)\nPY\necho "[revlab] ruby gems"\nfor g in one_gadget seccomp-tools; do command -v "$g" >/dev/null 2>&1 && echo "OK $g" || echo "MISS $g"; done\necho "[revlab] go tools"\nfor g in GoReSym; do command -v "$g" >/dev/null 2>&1 && echo "OK $g" || ls /root/go/bin/ 2>/dev/null | grep -i "$g" && echo "OK $g (in /root/go/bin)" || echo "MISS $g"; done\n' > /usr/local/bin/revlab-check \
+RUN printf '#!/usr/bin/env bash\nset +e\necho "[revlab] tool check (v2)"\nfor c in file strings tshark capinfos tcpdump binwalk upx readelf objdump nm gdb strace ltrace python3 scapy r2 rizin go unzip xxd jq patchelf radare2 qemu-aarch64-static qemu-mips-static qemu-riscv64-static one_gadget seccomp-tools uncompyle6 decompyle3 wasm-objdump wasm2wat GoReSym apktool aapt rr; do\n  command -v "$c" >/dev/null 2>&1 && echo "OK $c" || echo "MISS $c"\ndone\ncommand -v go >/dev/null 2>&1 && go version | sed "s/^/GO /"\necho "[revlab] python packages"\nfor m in Crypto Cryptodome scapy pyshark dpkt lief frida capstone unicorn z3 angr claripy pwn pwnlib qiling triton uncompyle6 decompyle3; do python3 -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec(sys.argv[1]) else 1)" $m && echo "OK $m" || echo "MISS $m"; done\necho "[revlab] ruby gems"\nfor g in one_gadget seccomp-tools; do command -v "$g" >/dev/null 2>&1 && echo "OK $g" || echo "MISS $g"; done\necho "[revlab] go tools"\nfor g in GoReSym; do command -v "$g" >/dev/null 2>&1 && echo "OK $g" || ls /root/go/bin/ 2>/dev/null | grep -i "$g" && echo "OK $g (in /root/go/bin)" || echo "MISS $g"; done\n' > /usr/local/bin/revlab-check \
     && chmod +x /usr/local/bin/revlab-check
 
 # binwalk (pip 提供,但优先 apt,失败 fallback)

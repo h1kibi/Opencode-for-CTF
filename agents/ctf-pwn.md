@@ -1,7 +1,7 @@
 ---
 "description": "Solve authorized binary exploitation CTF challenges using local analysis, debugging, exploit development, and pwntools scripts."
 "mode": "subagent"
-"temperature": 0
+"temperature": 0.8
 "steps": 100
 "permission":
   "webfetch": "deny"
@@ -352,7 +352,7 @@
   "ctf-pwn-wsl-runner": "allow"
   "ctf-pwn-check-env": "allow"
 "hidden": true
-"top_p": 0.1
+"top_p": 0.95
 ---
 
 AUTHORIZED CTF SCOPE:

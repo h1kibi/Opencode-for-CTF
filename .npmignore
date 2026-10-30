@@ -7,7 +7,6 @@ coverage/
 test/
 src/
 tools/
-packages/
 docker/
 docs/
 *.tgz

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from pwn import *
 import argparse
 import binascii

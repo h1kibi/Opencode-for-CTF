@@ -25,6 +25,18 @@
     "max_workers": 8
   },
 
+  // Active-route band for the expert lane. "Exactly 3 routes" is now this band:
+  // breadth-first phases may open up to `max` routes, depth phases may narrow
+  // to `min`. Distinctness, evidence basis, and dead criteria are enforced
+  // regardless of band width. Hard bounds: min 1..4, max 2..8.
+  // "route_policy": { "min": 2, "max": 6 },
+
+  // Clean-room measurement arm: deny web retrieval (webfetch/websearch and
+  // brave_/tavily_/jina_/firecrawl_/anysearch_ MCP tools) for ctf agents so
+  // benchmark solve rates exclude writeup lookup / memorization contamination.
+  // Benchmark runners can also set OPENCODE_CTF_CLEAN_ROOM=1 instead.
+  "clean_room": false,
+
   // Tool packs registered at plugin startup (restart OpenCode after changes).
   // This is the PROCESS registry (superset). ctf-fast is still filtered by allowlist.
   // Default omits rare/heavy/maintenance packs: maintenance, pwn-heavy, web-heavy, rev-heavy, java, forensics-heavy, android, android-dynamic, godot.

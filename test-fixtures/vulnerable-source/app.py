@@ -1,4 +1,3 @@
-"""Vulnerable Flask app for testing ctf-artifact-analyze"""
 import os
 import subprocess
 import pickle

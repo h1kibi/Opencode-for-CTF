@@ -14,7 +14,7 @@ If this rule conflicts with those files, update the code and this rule together.
 
 - The process tool registry is fixed at OpenCode startup.
 - `tool_packs` and `expert_tool_packs` are unioned at startup; restart OpenCode after changes.
-- Default registered packs are `core`, `web`, `pwn`, `rev`, `crypto`, `forensics`, `misc`, and `java`.
+- Default registered packs are `core`, `web`, `pwn`, `rev`, `crypto`, `forensics`, `misc`, and `aisec`.
 - Rare, heavy, or maintenance packs are opt-in: `maintenance`, `pwn-heavy`, `web-heavy`, `rev-heavy`, `java`, `forensics-heavy`, `android`, `android-dynamic`, `godot`.
 - `ctf-fast` is narrowed by `FAST_TOOL_ALLOWLIST` even when more packs are registered.
 - `ctf-expert` can use the full pack-filtered registry and owns Team Mode plus heavy MCP approval.
@@ -70,7 +70,7 @@ The `ctf_rag` entry is RAG-Agent's read-only local corpus index. It is activated
 as part of this profile (not requested/approved) because it only retrieves cited
 evidence and never touches the target. The server declares its tool as `ctf_rag`;
 hosts that namespace MCP tools expose `ctf_rag_ctf_rag`. `FAST_MCP_TOOL_NAMES` and
-`FAST_MCP_SERVER_PREFIXES` in `src/tool-packs.ts` admit both spellings on the fast
+`FAST_MCP_SERVER_PREFIXES` in `src/agent-equipment-policy.ts` admit both spellings on the fast
 surface, so the CTF tool allowlist above stays unchanged.
 
 Unlike every other entry here, `ctf_rag` has **no** static config stub: the plugin
@@ -98,8 +98,7 @@ Tool surface:
 
 - Uses the full pack-filtered process registry.
 - Hard-required expert tools: `ctf-team-dispatch`, `ctf-team-status`, `ctf-team-collect`, `ctf-team-cancel`, `ctf-team-cancel-route`, `ctf-team-close`, `ctf-team-recover`, `ctf-team-adopt`, `ctf-team-repair`, `ctf-evidence-board`, `ctf-mcp-control`, `ctf-decompose-task`.
-- Expert fact/intent ledger: `ctf-team-facts` (review pending worker facts; `accept` is the only path to `confirmed`) and `ctf-team-intent` (create/list/claim-next/release/supersede; an intent needs a fact basis and a convergence rule). A verified worker pulls work only through `ctf-team-claim`.
-- Owns Team Mode, Evidence.md, exactly-three-route planning, route-state transitions, and heavy MCP approval.
+- TeamProbe/TeamJob owns worker lifecycle, Evidence.md, route-state transitions, and heavy MCP approval.
 
 MCP defaults:
 
@@ -275,7 +274,6 @@ Soft dependencies and environment:
 - `ctf-oracle`: common light MCP plus `ctf_rag`; answers knowledge questions from retrieved `ctf_rag` evidence.
 - `ctf-librarian`: `filesystem`, `ctf_rag`; maintains reusable local knowledge and recalls techniques/patterns through `ctf_rag`.
 - `ctf-verifier`: `filesystem`; verifies final evidence/flag claims with minimal surface.
-- `ctf-retro`: common light MCP plus `ctf_rag`; recalls prior route-ordering/stability/closure lessons through `ctf_rag` and records post-solve feedback.
 - `researcher`: support primary for manual post-solve reflection; it curates the RAG-Agent corpus behind `ctf_rag`, not an active solve lane.
 
 ## Escalation Rules

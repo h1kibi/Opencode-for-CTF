@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from pwn import *
 import os, re
 
@@ -168,7 +167,7 @@ if __name__ == "__main__":
     if not pivot_gadgets:
         log.error("No pivot gadgets found")
         log.info("Try: ROPgadget --binary ./chall | grep -E 'leave|mov rsp|add rsp'")
-        raise SystemExit("TODO: find or construct a verified pivot gadget")
+        raise SystemExit("A verified pivot gadget is required before execution")
 
     log.info("Do not execute a pivot route until the pivot target, post-pivot chain, and write path are all proven.")
     log.info("Suggested modes: bss / add_rsp / two_stage; keep this file as a helper, not a blind launcher.")
@@ -176,4 +175,4 @@ if __name__ == "__main__":
     if os.getenv("RUN", "0") != "1":
         raise SystemExit("Dry-run only. Set RUN=1 only after validating the pivot target and post-pivot chain.")
 
-    raise SystemExit("TODO: implement the verified pivot sequence for this binary")
+    raise SystemExit("Challenge-specific verified pivot sequence is required before execution")

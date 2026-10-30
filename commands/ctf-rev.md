@@ -38,19 +38,6 @@ Rules:
 
 When static analysis identifies packing, self-unpacking, runtime-generated code, or a checker that is easier to rehost:
 
-```text
-ctf-rev-analyze
-  -> ctf-rev-capability-check (when required)
-  -> ctf-rev-runtime-session init
-  -> ctf-rev-live-memory-dump / ctf-rev-unicorn-replay-builder
-  -> ctf-rev-runtime-session record-marker / record-observation
-  -> ctf-rev-runtime-session inspect-artifacts
-  -> ctf-rev-runtime-session record-runtime-fingerprint / verify-runtime-fingerprint
-  -> ctf-rev-runtime-session inspect-provenance
-  -> ctf-rev-runtime-session verify-history
-  -> ctf-rev-closure-ladder
-  -> ctf-rev-runtime-session set-oracle / set-stage
-  -> ctf-rev-runtime-session sync
-```
+The runtime-backed workflow is: run `ctf-rev-analyze`; when required, run `ctf-rev-capability-check`; initialize `ctf-rev-runtime-session`; run `ctf-rev-live-memory-dump` or `ctf-rev-unicorn-replay-builder`; record markers and observations; inspect artifacts; record and verify the runtime fingerprint; inspect provenance; verify history; run `ctf-rev-closure-ladder`; set the oracle and stage; then synchronize with `ctf-rev-runtime-session sync`.
 
 Use one workspace-relative `sessionPath` throughout. The session records artifacts, markers, runtime observations, substrate metadata, closure references, and oracle state. `ctf-rev-runtime-session` only maintains state; it never runs the binary. Use `record-observation` to import native/replay/comparison results and `inspect-artifacts` to record size/SHA-256; changed files become `stale` and deleted files become `missing`; either state blocks promotion until repaired or re-recorded. If `oracle.observation_ids` is supplied, every reference must resolve to a passing observation; failed/unresolved observations and unknown or stale/missing artifact references reject the oracle contract, while duplicate IDs are normalized away. A `comparison` observation can declare `related_observation_ids` for its native/replay inputs; those links must resolve to both kinds and reject input-hash or architecture/mode drift. Record runtime metadata (substrate, arch/mode, tool/version, image digest, and stable fingerprint) when available. A legacy oracle without observation IDs remains readable for compatibility, but new runtime branches should link observations. Use `observationContract=strict` for new high-confidence runtime branches; a passing strict oracle must directly link passing `native`, `replay`, and `comparison` observations. `linked` validates IDs when supplied but retains legacy omission behavior. Follow the stage ladder instead of arbitrary jumps; the compatibility direct-promotion path still requires an already-recorded passing oracle. Do not promote to `oracle_verified` or `closed` without an independent passing oracle with written evidence and linked observation context. Generated dump/replay helpers must be reviewed and run only in the locked authorized substrate. Run `verify-history` before strict promotion: a new session must report a valid `previous_hash`/`event_hash` chain; a legacy hashless history remains readable but is explicitly unverified. Artifact records carry a generation; observations that depend on artifacts should capture `artifact_generations` and `artifact_sha256s`, so replacing a same-path payload cannot silently reuse old evidence. Strict comparisons must include a machine-checkable semantic result and reject output/payload/register/memory/trace digest, exit-code, or stop-PC drift.

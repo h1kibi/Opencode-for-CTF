@@ -29,7 +29,7 @@ Expected naming examples:
 - `failure-medium-value-primitive-drift.md`
 - `owner-web-java-handoff.md`
 
-Structured index contract for `knowledge/lessons/lessons.index.json`:
+Structured index contract for the optional generated `lessons/lessons.index.json`:
 
 - `id`
 - `file`

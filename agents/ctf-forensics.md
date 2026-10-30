@@ -1,7 +1,7 @@
 ---
 "description": "Solve authorized forensics CTF challenges involving files, memory images, packet captures, documents, archives, malware indicators, and steganography."
 "mode": "subagent"
-"temperature": 0
+"temperature": 0.8
 "steps": 90
 "permission":
   "webfetch": "deny"
@@ -287,7 +287,7 @@
   "chrome_chrome_bookmark_delete": "allow"
   "ctf-decision-state": "allow"
 "hidden": true
-"top_p": 0.1
+"top_p": 0.95
 ---
 
 PRIMARY INSTRUCTION SOURCE:

@@ -85,18 +85,11 @@ This fires 1 general query + N vertical queries in parallel. Coverage beats gues
 `get_sub_domains` with ALL intersecting domains, then `batch_search` —
 rephrase the SAME core question per domain perspective.
 
-```
-User query
-  |
-  +-- PURE encyclopedia / common knowledge with ZERO domain overlap?
-  |     YES → Path 1: search "query" (no domain)
-  |
-  +-- UNSURE / could benefit from domain sources?
-  |     YES → HYBRID: batch_search (1 general + N vertical)
-  |
-  +-- Clearly domain-specific / has structured identifiers?
-        YES → Path 2: get_sub_domains → search (or batch_search for multi-domain)
-```
+Choose the search path from the query classification:
+
+- Pure encyclopedia or common knowledge with zero domain overlap: use Path 1, `search "query"` without a domain.
+- Unsure whether domain sources would help: use the hybrid path, `batch_search` with one general query and N vertical queries.
+- Clearly domain-specific or containing structured identifiers: use Path 2, `get_sub_domains` followed by `search`, or `batch_search` for multiple domains.
 
 ---
 

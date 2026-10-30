@@ -183,17 +183,15 @@ A successful JSON response confirms the API connection is working.
 
 ## File Structure
 
-```
-anysearch/
-├── .env.example              # API key configuration template
-├── .env                      # Your API key (gitignored, create from .env.example)
-├── runtime.conf              # Detected runtime preferences (gitignored)
-├── runtime.conf.example      # Runtime configuration template
-├── SKILL.md                  # Skill definition for AI agents
-├── README.md                 # This file
-└── scripts/
-    ├── anysearch_cli.py       # Python CLI
-    ├── anysearch_cli.js       # Node.js CLI
-    ├── anysearch_cli.ps1      # PowerShell CLI
-    └── anysearch_cli.sh       # Bash CLI
-```
+The `anysearch/` directory contains the following files:
+
+- `.env.example`: API key configuration template.
+- `.env`: Your API key, which is gitignored and must be created from `.env.example`.
+- `runtime.conf`: Detected runtime preferences, which is gitignored.
+- `runtime.conf.example`: Runtime configuration template.
+- `SKILL.md`: Skill definition for AI agents.
+- `README.md`: This file.
+- `scripts/anysearch_cli.py`: Python CLI.
+- `scripts/anysearch_cli.js`: Node.js CLI.
+- `scripts/anysearch_cli.ps1`: PowerShell CLI.
+- `scripts/anysearch_cli.sh`: Bash CLI.

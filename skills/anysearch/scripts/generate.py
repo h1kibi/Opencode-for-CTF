@@ -1,14 +1,3 @@
-#!/usr/bin/env python3
-"""Code generator for AnySearch CLI scripts.
-
-Reads constants.json from scripts/shared/ and injects the domain list
-and doc command implementation into each CLI script. Eliminates duplication
-across all 4 language implementations.
-
-Usage:
-    python scripts/generate.py          # Generate all scripts
-    python scripts/generate.py --check  # Verify scripts are up-to-date (for CI)
-"""
 
 import json
 import os
@@ -171,12 +160,17 @@ def generate_script(script_path, constants):
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Generate AnySearch CLI scripts from shared data")
-    parser.add_argument("--check", action="store_true", help="Verify scripts are up-to-date (for CI)")
+    parser = argparse.ArgumentParser(
+        description="Compare AnySearch CLI scripts with generated content"
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Verify scripts are up-to-date (for CI)",
+    )
     args = parser.parse_args()
 
     constants = load_constants()
-
     scripts_changed = False
 
     for ext in [".py", ".js", ".ps1", ".sh"]:
@@ -184,25 +178,28 @@ def main():
         script_path = os.path.join(SCRIPT_DIR, script_name)
 
         try:
-            new_content = generate_script(script_path, constants)
+            generated_content = generate_script(script_path, constants)
             with open(script_path, "r", encoding="utf-8") as f:
-                old_content = f.read()
+                current_content = f.read()
 
-            if new_content != old_content:
+            if generated_content != current_content:
                 scripts_changed = True
-                if not args.check:
-                    with open(script_path, "w", encoding="utf-8") as f:
-                        f.write(new_content)
-                    print(f"Generated: {script_name}")
-                else:
-                    print(f"CHANGED: {script_name} (run generate.py to update)")
+                print(f"DRIFT: {script_name}")
             else:
                 print(f"OK: {script_name}")
         except Exception as e:
             print(f"ERROR in {script_name}: {e}", file=sys.stderr)
             sys.exit(1)
 
-    if args.check and scripts_changed:
+    if scripts_changed:
+        if args.check:
+            print("Generated content differs from one or more scripts.", file=sys.stderr)
+        else:
+            print(
+                "Generated content differs. Edit generated sections manually; "
+                "this command never writes source files.",
+                file=sys.stderr,
+            )
         sys.exit(1)
 
 

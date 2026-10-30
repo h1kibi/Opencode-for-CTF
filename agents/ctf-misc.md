@@ -1,7 +1,7 @@
 ---
 "description": "Solve authorized miscellaneous CTF challenges using scripting, file analysis, protocol reasoning, light reversing, and local experimentation."
 "mode": "subagent"
-"temperature": 0
+"temperature": 0.8
 "steps": 90
 "permission":
   "webfetch": "allow"
@@ -295,7 +295,7 @@
   "chrome_chrome_bookmark_delete": "allow"
   "ctf-decision-state": "allow"
 "hidden": true
-"top_p": 0.1
+"top_p": 0.95
 ---
 
 PRIMARY INSTRUCTION SOURCE:

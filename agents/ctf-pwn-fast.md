@@ -1,7 +1,8 @@
 ---
 "description": "Deprecated compatibility shim. PWN fast-lane behavior has been merged into ctf-fast."
 "mode": "subagent"
-"temperature": 0
+"temperature": 0.8
+"top_p": 0.95
 "steps": 20
 "hidden": true
 ---
