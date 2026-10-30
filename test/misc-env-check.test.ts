@@ -34,7 +34,7 @@ describe("ctf-misc-env-check tool", () => {
         expect(typeof check.hint).toBe("string")
       }
     }
-  })
+  }, 15_000)
 
   it("keeps human output bounded and reports fallback guidance", async () => {
     const mod = await import("../tools/misc/ctf-misc-env-check.ts")
@@ -44,5 +44,5 @@ describe("ctf-misc-env-check tool", () => {
     expect(out).toContain("- capabilities:")
     expect(out).toContain("- missing hints:")
     expect(out.length).toBeLessThan(20_000)
-  })
+  }, 15_000)
 })

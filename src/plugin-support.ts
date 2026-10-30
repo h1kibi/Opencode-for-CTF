@@ -8,7 +8,8 @@ import { recordMcpActivationIssue } from "./dynamic-mcp-manager.ts"
 import { lookupMcpServer } from "./mcp-server-registry.ts"
 import { explainToolVisibility } from "./capabilities/tool-visibility.ts"
 import { toolMetadata } from "./tool-metadata.ts"
-import { packForTool, toolAllowedForAgent, type ToolPackId } from "./tool-packs.ts"
+import { packForTool, toolAllowedForAgent } from "./tool-packs.ts"
+import type { ToolPackLookup } from "./tool-packs.ts"
 
 export interface HashTag {
   lineNum: number
@@ -343,7 +344,6 @@ export function skillToAgent(skillName: string): string | undefined {
     "ctf-oracle",
     "ctf-librarian",
     "ctf-verifier",
-    "ctf-retro",
     "ctf-expert",
     "ctf-common",
     "ctf-terminal",
@@ -603,6 +603,6 @@ export function summarizeRuntimeToolRegistry(input: {
   }
 }
 
-export function normalizeToolPackId(value: string): ToolPackId {
+export function normalizeToolPackId(value: string): ToolPackLookup {
   return packForTool(value)
 }

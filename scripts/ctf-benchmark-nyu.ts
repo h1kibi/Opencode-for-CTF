@@ -5,16 +5,14 @@ import {
   assertNyuChallengeBoundary,
   loadNyuChallenges,
   materializeNyuAgentWorkspace,
-  type NyuCategory,
-  type NyuSplit,
-} from "../packages/ctf-benchmark-core/src/nyu.ts"
-import {
   runNyuBenchmark,
   runNyuBenchmarkSuite,
   writeNyuBenchmarkResult,
   writeNyuBenchmarkSuiteResult,
+  type NyuCategory,
   type NyuCommandSpec,
-} from "../packages/ctf-benchmark-core/src/runner.ts"
+  type NyuSplit,
+} from "ctf-benchmark-core"
 
 function option(name: string): string | undefined {
   const index = process.argv.indexOf(name)

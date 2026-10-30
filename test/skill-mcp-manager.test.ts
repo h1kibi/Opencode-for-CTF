@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { SkillMcpLease, SkillMcpState } from "../src/types.js"
-import { mkdtempSync, readFileSync } from "node:fs"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { readFileSync } from "node:fs"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 import { skillMcpStateFile } from "../src/paths.js"
 import {
   describeMcpActivationError,
@@ -173,7 +172,7 @@ describe("describeMcpActivationError", () => {
 
 describe("ensureSkillMcpLeases", () => {
   it("records a successful skill binding and never persists a failed one", async () => {
-    const worktree = mkdtempSync(join(tmpdir(), "ctf-skill-mcp-"))
+    const worktree = makeTestWorkspace("ctf-skill-mcp")
     let fail = true
     const client = {
       mcp: {
@@ -259,7 +258,7 @@ function loadLeases(worktree: string): SkillMcpLease[] {
 
 describe("lease lifecycle state machine", () => {
   it("shares an already-connected server without a second external connect", async () => {
-    const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-share-"))
+    const worktree = makeTestWorkspace("ctf-lease-share")
     const { client, connects } = makeClient()
 
     const first = await ensureNamedServerLeases({
@@ -290,7 +289,7 @@ describe("lease lifecycle state machine", () => {
   })
 
   it("re-ensure for the same session is idempotent (no duplicate connect)", async () => {
-    const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-idem-"))
+    const worktree = makeTestWorkspace("ctf-lease-idem")
     const { client, connects } = makeClient()
 
     await ensureNamedServerLeases({
@@ -314,7 +313,7 @@ describe("lease lifecycle state machine", () => {
   })
 
   it("concurrent claims for the same server produce exactly one external connect", async () => {
-    const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-race-"))
+    const worktree = makeTestWorkspace("ctf-lease-race")
     let releaseConnect!: () => void
     const connectGate = new Promise<void>((resolve) => {
       releaseConnect = resolve
@@ -371,7 +370,7 @@ describe("lease lifecycle state machine", () => {
   })
 
   it("removes the claim when the external connect fails, allowing a clean retry", async () => {
-    const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-fail-"))
+    const worktree = makeTestWorkspace("ctf-lease-fail")
     let fail = true
     const { client, connects } = makeClient({
       connect: async (name) => {
@@ -407,7 +406,7 @@ describe("lease lifecycle state machine", () => {
   })
 
   it("reverts to connected when the external disconnect fails (compensation)", async () => {
-    const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-dc-"))
+    const worktree = makeTestWorkspace("ctf-lease-dc")
     let failDisconnect = true
     const { client } = makeClient({
       disconnect: async () => {
@@ -451,7 +450,7 @@ describe("lease lifecycle state machine", () => {
     expect(leaseIsConnected(loadLeases(worktree)[0])).toBe(false)
   })
   it("blocks reacquisition while a prior disconnect is in flight", async () => {
-    const worktree = mkdtempSync(join(tmpdir(), "ctf-lease-disconnect-race-"))
+    const worktree = makeTestWorkspace("ctf-lease-disconnect-race")
     let resolveDisconnectStarted!: () => void
     let resolveDisconnectGate!: () => void
     const disconnectStarted = new Promise<void>((resolve) => {

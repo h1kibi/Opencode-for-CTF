@@ -1,14 +1,14 @@
-import { mkdtemp, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { writeFile } from "node:fs/promises"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 
 const MOD_PATH = "../tools/crypto/ctf-crypto-analyze.ts"
 
 describe("ctf-crypto-analyze tool", () => {
   it("routes RSA-shaped input through the RSA probe", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-crypto-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-crypto-analyze")
     const target = path.join(root, "rsa.txt")
     await writeFile(target, "n = 3233\ne = 17\nc = 855\np = 61\nq = 53\n", "utf8")
 
@@ -24,7 +24,7 @@ describe("ctf-crypto-analyze tool", () => {
 
   it("routes symmetric-looking raw text without invoking RSA probe", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-crypto-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-crypto-analyze")
     const text = "AES-CBC ciphertext with iv = 00112233445566778899aabbccddeeff and padding oracle errors"
 
     const out = await mod.default.execute({ input: text, jsonOnly: true }, { directory: root } as never)

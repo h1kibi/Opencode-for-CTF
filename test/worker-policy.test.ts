@@ -1,7 +1,7 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import {
   enforceWorkerToolPolicy,
   evaluateUnreadableWorkerStatePolicy,
@@ -39,7 +39,6 @@ describe("worker runtime policy", () => {
       "ctf-team-recover",
       "ctf-team-adopt",
       "ctf-team-future-control",
-      "ctf-team-mode",
       "ctf-continuation-control",
       "ctf-skill-mcp-lifecycle",
       "ctf-whitebox-handoff",
@@ -126,7 +125,7 @@ describe("worker runtime policy", () => {
     expect(
       evaluateWorkerToolPolicy(context, "bash", {
         command: "python -c \\\"print('probe')\\\"",
-        workdir: "C:/tmp/challenge",
+        workdir: "C:/work/challenge",
       }).allowed,
     ).toBe(true)
   })
@@ -209,13 +208,13 @@ describe("worker runtime policy", () => {
 
   it("fails closed for unbound CTF subagents instead of allowing a session bypass", () => {
     expect(evaluateUnboundWorkerPolicy("ctf-continuation-control").allowed).toBe(false)
-    expect(evaluateUnboundWorkerPolicy("ctf-team-mode").allowed).toBe(false)
+    expect(evaluateUnboundWorkerPolicy("ctf-team-future-control").allowed).toBe(false)
     expect(evaluateUnboundWorkerPolicy("bash", { command: "strings sample.bin | head" }).allowed).toBe(true)
     expect(evaluateUnboundWorkerPolicy("ctf-dynamic-mcp-advisor", { action: "request" }).allowed).toBe(true)
   })
 
   it("enforces the unbound fallback for identified CTF subagents", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "ctf-worker-unbound-state-"))
+    const directory = await makeTestWorkspaceAsync("ctf-worker-unbound-state")
     try {
       await expect(
         enforceWorkerToolPolicy({
@@ -248,12 +247,12 @@ describe("worker runtime policy", () => {
   })
 
   it("fails closed when a persisted worker session is presented as another agent", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "ctf-worker-identity-"))
+    const directory = await makeTestWorkspaceAsync("ctf-worker-identity")
     try {
       await writeFile(
         path.join(directory, ".ctf-team.json"),
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           revision: 1,
           updatedAt: new Date().toISOString(),
           runs: [
@@ -265,18 +264,31 @@ describe("worker runtime policy", () => {
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
               notificationPending: false,
-              jobs: [
+              probes: [
                 {
-                  id: "job-1",
+                  id: "probe-1",
                   title: "pwn",
                   objective: "test",
                   agent: "ctf-pwn",
                   routeId: "R1",
                   concurrency: "independent",
+                  status: "running",
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ],
+              jobs: [
+                {
+                  id: "job-1",
+                  probeId: "probe-1",
+                  agent: "ctf-pwn",
                   sessionID: "worker-1",
                   status: "running",
                   createdAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
+                  timeoutMs: 60_000,
+                  attempt: 0,
+                  ownerToken: "owner-1",
                 },
               ],
             },
@@ -299,20 +311,45 @@ describe("worker runtime policy", () => {
   })
 
   it("fails closed when persisted Team state has semantically invalid worker metadata", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "ctf-worker-invalid-state-"))
+    const directory = await makeTestWorkspaceAsync("ctf-worker-invalid-state")
     try {
       await writeFile(
         path.join(directory, ".ctf-team.json"),
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           revision: 1,
           updatedAt: new Date().toISOString(),
           runs: [
             {
               id: "team-1",
+              title: "invalid",
               parentSessionID: "parent-1",
               status: "running",
-              jobs: [{ id: "job-1", sessionID: "worker-1", agent: "ctf-pwn", status: "not-a-real-status" }],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              notificationPending: false,
+              probes: [
+                {
+                  id: "probe-1",
+                  title: "invalid",
+                  objective: "invalid",
+                  agent: "ctf-pwn",
+                  routeId: "R1",
+                  concurrency: "independent",
+                  status: "running",
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ],
+              jobs: [
+                {
+                  id: "job-1",
+                  probeId: "probe-1",
+                  sessionID: "worker-1",
+                  agent: "ctf-pwn",
+                  status: "not-a-real-status",
+                },
+              ],
             },
           ],
         }),
@@ -324,7 +361,7 @@ describe("worker runtime policy", () => {
           directory,
           sessionID: "worker-1",
           agentName: "ctf-pwn",
-          toolName: "ctf-team-mode",
+          toolName: "ctf-team-future-control",
         }),
       ).rejects.toThrow("Team state is unreadable")
     } finally {
@@ -333,7 +370,7 @@ describe("worker runtime policy", () => {
   })
 
   it("enforces the unreadable-state fallback for identified CTF subagents", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "ctf-worker-corrupt-state-"))
+    const directory = await makeTestWorkspaceAsync("ctf-worker-corrupt-state")
     try {
       await writeFile(path.join(directory, ".ctf-team.json"), "{not-json", "utf8")
       await expect(
@@ -341,7 +378,7 @@ describe("worker runtime policy", () => {
           directory,
           sessionID: "worker-session",
           agentName: "ctf-pwn",
-          toolName: "ctf-team-mode",
+          toolName: "ctf-team-future-control",
         }),
       ).rejects.toThrow("Team state is unreadable")
       await expect(

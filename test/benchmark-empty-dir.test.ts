@@ -1,16 +1,14 @@
 import { spawn } from "node:child_process"
-import { mkdtempSync } from "node:fs"
 import { join } from "node:path"
-import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 const projectRoot = join(fileURLToPath(new URL("..", import.meta.url)))
 const tsxCli = join(projectRoot, "node_modules", "tsx", "dist", "cli.mjs")
 const checker = join(projectRoot, "scripts", "check-web-benchmarks.ts")
 
 function runChecker(env?: Record<string, string>): Promise<{ code: number | null; output: string }> {
-  const emptyDir = mkdtempSync(join(tmpdir(), "ctf-bench-empty-"))
+  const emptyDir = makeTestWorkspace("ctf-bench-empty")
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [tsxCli, checker, emptyDir], {
       env: { ...process.env, ...env },

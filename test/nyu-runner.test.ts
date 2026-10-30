@@ -1,8 +1,8 @@
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { execPath } from "node:process"
 import { describe, expect, it } from "vitest"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import { loadNyuChallenges } from "../packages/ctf-benchmark-core/src/nyu.ts"
 import {
   extractCandidateFlags,
@@ -13,7 +13,7 @@ import {
 } from "../packages/ctf-benchmark-core/src/runner.ts"
 
 async function makeChallenge(flag = "flag{runner_pass}") {
-  const root = await mkdtemp(join(tmpdir(), "nyu-runner-"))
+  const root = await makeTestWorkspaceAsync("nyu-runner")
   const challengeDir = join(root, "2021", "CSAW-Quals", "misc", "runner")
   await mkdir(join(challengeDir, "files"), { recursive: true })
   await writeFile(

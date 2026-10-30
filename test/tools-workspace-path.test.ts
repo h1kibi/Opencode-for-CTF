@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs"
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs"
 import { readdir, readFile } from "node:fs/promises"
 import path from "node:path"
-import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 import { describe, expect, it } from "vitest"
 import { packForTool } from "../src/tool-packs.js"
 import { resolveFromDirectoryInsideWorkspace, resolveInsideWorkspace } from "../tools/lib/workspace-path.js"
@@ -87,7 +87,7 @@ describe("workspace path helper", () => {
   })
 
   it("resolves challenge-relative inputs while enforcing the worktree boundary", () => {
-    const root = mkdtempSync(path.join(tmpdir(), "ctf-ws-root-"))
+    const root = makeTestWorkspace("ctf-ws-root")
     const challenge = path.join(root, "challenge")
     mkdirSync(challenge)
     mkdirSync(path.join(root, "bin"))
@@ -98,8 +98,8 @@ describe("workspace path helper", () => {
   })
 
   it("rejects symlink/junction escapes outside the workspace", () => {
-    const root = mkdtempSync(path.join(tmpdir(), "ctf-ws-"))
-    const outside = mkdtempSync(path.join(tmpdir(), "ctf-ws-out-"))
+    const root = makeTestWorkspace("ctf-ws")
+    const outside = makeTestWorkspace("ctf-ws-out")
     writeFileSync(path.join(outside, "flag.txt"), "flag{leak}", "utf8")
     const linkType = process.platform === "win32" ? "junction" : "dir"
     symlinkSync(outside, path.join(root, "leak"), linkType)
@@ -113,7 +113,7 @@ describe("workspace path helper", () => {
   })
 
   it("allows symlinks that stay inside the workspace", () => {
-    const root = mkdtempSync(path.join(tmpdir(), "ctf-ws-"))
+    const root = makeTestWorkspace("ctf-ws")
     mkdirSync(path.join(root, "real"))
     writeFileSync(path.join(root, "real", "a.txt"), "x", "utf8")
     const linkType = process.platform === "win32" ? "junction" : "dir"
@@ -123,7 +123,7 @@ describe("workspace path helper", () => {
   })
 
   it("keeps accepting normal and not-yet-created paths", () => {
-    const root = mkdtempSync(path.join(tmpdir(), "ctf-ws-"))
+    const root = makeTestWorkspace("ctf-ws")
     expect(resolveInsideWorkspace(root, "work/out")).toContain("work")
     expect(() => resolveInsideWorkspace(root, "../outside")).toThrow(/workspace/)
     expect(() => resolveInsideWorkspace(root, ".")).not.toThrow()

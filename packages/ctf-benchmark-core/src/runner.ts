@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process"
-import { extractFlagCandidates } from "../../ctf-core/src/flag-rules.ts"
+import { extractFlagCandidates } from "ctf-core"
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises"
 import { isAbsolute, join, relative, resolve } from "node:path"
 import {

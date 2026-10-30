@@ -1,8 +1,7 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
+import { rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
-
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 const roots: string[] = []
 
 afterEach(async () => {
@@ -49,7 +48,7 @@ describe("ctf-flag-verify tool", () => {
   })
 
   it("uses a workspace-scoped flag file and does not allow path escape", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "ctf-flag-verify-tool-"))
+    const root = await makeTestWorkspaceAsync("ctf-flag-verify-tool")
     roots.push(root)
     await writeFile(path.join(root, "flag.txt"), "flag{file_oracle_payload}\n", "utf8")
     const verifier = (await import("../tools/core/ctf-flag-verify.ts")).default

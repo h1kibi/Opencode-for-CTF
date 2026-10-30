@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { mkdtempSync, readFileSync, existsSync, writeFileSync } from "node:fs"
+import { readFileSync, existsSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { tmpdir } from "node:os"
 import { buildEvidenceSlug } from "../scripts/evidence-helper.ts"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 
 describe("ctf-evidence-board Evidence.md + route states", () => {
   it("init writes Evidence.md in a category-challenge evidence case directory", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "ctf-ev-"))
+    const dir = makeTestWorkspace("ctf-ev")
     const prev = process.cwd()
     process.chdir(dir)
     try {
@@ -24,19 +24,21 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
         strategy: "test",
       })
       expect(initOut).toContain("Evidence initialized")
-      expect(initOut).toContain("case: web-demo")
-      expect(existsSync(join(dir, "work", "ctf-evidence", "web-demo", "Evidence.md"))).toBe(true)
-      expect(existsSync(join(dir, "work", "ctf-evidence", "web-demo", ".ctf-evidence-board.json"))).toBe(true)
-      expect(existsSync(join(dir, "work", "ctf-evidence", "web-demo", "case.json"))).toBe(true)
-      expect(existsSync(join(dir, "work", "ctf-evidence", "web-demo", "events.jsonl"))).toBe(true)
-      expect(existsSync(join(dir, "work", "ctf-evidence", "web-demo", "route.json"))).toBe(true)
+      expect(initOut).toMatch(/case: \d{10}/)
+      const recordSlug = readFileSync(join(dir, "work", "ctf-evidence", ".current"), "utf8").trim()
+      expect(recordSlug).toMatch(/^\d{10}$/)
+      expect(existsSync(join(dir, "work", "ctf-evidence", recordSlug, "Evidence.md"))).toBe(true)
+      expect(existsSync(join(dir, "work", "ctf-evidence", recordSlug, ".ctf-evidence-board.json"))).toBe(true)
+      expect(existsSync(join(dir, "work", "ctf-evidence", recordSlug, "case.json"))).toBe(true)
+      expect(existsSync(join(dir, "work", "ctf-evidence", recordSlug, "events.jsonl"))).toBe(true)
+      expect(existsSync(join(dir, "work", "ctf-evidence", recordSlug, "route.json"))).toBe(true)
       expect(existsSync(join(dir, "work", "ctf-evidence", ".current"))).toBe(true)
 
       const badRoutes = await tool.execute({
         command: "set-routes",
         routesJson: JSON.stringify([{ name: "only-one" }]),
       })
-      expect(badRoutes).toMatch(/exactly 3/)
+      expect(badRoutes).toMatch(/2-6 distinct routes/)
 
       const okRoutes = await tool.execute({
         command: "set-routes",
@@ -75,13 +77,13 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
       expect(forceDead).toContain("dead")
 
       const caseState = JSON.parse(
-        readFileSync(join(dir, "work", "ctf-evidence", "web-demo", "case.json"), "utf-8"),
+        readFileSync(join(dir, "work", "ctf-evidence", recordSlug, "case.json"), "utf-8"),
       ) as { routes: Array<{ id: string; state: string }> }
       expect(caseState.routes).toHaveLength(3)
       expect(caseState.routes.find((route) => route.id === "R1")?.state).toBe("blocked")
       expect(caseState.routes.find((route) => route.id === "R2")?.state).toBe("dead")
 
-      const md = readFileSync(join(dir, "work", "ctf-evidence", "web-demo", "Evidence.md"), "utf-8")
+      const md = readFileSync(join(dir, "work", "ctf-evidence", recordSlug, "Evidence.md"), "utf-8")
       expect(md).toContain("Routes")
       expect(md).toContain("ssti")
       expect(md).toMatch(/blocked ≠ dead|blocked/)
@@ -90,15 +92,15 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
     }
   })
 
-  it("builds fallback evidence slugs from category and MMDDHHmmss", () => {
-    const date = new Date("2026-07-19T13:17:06")
-    expect(buildEvidenceSlug("pwn", undefined, date)).toBe("pwn-0719131706")
-    expect(buildEvidenceSlug("web", "Hello World!", date)).toBe("web-hello-world")
+  it("names record folders by creation timestamp YYMMDDHHmm", () => {
+    const date = new Date(2026, 9, 25, 11, 56) // 2026-10-25 11:56 local
+    expect(buildEvidenceSlug("pwn", undefined, date)).toBe("2610251156")
+    expect(buildEvidenceSlug("web", "Hello World!", date)).toBe("2610251156")
   })
 
   it("uses context.directory instead of process cwd when initializing evidence", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "ctf-ev-context-"))
-    const other = mkdtempSync(join(tmpdir(), "ctf-ev-other-"))
+    const dir = makeTestWorkspace("ctf-ev-context")
+    const other = makeTestWorkspace("ctf-ev-other")
     const prev = process.cwd()
     process.chdir(other)
     try {
@@ -116,16 +118,18 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
         },
         { directory: dir },
       )
-      expect(initOut).toContain("case: misc-context-demo")
-      expect(existsSync(join(dir, "work", "ctf-evidence", "misc-context-demo", "Evidence.md"))).toBe(true)
-      expect(existsSync(join(other, "work", "ctf-evidence", "misc-context-demo", "Evidence.md"))).toBe(false)
+      expect(initOut).toMatch(/case: \d{10}/)
+      const ctxSlug = readFileSync(join(dir, "work", "ctf-evidence", ".current"), "utf8").trim()
+      expect(ctxSlug).toMatch(/^\d{10}$/)
+      expect(existsSync(join(dir, "work", "ctf-evidence", ctxSlug, "Evidence.md"))).toBe(true)
+      expect(existsSync(join(other, "work", "ctf-evidence", ctxSlug, "Evidence.md"))).toBe(false)
     } finally {
       process.chdir(prev)
     }
   })
 
   it("gates route -> live behind an oracle-verified flag", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "ctf-ev-live-"))
+    const dir = makeTestWorkspace("ctf-ev-live")
     const prev = process.cwd()
     process.chdir(dir)
     try {
@@ -181,7 +185,7 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
   })
 
   it("records oracle-verified flags via flag-verify and then allows live", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "ctf-ev-fv-"))
+    const dir = makeTestWorkspace("ctf-ev-fv")
     const prev = process.cwd()
     process.chdir(dir)
     try {
@@ -196,6 +200,7 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
         category: "web",
         target: "http://127.0.0.1:9000",
       })
+      const fvSlug = readFileSync(join(dir, "work", "ctf-evidence", ".current"), "utf8").trim()
       await tool.execute({
         command: "set-routes",
         routesJson: JSON.stringify([
@@ -220,7 +225,7 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
       expect(live).toContain("live")
 
       const board = JSON.parse(
-        readFileSync(join(dir, "work", "ctf-evidence", "web-demo-fv", ".ctf-evidence-board.json"), "utf-8"),
+        readFileSync(join(dir, "work", "ctf-evidence", fvSlug, ".ctf-evidence-board.json"), "utf-8"),
       ) as { phase: string; entries: Array<{ type: string; status: string }> }
       expect(board.phase).toBe("success")
       expect(board.entries.some((e) => e.type === "flag" && e.status === "confirmed")).toBe(true)
@@ -230,7 +235,7 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
   })
 
   it("rejects corrupt board JSON with a diagnostic instead of crashing", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "ctf-ev-corrupt-"))
+    const dir = makeTestWorkspace("ctf-ev-corrupt")
     const prev = process.cwd()
     process.chdir(dir)
     try {
@@ -244,11 +249,8 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
         category: "misc",
         target: "challenge.zip",
       })
-      writeFileSync(
-        join(dir, "work", "ctf-evidence", "misc-demo-corrupt", ".ctf-evidence-board.json"),
-        "{not-json",
-        "utf8",
-      )
+      const corruptSlug = readFileSync(join(dir, "work", "ctf-evidence", ".current"), "utf8").trim()
+      writeFileSync(join(dir, "work", "ctf-evidence", corruptSlug, ".ctf-evidence-board.json"), "{not-json", "utf8")
       const out = await tool.execute({ command: "add-fact", finding: "x", evidence: "y" })
       expect(out).toMatch(/ERROR/)
       expect(out).toMatch(/corrupt|schema invalid/)
@@ -257,7 +259,7 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
     }
   })
   it("rejects unsafe explicit board and Markdown paths", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "ctf-ev-paths-"))
+    const dir = makeTestWorkspace("ctf-ev-paths")
     const mod = await import("../tools/core/ctf-evidence-board.ts")
     const tool = mod.default as unknown as {
       execute: (args: Record<string, unknown>, context?: unknown) => Promise<string>
@@ -283,7 +285,7 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
     }
   })
   it("escapes challenge and route text in rendered Markdown", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "ctf-ev-escape-"))
+    const dir = makeTestWorkspace("ctf-ev-escape")
     const mod = await import("../tools/core/ctf-evidence-board.ts")
     const tool = mod.default as unknown as {
       execute: (args: Record<string, unknown>, context?: unknown) => Promise<string>
@@ -303,9 +305,68 @@ describe("ctf-evidence-board Evidence.md + route states", () => {
       },
       { directory: dir, worktree: dir } as never,
     )
-    const md = readFileSync(join(dir, "work", "ctf-evidence", "web-name-x-heading", "Evidence.md"), "utf8")
+    const recordSlug = readFileSync(join(dir, "work", "ctf-evidence", ".current"), "utf8").trim()
+    expect(recordSlug).toMatch(/^\d{10}$/)
+    const md = readFileSync(join(dir, "work", "ctf-evidence", recordSlug, "Evidence.md"), "utf8")
     expect(md).toContain("\\|")
     expect(md).toContain("\\[")
     expect(md).not.toContain("\n# heading")
+  })
+
+  it("set-routes accepts the whole default route_policy band and rejects outside it", async () => {
+    const dir = makeTestWorkspace("ctf-ev-band")
+    const prev = process.cwd()
+    process.chdir(dir)
+    try {
+      const mod = await import("../tools/core/ctf-evidence-board.ts")
+      const tool = mod.default as unknown as {
+        execute: (args: Record<string, unknown>, context?: unknown) => Promise<string>
+      }
+      await tool.execute(
+        {
+          command: "init",
+          challengeName: "band",
+          category: "web",
+          target: "http://127.0.0.1:8000",
+          flagFormat: "flag{}",
+          strategy: "test",
+        },
+        { directory: dir, worktree: dir } as never,
+      )
+
+      const route = (name: string) => ({ name, whyNow: "w", verifyMethod: "v", expected: "e" })
+      const atMin = await tool.execute(
+        { command: "set-routes", routesJson: JSON.stringify([route("one"), route("two")]) },
+        { directory: dir, worktree: dir } as never,
+      )
+      expect(atMin).toContain("2 routes")
+
+      const atMax = await tool.execute(
+        {
+          command: "set-routes",
+          routesJson: JSON.stringify([
+            route("one"),
+            route("two"),
+            route("three"),
+            route("four"),
+            route("five"),
+            route("six"),
+          ]),
+        },
+        { directory: dir, worktree: dir } as never,
+      )
+      expect(atMax).toContain("6 routes")
+
+      const above = await tool.execute(
+        {
+          command: "set-routes",
+          routesJson: JSON.stringify(Array.from({ length: 7 }, (_, i) => route(`r${i + 1}`))),
+        },
+        { directory: dir, worktree: dir } as never,
+      )
+      expect(above).toMatch(/2-6 distinct routes/)
+    } finally {
+      process.chdir(prev)
+    }
   })
 })

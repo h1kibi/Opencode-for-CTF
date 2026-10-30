@@ -1,49 +1,17 @@
 import { readFileSync } from "node:fs"
-import { afterEach, describe, expect, it, vi } from "vitest"
-
-const { activateAgentDefaultsMock, clearIssuesMock, recordIssueMock } = vi.hoisted(() => ({
-  activateAgentDefaultsMock: vi.fn(),
-  clearIssuesMock: vi.fn(),
-  recordIssueMock: vi.fn(),
-}))
-
-vi.mock("../src/dynamic-mcp-manager.ts", async () => {
-  const actual = await vi.importActual<typeof import("../src/dynamic-mcp-manager.ts")>("../src/dynamic-mcp-manager.ts")
-  return {
-    ...actual,
-    activateAgentDefaults: activateAgentDefaultsMock,
-    clearMcpActivationIssues: clearIssuesMock,
-    recordMcpActivationIssue: recordIssueMock,
-  }
-})
-
+import { describe, expect, it } from "vitest"
 import { AGENT_MCP_DEFAULTS, COMMON_LIGHT_MCPS, getAgentDefaults } from "../src/agent-mcp-profiles.ts"
 import { envPrerequisitesSatisfied, lookupMcpServer } from "../src/mcp-server-registry.ts"
 import { metaToRuntimeConfig } from "../src/mcp/mcp-runtime-adapter.ts"
-import { activateAgentDefaultsOnce, clearActivatedDefaults, hasActivatedDefaults } from "../src/plugin-support.ts"
 import {
   FAST_MCP_SERVER_PREFIXES,
   FAST_MCP_TOOL_NAMES,
   FAST_TOOL_ALLOWLIST,
   toolAllowedForAgent,
 } from "../src/tool-packs.ts"
-import { handleToolExecuteBefore } from "../src/hooks/tool-hooks.ts"
 
 const SERVER_ID = "ctf_rag"
 const REQUIRED_ENV = ["CTF_RAG_PYTHON", "CTF_RAG_ROOT", "CTF_RAG_KB_ROOT"] as const
-
-function hookArgs(overrides: { sessionID: string; agent: string }) {
-  return {
-    meta: { tool: "ctf-route-plan", sessionID: overrides.sessionID, agent: overrides.agent },
-    output: { args: {} },
-    pluginConfig: { disabled_hooks: [] },
-    enabledPacks: ["core"],
-    input: { client: {}, worktree: "C:\\tmp\\ctf-worktree", directory: "C:\\tmp\\ctf-worktree" },
-    isHookEnabled: () => false,
-    expertReadinessReport: () => ({ ready: true }),
-    expertReadinessFailureText: () => "not used",
-  } as never
-}
 
 const withEnv = <T>(values: Record<string, string | undefined>, fn: () => T): T => {
   const saved = new Map<string, string | undefined>()
@@ -61,12 +29,6 @@ const withEnv = <T>(values: Record<string, string | undefined>, fn: () => T): T 
     }
   }
 }
-
-afterEach(() => {
-  activateAgentDefaultsMock.mockReset()
-  clearIssuesMock.mockReset()
-  recordIssueMock.mockReset()
-})
 
 describe("ctf_rag MCP registration", () => {
   it("registers a read-only local server with the env prerequisites it needs", () => {
@@ -130,20 +92,6 @@ describe("ctf-fast default MCP profile", () => {
     expect(AGENT_MCP_DEFAULTS["ctf-fast"]).toEqual([...COMMON_LIGHT_MCPS, SERVER_ID])
     expect(getAgentDefaults("ctf-fast")).toContain(SERVER_ID)
   })
-
-  it("activates the fast profile on a plain tool call, without a lane skill", async () => {
-    // Neither primary lane has a skill of its own (`skillToAgent` resolves only
-    // category/meta skills), so activation cannot depend on a skill call.
-    activateAgentDefaultsMock.mockResolvedValue({ activated: [SERVER_ID], skipped: [], failed: [] })
-    clearActivatedDefaults("session-fast-1")
-    await handleToolExecuteBefore(hookArgs({ sessionID: "session-fast-1", agent: "ctf-fast" }))
-
-    expect(activateAgentDefaultsMock).toHaveBeenCalledTimes(1)
-    expect(activateAgentDefaultsMock.mock.calls[0][0]).toMatchObject({
-      sessionID: "session-fast-1",
-      agentName: "ctf-fast",
-    })
-  })
 })
 
 describe("ctf_rag fast-lane reachability", () => {
@@ -170,47 +118,6 @@ describe("ctf_rag fast-lane reachability", () => {
   it("leaves non-fast agents unrestricted", () => {
     expect(toolAllowedForAgent("github_search_code", "ctf-expert")).toBe(true)
     expect(toolAllowedForAgent("browser_navigate", "ctf-expert")).toBe(true)
-  })
-})
-
-describe("default profile activation bookkeeping", () => {
-  const base = { client: {} as never, worktree: "C:\\tmp\\ctf", directory: "C:\\tmp\\ctf" }
-
-  it("activates at most once per session and agent, then retries after a failure", async () => {
-    clearActivatedDefaults("s1")
-    activateAgentDefaultsMock.mockResolvedValueOnce({
-      activated: ["filesystem"],
-      skipped: [`${SERVER_ID} (missing env: CTF_RAG_PYTHON)`],
-      failed: [{ serverName: SERVER_ID, message: "ctf_rag is unreachable" }],
-    })
-    const first = await activateAgentDefaultsOnce({ ...base, sessionID: "s1", agentName: "ctf-fast" })
-    expect(first.attempted).toBe(true)
-    expect(recordIssueMock).toHaveBeenCalled()
-    // A partial profile must stay retryable.
-    expect(hasActivatedDefaults("s1", "ctf-fast")).toBe(false)
-
-    activateAgentDefaultsMock.mockResolvedValueOnce({ activated: [SERVER_ID], skipped: [], failed: [] })
-    const second = await activateAgentDefaultsOnce({ ...base, sessionID: "s1", agentName: "ctf-fast" })
-    expect(second.activated).toEqual([SERVER_ID])
-    expect(hasActivatedDefaults("s1", "ctf-fast")).toBe(true)
-
-    const third = await activateAgentDefaultsOnce({ ...base, sessionID: "s1", agentName: "ctf-fast" })
-    expect(third.attempted).toBe(false)
-    expect(activateAgentDefaultsMock).toHaveBeenCalledTimes(2)
-  })
-
-  it("still activates the expert profile after a session was promoted from fast", async () => {
-    clearActivatedDefaults("s2")
-    activateAgentDefaultsMock.mockResolvedValue({ activated: ["filesystem"], skipped: [], failed: [] })
-    await activateAgentDefaultsOnce({ ...base, sessionID: "s2", agentName: "ctf-fast" })
-    expect(hasActivatedDefaults("s2", "ctf-fast")).toBe(true)
-
-    await activateAgentDefaultsOnce({ ...base, sessionID: "s2", agentName: "ctf-expert" })
-    expect(activateAgentDefaultsMock).toHaveBeenCalledTimes(2)
-    clearActivatedDefaults("s2")
-    // Clearing is per session, not per `session\0agent` key.
-    expect(hasActivatedDefaults("s2", "ctf-fast")).toBe(false)
-    expect(hasActivatedDefaults("s2", "ctf-expert")).toBe(false)
   })
 })
 

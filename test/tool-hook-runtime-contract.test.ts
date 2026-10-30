@@ -1,7 +1,7 @@
-﻿import { mkdtemp, rm, writeFile } from "node:fs/promises"
-import os from "node:os"
+﻿import { rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import { handleToolExecuteAfter, handleToolExecuteBefore, normalizeToolExecutionMeta } from "../src/hooks/tool-hooks.ts"
 
 function hookArgs(directory: string, meta: Record<string, unknown>, output: Record<string, unknown> = {}) {
@@ -67,7 +67,7 @@ describe("tool hook runtime metadata contract", () => {
   })
 
   it("routes alias metadata through the real Expert before-hook gate", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "ctf-hook-contract-expert-"))
+    const directory = await makeTestWorkspaceAsync("ctf-hook-contract-expert")
     try {
       await expect(
         handleToolExecuteBefore(
@@ -77,7 +77,7 @@ describe("tool hook runtime metadata contract", () => {
             toolName: "bash",
           }),
         ),
-      ).rejects.toThrow("before the first Team Mode wave")
+      ).rejects.toThrow("before the first Team Probe")
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
@@ -96,7 +96,7 @@ describe("tool hook runtime metadata contract", () => {
 
 describe("tool hook deny-before-execute contract", () => {
   it("does not invoke the executor when Expert pre-Team policy denies", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "ctf-hook-deny-expert-"))
+    const directory = await makeTestWorkspaceAsync("ctf-hook-deny-expert")
     try {
       let executeCalls = 0
       await expect(
@@ -110,7 +110,7 @@ describe("tool hook deny-before-execute contract", () => {
           )
           executeCalls++
         })(),
-      ).rejects.toThrow("before the first Team Mode wave")
+      ).rejects.toThrow("before the first Team Probe")
       expect(executeCalls).toBe(0)
     } finally {
       await rm(directory, { recursive: true, force: true })
@@ -118,37 +118,49 @@ describe("tool hook deny-before-execute contract", () => {
   })
 
   it("does not invoke the executor when a worker identity mismatch is denied", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "ctf-hook-deny-worker-"))
+    const directory = await makeTestWorkspaceAsync("ctf-hook-deny-worker")
     try {
       const now = new Date().toISOString()
       await writeFile(
         path.join(directory, ".ctf-team.json"),
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           revision: 1,
           updatedAt: now,
           runs: [
             {
               id: "team-1",
               title: "identity",
-              objective: "test",
               parentSessionID: "parent-1",
               status: "running",
               createdAt: now,
               updatedAt: now,
               notificationPending: false,
-              jobs: [
+              probes: [
                 {
-                  id: "job-1",
+                  id: "probe-1",
                   title: "pwn",
                   objective: "test",
                   agent: "ctf-pwn",
                   routeId: "R1",
                   concurrency: "independent",
+                  status: "running",
+                  createdAt: now,
+                  updatedAt: now,
+                },
+              ],
+              jobs: [
+                {
+                  id: "job-1",
+                  probeId: "probe-1",
+                  agent: "ctf-pwn",
                   sessionID: "worker-1",
                   status: "running",
                   createdAt: now,
                   updatedAt: now,
+                  timeoutMs: 60000,
+                  attempt: 0,
+                  ownerToken: "owner-1",
                 },
               ],
             },
@@ -177,7 +189,7 @@ describe("tool hook deny-before-execute contract", () => {
   })
 
   it("does not invoke the executor when Team dispatch arguments fail the gate", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "ctf-hook-deny-dispatch-"))
+    const directory = await makeTestWorkspaceAsync("ctf-hook-deny-dispatch")
     try {
       let executeCalls = 0
       await expect(

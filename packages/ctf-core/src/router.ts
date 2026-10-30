@@ -214,10 +214,22 @@ export function scoreCategories(input: RouteInput): CategoryScore[] {
         reasons.push(rule.reason)
       }
     }
-    // Explicit category words in text are strong priors.
+    // Explicit category words in text are strong priors — unless the text
+    // negates the category ("not a web challenge" / "non-web" must not award
+    // web +20). This guard only suppresses the explicit-token bonus; the
+    // weighted keyword patterns below still score normally.
     if (new RegExp(`\\b${category}\\b`, "i").test(corpus)) {
-      score += 20
-      reasons.push(`explicit category token: ${category}`)
+      const negated = new RegExp(
+        `(?:not|non|isn't|is not|aren't|are not|exclude[sd]?|excluding|rather than|instead of|without)[\\s-]+` +
+          `(?:a\\s+|an\\s+)?${category}\\b`,
+        "i",
+      )
+      if (negated.test(corpus)) {
+        reasons.push(`explicit category token: ${category} (negated — no bonus)`)
+      } else {
+        score += 20
+        reasons.push(`explicit category token: ${category}`)
+      }
     }
     scores.push({ category, score, reasons })
   }
@@ -225,7 +237,24 @@ export function scoreCategories(input: RouteInput): CategoryScore[] {
   return scores.sort((a, b) => b.score - a.score || a.category.localeCompare(b.category))
 }
 
-function pickMode(input: RouteInput, top: CategoryScore, ranked: CategoryScore[]): "fast" | "expert" {
+/**
+ * Lane decision table (auto mode; `top` = top category score, `lead` = top −
+ * second, `hards` = hard-signal count, `positive` = categories with score > 0):
+ *
+ *   forced mode            → that mode
+ *   hards >= 2             → expert
+ *   hards == 1 && top >= 12 → expert
+ *   top >= 40 && lead >= 12 → fast
+ *   0 < top < 16           → expert  (too little signal to trust the fast lane)
+ *   positive >= 3          → expert  (ambiguous multi-category surface)
+ *   top >= 22 && lead >= 12 → fast    (clear single-category mid signal)
+ *   otherwise              → expert
+ *
+ * Any fast assignment requires a >=12 lead over the runner-up: a contested
+ * strong signal (e.g. web 45 vs pwn 40) is ambiguous and belongs to expert.
+ * test/router-accuracy.test.ts pins this table exhaustively.
+ */
+export function pickMode(input: RouteInput, top: CategoryScore, ranked: CategoryScore[]): "fast" | "expert" {
   if (input.mode === "fast") return "fast"
   if (input.mode === "expert") return "expert"
 
@@ -233,10 +262,11 @@ function pickMode(input: RouteInput, top: CategoryScore, ranked: CategoryScore[]
   const hards = hardSignalCount(corpus)
   if (hards >= 2) return "expert"
   if (hards === 1 && top.score >= 12) return "expert"
-  if (top.score >= 40 && ranked[1] && top.score - ranked[1].score >= 12) return "fast"
+  const lead = top.score - (ranked[1]?.score ?? 0)
+  if (top.score >= 40 && lead >= 12) return "fast"
   if (top.score > 0 && top.score < 16) return "expert"
   if (ranked.filter((s) => s.score > 0).length >= 3) return "expert"
-  return top.score >= 22 ? "fast" : "expert"
+  return top.score >= 22 && lead >= 12 ? "fast" : "expert"
 }
 
 function confidenceFrom(top: CategoryScore, second?: CategoryScore): number {

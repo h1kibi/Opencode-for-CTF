@@ -257,7 +257,6 @@ export const SUBAGENT_LIGHT_TOOLS: Record<string, Set<string>> = {
   "ctf-oracle": new Set([...Object.keys(SUBAGENT_CORE_TOOLS)]),
   "ctf-librarian": new Set([...Object.keys(SUBAGENT_CORE_TOOLS)]),
   "ctf-verifier": new Set([...Object.keys(SUBAGENT_CORE_TOOLS)]),
-  "ctf-retro": new Set([...Object.keys(SUBAGENT_CORE_TOOLS)]),
 }
 
 // ============================================================================
@@ -317,9 +316,6 @@ export const AGENT_MCP_DEFAULTS: Record<string, string[]> = {
   /** Verification gate — minimal tooling. */
   "ctf-verifier": ["filesystem"],
 
-  /** Retro/knowledge collector — search + knowledge retrieval. */
-  "ctf-retro": [...COMMON_LIGHT_MCPS, "ctf_rag"],
-
   /** Researcher — curates the corpus behind ctf_rag retrieval. */
   researcher: [...COMMON_LIGHT_MCPS, "ctf_rag"],
 }
@@ -340,7 +336,6 @@ const SUBAGENT_OPT_IN_PACKS: Record<string, Set<ToolPackId>> = {
   "ctf-oracle": new Set([]),
   "ctf-librarian": new Set(["maintenance"]),
   "ctf-verifier": new Set([]),
-  "ctf-retro": new Set(["maintenance"]),
 }
 
 /** All known CTF subagent names that have profiles. */
@@ -372,15 +367,12 @@ export function toolAllowedForSubagent(toolName: string, agentName: string, enab
   const allowlist = SUBAGENT_LIGHT_TOOLS[agentName]
   if (!allowlist) return true
 
-  // The Team runtime injects this generated tool into worker sessions.
-  if (toolName === "ctf-team-claim") return true
-
   if (allowlist.has(toolName)) return true
 
   // Allow tools from opt-in packs when those packs are enabled
-  const enabled = new Set([...(enabledPacks ?? [])])
+  const enabled = new Set<string>([...(enabledPacks ?? [])])
   const pack = packForTool(toolName)
-  return enabled.has(pack) && Boolean(SUBAGENT_OPT_IN_PACKS[agentName]?.has(pack))
+  return enabled.has(pack) && Boolean(SUBAGENT_OPT_IN_PACKS[agentName]?.has(pack as ToolPackId))
 }
 
 /**

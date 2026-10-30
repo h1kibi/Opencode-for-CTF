@@ -7,11 +7,6 @@ export function runtimeRoot(worktree: string) {
 export function runtimeStateRoot(worktree: string) {
   return path.resolve(runtimeRoot(worktree), "state")
 }
-
-export function teamStateFile(worktree: string, directory: string, teamId: string) {
-  return path.resolve(runtimeStateRoot(worktree), safeDirSlug(directory), `team-${teamId}.json`)
-}
-
 export function continuationStateFile(worktree: string, sessionID: string) {
   return path.resolve(runtimeStateRoot(worktree), "continuation", `${sessionID}.json`)
 }

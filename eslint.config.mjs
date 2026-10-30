@@ -8,6 +8,8 @@ export default tseslint.config(
       "dist/**",
       "coverage/**",
       "node_modules/**",
+      "work/**",
+      "extracted/**",
       "skills-external/**",
       "runtime/state/**",
       "mcp-server/**/node_modules/**",

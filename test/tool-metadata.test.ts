@@ -1,6 +1,6 @@
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 import { describe, expect, it } from "vitest"
 import { listToolNames } from "../src/ctf-tools.js"
 import { compatAliasTarget, summarizeToolMetadata, toolMetadata, toolRequires, toolTier } from "../src/tool-metadata.js"
@@ -127,8 +127,8 @@ describe("tool metadata", () => {
   }, 60_000)
 
   it("uses context.directory for config and local skill diagnostics instead of process cwd", async () => {
-    const workspace = mkdtempSync(join(tmpdir(), "ctf-tool-packs-workspace-"))
-    const other = mkdtempSync(join(tmpdir(), "ctf-tool-packs-other-"))
+    const workspace = makeTestWorkspace("ctf-tool-packs-workspace")
+    const other = makeTestWorkspace("ctf-tool-packs-other")
     const skillName = "zz-local-tool-pack-skill"
     mkdirSync(join(workspace, "skills", skillName), { recursive: true })
     writeFileSync(

@@ -106,17 +106,17 @@ export function summarizeStartupEnvironment(
   }
   if (os === "windows" || shell === "powershell") {
     guidance.push(
-      "Detected Windows/PowerShell — for fast probing, default to PowerShell-safe syntax, use `curl.exe` when literal curl semantics matter, avoid bash/heredoc examples like `python - <<'PY'`, use `python -c` for trivial snippets, and prefer `ctf-python-inline` or small script files when quoting, redirection, loops, or multi-line HTTP payloads would make one-liners fragile.",
+      "Detected Windows/PowerShell — for fast probing, default to PowerShell-safe syntax, use `curl.exe` when literal curl semantics matter, use `python -c` only for trivial snippets, and prefer `ctf-python-inline` or small script files for quoting, redirection, loops, or multi-line HTTP payloads.",
     )
   }
   if (wslProbe?.ok) {
     guidance.push(
-      "Detected a Linux environment launched via WSL — keep Linux-heavy probes inside that Linux environment and use Linux-native bash/heredoc patterns there instead of assembling them in PowerShell first.",
+      "Detected a Linux environment launched via WSL — keep Linux-heavy probes inside that Linux environment instead of assembling them in PowerShell first.",
     )
   }
   if (!guidance.length && substrate === "native-linux") {
     guidance.push(
-      "Detected native Linux — use the host's native CLI/toolchain directly when it matches the challenge workflow; bash-native pipelines, shell loops, heredocs, and inline `python - <<'PY'` snippets are appropriate here.",
+      "Detected native Linux — use the host's native CLI/toolchain directly when it matches the challenge workflow; use workspace script files for multi-line probes.",
     )
   }
 

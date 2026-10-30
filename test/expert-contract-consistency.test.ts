@@ -22,7 +22,7 @@ function read(file: string) {
 }
 
 function expectCoreExpertInvariants(text: string) {
-  expect(text).toMatch(/exactly\s+3/i)
+  expect(text).toMatch(/route_policy/)
   expect(text).toMatch(/untested/i)
   expect(text).toMatch(/blocked/i)
   expect(text).toMatch(/dead/i)
@@ -31,7 +31,7 @@ function expectCoreExpertInvariants(text: string) {
 }
 
 describe("expert contract consistency", () => {
-  it("keeps the core three-route and four-state contract across skill, agent, command, and /ctf surfaces", () => {
+  it("keeps the core route-band and four-state contract across skill, agent, command, and /ctf surfaces", () => {
     const skill = read(skillPath)
     const agent = read(agentPath)
     const command = read(commandPath)
@@ -44,7 +44,7 @@ describe("expert contract consistency", () => {
     expect(ctfCommand).toMatch(/BINDING/i)
     expect(ctfCommand).toMatch(/does not switch automatically/i)
     expect(ctfCommand).toMatch(/Evidence\.md/i)
-    expect(ctfCommand).toMatch(/exactly\s+3/i)
+    expect(ctfCommand).toMatch(/route_policy/)
 
     expect(skill).toMatch(/blocked\s*≠\s*dead/i)
     expect(agent).toMatch(/blocked\s*≠\s*dead/i)
@@ -97,7 +97,7 @@ describe("expert contract consistency", () => {
       expect(text).toMatch(/Behave as \*\*ctf-expert\*\*/i)
       expect(text).toMatch(/ctf-evidence-board command=init/i)
       expect(text).toMatch(/lessons → retros → knowledge recall/i)
-      expect(text).toMatch(/exactly 3/i)
+      expect(text).toMatch(/route_policy band, default 2-6/i)
       expect(text).toMatch(/blocked ≠ dead/i)
       expect(text).toMatch(/Flag → return immediately/i)
       expect(text).toMatch(/manual `researcher`/i)

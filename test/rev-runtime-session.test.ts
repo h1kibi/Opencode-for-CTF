@@ -1,11 +1,11 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { readFile, writeFile } from "node:fs/promises"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 import { packForTool } from "../src/tool-packs.ts"
 
 async function tempRoot(prefix: string) {
-  return mkdtemp(path.join(os.tmpdir(), prefix))
+  return makeTestWorkspaceAsync(prefix.replace(/-$/, ""))
 }
 
 describe("Rev runtime session", () => {

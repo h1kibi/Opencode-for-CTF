@@ -3,29 +3,11 @@ import path from "node:path"
 import { withFileLock, type FileLockOptions } from "./file-lock.ts"
 
 export async function loadJsonFile<T>(file: string, fallback: T): Promise<T> {
-  let raw: string
   try {
-    raw = await readFile(file, "utf8")
+    return JSON.parse(await readFile(file, "utf8")) as T
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return fallback
     throw error
-  }
-  if (!raw.trim()) return fallback
-  try {
-    return JSON.parse(raw) as T
-  } catch (error) {
-    // Corrupt state files must never crash a session hook. Quarantine the
-    // damaged file (keep it for forensics) and fall back to defaults so
-    // callers rebuild state instead of killing the session.
-    console.warn(
-      `[plugin] loadJsonFile: corrupt JSON in ${file}, quarantining (${error instanceof Error ? error.message : String(error)})`,
-    )
-    try {
-      await rename(file, `${file}.corrupt-${Date.now()}`)
-    } catch {
-      await rm(file, { force: true })
-    }
-    return fallback
   }
 }
 
@@ -51,11 +33,7 @@ export async function saveJsonFile(file: string, value: unknown) {
 }
 
 export async function removeFileIfExists(file: string) {
-  try {
-    await rm(file, { force: true })
-  } catch {
-    // ignore cleanup failures
-  }
+  await rm(file, { force: true })
 }
 
 export function nowIso() {

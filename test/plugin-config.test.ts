@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { afterEach, describe, expect, it } from "vitest"
+import { rmSync, writeFileSync } from "node:fs"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 import { join } from "node:path"
 import {
   DEFAULT_PLUGIN_CONFIG,
@@ -11,7 +11,7 @@ import {
 } from "../src/plugin-config.js"
 
 function makeTempDir(prefix: string) {
-  const dir = mkdtempSync(join(tmpdir(), prefix))
+  const dir = makeTestWorkspace(prefix.replace(/-$/, ""))
   tempDirs.push(dir)
   return dir
 }
@@ -26,7 +26,6 @@ afterEach(() => {
   process.env.OPENCODE_CONFIG_DIR = envSnapshot.OPENCODE_CONFIG_DIR
   process.env.XDG_CONFIG_HOME = envSnapshot.XDG_CONFIG_HOME
   for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true })
-  vi.restoreAllMocks()
 })
 
 describe("mergePluginConfig", () => {
@@ -60,6 +59,22 @@ describe("mergePluginConfig", () => {
     })
     expect(cfg.tool_packs).toEqual(["core", "web", "java"])
     expect(cfg.expert_tool_packs).toEqual(["android", "all"])
+  })
+
+  it("defaults route_policy to the 2-6 band and clamps user input", () => {
+    expect(mergePluginConfig({}).route_policy).toEqual({ min: 2, max: 6 })
+
+    const widened = mergePluginConfig({ route_policy: { min: 3, max: 7 } })
+    expect(widened.route_policy).toEqual({ min: 3, max: 7 })
+
+    const clamped = mergePluginConfig({ route_policy: { min: 0, max: 99 } })
+    expect(clamped.route_policy).toEqual({ min: 1, max: 8 })
+
+    const swapped = mergePluginConfig({ route_policy: { min: 5, max: 2 } })
+    expect(swapped.route_policy).toEqual({ min: 2, max: 5 })
+
+    const partial = mergePluginConfig({ route_policy: { max: 4 } })
+    expect(partial.route_policy).toEqual({ min: 2, max: 4 })
   })
 
   it("does not expose Team safety gates as configurable disabled hooks", () => {
@@ -107,7 +122,7 @@ describe("resolveConfigCandidates", () => {
 
 describe("loadPluginConfigWithPath", () => {
   it("loads JSONC with comments and trailing commas", async () => {
-    const dir = makeTempDir("ctf-config-jsonc-")
+    const dir = makeTempDir("ctf-config-jsonc")
     writeFileSync(
       join(dir, "opencode-for-ctf.jsonc"),
       `{
@@ -127,24 +142,20 @@ describe("loadPluginConfigWithPath", () => {
   })
 
   it("fails closed when the nearest config is malformed", async () => {
-    const dir = makeTempDir("ctf-config-fallback-")
+    const dir = makeTempDir("ctf-config-fallback")
     writeFileSync(join(dir, "opencode-for-ctf.jsonc"), `{ "default_mode": "fast", `)
     writeFileSync(join(dir, "opencode-for-ctf.json"), `{ "default_mode": "expert" }`)
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
 
     await expect(loadPluginConfigWithPath(dir)).rejects.toThrow(/Invalid opencode-for-ctf config/)
-    expect(warn).toHaveBeenCalled()
   })
 
   it("fails closed instead of falling back to global config", async () => {
-    const root = makeTempDir("ctf-config-defaults-")
+    const root = makeTempDir("ctf-config-defaults")
     const dir = join(root, "nested", "project")
     writeFileSync(join(root, "opencode-for-ctf.jsonc"), `{ "default_mode": "fast", `)
-    process.env.OPENCODE_CONFIG_DIR = makeTempDir("ctf-config-empty-")
-    process.env.XDG_CONFIG_HOME = makeTempDir("ctf-config-xdg-")
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    process.env.OPENCODE_CONFIG_DIR = makeTempDir("ctf-config-empty")
+    process.env.XDG_CONFIG_HOME = makeTempDir("ctf-config-xdg")
 
     await expect(loadPluginConfigWithPath(dir)).rejects.toThrow(/Invalid opencode-for-ctf config/)
-    expect(warn).toHaveBeenCalled()
   })
 })

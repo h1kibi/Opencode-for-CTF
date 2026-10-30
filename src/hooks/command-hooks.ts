@@ -122,7 +122,7 @@ export async function handleCommandExecuteBefore(args: {
       type: "text",
       text: `🔴 CTF EXPERT MODE — Binding contract:
 - Authoritative contract: commands/ctf-expert.md + skill \`ctf-expert\` (load it).
-- Runtime gates enforce: Evidence.md via ctf-evidence-board (exactly 3 routes; blocked≠dead), Team Mode orchestration, and heavy-MCP approval via ctf-mcp-control.
+- Runtime gates enforce: Evidence.md via ctf-evidence-board (route_policy-banded routes, default 2-6; blocked≠dead), Team Mode orchestration, and heavy-MCP approval via ctf-mcp-control.
 - The Phase ② local-recall order (lessons → retros → pattern cards) is a contract you must follow; it is not runtime-enforced.
 - Flag → return directly and stop active exploitation (no mandatory flag file); mention manual researcher post-solve maintenance with the evidence path, but do not dispatch or await it.
 - Independent lane: the ctf-fast and ctf-expert lanes never switch automatically.

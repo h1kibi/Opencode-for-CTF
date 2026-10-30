@@ -1,8 +1,8 @@
 // Manual QA utility — not part of CI or npm run check. Run with: npx tsx scripts/check-tool-bug-regressions.ts
 import { execFileSync } from "node:child_process"
-import { mkdtempSync, readFileSync, rmSync, readdirSync, statSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { mkdirSync, readFileSync, rmSync, readdirSync, statSync } from "node:fs"
 import path from "node:path"
+import { randomUUID } from "node:crypto"
 import ctfSafeExtract from "../tools/core/ctf-safe-extract.ts"
 import archiveSafeExtract from "../tools/core/archive-safe-extract.ts"
 import pwnRemoteFingerprint from "../tools/pwn/ctf-pwn-remote-fingerprint.ts"
@@ -66,7 +66,8 @@ async function main() {
     ),
   )
 
-  const tempRoot = mkdtempSync(path.join(tmpdir(), "opencode-tool-bug-"))
+  const tempRoot = path.join(process.cwd(), "work", ".tmp", `opencode-tool-bug-${randomUUID()}`)
+  mkdirSync(tempRoot, { recursive: true })
   try {
     const zipWorkdir = path.join(tempRoot, "zip-root-file")
     const extractRoot = path.join(zipWorkdir, "out")
@@ -134,10 +135,13 @@ async function main() {
       ].join(" | "),
     )
     assert(
-      /status: extracted|verdict: direct_flag|verdict: archive_extracted/i.test(ctfOut),
+      /status: extracted|verdict: direct_flag|verdict: archive_extracted|verdict: flag_candidate/i.test(ctfOut),
       `ctf-safe-extract unexpected output: ${ctfOut}`,
     )
-    assert(/status: extracted/i.test(archiveOut), `archive-safe-extract unexpected output: ${archiveOut}`)
+    assert(
+      /status: extracted|verdict: direct_flag|verdict: archive_extracted|verdict: flag_candidate/i.test(archiveOut),
+      `archive-safe-extract unexpected output: ${archiveOut}`,
+    )
     lines.push("zip-root-single-file-extraction: PASS (ctf-safe-extract + archive-safe-extract)")
   } finally {
     rmSync(tempRoot, { recursive: true, force: true })

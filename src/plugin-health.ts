@@ -8,10 +8,20 @@ export type PluginHealthReport = {
   writtenAt?: string
   source?: string
   state?: string
+  compatibility?: {
+    pluginPackage?: string
+    pluginPackageVersion?: string
+    sdkPackage?: string
+    sdkPackageVersion?: string
+    policy?: string
+    hostVersion?: string | null
+    hostVersionDetection?: string
+  }
   pluginDiagnostic?: {
     pluginImportOk?: boolean
     pluginImportError?: string | null
     nextAction?: string
+    compatibility?: PluginHealthReport["compatibility"]
   }
   pluginImportOk?: boolean
   pluginImportError?: string | null
@@ -29,6 +39,7 @@ export type PluginHealthSummary = {
   pluginImportOk: boolean | null
   pluginImportError: string | null
   nextAction: string | null
+  compatibility: PluginHealthReport["compatibility"] | null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -73,6 +84,7 @@ export function summarizePluginHealthReport(
       asOptionalString(report?.pluginImportError) ??
       asOptionalString(report?.pluginRuntimeImportError),
     nextAction: asOptionalString(diagnostic.nextAction),
+    compatibility: (diagnostic.compatibility ?? report?.compatibility) as PluginHealthSummary["compatibility"],
   }
 }
 

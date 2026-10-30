@@ -128,7 +128,7 @@ describe("startup environment summary", () => {
     expect(text).toContain("shell=powershell")
     expect(text).toContain("curl.exe")
     expect(text).toContain("python -c")
-    expect(text).toContain("avoid bash/heredoc examples")
+    expect(text).toContain("prefer `ctf-python-inline`")
   })
 
   it("keeps WSL summary in the Linux bucket", () => {
@@ -140,7 +140,7 @@ describe("startup environment summary", () => {
     })
     expect(summary.substrate).toBe("native-linux")
     expect(summary.guidance.join(" ")).toContain("Linux environment launched via WSL")
-    expect(summary.guidance.join(" ")).toContain("bash/heredoc")
+    expect(summary.guidance.join(" ")).toContain("Linux-heavy probes")
   })
 
   it("keeps generic native Linux guidance neutral", () => {
@@ -151,8 +151,7 @@ describe("startup environment summary", () => {
       "env:wsl": { ok: false, detail: "wsl not detected", behaviorOk: false },
     })
     expect(summary.substrate).toBe("native-linux")
-    expect(summary.guidance.join(" ")).toContain("bash")
-    expect(summary.guidance.join(" ")).toContain("python - <<'PY'")
+    expect(summary.guidance.join(" ")).toContain("workspace script files")
     expect(summary.guidance.join(" ")).not.toContain("curl.exe")
   })
 })

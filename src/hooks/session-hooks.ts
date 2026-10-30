@@ -65,17 +65,10 @@ export async function handleEventHook(args: {
       })
     }
     if (args.teamEventsEnabled()) {
-      try {
-        await handleTeamEvent(event, args.input.client, args.input.directory, args.input.worktree, {
-          maxWorkers: args.pluginConfig.team_mode.max_workers,
-          maxJobAttempts: args.pluginConfig.team_mode.max_job_attempts,
-        })
-      } catch (err) {
-        console.warn(
-          "[plugin] team event (session.status) failed (non-fatal):",
-          err instanceof Error ? err.message : String(err),
-        )
-      }
+      await handleTeamEvent(event, args.input.client, args.input.directory, args.input.worktree, {
+        maxWorkers: args.pluginConfig.team_mode.max_workers,
+        maxJobAttempts: args.pluginConfig.team_mode.max_job_attempts,
+      })
     }
     return
   }
@@ -116,47 +109,28 @@ export async function handleEventHook(args: {
       })
     }
 
-    try {
-      const result = await processPendingRequests({
-        client: args.input.client,
-        worktree: args.input.worktree,
-        directory: args.input.directory,
-        sessionID,
-      })
-      if (result.processed > 0) {
-        console.log(
-          `[plugin] mcp-requests: ${result.processed} processed, ${result.autoApproved} auto-approved, ${result.stillPending} still pending`,
-        )
-      }
-    } catch (err) {
-      console.warn(
-        "[plugin] processPendingRequests failed (non-fatal):",
-        err instanceof Error ? err.message : String(err),
+    const result = await processPendingRequests({
+      client: args.input.client,
+      worktree: args.input.worktree,
+      directory: args.input.directory,
+      sessionID,
+    })
+    if (result.processed > 0) {
+      console.log(
+        `[plugin] mcp-requests: ${result.processed} processed, ${result.autoApproved} auto-approved, ${result.stillPending} still pending`,
       )
     }
 
     if (args.teamEventsEnabled()) {
-      try {
-        await handleTeamEvent(event, args.input.client, args.input.directory, args.input.worktree, {
-          maxWorkers: args.pluginConfig.team_mode.max_workers,
-          maxJobAttempts: args.pluginConfig.team_mode.max_job_attempts,
-        })
-      } catch (err) {
-        console.warn(
-          "[plugin] team event (session.idle) failed (non-fatal):",
-          err instanceof Error ? err.message : String(err),
-        )
-      }
+      await handleTeamEvent(event, args.input.client, args.input.directory, args.input.worktree, {
+        maxWorkers: args.pluginConfig.team_mode.max_workers,
+        maxJobAttempts: args.pluginConfig.team_mode.max_job_attempts,
+      })
     }
-
     if (surfaceAgentForStatus(sessionID, undefined) === "ctf-expert") {
-      try {
-        const report = await inspectExpertRuntime(args.input.directory, sessionID)
-        for (const warning of report.warnings) {
-          console.warn(`[plugin] expert-watchdog session=${sessionID.slice(0, 12)}: ${warning}`)
-        }
-      } catch (err) {
-        console.warn("[plugin] expert watchdog failed (non-fatal):", err instanceof Error ? err.message : String(err))
+      const report = await inspectExpertRuntime(args.input.directory, sessionID, args.pluginConfig.route_policy)
+      for (const warning of report.warnings) {
+        console.warn(`[plugin] expert-watchdog session=${sessionID.slice(0, 12)}: ${warning}`)
       }
     }
     return
@@ -182,25 +156,16 @@ export async function handleEventHook(args: {
         directory: args.input.directory,
         sessionID,
         agentName,
-      }).catch(() => undefined)
+      })
       clearActivatedDefaults(sessionID)
       clearSessionSurface(sessionID)
-      await removePersistedSessionSurface(args.input.worktree, sessionID).catch((err) =>
-        console.warn("[plugin] session-surface cleanup (non-fatal):", err),
-      )
+      await removePersistedSessionSurface(args.input.worktree, sessionID)
     }
     if (!args.teamEventsEnabled()) return
-    try {
-      await handleTeamEvent(event, args.input.client, args.input.directory, args.input.worktree, {
-        maxWorkers: args.pluginConfig.team_mode.max_workers,
-        maxJobAttempts: args.pluginConfig.team_mode.max_job_attempts,
-      })
-    } catch (err) {
-      console.warn(
-        "[plugin] team event (session.error/deleted) failed (non-fatal):",
-        err instanceof Error ? err.message : String(err),
-      )
-    }
+    await handleTeamEvent(event, args.input.client, args.input.directory, args.input.worktree, {
+      maxWorkers: args.pluginConfig.team_mode.max_workers,
+      maxJobAttempts: args.pluginConfig.team_mode.max_job_attempts,
+    })
   }
 }
 

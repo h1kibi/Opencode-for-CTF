@@ -1,10 +1,16 @@
-import { bootstrapEvidenceDir } from "./evidence-helper.ts"
+import { bootstrapEvidenceDir, formatRecordTimestamp } from "./evidence-helper.ts"
+import { existsSync } from "node:fs"
+import { getEvidenceDir } from "./evidence-helper.ts"
 
 function main() {
-  const slug = process.argv[2]
+  // Record folders are named by creation timestamp (YYMMDDHHmm); an explicit
+  // slug argument is still honored for scripted/legacy use.
+  let slug = process.argv[2]
   if (!slug) {
-    console.log("Usage: node scripts/init-ctf-evidence.ts <challenge-slug>")
-    process.exit(1)
+    slug = formatRecordTimestamp()
+    let suffix = 2
+    while (existsSync(getEvidenceDir(process.cwd(), slug))) slug = `${formatRecordTimestamp()}-${suffix++}`
+    console.log("(no slug argument given; using creation timestamp as the record folder name)")
   }
 
   const root = process.cwd()

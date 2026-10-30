@@ -20,13 +20,10 @@ import {
   releaseSessionMcps,
   requestMcp,
 } from "../src/dynamic-mcp-manager.js"
-import { mkdtempSync, writeFileSync, readFileSync, existsSync } from "node:fs"
-import { join } from "node:path"
-import { tmpdir } from "node:os"
 import { atomicUpdateJsonFile, loadJsonFile } from "../src/state-store.js"
 import type { AgentMcpState, AgentMcpRequest } from "../src/types.js"
 import { agentMcpStateFile } from "../src/paths.js"
-
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 describe("agent-mcp-profiles", () => {
   it("COMMON_LIGHT_MCPS includes the four baseline servers", () => {
     expect(COMMON_LIGHT_MCPS).toContain("filesystem")
@@ -235,7 +232,7 @@ describe("mcp-server-registry", () => {
 
 describe("agent-mcp-state persistence", () => {
   function tempWorktree(): string {
-    return mkdtempSync(join(tmpdir(), "ctf-test-mcp-"))
+    return makeTestWorkspace("ctf-test-mcp")
   }
 
   const testRequest: AgentMcpRequest = {
@@ -470,7 +467,6 @@ describe("agentNameToCategory", () => {
     expect(agentNameToCategory("ctf-expert")).toBeUndefined()
     expect(agentNameToCategory("ctf-scout")).toBeUndefined()
     expect(agentNameToCategory("ctf-oracle")).toBeUndefined()
-    expect(agentNameToCategory("ctf-retro")).toBeUndefined()
     expect(agentNameToCategory("ctf-librarian")).toBeUndefined()
     expect(agentNameToCategory("ctf-verifier")).toBeUndefined()
   })
@@ -499,7 +495,7 @@ describe("MCP request lifecycle fencing", () => {
   })
 
   it("deduplicates requests by session owner and server", async () => {
-    const worktree = mkdtempSync(join(tmpdir(), "ctf-mcp-lifecycle-"))
+    const worktree = makeTestWorkspace("ctf-mcp-lifecycle")
     const first = await requestMcp({
       worktree,
       sessionID: "session-a",
@@ -520,7 +516,7 @@ describe("MCP request lifecycle fencing", () => {
   })
 
   it("keeps unknown owner liveness pending and expires explicit absence", async () => {
-    const unknownTree = mkdtempSync(join(tmpdir(), "ctf-mcp-unknown-"))
+    const unknownTree = makeTestWorkspace("ctf-mcp-unknown")
     await requestMcp({
       worktree: unknownTree,
       sessionID: "unknown-owner",
@@ -537,7 +533,7 @@ describe("MCP request lifecycle fencing", () => {
     expect(unknown.stillPending).toBe(1)
     expect((await getAgentMcpState(unknownTree)).requests[0]?.status).toBe("pending")
 
-    const absentTree = mkdtempSync(join(tmpdir(), "ctf-mcp-absent-"))
+    const absentTree = makeTestWorkspace("ctf-mcp-absent")
     await requestMcp({
       worktree: absentTree,
       sessionID: "absent-owner",
@@ -555,7 +551,7 @@ describe("MCP request lifecycle fencing", () => {
   })
 
   it("releases only the deleted session owner scope", async () => {
-    const worktree = mkdtempSync(join(tmpdir(), "ctf-mcp-release-"))
+    const worktree = makeTestWorkspace("ctf-mcp-release")
     await atomicUpdateJsonFile<AgentMcpState>(
       agentMcpStateFile(worktree),
       { version: 1, activeProfiles: [], requests: [], updatedAt: new Date().toISOString() },
@@ -605,7 +601,7 @@ describe("MCP request lifecycle fencing", () => {
   })
 
   it("returns false for a stale deny after activation has won", async () => {
-    const worktree = mkdtempSync(join(tmpdir(), "ctf-mcp-deny-race-"))
+    const worktree = makeTestWorkspace("ctf-mcp-deny-race")
     await atomicUpdateJsonFile<AgentMcpState>(
       agentMcpStateFile(worktree),
       { version: 1, activeProfiles: [], requests: [], updatedAt: new Date().toISOString() },

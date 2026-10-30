@@ -40,6 +40,7 @@ export const PACK_REQUIRED_PATHS = [
   "agents/ctf-expert.md",
   "commands/ctf.md",
   "commands/help.md",
+  "ctf-agent.manifest.json",
   "scripts/cli.mjs",
 ]
 

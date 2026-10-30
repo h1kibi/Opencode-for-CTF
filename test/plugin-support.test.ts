@@ -1,5 +1,5 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { mkdirSync, writeFileSync } from "node:fs"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
@@ -38,7 +38,7 @@ describe("ctf permission classification", () => {
   })
 
   it("classifies command risk levels", () => {
-    expect(classifyBashRisk("rm -rf /tmp/x")).toBe("destructive")
+    expect(classifyBashRisk("rm -rf C:/work/x")).toBe("destructive")
     expect(classifyBashRisk("dd if=/dev/zero of=disk.img")).toBe("destructive")
     expect(classifyBashRisk("strace -c ./chall")).toBe("debug")
     expect(classifyBashRisk("curl http://challenge/")).toBe("network")
@@ -70,8 +70,8 @@ describe("ctf permission classification", () => {
 
 describe("runtime skill discovery", () => {
   it("includes skills from the explicit workspace instead of relying on process cwd", () => {
-    const workspace = mkdtempSync(join(tmpdir(), "ctf-skill-discovery-workspace-"))
-    const other = mkdtempSync(join(tmpdir(), "ctf-skill-discovery-other-"))
+    const workspace = makeTestWorkspace("ctf-skill-discovery-workspace")
+    const other = makeTestWorkspace("ctf-skill-discovery-other")
     mkdirSync(join(workspace, "skills", "zz-local-workspace-skill"), { recursive: true })
     writeFileSync(join(workspace, "skills", "zz-local-workspace-skill", "SKILL.md"), "# local\n", "utf8")
     mkdirSync(join(other, "skills", "zz-wrong-cwd-skill"), { recursive: true })

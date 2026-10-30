@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { normalizeMethod, normalizeUrl, parseHeadersJson, unique } from "../tools/lib/web-http.js"
+import { fetchWithTimeout, normalizeMethod, normalizeUrl, parseHeadersJson, unique } from "../tools/lib/web-http.js"
 
 describe("web HTTP tool helpers", () => {
   it("normalizes local and host:port URLs without changing explicit schemes", () => {
@@ -29,5 +29,10 @@ describe("web HTTP tool helpers", () => {
 
   it("keeps unique ordering with a limit", () => {
     expect(unique(["a", "", "b", "a", "c"], 2)).toEqual(["a", "b"])
+  })
+  it("fails closed before fetch when a hostname cannot resolve", async () => {
+    await expect(fetchWithTimeout(new URL("http://host-does-not-exist.invalid/"), {}, 100)).rejects.toMatchObject({
+      code: "web_host_blocked",
+    })
   })
 })

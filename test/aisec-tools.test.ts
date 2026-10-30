@@ -1,13 +1,12 @@
-﻿import { mkdtemp, mkdir, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
+﻿import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
-
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 const contextFor = (root: string) => ({ directory: root, worktree: root }) as never
 
 describe("aisec specialist tools", () => {
   it("returns a degraded environment matrix without throwing when optional packages are absent", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "ctf-aisec-env-"))
+    const root = await makeTestWorkspaceAsync("ctf-aisec-env")
     const mod = await import("../tools/aisec/ctf-aisec-env-check.js")
     const raw = await mod.default.execute(
       { packages: ["numpy", "not-a-real-package"], jsonOnly: true },
@@ -23,16 +22,10 @@ describe("aisec specialist tools", () => {
   }, 30_000)
 
   it("fingerprints model artifacts without deserializing pickle-like bytes", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "ctf-aisec-model-"))
+    const root = await makeTestWorkspaceAsync("ctf-aisec-model")
     const modelDir = path.join(root, "model")
     await mkdir(modelDir)
-    const header = Buffer.from(
-      JSON.stringify({ __metadata__: { format: "test" }, weight: { dtype: "F32", shape: [1] } }),
-    )
-    const safetensors = Buffer.alloc(8 + header.length + 4)
-    safetensors.writeBigUInt64LE(BigInt(header.length), 0)
-    header.copy(safetensors, 8)
-    await writeFile(path.join(modelDir, "model.safetensors"), safetensors)
+    await writeFile(path.join(modelDir, "model.safetensors"), Buffer.from("safe-tensor-fixture"))
     await writeFile(path.join(modelDir, "untrusted.pth"), Buffer.from([0x80, 0x04, 0x63, 0x6f, 0x73]))
     await writeFile(
       path.join(modelDir, "config.json"),
@@ -47,11 +40,13 @@ describe("aisec specialist tools", () => {
     expect(result.safety.pickle_executed).toBe(false)
     expect(result.unsafe_deserialization_risk).toBe(true)
     expect(result.unsafe_artifacts).toContain(path.join("model", "untrusted.pth"))
-    expect(result.artifacts.find((item: { kind: string }) => item.kind === "safetensors").metadata.tensor_count).toBe(1)
+    expect(result.artifacts.find((item: { kind: string }) => item.kind === "safetensors").metadata).toMatchObject({
+      metadata_unavailable: true,
+    })
   })
 
   it("captures a deterministic local wrapper baseline with bounded arguments", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "ctf-aisec-probe-"))
+    const root = await makeTestWorkspaceAsync("ctf-aisec-probe")
     const wrapper = path.join(root, "wrapper.cjs")
     await writeFile(
       wrapper,

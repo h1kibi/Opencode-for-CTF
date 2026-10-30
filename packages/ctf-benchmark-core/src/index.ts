@@ -142,3 +142,4 @@ export const benchmarkFamilies: BenchmarkExpectation[] = [
 export * from "./nyu.ts"
 
 export * from "./runner.ts"
+export * from "./oracle.ts"

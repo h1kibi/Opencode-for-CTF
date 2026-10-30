@@ -1,23 +1,19 @@
-import { packForTool, type ToolPackId } from "./tool-packs.ts"
+import { COMPAT_ALIAS_TARGETS } from "./tool-catalog.ts"
+import { packForTool, type ToolPackLookup } from "./tool-packs.ts"
 
 export type ToolTier = "light" | "default" | "advanced" | "compat" | "maintenance"
 export type ToolEffect = "read" | "write" | "execute" | "network" | "state"
 
 export type ToolMetadata = {
   name: string
-  category: ToolPackId
+  category: ToolPackLookup
   tier: ToolTier
   effects: ToolEffect[]
   requires: string[]
   aliasOf?: string
 }
 
-const COMPAT_ALIASES: Record<string, string> = {
-  "archive-safe-extract": "ctf-safe-extract",
-  "ctf-java-analyze-pack": "ctf-java-analyze",
-  "ctf-pwn-remote-check": "ctf-pwn-remote-fingerprint",
-  "ctf-web-recon-pack": "ctf-web-analyze",
-}
+const COMPAT_ALIASES = COMPAT_ALIAS_TARGETS
 
 const MAINTENANCE_TOOLS = new Set([
   "archive-safe-extract",

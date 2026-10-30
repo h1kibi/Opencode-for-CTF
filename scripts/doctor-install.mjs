@@ -11,6 +11,7 @@ import {
   projectVersion,
   readJsonc,
   repoRoot,
+  compatibilityDiagnostic,
   tryWritePluginHealthReport,
 } from "./lib/opencode-ctf-install.mjs"
 import { runToolChecks, TOOL_CHECK_GROUPS } from "./lib/tool-checks.mjs"
@@ -25,11 +26,12 @@ const configFile = configPath(configDir)
 const manifestFile = manifestPath(configDir)
 const installed = existsSync(manifestFile)
 const currentVersion = await projectVersion()
+const compatibility = await compatibilityDiagnostic()
 let configError = null
 let installedVersion = null
-let config = {}
 try {
-  config = await readJsonc(configFile)
+  // Parse-only validation: an unreadable/invalid config surfaces via configError.
+  await readJsonc(configFile)
 } catch (error) {
   configError = error instanceof Error ? error.message : String(error)
 }
@@ -61,6 +63,7 @@ const result = {
   pluginRuntimeImportOk: pluginRuntimeProbe.ok,
   pluginRuntimeImportError: pluginRuntimeProbe.ok ? null : pluginRuntimeProbe.error,
   wireMcpConfigured: wireMcp.configured,
+  compatibility,
   groups: Object.fromEntries(groups),
 }
 await tryWritePluginHealthReport(configDir, {
@@ -73,6 +76,7 @@ await tryWritePluginHealthReport(configDir, {
   pluginRuntimeImportOk: result.pluginRuntimeImportOk,
   pluginRuntimeImportError: result.pluginRuntimeImportError,
   wireMcpConfigured: result.wireMcpConfigured,
+  compatibility: result.compatibility,
   openCode: result.openCode,
   nodeModules: result.nodeModules,
   pluginBundle: result.pluginBundle,
@@ -101,6 +105,11 @@ else {
   )
   console.log(`health_file: ${result.healthFile}`)
   console.log(`version: ${installedVersion ?? "not installed"} (project ${currentVersion})`)
+  console.log(`compatibility: ${result.compatibility.policy}`)
+  console.log(
+    `plugin_sdk: ${result.compatibility.pluginPackage}@${result.compatibility.pluginPackageVersion}; ` +
+      `${result.compatibility.sdkPackage}@${result.compatibility.sdkPackageVersion}`,
+  )
   for (const group of TOOL_CHECK_GROUPS) {
     const bucket = groups.get(group) ?? { found: [], missing: [] }
     console.log(`\n## ${group}`)

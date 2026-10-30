@@ -1,9 +1,9 @@
 ﻿import { spawn } from "node:child_process"
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 
 const projectRoot = join(fileURLToPath(new URL("..", import.meta.url)))
 const tsxCli = join(projectRoot, "node_modules", "tsx", "dist", "cli.mjs")
@@ -52,7 +52,7 @@ function writeFixture(
 
 describe("benchmark fixture harness", () => {
   it("passes a fixture only when oracle verification and replay marker both succeed", async () => {
-    const root = mkdtempSync(join(tmpdir(), "ctf-bench-fixture-pass-"))
+    const root = makeTestWorkspace("ctf-bench-fixture-pass")
     writeFixture(root, {
       expectedFlag: "flag{fixture_pass}",
       producedFlag: "flag{fixture_pass}",
@@ -69,7 +69,7 @@ describe("benchmark fixture harness", () => {
   }, 60_000)
 
   it("fails when a produced candidate does not satisfy the exact fixture oracle", async () => {
-    const root = mkdtempSync(join(tmpdir(), "ctf-bench-fixture-mismatch-"))
+    const root = makeTestWorkspace("ctf-bench-fixture-mismatch")
     writeFixture(root, {
       expectedFlag: "flag{fixture_right}",
       producedFlag: "flag{fixture_wrong}",
@@ -84,7 +84,7 @@ describe("benchmark fixture harness", () => {
   }, 60_000)
 
   it("fails when replay is required but the replay marker is missing", async () => {
-    const root = mkdtempSync(join(tmpdir(), "ctf-bench-fixture-replay-"))
+    const root = makeTestWorkspace("ctf-bench-fixture-replay")
     writeFixture(root, {
       expectedFlag: "flag{fixture_replay}",
       producedFlag: "flag{fixture_replay}",

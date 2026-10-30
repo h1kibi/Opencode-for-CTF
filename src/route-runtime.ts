@@ -3,13 +3,7 @@
  * Pure decision stays in ctf-core; this layer applies plugin config defaults.
  */
 
-import {
-  decideRoute,
-  formatRouteDecision,
-  type RouteDecision,
-  type RouteInput,
-  type SolveMode,
-} from "../packages/ctf-core/src/router.ts"
+import { decideRoute, formatRouteDecision, type RouteDecision, type RouteInput, type SolveMode } from "ctf-core"
 import type { PluginUserConfig } from "./plugin-config.ts"
 
 export type RoutePlanArgs = {
@@ -96,8 +90,8 @@ export function formatHardRouteHandoff(
   } else if (primary === "ctf-expert" || decision.mode === "expert") {
     lines.push(
       "1. Behave as **ctf-expert**. Load skill `ctf-expert` first, then: " + decision.skills.join(", "),
-      "2. `ctf-evidence-board command=init category=<direction> challengeName=<name-if-known> target=<target>` before solving; it creates `work/ctf-evidence/<direction-name|direction-MMDDHHmmss>/Evidence.md` + structured state files.",
-      "3. Phase loop: recon (concurrent) → evidence cross-check → lessons → retros → knowledge recall → set-routes (exactly 3) → verify → flag direct return.",
+      "2. `ctf-evidence-board command=init category=<direction> challengeName=<name-if-known> target=<target>` before solving; it creates one timestamped record folder `work/ctf-evidence/<YYMMDDHHmm>/` (e.g. `2610251156` = created 2026-10-25 11:56) holding Evidence.md + all structured state files; challenge identity is recorded inside the files.",
+      "3. Phase loop: recon (concurrent) → evidence cross-check → lessons → retros → knowledge recall → set-routes (route_policy band, default 2-6) → verify → flag direct return.",
       "4. Route states: untested | blocked | dead | live — blocked ≠ dead.",
       "5. Heavy MCP: workers request via ctf-dynamic-mcp-advisor; you approve via ctf-mcp-control.",
       "6. Do not stay in ctf-fast workflow. Do not skip Evidence.md or the Phase 2 lessons/retros/knowledge recall pass.",
@@ -110,7 +104,7 @@ export function formatHardRouteHandoff(
       decision.category
         ? `3. Prefer category angle: **${decision.category}** (still on fast tools; no Team Mode).`
         : "3. Cheap triage then shortest path to flag.",
-      "4. Initialize a lightweight evidence case before active solving: `ctf-evidence-board command=init category=<direction> challengeName=<name-if-known> target=<target>`. This creates `work/ctf-evidence/<direction-name|direction-MMDDHHmmss>/` for notes/handoff; do not use Team Mode or heavy Evidence ceremony.",
+      "4. Initialize a lightweight evidence case before active solving: `ctf-evidence-board command=init category=<direction> challengeName=<name-if-known> target=<target>`. This creates one timestamped record folder `work/ctf-evidence/<YYMMDDHHmm>/` holding notes/handoff and every record file this solve produces. Do not use Team Mode or heavy Evidence ceremony.",
       "5. Stay on this lane. The soft budget is a self-review horizon only; when the challenge exceeds the fast lane, report the blocker, strongest evidence, and best next direction, then stop — the user decides whether to start the expert lane.",
       "6. Flag → return directly and stop.",
     )

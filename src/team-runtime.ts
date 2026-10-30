@@ -12,17 +12,25 @@ import type { CreateTeamToolsOptions } from "./team/team-types.ts"
 
 export type {
   CreateTeamToolsOptions,
+  ProbeObservation,
+  ProbeObservationKind,
+  ProbeResult,
   TeamAgent,
+  TeamEvent,
+  TeamEventType,
   TeamJob,
   TeamJobError,
   TeamJobErrorPhase,
   TeamJobErrorType,
   TeamJobStatus,
+  TeamProbe,
+  TeamProbeStatus,
   TeamRouteId,
   TeamRun,
   TeamRunStatus,
   TeamState,
 } from "./team/team-types.ts"
+
 export {
   ABSOLUTE_MAX_JOBS,
   DEFAULT_MAX_JOBS,

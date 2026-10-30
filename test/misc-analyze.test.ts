@@ -1,14 +1,14 @@
-import { mkdtemp, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { writeFile } from "node:fs/promises"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 
 const MOD_PATH = "../tools/misc/ctf-misc-analyze.ts"
 
 describe("ctf-misc-analyze tool", () => {
   it("normalizes RSA-like triage to the crypto facade", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-misc-analyze")
     await writeFile(path.join(root, "params.txt"), "n = 3233\ne = 17\nc = 855\n", "utf8")
 
     const out = await mod.default.execute({ target: ".", jsonOnly: true }, { directory: root } as never)
@@ -24,7 +24,7 @@ describe("ctf-misc-analyze tool", () => {
 
   it("routes crypto-like text into the reachable encoding-chain tool with an input contract", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-misc-analyze")
     const encoded = Buffer.from("flag{layered}", "utf8").toString("base64")
     await writeFile(path.join(root, "encoded.txt"), encoded, "utf8")
 
@@ -42,7 +42,7 @@ describe("ctf-misc-analyze tool", () => {
 
   it("detects unpadded base64 but does not misroute a digest as an encoding blob", async () => {
     const mod = await import(MOD_PATH)
-    const encodedRoot = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-base64-"))
+    const encodedRoot = await makeTestWorkspaceAsync("ctf-misc-analyze-base64")
     const encoded = Buffer.from("plain-text", "utf8").toString("base64").replace(/=+$/, "")
     await writeFile(path.join(encodedRoot, "encoded.txt"), encoded, "utf8")
 
@@ -51,14 +51,14 @@ describe("ctf-misc-analyze tool", () => {
     expect(encodedPayload.triage.verdict).toBe("crypto_or_encoding")
     expect(encodedPayload.shape).toBe("layered_encoding")
 
-    const base32Root = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-base32-"))
+    const base32Root = await makeTestWorkspaceAsync("ctf-misc-analyze-base32")
     await writeFile(path.join(base32Root, "encoded.txt"), "MZXW6YTBOI======", "utf8")
     const base32Out = await mod.default.execute({ target: ".", jsonOnly: true }, { directory: base32Root } as never)
     const base32Payload = JSON.parse(String(base32Out))
     expect(base32Payload.triage.verdict).toBe("crypto_or_encoding")
     expect(base32Payload.shape).toBe("layered_encoding")
 
-    const digestRoot = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-digest-"))
+    const digestRoot = await makeTestWorkspaceAsync("ctf-misc-analyze-digest")
     await writeFile(path.join(digestRoot, "digest.txt"), "0123456789abcdef0123456789abcdef", "utf8")
 
     const digestOut = await mod.default.execute({ target: ".", jsonOnly: true }, { directory: digestRoot } as never)
@@ -69,7 +69,7 @@ describe("ctf-misc-analyze tool", () => {
 
   it("does not pretend a description is a decodable file source", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-description-"))
+    const root = await makeTestWorkspaceAsync("ctf-misc-analyze-description")
 
     const out = await mod.default.execute(
       { target: ".", description: "Decode this layered base64/hex encoding chain.", jsonOnly: true },
@@ -84,7 +84,7 @@ describe("ctf-misc-analyze tool", () => {
 
   it("classifies a remote custom protocol and extracts a bounded probe endpoint", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-misc-analyze")
 
     const out = await mod.default.execute(
       {
@@ -106,7 +106,7 @@ describe("ctf-misc-analyze tool", () => {
 
   it("classifies Python jail and AI/ML descriptions without stealing specialist handoffs", async () => {
     const mod = await import(MOD_PATH)
-    const jailRoot = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-jail-"))
+    const jailRoot = await makeTestWorkspaceAsync("ctf-misc-analyze-jail")
     const jailOut = await mod.default.execute(
       {
         target: ".",
@@ -119,7 +119,7 @@ describe("ctf-misc-analyze tool", () => {
     expect(jailPayload.shape).toBe("python_jail")
     expect(jailPayload.nextTool).toBe("ctf-python-inline")
 
-    const mlRoot = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-ml-"))
+    const mlRoot = await makeTestWorkspaceAsync("ctf-misc-analyze-ml")
     const mlOut = await mod.default.execute(
       {
         target: ".",
@@ -150,7 +150,7 @@ describe("ctf-misc-analyze tool", () => {
     ] as const
 
     for (const [shape, description, service, nextTool] of cases) {
-      const root = await mkdtemp(path.join(os.tmpdir(), `ctf-misc-analyze-${shape}-`))
+      const root = await makeTestWorkspaceAsync(`ctf-misc-analyze-${shape}`)
       const out = await mod.default.execute({ target: ".", description, service, jsonOnly: true }, {
         directory: root,
       } as never)
@@ -164,7 +164,7 @@ describe("ctf-misc-analyze tool", () => {
 
   it("keeps QR extraction ahead of a later base64 transform clue", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-qr-priority-"))
+    const root = await makeTestWorkspaceAsync("ctf-misc-analyze-qr-priority")
     const out = await mod.default.execute(
       {
         target: ".",
@@ -182,7 +182,7 @@ describe("ctf-misc-analyze tool", () => {
 
   it("normalizes native binary triage to the REV facade", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-misc-analyze")
     await writeFile(path.join(root, "chall"), Buffer.from([0x7f, 0x45, 0x4c, 0x46, 1, 1, 1, 0]))
 
     const out = await mod.default.execute({ target: ".", jsonOnly: true }, { directory: root } as never)
@@ -196,7 +196,7 @@ describe("ctf-misc-analyze tool", () => {
 
   it("keeps direct flags in misc without handoff", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-misc-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-misc-analyze")
     await writeFile(path.join(root, "readme.txt"), "flag{misc_facade_direct}", "utf8")
 
     const out = await mod.default.execute({ target: ".", jsonOnly: true }, { directory: root } as never)

@@ -64,8 +64,8 @@ describe("resolveEnabledPacks env isolation", () => {
 })
 
 describe("packForTool stability", () => {
-  it("keeps unknown ctf tools in core", () => {
-    expect(packForTool("ctf-brand-new-helper")).toBe("core")
+  it("quarantines unknown ctf tools instead of defaulting them to core", () => {
+    expect(packForTool("ctf-brand-new-helper")).toBe("quarantine")
   })
 
   it("classifies ctf-mcp-control as core", () => {
@@ -108,7 +108,6 @@ describe("fast tool surface", () => {
     expect(FAST_TOOL_ALLOWLIST.has("ctf-rev-analyze")).toBe(true)
     expect(FAST_TOOL_ALLOWLIST.has("ctf-misc-analyze")).toBe(true)
     expect(FAST_TOOL_ALLOWLIST.has("ctf-evidence-board")).toBe(true)
-    expect(FAST_TOOL_ALLOWLIST.has("ctf-team-mode")).toBe(false)
     expect(FAST_TOOL_ALLOWLIST.has("ctf-pwn-heap-overlap-mapper")).toBe(false)
     expect(packForTool("ctf-pwn-heap-overlap-mapper")).toBe("pwn-heavy")
   })
@@ -151,7 +150,6 @@ describe("fast tool surface", () => {
   it("toolAllowedForAgent permits evidence init but blocks expert-only controls on ctf-fast", () => {
     expect(toolAllowedForAgent("ctf-route-plan", "ctf-fast")).toBe(true)
     expect(toolAllowedForAgent("ctf-evidence-board", "ctf-fast")).toBe(true)
-    expect(toolAllowedForAgent("ctf-team-mode", "ctf-fast")).toBe(false)
     expect(toolAllowedForAgent("ctf-evidence-board", "ctf-expert")).toBe(true)
     expect(toolAllowedForAgent("ctf-mcp-control", "ctf-expert")).toBe(true)
   })
@@ -177,9 +175,8 @@ describe("subagent opt-in pack surface", () => {
     )
   })
 
-  it("keeps maintenance tools scoped to librarian and retro when explicitly enabled", () => {
+  it("keeps maintenance tools scoped to librarian when explicitly enabled", () => {
     expect(toolAllowedForSubagent("ctf-runtime-selftest", "ctf-librarian", ["core", "maintenance"])).toBe(true)
-    expect(toolAllowedForSubagent("ctf-runtime-selftest", "ctf-retro", ["core", "maintenance"])).toBe(true)
     expect(toolAllowedForSubagent("ctf-runtime-selftest", "ctf-web", ["core", "maintenance"])).toBe(false)
   })
 })

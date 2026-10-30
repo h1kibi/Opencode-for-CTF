@@ -2,7 +2,7 @@ import { spawnSync } from "child_process"
 import { readdirSync } from "fs"
 import { dirname, resolve } from "path"
 import { fileURLToPath } from "url"
-import { benchmarkFamilies } from "../packages/ctf-benchmark-core/src/index.ts"
+import { benchmarkFamilies } from "ctf-benchmark-core"
 
 function runNodeScript(script: string, args: string[]) {
   const res = spawnSync(process.execPath, [script, ...args], {

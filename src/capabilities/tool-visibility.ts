@@ -21,7 +21,16 @@ export function explainToolVisibility(args: {
   const pack = packForTool(args.toolName)
   const reasons: string[] = []
 
-  if (!enabled.has(pack)) {
+  if (pack === "quarantine" && !enabled.has("quarantine")) {
+    reasons.push(`${args.toolName} is not registered in any tool pack (quarantined; "all" or "quarantine" re-enables).`)
+    return {
+      visible: false,
+      category: "pack_not_enabled",
+      reasons,
+    }
+  }
+
+  if (pack !== "quarantine" && !enabled.has(pack)) {
     reasons.push(`${args.toolName} belongs to pack ${pack}, which is not enabled.`)
     return {
       visible: false,

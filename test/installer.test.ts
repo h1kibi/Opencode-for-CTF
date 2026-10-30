@@ -1,9 +1,9 @@
 import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 
 // The installer is intentionally plain ESM so the published CLI runs without tsx.
 // @ts-expect-error The runtime module does not ship TypeScript declarations.
@@ -31,7 +31,7 @@ const {
 const temporaryDirs: string[] = []
 
 async function temporaryDir(prefix: string) {
-  const directory = await mkdtemp(path.join(os.tmpdir(), prefix))
+  const directory = await makeTestWorkspaceAsync(prefix.replace(/-$/, ""))
   temporaryDirs.push(directory)
   return directory
 }

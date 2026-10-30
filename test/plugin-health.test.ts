@@ -11,6 +11,13 @@ describe("plugin health summary", () => {
         pluginImportOk: false,
         pluginImportError: "Cannot find module",
         nextAction: "reinstall",
+        compatibility: {
+          pluginPackage: "@opencode-ai/plugin",
+          pluginPackageVersion: "1.19.4",
+          sdkPackageVersion: "1.19.4",
+          policy: "verified against OpenCode 1.19.4; OpenCode 1.18.x is unverified; OpenCode 2.x is unsupported",
+          hostVersion: null,
+        },
       },
     })
 
@@ -20,6 +27,8 @@ describe("plugin health summary", () => {
     expect(summary.pluginImportOk).toBe(false)
     expect(summary.pluginImportError).toBe("Cannot find module")
     expect(summary.nextAction).toBe("reinstall")
+    expect(summary.compatibility?.pluginPackageVersion).toBe("1.19.4")
+    expect(summary.compatibility?.hostVersion).toBe(null)
   })
 
   it("falls back to legacy top-level runtime probe fields", () => {

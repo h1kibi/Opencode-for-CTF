@@ -1,5 +1,5 @@
-import { mkdtemp, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { writeFile } from "node:fs/promises"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 
@@ -7,7 +7,7 @@ const MOD_PATH = "../tools/rev/ctf-rev-capability-check.ts"
 
 async function run(args: Record<string, unknown>) {
   const mod = await import(MOD_PATH)
-  const root = await mkdtemp(path.join(os.tmpdir(), "ctf-rev-capability-"))
+  const root = await makeTestWorkspaceAsync("ctf-rev-capability")
   return {
     root,
     payload: JSON.parse(String(await mod.default.execute(args, { directory: root } as never))),
@@ -50,7 +50,7 @@ describe("ctf-rev-capability-check tool", () => {
 
   it("checks Unicorn Python modules without executing the supplied artifact", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-rev-capability-"))
+    const root = await makeTestWorkspaceAsync("ctf-rev-capability")
     const target = path.join(root, "sample.py")
     await writeFile(target, "raise SystemExit('must not execute')\n", "utf8")
 
@@ -69,7 +69,7 @@ describe("ctf-rev-capability-check tool", () => {
 
   it("lets rev-analyze opt into capability checks while keeping the default path lazy", async () => {
     const analyze = await import("../tools/rev/ctf-rev-analyze.ts")
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-rev-capability-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-rev-capability-analyze")
     await writeFile(path.join(root, "challenge"), Buffer.from("\xfe\xed\xfa\xce\x00\x00\x00\x00", "binary"))
 
     const lazy = JSON.parse(

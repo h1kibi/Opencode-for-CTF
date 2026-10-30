@@ -1,11 +1,11 @@
 import { spawn, type ChildProcess } from "node:child_process"
-import { existsSync, mkdtempSync } from "node:fs"
+import { existsSync } from "node:fs"
 import { readFile, rm, writeFile } from "node:fs/promises"
-import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 import { resolveFileLockPaths, withFileLock } from "../src/file-lock.js"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 
 const projectRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)))
 const tsxCli = path.join(projectRoot, "node_modules", "tsx", "dist", "cli.mjs")
@@ -141,8 +141,8 @@ describe("withFileLock", () => {
   })
 
   it("keeps lock sentinel directories isolated per worktree", async () => {
-    const first = mkdtempSync(path.join(os.tmpdir(), "ctf-lock-first-"))
-    const second = mkdtempSync(path.join(os.tmpdir(), "ctf-lock-second-"))
+    const first = makeTestWorkspace("ctf-lock-first")
+    const second = makeTestWorkspace("ctf-lock-second")
     const firstKey = path.join(first, "state.json")
     const secondKey = path.join(second, "state.json")
 
@@ -159,7 +159,7 @@ describe("withFileLock", () => {
   })
 
   it("normalizes relative and absolute aliases to one queue key", async () => {
-    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-lock-alias-"))
+    const directory = makeTestWorkspace("ctf-lock-alias")
     const file = path.join(directory, "state.json")
     const previous = process.cwd()
     process.chdir(directory)
@@ -189,7 +189,7 @@ describe("withFileLock", () => {
 
 describe("withFileLock cross-process guarantees", () => {
   it("serializes independent Node processes around atomic JSON updates", async () => {
-    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-lock-process-"))
+    const directory = makeTestWorkspace("ctf-lock-process")
     const file = path.join(directory, "state.json")
     await writeFile(file, JSON.stringify({ counter: 0 }), "utf8")
 
@@ -206,7 +206,7 @@ describe("withFileLock cross-process guarantees", () => {
   }, 30_000)
 
   it("takes over a stale lease after the owning process is hard-killed", async () => {
-    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-lock-stale-"))
+    const directory = makeTestWorkspace("ctf-lock-stale")
     const file = path.join(directory, "state.json")
     await writeFile(file, JSON.stringify({ counter: 0 }), "utf8")
 
@@ -235,7 +235,7 @@ describe("withFileLock cross-process guarantees", () => {
   }, 20_000)
 
   it("fences an old owner that resumes after stale takeover", async () => {
-    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-lock-fence-"))
+    const directory = makeTestWorkspace("ctf-lock-fence")
     const file = path.join(directory, "state.json")
     await writeFile(file, JSON.stringify({ counter: 0 }), "utf8")
 
@@ -263,7 +263,7 @@ describe("withFileLock cross-process guarantees", () => {
   }, 15_000)
 
   it("does not let a fenced owner release a replacement lease", async () => {
-    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-lock-release-fence-"))
+    const directory = makeTestWorkspace("ctf-lock-release-fence")
     const file = path.join(directory, "state.json")
     const signalFile = path.join(directory, "release.signal")
     await writeFile(file, JSON.stringify({ counter: 0 }), "utf8")
@@ -293,7 +293,7 @@ describe("withFileLock cross-process guarantees", () => {
   }, 15_000)
 
   it("fences atomic state writes from an old owner after stale takeover", async () => {
-    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-lock-atomic-fence-"))
+    const directory = makeTestWorkspace("ctf-lock-atomic-fence")
     const file = path.join(directory, "state.json")
     await writeFile(file, JSON.stringify({ counter: 0 }), "utf8")
 
@@ -321,7 +321,7 @@ describe("withFileLock cross-process guarantees", () => {
   }, 15_000)
 
   it("fails closed when acquisition is disabled and another process owns the lease", async () => {
-    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-lock-busy-"))
+    const directory = makeTestWorkspace("ctf-lock-busy")
     const file = path.join(directory, "state.json")
     await writeFile(file, JSON.stringify({ counter: 0 }), "utf8")
 

@@ -14,7 +14,7 @@
  * as `true`, and writes back preserving existing config and JSONC comments.
  */
 
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { applyEdits, modify, parse } from "jsonc-parser"
 import { loadCtfTools } from "../src/ctf-tools.ts"

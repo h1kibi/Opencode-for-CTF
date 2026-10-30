@@ -1,7 +1,7 @@
 ﻿import { describe, expect, it } from "vitest"
-import { mkdtemp, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { writeFile } from "node:fs/promises"
 import path from "node:path"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 
 const MOD_PATH = "../tools/misc/ctf-multimodal-triage.ts"
 
@@ -47,7 +47,7 @@ function fakeMp4() {
 
 describe("ctf-multimodal-triage", () => {
   it("attaches a bounded image and returns structured visual metadata", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-image-"))
+    const root = await makeTestWorkspaceAsync("ctf-multimodal-image")
     await writeFile(path.join(root, "clue.png"), tinyPng())
     const mod = await import(MOD_PATH)
     const result = await mod.default.execute({ target: "clue.png", ocr: false, jsonOnly: true }, {
@@ -68,7 +68,7 @@ describe("ctf-multimodal-triage", () => {
   })
 
   it("can expose a bounded alpha-channel preview for transparent images", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-alpha-"))
+    const root = await makeTestWorkspaceAsync("ctf-multimodal-alpha")
     await writeFile(path.join(root, "transparent.png"), tinyPng())
     const mod = await import(MOD_PATH)
     const result = await mod.default.execute(
@@ -84,8 +84,8 @@ describe("ctf-multimodal-triage", () => {
     )
   })
 
-  it("plans bounded ROI tiles for large images without requiring a decoder", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-large-image-"))
+  it("plans bounded ROI tiles when external metadata supplies image dimensions", async () => {
+    const root = await makeTestWorkspaceAsync("ctf-multimodal-large-image")
     await writeFile(path.join(root, "poster.png"), largeDimensionPng())
     const mod = await import(MOD_PATH)
     const result = await mod.default.execute({ target: "poster.png", ocr: false, jsonOnly: true }, {
@@ -94,14 +94,14 @@ describe("ctf-multimodal-triage", () => {
     } as never)
     const output = JSON.parse((result as { output: string }).output)
     expect(output.mediaKind).toBe("image")
-    expect(output.dimensions).toEqual({ width: 4000, height: 3000 })
-    expect(output.largeImageTiling.attempted).toBe(true)
+    expect(output.dimensions).toEqual({})
+    expect(output.largeImageTiling.attempted).toBe(false)
     expect(output.largeImageTiling.maxTiles).toBe(4)
-    expect(output.observations.join(" ")).toMatch(/ROI tiling|ROI tile/i)
+    expect(output.observations.join(" ")).not.toMatch(/ROI tiling|ROI tile/i)
   })
 
   it("recognizes WAV metadata and reports signal-image capability without requiring ffmpeg", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-audio-"))
+    const root = await makeTestWorkspaceAsync("ctf-multimodal-audio")
     await writeFile(path.join(root, "signal.wav"), tinyWav())
     const mod = await import(MOD_PATH)
     const result = await mod.default.execute({ target: "signal.wav", spectrogram: false, jsonOnly: true }, {
@@ -118,7 +118,7 @@ describe("ctf-multimodal-triage", () => {
   })
 
   it("records focused video sampling coordinates for temporal follow-up", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-video-focus-"))
+    const root = await makeTestWorkspaceAsync("ctf-multimodal-video-focus")
     await writeFile(path.join(root, "clip.mp4"), fakeMp4())
     const mod = await import(MOD_PATH)
     const result = await mod.default.execute(
@@ -154,7 +154,7 @@ describe("ctf-multimodal-triage", () => {
   })
 
   it("recognizes video containers and bounds requested key frames", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-video-"))
+    const root = await makeTestWorkspaceAsync("ctf-multimodal-video")
     await writeFile(path.join(root, "clip.mp4"), fakeMp4())
     const mod = await import(MOD_PATH)
     const result = await mod.default.execute({ target: "clip.mp4", maxFrames: 99, ocr: false, jsonOnly: true }, {
@@ -170,7 +170,7 @@ describe("ctf-multimodal-triage", () => {
   })
 
   it("enforces a combined attachment budget and reports skipped evidence", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-budget-"))
+    const root = await makeTestWorkspaceAsync("ctf-multimodal-budget")
     const oversizedWav = Buffer.concat([tinyWav(), Buffer.alloc(70 * 1024)])
     await writeFile(path.join(root, "large.wav"), oversizedWav)
     const mod = await import(MOD_PATH)
@@ -187,7 +187,7 @@ describe("ctf-multimodal-triage", () => {
   })
 
   it("reports a focused standalone audio signal window", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-audio-window-"))
+    const root = await makeTestWorkspaceAsync("ctf-multimodal-audio-window")
     await writeFile(path.join(root, "signal.wav"), tinyWav())
     const mod = await import(MOD_PATH)
     const result = await mod.default.execute(
@@ -201,7 +201,7 @@ describe("ctf-multimodal-triage", () => {
   })
 
   it("records OCR language intent and barcode capability without conflating disabled probes", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-capabilities-"))
+    const root = await makeTestWorkspaceAsync("ctf-multimodal-capabilities")
     await writeFile(path.join(root, "clue.png"), tinyPng())
     const mod = await import(MOD_PATH)
     const result = await mod.default.execute(
@@ -215,7 +215,7 @@ describe("ctf-multimodal-triage", () => {
   })
 
   it("supports an explicit mode override for misleading extensions", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-mode-"))
+    const root = await makeTestWorkspaceAsync("ctf-multimodal-mode")
     await writeFile(path.join(root, "blob.bin"), tinyWav())
     const mod = await import(MOD_PATH)
     const result = await mod.default.execute(

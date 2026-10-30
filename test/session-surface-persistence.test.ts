@@ -1,5 +1,5 @@
-﻿import { mkdtemp, readFile, rm } from "node:fs/promises"
-import os from "node:os"
+﻿import { readFile, rm } from "node:fs/promises"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 import {
@@ -14,7 +14,7 @@ import {
 
 describe("persisted session surfaces", () => {
   it("restores an expert surface after the in-memory map is cleared", async () => {
-    const worktree = await mkdtemp(path.join(os.tmpdir(), "ctf-session-surface-"))
+    const worktree = await makeTestWorkspaceAsync("ctf-session-surface")
     const sessionID = `surface-${Date.now()}-${Math.random()}`
     try {
       rememberSessionSurface(sessionID, "ctf-expert")
@@ -37,7 +37,7 @@ describe("persisted session surfaces", () => {
     }
   })
   it("demotes legacy expert records without provenance", async () => {
-    const worktree = await mkdtemp(path.join(os.tmpdir(), "ctf-session-surface-legacy-"))
+    const worktree = await makeTestWorkspaceAsync("ctf-session-surface-legacy")
     const sessionID = `legacy-${Date.now()}-${Math.random()}`
     try {
       const statePath = path.join(worktree, "runtime", "state", "session-surfaces.json")

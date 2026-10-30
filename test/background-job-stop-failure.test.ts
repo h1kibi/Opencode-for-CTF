@@ -1,7 +1,7 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 
 import backgroundJob from "../tools/core/ctf-background-job.ts"
 
@@ -27,7 +27,7 @@ async function writeJob(dir: string, id: string, meta: Record<string, unknown>) 
 
 describe("ctf-background-job stop contract", () => {
   it("refuses to signal its own process instead of claiming stopped=true", async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), "ctf-bg-stop-fail-"))
+    const dir = await makeTestWorkspaceAsync("ctf-bg-stop-fail")
     await writeJob(dir, "fail", { pid: process.pid })
 
     const out = await backgroundJob.execute({ operation: "stop", id: "fail", jsonOnly: true }, {
@@ -40,7 +40,7 @@ describe("ctf-background-job stop contract", () => {
   })
 
   it("refuses to signal a non-positive pid, which would target the process group", async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), "ctf-bg-stop-zero-"))
+    const dir = await makeTestWorkspaceAsync("ctf-bg-stop-zero")
     await writeJob(dir, "zero", { pid: 0 })
 
     const out = await backgroundJob.execute({ operation: "stop", id: "zero", jsonOnly: true }, {
@@ -53,9 +53,10 @@ describe("ctf-background-job stop contract", () => {
   })
 
   it("redacts secret environment values and URL query credentials from collected output", async () => {
-    const dir = await mkdtemp(path.join(os.tmpdir(), "ctf-bg-redact-"))
+    const dir = await makeTestWorkspaceAsync("ctf-bg-redact")
     const jobDir = await writeJob(dir, "redact", { pid: 0 })
-    vi.stubEnv("CTF_TEST_TOKEN", "super-secret-token")
+    const previousToken = process.env.CTF_TEST_TOKEN
+    process.env.CTF_TEST_TOKEN = "super-secret-token"
     try {
       await writeFile(
         path.join(jobDir, "stdout.log"),
@@ -71,7 +72,8 @@ describe("ctf-background-job stop contract", () => {
       expect(parsed.stdout).toContain("REDACTED")
       expect(parsed.stdout).not.toContain("user:pass")
     } finally {
-      vi.unstubAllEnvs()
+      if (previousToken === undefined) delete process.env.CTF_TEST_TOKEN
+      else process.env.CTF_TEST_TOKEN = previousToken
     }
   })
 })

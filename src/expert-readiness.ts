@@ -20,7 +20,7 @@ export const EXPERT_TEAM_RUNTIME_TOOLS = [
 
 export const EXPERT_CORE_WORKFLOW_TOOLS = ["ctf-evidence-board", "ctf-mcp-control", "ctf-decompose-task"] as const
 
-export const EXPERT_SUPPORT_TOOLS = ["ctf-team-mode", "ctf-tool-packs"] as const
+export const EXPERT_SUPPORT_TOOLS = ["ctf-tool-packs"] as const
 
 /**
  * Phase ② local recall is served by the external `ctf_rag` MCP server

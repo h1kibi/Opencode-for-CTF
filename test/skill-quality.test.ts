@@ -159,9 +159,6 @@ describe("skill quality", () => {
       "ctf-team-recover",
       "ctf-team-adopt",
       "ctf-team-repair",
-      "ctf-team-facts",
-      "ctf-team-intent",
-      "ctf-team-claim",
     ])
 
     for (const skillName of skillDirs()) {

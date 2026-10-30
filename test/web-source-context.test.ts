@@ -1,13 +1,13 @@
-﻿import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+﻿import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 
 describe("web source tools context", () => {
   it("resolves source trees and source maps relative to context.directory inside worktree", async () => {
-    const workspace = mkdtempSync(join(tmpdir(), "ctf-websrc-workspace-"))
+    const workspace = makeTestWorkspace("ctf-websrc-workspace")
     const challenge = join(workspace, "challenge")
-    const other = mkdtempSync(join(tmpdir(), "ctf-websrc-other-"))
+    const other = makeTestWorkspace("ctf-websrc-other")
     const app = join(workspace, "app")
     mkdirSync(challenge, { recursive: true })
     mkdirSync(app, { recursive: true })

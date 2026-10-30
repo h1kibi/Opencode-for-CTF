@@ -1,8 +1,6 @@
-import { mkdtemp, rm } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import path from "node:path"
+import { rm } from "node:fs/promises"
 import { afterEach, describe, expect, it } from "vitest"
-
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 const roots: string[] = []
 
 afterEach(async () => {
@@ -11,7 +9,7 @@ afterEach(async () => {
 
 describe("Misc dedicated probe contracts", () => {
   it("rejects invalid DNS input before attempting a resolver", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "ctf-misc-dns-invalid-"))
+    const root = await makeTestWorkspaceAsync("ctf-misc-dns-invalid")
     roots.push(root)
     const mod = await import("../tools/misc/ctf-dns-probe.ts")
     const output = JSON.parse(
@@ -29,7 +27,7 @@ describe("Misc dedicated probe contracts", () => {
   })
 
   it("rejects unsupported DNS record selections instead of widening the query", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "ctf-misc-dns-types-"))
+    const root = await makeTestWorkspaceAsync("ctf-misc-dns-types")
     roots.push(root)
     const mod = await import("../tools/misc/ctf-dns-probe.ts")
     const output = JSON.parse(
@@ -46,7 +44,7 @@ describe("Misc dedicated probe contracts", () => {
   })
 
   it("keeps QR probing inside the active workspace", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "ctf-misc-qr-path-"))
+    const root = await makeTestWorkspaceAsync("ctf-misc-qr-path")
     roots.push(root)
     const mod = await import("../tools/misc/ctf-qr-probe.ts")
     await expect(

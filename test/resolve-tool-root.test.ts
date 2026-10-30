@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { mkdtemp, mkdir } from "node:fs/promises"
-import os from "node:os"
+import { mkdir } from "node:fs/promises"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import path from "node:path"
 import { resolveBundledToolsDir } from "../src/ctf-tools.ts"
 
@@ -10,7 +10,7 @@ describe("resolveBundledToolsDir (bundle layout regression)", () => {
   // resolution look for plugin/chunks/tools and then a non-existent
   // <install-root>/tools, failing the whole plugin load with ENOENT.
   it("finds tools/ next to plugin/index.js when running from chunks/", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-bundle-chunks-"))
+    const root = await makeTestWorkspaceAsync("ctf-bundle-chunks")
     await mkdir(path.join(root, "plugin", "chunks"), { recursive: true })
     await mkdir(path.join(root, "plugin", "tools"), { recursive: true })
 
@@ -19,7 +19,7 @@ describe("resolveBundledToolsDir (bundle layout regression)", () => {
   })
 
   it("finds tools/ next to the entry when running from plugin/ (no splitting)", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-bundle-plain-"))
+    const root = await makeTestWorkspaceAsync("ctf-bundle-plain")
     await mkdir(path.join(root, "plugin", "tools"), { recursive: true })
 
     const resolved = await resolveBundledToolsDir(path.join(root, "plugin"))
@@ -27,7 +27,7 @@ describe("resolveBundledToolsDir (bundle layout regression)", () => {
   })
 
   it("returns empty when no bundled tools/ exists (caller falls back to source root)", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-bundle-empty-"))
+    const root = await makeTestWorkspaceAsync("ctf-bundle-empty")
     await mkdir(path.join(root, "src"), { recursive: true })
 
     expect(await resolveBundledToolsDir(path.join(root, "src"))).toBe("")

@@ -1,7 +1,7 @@
-﻿import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+﻿import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 
 type ToolLike = {
   execute: (args: Record<string, unknown>, context?: { directory?: string }) => Promise<string>
@@ -9,8 +9,8 @@ type ToolLike = {
 
 describe("ctf-web-pattern-search", () => {
   it("uses bundled plugin references by default instead of process cwd", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "ctf-web-pattern-default-"))
-    const other = mkdtempSync(join(tmpdir(), "ctf-web-pattern-other-"))
+    const dir = makeTestWorkspace("ctf-web-pattern-default")
+    const other = makeTestWorkspace("ctf-web-pattern-other")
     const prev = process.cwd()
     process.chdir(other)
     try {
@@ -26,7 +26,7 @@ describe("ctf-web-pattern-search", () => {
   })
 
   it("resolves an explicit relative patternDir against context.directory", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "ctf-web-pattern-local-"))
+    const dir = makeTestWorkspace("ctf-web-pattern-local")
     const refs = join(dir, "refs")
     mkdirSync(refs)
     writeFileSync(

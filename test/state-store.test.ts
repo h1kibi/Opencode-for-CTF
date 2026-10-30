@@ -7,9 +7,9 @@ import {
   removeFileIfExists,
   atomicUpdateJsonFile,
 } from "../src/state-store.js"
-import { mkdtempSync, writeFileSync, existsSync, readFileSync, readdirSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { tmpdir } from "node:os"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 
 describe("nowIso", () => {
   it("returns a valid ISO string", () => {
@@ -48,33 +48,21 @@ describe("isFutureIso", () => {
 
 describe("loadJsonFile", () => {
   function tmpFile(prefix: string) {
-    const dir = mkdtempSync(join(tmpdir(), `ctf-test-${prefix}-`))
+    const dir = makeTestWorkspace(`ctf-test-${prefix}`)
     return join(dir, "test.json")
   }
 
-  it("returns fallback for missing file", async () => {
-    const result = await loadJsonFile(tmpFile("missing"), { fallback: true })
-    expect(result).toEqual({ fallback: true })
-  })
-
-  it("returns fallback for empty file", async () => {
+  it("rejects empty files", async () => {
     const file = tmpFile("empty")
     writeFileSync(file, "", "utf-8")
-    const result = await loadJsonFile(file, [])
-    expect(result).toEqual([])
+    await expect(loadJsonFile(file, [])).rejects.toThrow()
   })
 
-  it("quarantines invalid JSON and falls back instead of throwing", async () => {
-    // Regression: a corrupt state file used to throw out of session hooks
-    // (chat.message etc.), killing the whole message/session. It must now
-    // return the fallback and quarantine the damaged file for forensics.
+  it("rejects invalid JSON without replacing the file", async () => {
     const file = tmpFile("invalid")
     writeFileSync(file, "not-json", "utf-8")
-    const result = await loadJsonFile(file, { ok: false })
-    expect(result).toEqual({ ok: false })
-    expect(existsSync(file)).toBe(false)
-    const quarantine = readdirSync(join(file, "..")).filter((name) => name.includes(".corrupt-"))
-    expect(quarantine.length).toBe(1)
+    await expect(loadJsonFile(file, { ok: false })).rejects.toThrow()
+    expect(existsSync(file)).toBe(true)
   })
 
   it("parses valid JSON", async () => {
@@ -88,7 +76,7 @@ describe("loadJsonFile", () => {
 
 describe("removeFileIfExists", () => {
   it("removes an existing file", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "ctf-test-remove-"))
+    const dir = makeTestWorkspace("ctf-test-remove")
     const file = join(dir, "temp.txt")
     writeFileSync(file, "data", "utf-8")
     expect(existsSync(file)).toBe(true)
@@ -103,7 +91,7 @@ describe("removeFileIfExists", () => {
 
 describe("atomicUpdateJsonFile", () => {
   function tmpState<T>(initial: T): { file: string; cleanup: () => void } {
-    const dir = mkdtempSync(join(tmpdir(), "ctf-test-atomic-"))
+    const dir = makeTestWorkspace("ctf-test-atomic")
     if (initial !== undefined) {
       writeFileSync(join(dir, "state.json"), JSON.stringify(initial), "utf-8")
     }

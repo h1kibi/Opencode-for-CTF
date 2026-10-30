@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto"
-import { mkdtemp, readFile, unlink, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { readFile, unlink } from "node:fs/promises"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 import { revRuntimeValueSha256 } from "../packages/ctf-core/src/rev-runtime-session.ts"
 import { revRuntimeDoctorSpecs, runRevRuntimeDoctor } from "../tools/lib/rev-runtime-doctor.ts"
 
 async function tempRoot(prefix: string) {
-  return mkdtemp(path.join(os.tmpdir(), prefix))
+  return makeTestWorkspaceAsync(prefix.replace(/-$/, ""))
 }
 
 describe("Rev runtime doctor, observation digests, and evidence anchors", () => {

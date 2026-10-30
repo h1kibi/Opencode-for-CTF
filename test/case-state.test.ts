@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
 import { spawn } from "node:child_process"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { readFile, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import {
   appendCaseEvent,
   listCaseEvents,
@@ -36,7 +36,7 @@ function runWorker(args: string[]) {
 
 describe("canonical case state", () => {
   it("creates and atomically updates case.json with an event log", async () => {
-    const worktree = await mkdtemp(path.join(os.tmpdir(), "ctf-case-"))
+    const worktree = await makeTestWorkspaceAsync("ctf-case")
     const initial = await readCase(worktree, "web-demo")
     expect(initial.schemaVersion).toBe(1)
     await updateCase(worktree, "web-demo", (state) => ({ ...state, family: "web", lane: "expert" }))
@@ -46,7 +46,7 @@ describe("canonical case state", () => {
   })
 
   it("serializes concurrent cross-process event appends into valid JSONL", async () => {
-    const worktree = await mkdtemp(path.join(os.tmpdir(), "ctf-case-events-"))
+    const worktree = await makeTestWorkspaceAsync("ctf-case-events")
     const first = runWorker(["case-events", worktree, "20", "2", "15", "concurrent"])
     const second = runWorker(["case-events", worktree, "20", "2", "15", "concurrent"])
     const [firstExit, secondExit] = await Promise.all([first.closed, second.closed])
@@ -62,7 +62,7 @@ describe("canonical case state", () => {
   }, 20_000)
 
   it("serializes cross-process legacy migration and emits one migration event", async () => {
-    const worktree = await mkdtemp(path.join(os.tmpdir(), "ctf-case-migrate-race-"))
+    const worktree = await makeTestWorkspaceAsync("ctf-case-migrate-race")
     await writeFile(path.join(worktree, "legacy.json"), JSON.stringify({ category: "crypto", target: "local" }))
     const first = runWorker(["migrate-case", worktree, "1", "0", "15000", "crypto-demo"])
     const second = runWorker(["migrate-case", worktree, "1", "0", "15000", "crypto-demo"])
@@ -81,7 +81,7 @@ describe("canonical case state", () => {
   }, 20_000)
 
   it("migrates legacy JSON state once and remains idempotent", async () => {
-    const worktree = await mkdtemp(path.join(os.tmpdir(), "ctf-case-migrate-"))
+    const worktree = await makeTestWorkspaceAsync("ctf-case-migrate")
     const legacy = path.join(worktree, ".ctf-state.json")
     await writeFile(legacy, JSON.stringify({ category: "crypto", target: "local", flagFormat: "flag{...}" }))
     const first = await migrateLegacyCase({ caseId: "crypto-demo", worktree, legacyStateFiles: [legacy] })

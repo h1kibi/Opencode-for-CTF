@@ -15,8 +15,8 @@
  */
 import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
-import { verifyFlag, type ChallengeOracle } from "../packages/ctf-benchmark-core/src/oracle.ts"
-import { classifyFlagCandidate, type FlagEvidenceContext } from "../packages/ctf-core/src/flag-rules.ts"
+import { verifyFlag, type ChallengeOracle } from "ctf-benchmark-core"
+import { classifyFlagCandidate, type FlagEvidenceContext } from "ctf-core"
 
 export type FlagVerificationStatus = "oracle-verified" | "candidate" | "unverified" | "rejected"
 

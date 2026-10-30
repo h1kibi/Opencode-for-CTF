@@ -9,8 +9,8 @@ import {
   summarizeRuntimeToolRegistry,
   trimActivatedDefaults,
 } from "../src/plugin-support.js"
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { mkdirSync, writeFileSync } from "node:fs"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 import { join } from "node:path"
 
 const cleanup = () => clearActivatedDefaults("nonexistent-session")
@@ -269,7 +269,7 @@ describe("runtime tool registry summary", () => {
 
 describe("RuntimePlugin startup export", () => {
   it("exports representative ctf tools from plugin startup", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "ctf-plugin-startup-"))
+    const dir = makeTestWorkspace("ctf-plugin-startup")
     // Pin the default pack set explicitly so an ambient opencode-for-ctf.jsonc
     // (e.g. ~/.config/opencode/opencode-for-ctf.jsonc with expert_tool_packs)
     // cannot leak pwn-heavy/web-heavy tools into this hermetic startup test.
@@ -322,7 +322,7 @@ describe("RuntimePlugin startup export", () => {
   }, 60_000)
 
   it("unions startup packs with expert packs when exporting tools", async () => {
-    const root = mkdtempSync(join(tmpdir(), "ctf-plugin-packs-"))
+    const root = makeTestWorkspace("ctf-plugin-packs")
     const dir = join(root, "workspace")
     mkdirSync(dir, { recursive: true })
     writeFileSync(

@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { mkdtempSync } from "node:fs"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 import type { ContinuationState } from "../src/types.js"
 import { nowIso } from "../src/state-store.js"
 import {
@@ -44,7 +42,7 @@ function makeTodo(overrides?: Partial<{ status: string; priority: string }>) {
 }
 
 function tempPath(prefix: string): string {
-  return mkdtempSync(join(tmpdir(), prefix))
+  return makeTestWorkspace(prefix)
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,5 @@
 ﻿import { describe, expect, it } from "vitest"
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import {
   ALL_TOOL_PACKS,
@@ -11,6 +10,7 @@ import {
   toolAllowedByPacks,
 } from "../src/tool-packs.ts"
 import { listToolNames, loadCtfTools, loadCtfToolsWithReport } from "../src/ctf-tools.ts"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 
 const FAST_LIGHT_WEB_TOOLS = [
   "ctf-web-analyze",
@@ -103,7 +103,7 @@ describe("resolveEnabledPacks", () => {
 
 describe("loadCtfTools packs", () => {
   it("discovers tools recursively while keeping basename registry keys", async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-tools-recursive-"))
+    const root = await makeTestWorkspaceAsync("ctf-tools-recursive")
     await mkdir(path.join(root, "web"), { recursive: true })
     await writeFile(
       path.join(root, "web", "ctf-web-fixture.ts"),

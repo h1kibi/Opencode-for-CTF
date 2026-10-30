@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs"
-import { access, readFile } from "node:fs/promises"
+import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import {
@@ -13,6 +13,7 @@ import {
   pluginHealthPath,
   probeInstalledPluginRuntime,
   projectVersion,
+  compatibilityDiagnostic,
   readJsonc,
   tryWritePluginHealthReport,
 } from "./lib/opencode-ctf-install.mjs"
@@ -33,6 +34,7 @@ async function pluginRuntimeDiagnostic(configDir, config) {
       !entry.endsWith("\\plugin\\index.js"),
   )
 
+  const compatibility = await compatibilityDiagnostic()
   const diagnostics = {
     installedPluginFile: installed,
     installedPluginUrl: installedUrl,
@@ -43,11 +45,12 @@ async function pluginRuntimeDiagnostic(configDir, config) {
     pluginImportOk: false,
     pluginImportError: null,
     pluginExportNames: [],
+    compatibility,
     nextAction: "",
   }
 
   try {
-    await ensurePluginBuild()
+    await ensurePluginBuild({ quiet: process.argv.includes("--json") })
     diagnostics.bundledPluginPresent = true
   } catch {
     diagnostics.bundledPluginPresent = false
@@ -79,8 +82,9 @@ async function pluginRuntimeDiagnostic(configDir, config) {
 const configDir = opencodeConfigDir()
 const json = process.argv.includes("--json")
 const strict = process.argv.includes("--strict")
-const manifestFile = manifestPath(configDir)
 const currentVersion = await projectVersion()
+const compatibility = await compatibilityDiagnostic()
+const manifestFile = manifestPath(configDir)
 
 if (!existsSync(manifestFile)) {
   const file = configPath(configDir)
@@ -89,16 +93,20 @@ if (!existsSync(manifestFile)) {
     configDir,
     config: file,
     manifest: manifestFile,
-    currentVersion,
-    healthFile: pluginHealthPath(configDir),
+    compatibility,
   }
   await tryWritePluginHealthReport(configDir, {
     source: "status",
     state: result.state,
     config: result.config,
     manifest: result.manifest,
+    compatibility: result.compatibility,
   })
-  console.log(json ? JSON.stringify(result, null, 2) : `state: not installed\nhint: run npm run ctf:install`)
+  console.log(
+    json
+      ? JSON.stringify(result, null, 2)
+      : `state: not installed\ncompatibility: ${compatibility.policy}\nhint: run npm run ctf:install`,
+  )
   if (strict) process.exitCode = 1
 } else {
   const manifest = JSON.parse(await readFile(manifestFile, "utf8"))
@@ -186,6 +194,11 @@ if (!existsSync(manifestFile)) {
   else {
     console.log("# OpenCode for CTF status")
     console.log(`state: ${result.state}`)
+    console.log(`compatibility: ${result.pluginDiagnostic.compatibility.policy}`)
+    console.log(
+      `plugin_sdk: ${result.pluginDiagnostic.compatibility.pluginPackage}@${result.pluginDiagnostic.compatibility.pluginPackageVersion}; ` +
+        `${result.pluginDiagnostic.compatibility.sdkPackage}@${result.pluginDiagnostic.compatibility.sdkPackageVersion}`,
+    )
     console.log(`version: ${result.version} (project ${result.currentVersion})`)
     console.log(`profile: ${result.profile}`)
     console.log(`managed_files: ${result.managedFiles}`)

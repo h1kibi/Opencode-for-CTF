@@ -1,6 +1,5 @@
 ﻿import { createHash } from "node:crypto"
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
+import { rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import {
@@ -9,6 +8,7 @@ import {
   findFlags,
   hasFlagSourceContext,
 } from "../packages/ctf-core/src/flag-rules.ts"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import { verifyCandidateFlag } from "../src/flag-oracle.ts"
 
 const roots: string[] = []
@@ -35,13 +35,13 @@ describe("strict default flag identification", () => {
   it("requires explicit flag context for bare MD5/SHA256 values", () => {
     const md5 = "0123456789abcdef0123456789abcdef"
     const sha = "a".repeat(64)
-    expect(hasFlagSourceContext({ source: "/tmp/flag.txt", origin: "file" })).toBe(true)
-    expect(hasFlagSourceContext({ source: "/tmp/.flag", origin: "file" })).toBe(true)
-    expect(hasFlagSourceContext({ source: "/tmp/flag.png", origin: "file" })).toBe(false)
+    expect(hasFlagSourceContext({ source: "C:/work/flag.txt", origin: "file" })).toBe(true)
+    expect(hasFlagSourceContext({ source: "C:/work/.flag", origin: "file" })).toBe(true)
+    expect(hasFlagSourceContext({ source: "C:/work/flag.png", origin: "file" })).toBe(false)
     expect(hasFlagSourceContext({ text: "cat /flag\\n" })).toBe(true)
     expect(hasFlagSourceContext({ text: "cat flag.png\\n" })).toBe(false)
     expect(classifyFlagCandidate(md5)).toBeUndefined()
-    expect(classifyFlagCandidate(md5, { source: "/tmp/flag.txt", origin: "file" })?.confidence).toBe("medium")
+    expect(classifyFlagCandidate(md5, { source: "C:/work/flag.txt", origin: "file" })?.confidence).toBe("medium")
     expect(classifyFlagCandidate(sha, { text: "cat /flag\\n" })?.kind).toBe("bare-sha256")
     expect(extractFlagCandidates(`hash=${sha}`, { text: `hash=${sha}` })).toEqual([])
     expect(extractFlagCandidates(`flag hash=${sha}`, { text: `flag hash=${sha}` })).toEqual([])
@@ -73,7 +73,7 @@ describe("strict default flag identification", () => {
 
 describe("ctf-flag-grep integration", () => {
   it("reports strict candidates and context-qualified bare hashes", async () => {
-    const root = await mkdtemp(join(tmpdir(), "ctf-flag-grep-rules-"))
+    const root = await makeTestWorkspaceAsync("ctf-flag-grep-rules")
     roots.push(root)
     const flagFile = join(root, "flag.txt")
     const notes = join(root, "notes.txt")

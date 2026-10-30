@@ -71,7 +71,7 @@ describe("evaluateExpertReadiness", () => {
       teamModeEnabled: true,
       maxWorkers: 8,
       toolPacks: ["all"],
-      configPath: "/tmp/opencode-for-ctf.jsonc",
+      configPath: "C:/work/opencode-for-ctf.jsonc",
     })
     expect(report.ready).toBe(true)
     expect(report.missingTools).toEqual([])
@@ -156,7 +156,7 @@ describe("evaluateExpertReadiness", () => {
       maxWorkers: 8,
     })
     expect(report.ready).toBe(true)
-    // ctf-tool-packs and ctf-team-mode should be present in core pack
+    // ctf-tool-packs remains optional support
     expect(report.missingSupportTools).toBeDefined()
   })
 
@@ -271,7 +271,7 @@ describe("formatExpertReadinessFailure", () => {
     const report = makeUnreadyReport()
     const text = formatExpertReadinessFailure(report, {
       challengeText: "my challenge",
-      handoffPath: "/tmp/work/expert-handoff.md",
+      handoffPath: "C:/work/expert-handoff.md",
     })
     expect(text).toContain("After restart")
     expect(text).toContain("/ctf-expert")
@@ -328,7 +328,7 @@ describe("formatExpertRecoverySteps", () => {
 
 describe("extractResumeHints", () => {
   it("extracts expert-handoff.md path from text", () => {
-    const hints = extractResumeHints("Resume from /tmp/work/expert-handoff.md")
+    const hints = extractResumeHints("Resume from C:/work/expert-handoff.md")
     expect(hints.handoffPath).toContain("expert-handoff.md")
   })
 
@@ -338,7 +338,7 @@ describe("extractResumeHints", () => {
   })
 
   it("extracts Evidence.md path", () => {
-    const hints = extractResumeHints("Evidence.md in /tmp/work/ctf-evidence/")
+    const hints = extractResumeHints("Evidence.md in C:/work/ctf-evidence/")
     expect(hints.evidencePath).toContain("Evidence.md")
   })
 

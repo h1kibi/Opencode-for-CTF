@@ -1,31 +1,29 @@
-import { mkdtempSync, readdirSync, symlinkSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { readdirSync, symlinkSync, writeFileSync } from "node:fs"
 import path, { join } from "node:path"
 import { describe, expect, it } from "vitest"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 
 type ToolLike = {
   execute: (args: Record<string, unknown>, context?: { directory?: string }) => Promise<string>
 }
 
 function makeEscapeWorkspace() {
-  const root = mkdtempSync(join(tmpdir(), "ctf-state-guard-"))
-  const outside = mkdtempSync(join(tmpdir(), "ctf-state-guard-out-"))
+  const root = makeTestWorkspace("ctf-state-guard")
+  const outside = makeTestWorkspace("ctf-state-guard-out")
   const linkType = process.platform === "win32" ? "junction" : "dir"
   symlinkSync(outside, join(root, "leak"), linkType)
   return { root, outside }
 }
 
 describe("stateful tool workspace path guards", () => {
-  it("quarantines corrupt decision-state and rebuilds fresh instead of silently losing it", async () => {
-    const root = mkdtempSync(join(tmpdir(), "ctf-state-corrupt-"))
+  it("rejects corrupt decision-state instead of silently rebuilding it", async () => {
+    const root = makeTestWorkspace("ctf-state-corrupt")
     writeFileSync(join(root, ".ctf-decision-state.json"), "{not-json", "utf8")
     const mod = await import("../tools/core/ctf-decision-state.ts")
     const tool = mod.default as unknown as ToolLike
 
-    const out = await tool.execute({ operation: "init" }, { directory: root })
-    expect(String(out)).toContain("mode: medium")
-    expect(readdirSync(root).some((name) => name.startsWith(".ctf-decision-state.json.corrupt-"))).toBe(true)
-    expect(String(out)).toContain("state_path: .ctf-decision-state.json")
+    await expect(tool.execute({ operation: "init" }, { directory: root })).rejects.toThrow()
+    expect(readdirSync(root).some((name) => name.startsWith(".ctf-decision-state.json.corrupt-"))).toBe(false)
   })
 
   it("rejects symlink-escaped decision-state paths", async () => {

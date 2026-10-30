@@ -1,8 +1,8 @@
 ﻿import { createReadStream, createWriteStream, existsSync, readdirSync } from "node:fs"
-import { mkdir, mkdtemp, open, readFile, rename, rm, symlink, unlink, writeFile } from "node:fs/promises"
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
+import { cp, mkdir, open, readFile, rename, rm, symlink, unlink, writeFile } from "node:fs/promises"
+import { dirname, isAbsolute, relative, resolve, sep, basename } from "node:path"
 import { spawnSync } from "node:child_process"
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { pipeline } from "node:stream/promises"
 import { fileURLToPath } from "node:url"
 
@@ -268,7 +268,6 @@ async function extractTar(archive, outputRoot, pathMap) {
       // Windows may not permit symlink creation. Copy an available target so
       // the challenge remains usable; otherwise preserve the link text.
       try {
-        const { cp } = await import("node:fs/promises")
         await cp(resolvedLink, target, { recursive: true, dereference: true })
       } catch {
         await writeFile(target, linkTarget, "utf8")
@@ -307,7 +306,7 @@ async function main() {
   }
 
   await mkdir(dirname(target), { recursive: true })
-  const staging = await mkdtemp(`${target}.partial-`)
+  const staging = resolve(dirname(target), `.nyu-ctf-bench-${basename(target)}.partial-${randomUUID()}`)
   try {
     console.log(`Cloning ${REPO_URL} at ${ref} into ${staging}`)
     runGitWithRetry(

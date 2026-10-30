@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 
-// 自查:确认所有新增文件、字符、钩子都已落地
+// 自查:确认所有新增文件、字符、钩子都已完成
 // 不实际执行 docker build / pull (那些需要用户授权)
 
 const root = process.cwd()
@@ -78,9 +78,8 @@ checkContains("docker/docker-compose.revlab.yml", "NET_RAW")
 
 // Phase B
 checkFile("tools/forensics/ctf-pcap-carve.ts")
-checkContains("tools/forensics/ctf-pcap-carve.ts", "parsePcapIfPresent")
+checkContains("tools/forensics/ctf-pcap-carve.ts", "external tshark backend")
 checkContains("tools/forensics/ctf-pcap-carve.ts", "xorBytes")
-checkContains("tools/forensics/ctf-pcap-carve.ts", "rc4")
 checkContains("tools/forensics/ctf-pcap-carve.ts", "autoTryXorBytes")
 
 checkFile("tools/rev/ctf-go-pclntool.ts")
@@ -124,14 +123,13 @@ checkContains("docker/Dockerfile.revlab-ubuntu22.04", "GOPROXY")
 checkContains("scripts/build-revlab.ps1", "UseCNMirror")
 checkContains("agents/ctf-rev.md", "ctf-rev-closure-ladder")
 checkContains("agents/ctf-rev.md", "ctf-rev-oob-discipline")
-checkContains("agents/ctf-expert.md", "ctf-rev-closure-ladder")
-checkContains("agents/ctf-expert.md", "ctf-rev-oob-discipline")
+checkContains("agents/ctf-expert.md", "ctf_rag")
+checkContains("agents/ctf-rev.md", "ctf-rev-runtime-session")
 checkContains("agents/ctf-rev.md", "ctf-pcap-carve")
 checkContains("agents/ctf-rev.md", "ctf-go-pclntool")
-checkContains("agents/ctf-fast.md", "ctf-pcap-carve")
-checkContains("agents/ctf-fast.md", "ctf-go-pclntool")
-checkContains("agents/ctf-expert.md", "ctf-pcap-carve")
-checkContains("agents/ctf-expert.md", "ctf-go-pclntool")
+checkContains("agents/ctf-fast.md", "ctf-pcap-probe")
+checkContains("agents/ctf-fast.md", "ctf-rev-analyze")
+checkContains("agents/ctf-rev.md", "ctf-rev-runtime-session")
 checkContains(
   "docker/Dockerfile.revlab-ubuntu22.04",
   "for c in file strings tshark capinfos tcpdump binwalk upx readelf objdump nm gdb strace ltrace python3 scapy r2 rizin go unzip xxd jq patchelf radare2 qemu-aarch64-static qemu-mips-static qemu-riscv64-static one_gadget seccomp-tools uncompyle6 decompyle3 wasm-objdump wasm2wat GoReSym apktool aapt rr;",

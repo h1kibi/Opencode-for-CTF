@@ -1,8 +1,8 @@
 ﻿import { createHash } from "node:crypto"
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { tmpdir } from "node:os"
 import { describe, expect, it } from "vitest"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import {
   assertNyuChallengeBoundary,
   loadNyuChallenges,
@@ -11,7 +11,7 @@ import {
 import { verifyFlag } from "../packages/ctf-benchmark-core/src/oracle.ts"
 
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), "nyu-adapter-"))
+  const root = await makeTestWorkspaceAsync("nyu-adapter")
   const challengeDir = join(root, "2021", "CSAW-Quals", "web", "maze")
   await mkdir(join(challengeDir, "public"), { recursive: true })
   const flag = "flag{nyu_adapter_pass}"
@@ -95,7 +95,7 @@ describe("NYU CTF Bench adapter", () => {
   })
 
   it("rejects challenge paths that escape the dataset root", async () => {
-    const root = await mkdtemp(join(tmpdir(), "nyu-adapter-escape-"))
+    const root = await makeTestWorkspaceAsync("nyu-adapter-escape")
     await writeFile(
       join(root, "development_dataset.json"),
       JSON.stringify({ bad: { year: "2021", event: "CSAW-Quals", category: "web", challenge: "bad", path: "../bad" } }),

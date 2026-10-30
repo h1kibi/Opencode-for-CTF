@@ -2,8 +2,38 @@ import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { parse, type ParseError } from "jsonc-parser/lib/esm/main.js"
+import { parse, type ParseError } from "jsonc-parser"
 import { isToolPackId, normalizeToolPackName } from "./tool-packs.ts"
+
+/** Allowed band for active Evidence routes on the expert lane. */
+export type RoutePolicy = {
+  min: number
+  max: number
+}
+
+/**
+ * Default expert route band. The count "3" is the recommended norm, not a hard
+ * invariant: breadth-first phases may open up to `max` routes, depth phases
+ * may narrow to `min`. Distinctness, evidence basis, and dead criteria are the
+ * real invariants and stay enforced regardless of band width.
+ */
+export const DEFAULT_ROUTE_POLICY: RoutePolicy = { min: 2, max: 6 }
+
+/** Hard structural bounds any configured route band is clamped into. */
+export const ROUTE_POLICY_BOUNDS = { min: 1, max: 8 } as const
+
+/** Clamp a partial user-supplied route_policy into a sane band. */
+export function normalizeRoutePolicy(partial: unknown): RoutePolicy {
+  if (!isRecord(partial)) return { ...DEFAULT_ROUTE_POLICY }
+  let min =
+    typeof partial.min === "number" && Number.isFinite(partial.min) ? Math.floor(partial.min) : DEFAULT_ROUTE_POLICY.min
+  let max =
+    typeof partial.max === "number" && Number.isFinite(partial.max) ? Math.floor(partial.max) : DEFAULT_ROUTE_POLICY.max
+  min = Math.min(ROUTE_POLICY_BOUNDS.max, Math.max(ROUTE_POLICY_BOUNDS.min, min))
+  max = Math.min(ROUTE_POLICY_BOUNDS.max, Math.max(ROUTE_POLICY_BOUNDS.min, max))
+  if (min > max) [min, max] = [max, min]
+  return { min, max }
+}
 
 /** Known runtime hooks that users may disable via config. */
 export type HookName =
@@ -24,6 +54,19 @@ export type PluginUserConfig = {
     enabled: boolean
     max_workers: number
     max_job_attempts?: number
+  }
+  /** Active-route band for the expert lane (see DEFAULT_ROUTE_POLICY). */
+  route_policy: RoutePolicy
+  /**
+   * Clean-room measurement arm: deny web retrieval tools for ctf agents so
+   * benchmark solve rates exclude writeup lookup / memorization contamination
+   * (set via config or OPENCODE_CTF_CLEAN_ROOM=1 for benchmark runners).
+   */
+  clean_room: boolean
+  /** Sampling defaults for explorer agents (see chat-and-diagnostic-hooks). */
+  explorer_sampling: {
+    temperature: number
+    top_p: number
   }
   continuation: {
     enabled: boolean
@@ -60,6 +103,9 @@ export const DEFAULT_PLUGIN_CONFIG: PluginUserConfig = {
     max_workers: 8,
     max_job_attempts: 2,
   },
+  route_policy: { ...DEFAULT_ROUTE_POLICY },
+  clean_room: false,
+  explorer_sampling: { temperature: 0.8, top_p: 0.95 },
   continuation: {
     enabled: true,
   },
@@ -112,6 +158,22 @@ export function mergePluginConfig(partial: unknown): PluginUserConfig {
     if (typeof partial.team_mode.max_job_attempts === "number" && partial.team_mode.max_job_attempts > 0) {
       base.team_mode.max_job_attempts = Math.min(10, Math.floor(partial.team_mode.max_job_attempts))
     }
+  }
+  if (partial.route_policy !== undefined) {
+    base.route_policy = normalizeRoutePolicy(partial.route_policy)
+  }
+  if (typeof partial.clean_room === "boolean") {
+    base.clean_room = partial.clean_room
+  }
+  if (isRecord(partial.explorer_sampling)) {
+    const t = partial.explorer_sampling.temperature
+    const p = partial.explorer_sampling.top_p ?? partial.explorer_sampling.topP
+    if (typeof t === "number" && Number.isFinite(t)) base.explorer_sampling.temperature = Math.min(1.2, Math.max(0, t))
+    if (typeof p === "number" && Number.isFinite(p)) base.explorer_sampling.top_p = Math.min(1, Math.max(0, p))
+  }
+  // Benchmark runners flip the clean arm without writing a config file.
+  if (process.env.OPENCODE_CTF_CLEAN_ROOM === "1") {
+    base.clean_room = true
   }
   if (isRecord(partial.continuation) && typeof partial.continuation.enabled === "boolean") {
     base.continuation.enabled = partial.continuation.enabled

@@ -1,7 +1,7 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
+import { readFile, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 
 const roots: string[] = []
 
@@ -11,7 +11,7 @@ afterEach(async () => {
 
 describe("flag candidate tool contracts", () => {
   it("keeps source-map flags separate from secrets and never reports direct solve", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "ctf-source-map-candidate-"))
+    const root = await makeTestWorkspaceAsync("ctf-source-map-candidate")
     roots.push(root)
     await writeFile(
       path.join(root, "app.py"),

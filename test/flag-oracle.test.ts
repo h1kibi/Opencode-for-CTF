@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto"
-import { mkdtemp, writeFile } from "node:fs/promises"
+import { writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { tmpdir } from "node:os"
 import { describe, expect, it } from "vitest"
 import {
   classifySolverOutcome,
@@ -9,6 +8,7 @@ import {
   verifyCandidateFlag,
   type SolverOutcomeInput,
 } from "../src/flag-oracle.ts"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 
 describe("verifyCandidateFlag", () => {
   it("verifies an exact expected flag", async () => {
@@ -46,7 +46,7 @@ describe("verifyCandidateFlag", () => {
   })
 
   it("does not let flagFile self-verify without an external candidate", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "ctf-flag-oracle-"))
+    const dir = await makeTestWorkspaceAsync("ctf-flag-oracle")
     const file = join(dir, "flag.txt")
     await writeFile(file, "flag{from-file}\n", "utf8")
     const result = await verifyCandidateFlag({ candidates: [], flagFile: file })
@@ -54,7 +54,7 @@ describe("verifyCandidateFlag", () => {
   })
 
   it("verifies when an external candidate matches the flagFile oracle", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "ctf-flag-oracle-"))
+    const dir = await makeTestWorkspaceAsync("ctf-flag-oracle")
     const file = join(dir, "flag.txt")
     await writeFile(file, "flag{from-file}\n", "utf8")
     const result = await verifyCandidateFlag({ candidates: ["flag{from-file}"], flagFile: file })

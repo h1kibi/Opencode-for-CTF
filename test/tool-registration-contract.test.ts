@@ -2,9 +2,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import { loadCtfTools } from "../src/ctf-tools.js"
-import { EXPERT_REQUIRED_TOOLS, EXPERT_SUPPORT_TOOLS } from "../src/expert-readiness.js"
 import { FAMILY_CAPABILITY_CONTRACTS } from "../src/family-capability-contracts.js"
-import { createTeamTools } from "../src/team-runtime.js"
 import {
   DEFAULT_TOOL_PACKS,
   FAST_TOOL_ALLOWLIST,
@@ -14,15 +12,6 @@ import {
   resolveEnabledPacks,
   toolAllowedByPacks,
 } from "../src/tool-packs.js"
-
-function fakeClient() {
-  return {
-    session: {
-      create: async () => ({ data: { id: "session-id" } }),
-      chat: async () => ({ data: {} }),
-    },
-  }
-}
 
 describe("tool registration contract", () => {
   it("exports every ctf-fast allowlisted tool under default packs", async () => {
@@ -85,15 +74,6 @@ describe("tool registration contract", () => {
           `${family} contract tool pack disabled: ${toolName} (${packForTool(toolName)})`,
         ).toBe(true)
       }
-    }
-  }, 60_000)
-
-  it("registers expert team tools when Team Mode tools are created", async () => {
-    const tools = await loadCtfTools({ packs: DEFAULT_TOOL_PACKS })
-    Object.assign(tools, createTeamTools(fakeClient(), process.cwd(), process.cwd(), { maxWorkers: 2 }))
-    const exported = new Set(Object.keys(tools))
-    for (const toolName of [...EXPERT_REQUIRED_TOOLS, ...EXPERT_SUPPORT_TOOLS]) {
-      expect(exported.has(toolName), `expert tool missing: ${toolName}`).toBe(true)
     }
   }, 60_000)
 })

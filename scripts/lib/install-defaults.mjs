@@ -126,6 +126,9 @@ export const MCP_DEFAULTS = {
   },
 }
 
+/** Tool whitelist manifest; install must fail loudly when it is missing. */
+export const TOOL_MANIFEST_SOURCE = "ctf-agent.manifest.json"
+
 export function managedAssetMappings() {
   // Local knowledge retrieval is served by the external `ctf_rag` MCP server, so
   // no corpus is copied into the managed install any more. The external
@@ -140,5 +143,9 @@ export function managedAssetMappings() {
     { source: "runtime", target: path.join("opencode-for-ctf", "runtime") },
     { source: "mcp-server", target: path.join("opencode-for-ctf", "mcp-server") },
     { source: path.join("dist", "plugin"), target: path.join("opencode-for-ctf", "plugin") },
+    // Deployed at the managed PLUGIN_ROOT so the runtime enforces the
+    // registered_tools whitelist and required_tools criticals in installed
+    // copies, not only in source checkouts.
+    { source: TOOL_MANIFEST_SOURCE, target: path.join("opencode-for-ctf", TOOL_MANIFEST_SOURCE) },
   ]
 }

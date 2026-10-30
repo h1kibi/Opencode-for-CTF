@@ -28,31 +28,31 @@ function manifest() {
   return JSON.parse(readFileSync(join(root, "ctf-agent.manifest.json"), "utf8")) as {
     primary_agents?: string[]
     user_selectable_agents?: string[]
+    support_primary_agents?: string[]
     category_subagents?: string[]
     meta_subagents?: string[]
   }
-}
-
-function categoryAgents() {
-  return manifest().category_subagents ?? []
 }
 
 function hiddenSubagents() {
   const allAgents = readdirSync(agentsDir)
     .filter((file) => file.endsWith(".md"))
     .map((file) => file.replace(/\.md$/, ""))
-  const primaryAgents = manifest().primary_agents ?? []
-  return allAgents.filter((agent) => !primaryAgents.includes(agent))
+  const visible = [...(manifest().primary_agents ?? []), ...(manifest().support_primary_agents ?? [])]
+  return allAgents.filter((agent) => !visible.includes(agent))
 }
 
 describe("agent visibility", () => {
-  it("declares only fast and expert as user-selectable solving agents", () => {
+  it("declares fast and expert as solving primaries plus researcher as support primary", () => {
     expect(manifest().primary_agents).toEqual(["ctf-fast", "ctf-expert"])
-    expect(manifest().user_selectable_agents).toEqual(manifest().primary_agents)
+    expect(manifest().user_selectable_agents).toEqual([
+      ...(manifest().primary_agents ?? []),
+      ...(manifest().support_primary_agents ?? []),
+    ])
   })
 
-  it("keeps fast and expert as visible primary solving agents", () => {
-    for (const agent of ["ctf-fast.md", "ctf-expert.md"]) {
+  it("keeps fast, expert, and researcher as visible primary agents", () => {
+    for (const agent of ["ctf-fast.md", "ctf-expert.md", "researcher.md"]) {
       const definition = agentDefinition(agent)
       expect(definition.mode, agent).toBe("primary")
       expect(definition.hidden, agent).not.toBe(true)

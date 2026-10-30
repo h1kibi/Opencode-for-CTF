@@ -1,13 +1,13 @@
-import { mkdtempSync, rmSync } from "node:fs"
-import os from "node:os"
+import { rmSync } from "node:fs"
 import path from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { resolvePluginRoot } from "../src/asset-paths.ts"
+import { makeTestWorkspace } from "./support/test-workspace.ts"
 
 const tempDirs: string[] = []
 
 function tempRoot(prefix: string) {
-  const dir = mkdtempSync(path.join(os.tmpdir(), prefix))
+  const dir = makeTestWorkspace(prefix)
   tempDirs.push(dir)
   return dir
 }
@@ -18,27 +18,27 @@ afterEach(() => {
 
 describe("resolvePluginRoot layout detection", () => {
   it("resolves a source checkout layout (repo/src)", () => {
-    const root = tempRoot("asset-src-")
+    const root = tempRoot("asset-src")
     expect(resolvePluginRoot(path.join(root, "src"))).toBe(root)
   })
 
   it("resolves the repo bundle layout (repo/dist/plugin)", () => {
-    const root = tempRoot("asset-dist-")
+    const root = tempRoot("asset-dist")
     expect(resolvePluginRoot(path.join(root, "dist", "plugin"))).toBe(root)
   })
 
   it("resolves the repo bundle with shared chunks (repo/dist/plugin/chunks)", () => {
-    const root = tempRoot("asset-dist-chunks-")
+    const root = tempRoot("asset-dist-chunks")
     expect(resolvePluginRoot(path.join(root, "dist", "plugin", "chunks"))).toBe(root)
   })
 
   it("resolves the managed install layout (<config>/opencode-for-ctf/plugin)", () => {
-    const root = tempRoot("asset-install-")
+    const root = tempRoot("asset-install")
     expect(resolvePluginRoot(path.join(root, "opencode-for-ctf", "plugin"))).toBe(path.join(root, "opencode-for-ctf"))
   })
 
   it("resolves the managed install with shared chunks (<config>/opencode-for-ctf/plugin/chunks)", () => {
-    const root = tempRoot("asset-install-chunks-")
+    const root = tempRoot("asset-install-chunks")
     expect(resolvePluginRoot(path.join(root, "opencode-for-ctf", "plugin", "chunks"))).toBe(
       path.join(root, "opencode-for-ctf"),
     )

@@ -8,6 +8,7 @@ import {
   getCachedFile,
   propString,
   quickHash,
+  setCachedFile,
   skillToAgent,
   stripHashTags,
 } from "../plugin-support.ts"
@@ -15,7 +16,6 @@ import { isCtfSubagent, subagentLightToolSample, toolAllowedForAgent, toolAllowe
 import { surfaceAgentForTools } from "../session-surface.ts"
 import { enforceExpertToolPolicy } from "../expert-policy.ts"
 import { enforceWorkerToolPolicy } from "../worker-policy.ts"
-
 function firstNonEmptyString(...values: string[]) {
   return values.find((value) => value !== "") ?? ""
 }
@@ -83,6 +83,38 @@ export function normalizeToolExecutionArgs(
   )
 }
 
+/** Web retrieval surfaces excluded by the clean_room measurement arm.
+ *
+ * Denials here are measurement_denied, NOT unsolved — benchmark reports must
+ * count them separately so failure attribution is not polluted. The real
+ * egress boundary for a clean arm is per-challenge network policy in the NYU
+ * runner (allow only the challenge host); this gate is the agent-side
+ * tripwire for knowledge-lookup channels (search engines, page fetchers,
+ * browsers, GitHub/code search, doc retrieval). Challenge-service
+ * interaction (nc/pwn service, ctf-web-probe against the target) stays
+ * allowed — that IS the solving action.
+ */
+const CLEAN_ROOM_EXACT = new Set(["webfetch", "websearch"])
+const CLEAN_ROOM_PREFIXES = [
+  "brave_",
+  "tavily_",
+  "jina_",
+  "firecrawl_",
+  "anysearch_",
+  "browser_",
+  "puppeteer_",
+  "chrome_",
+  "github_",
+  "gh_grep_",
+  "markitdown_",
+  "context7_",
+]
+
+function isWebRetrievalTool(toolName: string): boolean {
+  if (CLEAN_ROOM_EXACT.has(toolName)) return true
+  return CLEAN_ROOM_PREFIXES.some((prefix) => toolName.startsWith(prefix))
+}
+
 export async function handleToolExecuteBefore(args: {
   meta: Record<string, any>
   output: Record<string, any>
@@ -92,6 +124,8 @@ export async function handleToolExecuteBefore(args: {
   isHookEnabled: (hook: any) => boolean
   expertReadinessReport: () => { ready: boolean }
   expertReadinessFailureText: (userText?: string, sessionNote?: string) => string
+  routePolicy?: { min: number; max: number }
+  cleanRoom?: boolean
 }) {
   const normalized = normalizeToolExecutionMeta(args.meta, args.output)
   const { rawAgent, toolName, sessionID } = normalized
@@ -116,7 +150,17 @@ export async function handleToolExecuteBefore(args: {
     agentName,
     toolName,
     toolArgs,
+    routePolicy: args.routePolicy,
   })
+
+  // Clean-room measurement arm: no web retrieval for ctf agents, so benchmark
+  // solve rates measure solving instead of writeup lookup / memorization.
+  if (args.cleanRoom && toolName && agentName.startsWith("ctf-") && isWebRetrievalTool(toolName)) {
+    throw new Error(
+      `CleanRoomGate: tool "${toolName}" is blocked because clean_room is enabled. ` +
+        `This measurement arm must solve without web retrieval; report the blocker and continue offline.`,
+    )
+  }
 
   if (toolName && !toolAllowedForAgent(toolName, agentName)) {
     throw new Error(
@@ -150,6 +194,11 @@ export async function handleToolExecuteBefore(args: {
     const agent = (requested ?? "").trim()
     if (!sessionKey || !agent) return
     if (agent === "ctf-common" || agent === "ctf-terminal") return
+    // Default MCP profiles are defined per CTF surface (AGENT_MCP_DEFAULTS).
+    // Host built-ins such as `build`/`plan` must not inherit CTF retrieval
+    // defaults, and they have no CTF tool surface that needs them.
+    // `researcher` is the one support agent without the `ctf-` prefix.
+    if (!agent.startsWith("ctf-") && agent !== "researcher") return
     const result = await activateAgentDefaultsOnce({
       client: args.input.client,
       worktree: args.input.worktree,
@@ -266,8 +315,6 @@ export async function handleToolExecuteAfter(args: {
       let content = hasLineNumbers ? line.replace(/^\d+\|\s?/, "") : line
       return content.replace(/^\d+#[0-9A-Za-z]{1,8}\|\s?/, "")
     })
-    clearFileCache(filePath)
-    const { setCachedFile } = await import("../plugin-support.ts")
     setCachedFile(filePath, cachedLines)
     args.output.output = tagged.join("\n")
     return

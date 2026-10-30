@@ -1,5 +1,5 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
+import { rm, writeFile } from "node:fs/promises"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 
@@ -10,7 +10,7 @@ afterEach(async () => {
 })
 
 async function runPwnScript(source: string, expectedFlag?: string) {
-  const root = await mkdtemp(join(tmpdir(), "ctf-pwn-runner-oracle-"))
+  const root = await makeTestWorkspaceAsync("ctf-pwn-runner-oracle")
   roots.push(root)
   const script = join(root, "solve.py")
   await writeFile(script, source, "utf8")

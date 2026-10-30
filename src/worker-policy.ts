@@ -1,4 +1,5 @@
-import { isTerminalJob, readTeamState } from "./team/team-state.ts"
+import { isTerminalTeamJob } from "./team-reducer.ts"
+import { readTeamState } from "./team/team-state.ts"
 import { isCtfSubagent } from "./tool-packs.ts"
 import type { TeamJobStatus } from "./team/team-types.ts"
 
@@ -46,7 +47,6 @@ export const WORKER_DENIED_TOOLS = new Set([
   "ctf-decision-state",
   "ctf-file-write-matrix",
   "ctf-mcp-control",
-  "ctf-team-mode",
   "ctf-continuation-control",
   "ctf-skill-mcp-lifecycle",
   "ctf-whitebox-handoff",
@@ -274,9 +274,7 @@ function evaluateUnverifiedWorkerPolicy(
   args: Record<string, unknown>,
   reason: string,
 ): WorkerPolicyDecision {
-  // Unbound/unreadable workers never reach the worker-only claim exception,
-  // even if a future policy change ever expands WORKER_TEAM_ALLOWLIST.
-  if (toolName === "ctf-team-claim" || isWorkerDeniedTool(toolName)) {
+  if (isWorkerDeniedTool(toolName)) {
     return {
       allowed: false,
       reason: `WorkerPolicyError: ${reason} Refusing high-privilege tool "${toolName}" until Team identity is verified.`,
@@ -317,13 +315,14 @@ async function lookupWorkerContext(directory: string, sessionID?: string): Promi
     for (const run of state.runs) {
       const job = run.jobs.find((candidate) => candidate.sessionID === sessionID)
       if (!job) continue
+      const probe = run.probes.find((candidate) => candidate.id === job.probeId)
       return {
         stateReadable: true,
         context: {
           runId: run.id,
           jobId: job.id,
           parentSessionID: run.parentSessionID,
-          routeId: job.routeId,
+          routeId: probe?.routeId ?? "general",
           agent: job.agent,
           status: job.status,
           retryPending: Boolean(job.retryPending),
@@ -341,15 +340,6 @@ export async function findWorkerContext(directory: string, sessionID?: string): 
   return (await lookupWorkerContext(directory, sessionID)).context
 }
 
-/**
- * Tools a verified active Team worker may invoke. The runtime is the sole
- * authorization decision point for `ctf-team-claim`; this list is the narrow
- * worker-side exception to the blanket `ctf-team-*` denial.
- */
-export const WORKER_TEAM_ALLOWLIST: Record<string, true> = {
-  "ctf-team-claim": true,
-}
-
 export function evaluateWorkerToolPolicy(
   context: WorkerContext,
   toolName: string,
@@ -362,20 +352,13 @@ export function evaluateWorkerToolPolicy(
     }
   }
 
-  if (context.retryPending || isTerminalJob(context.status)) {
+  if (context.retryPending || isTerminalTeamJob(context.status)) {
     return {
       allowed: false,
       reason:
         `WorkerPolicyError: worker ${context.jobId} is no longer active (status=${context.status}` +
         `${context.retryPending ? ", retry pending" : ""}); stale worker execution is fenced.`,
     }
-  }
-
-  // Narrow per-tool exception for verified active workers only. The runtime
-  // body still has to enforce run/job/agent/route/parent binding; this is the
-  // worker-side gate that lets the call through policy.
-  if (WORKER_TEAM_ALLOWLIST[toolName]) {
-    return { allowed: true }
   }
 
   if (isWorkerDeniedTool(toolName)) {

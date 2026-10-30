@@ -65,7 +65,7 @@ describe("formatHardRouteHandoff", () => {
     const lessons = text.indexOf("lessons")
     const retros = text.indexOf("retros")
     const knowledge = text.indexOf("knowledge recall")
-    const routes = text.indexOf("exactly 3")
+    const routes = text.indexOf("route_policy band")
     expect(text).toContain("Behave as **ctf-expert**")
     expect(text).toContain("ctf-evidence-board command=init")
     expect(lessons).toBeGreaterThan(-1)

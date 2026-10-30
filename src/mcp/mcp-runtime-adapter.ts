@@ -1,8 +1,9 @@
 import path from "node:path"
 import { randomUUID } from "node:crypto"
 import { PLUGIN_ROOT } from "../asset-paths.ts"
+import { isTerminalTeamJob } from "../team-reducer.ts"
 import { probeSessionPresence } from "../team/session-liveness.ts"
-import { findJobBySession, isTerminalJob, readTeamState } from "../team/team-state.ts"
+import { findJobBySession, readTeamState } from "../team/team-state.ts"
 import { lookupMcpServer, envPrerequisitesSatisfied } from "../mcp-server-registry.ts"
 import { agentMcpStateFile } from "../paths.ts"
 import { describeMcpActivationError, ensureNamedServerLeases, releaseSkillMcpLeases } from "../skill-mcp-manager.ts"
@@ -80,7 +81,7 @@ async function teamOwnerEligibility(
     const located = findJobBySession(state, sessionID)
     if (!located) return "eligible"
     if (
-      isTerminalJob(located.job.status) ||
+      isTerminalTeamJob(located.job.status) ||
       located.job.retryPending ||
       located.job.retrySessionID ||
       ["completed", "cancelled", "cancelling"].includes(located.run.status)

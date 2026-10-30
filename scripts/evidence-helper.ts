@@ -87,12 +87,24 @@ export function formatEvidenceTimestamp(date = new Date()) {
   return `${pad(date.getMonth() + 1)}${pad(date.getDate())}${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
 }
 
-export function buildEvidenceSlug(category: string, challengeName?: string, date = new Date()) {
-  const categoryPart = slugifyEvidencePart(category) || "misc"
-  const namePart = challengeName ? slugifyEvidencePart(challengeName) : ""
-  if (!namePart) return `${categoryPart}-${formatEvidenceTimestamp(date)}`
-  if (namePart === categoryPart || namePart.startsWith(`${categoryPart}-`)) return namePart
-  return `${categoryPart}-${namePart}`
+/**
+ * Record-folder timestamp: YYMMDDHHmm in local time.
+ * `2610251156` = created 2026-10-25 11:56 — one timestamped folder per solve.
+ */
+export function formatRecordTimestamp(date = new Date()) {
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${String(date.getFullYear()).slice(-2)}${pad(date.getMonth() + 1)}${pad(date.getDate())}${pad(date.getHours())}${pad(date.getMinutes())}`
+}
+
+/**
+ * Record folder name for one solve run: the creation timestamp (YYMMDDHHmm).
+ * Category and challenge identity are recorded inside the files (Evidence.md
+ * header, case.json, board JSON), not in the folder name, so every init gets
+ * its own fresh record folder and re-solving a challenge never overwrites the
+ * previous run's records.
+ */
+export function buildEvidenceSlug(_category?: string, _challengeName?: string, date = new Date()) {
+  return formatRecordTimestamp(date)
 }
 
 export function ensureFileFromTemplate(target: string, template: string, fallback = "") {

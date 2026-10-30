@@ -1,5 +1,5 @@
-import { mkdtemp, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { writeFile } from "node:fs/promises"
+import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 
@@ -10,7 +10,7 @@ const MOD_PATH = "../tools/rev/ctf-rev-analyze.ts"
 describe("ctf-rev-analyze tool", { timeout: 30_000 }, () => {
   it("routes APKs to the android facade hint without native probing", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-rev-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-rev-analyze")
     const target = path.join(root, "challenge.apk")
     await writeFile(target, Buffer.from("PK\x03\x04fixture"), "binary")
 
@@ -26,7 +26,7 @@ describe("ctf-rev-analyze tool", { timeout: 30_000 }, () => {
 
   it("routes PE-like files to the native facade path", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-rev-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-rev-analyze")
     const target = path.join(root, "crackme.exe")
     await writeFile(target, Buffer.from("MZfixture"), "binary")
 
@@ -44,7 +44,7 @@ describe("ctf-rev-analyze tool", { timeout: 30_000 }, () => {
 
   it("routes Mach-O artifacts with an explicit capability contract", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-rev-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-rev-analyze")
     await writeFile(path.join(root, "challenge"), Buffer.from("\xfe\xed\xfa\xce\x00\x00\x00\x00", "binary"))
 
     const out = await mod.default.execute({ target: "challenge", jsonOnly: true }, { directory: root } as never)
@@ -63,7 +63,7 @@ describe("ctf-rev-analyze tool", { timeout: 30_000 }, () => {
 
   it("routes DEX magic and secondary classes files to the Android capability", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-rev-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-rev-analyze")
 
     await writeFile(path.join(root, "classes.dex"), Buffer.from("dex\n035\x00fixture", "binary"))
     const dexOut = await mod.default.execute({ target: "classes.dex", jsonOnly: true }, { directory: root } as never)
@@ -85,7 +85,7 @@ describe("ctf-rev-analyze tool", { timeout: 30_000 }, () => {
 
   it("routes JVM class magic independently of the file extension", async () => {
     const mod = await import(MOD_PATH)
-    const root = await mkdtemp(path.join(os.tmpdir(), "ctf-rev-analyze-"))
+    const root = await makeTestWorkspaceAsync("ctf-rev-analyze")
     await writeFile(path.join(root, "blob.bin"), Buffer.from("\xca\xfe\xba\xbe\x00\x00", "binary"))
 
     const out = await mod.default.execute({ target: "blob.bin", jsonOnly: true }, { directory: root } as never)

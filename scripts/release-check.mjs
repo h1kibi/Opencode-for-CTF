@@ -46,9 +46,11 @@ async function packInstallSmoke() {
     const entry = Array.isArray(parsed) ? parsed[0] : parsed
     const filename = entry?.filename
     if (!filename) throw new Error("npm pack did not report a tarball filename")
-    const tarball = path.join(tempRoot, filename)
-    const extract = spawnSync("tar", ["-xzf", tarball, "-C", extractDir], {
-      cwd: repoRoot,
+    // Run tar from tempRoot with RELATIVE paths: GNU tar parses "C:\..." on
+    // the argument line as host:path (remote spec), which breaks extraction
+    // on Windows ("Cannot connect to C:"). Relative paths avoid the colon.
+    const extract = spawnSync("tar", ["-xzf", filename, "-C", "extract"], {
+      cwd: tempRoot,
       encoding: "utf8",
       shell: process.platform === "win32",
     })
@@ -70,6 +72,14 @@ async function packInstallSmoke() {
     }
     if (!existsSync(path.join(configDir, "opencode-for-ctf.manifest.json"))) {
       throw new Error("published package install smoke did not create the managed manifest")
+    }
+    const installedToolManifest = path.join(configDir, "opencode-for-ctf", "ctf-agent.manifest.json")
+    if (!existsSync(installedToolManifest)) {
+      throw new Error("published package install smoke did not copy ctf-agent.manifest.json")
+    }
+    const installedTools = JSON.parse(await readFile(installedToolManifest, "utf8"))
+    if (!Array.isArray(installedTools.registered_tools) || installedTools.registered_tools.length < 150) {
+      throw new Error("installed ctf-agent.manifest.json has no usable registered_tools whitelist")
     }
     console.log("pack install smoke passed")
   } finally {

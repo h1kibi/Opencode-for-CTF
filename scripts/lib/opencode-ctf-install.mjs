@@ -12,6 +12,7 @@ import {
   MCP_DEFAULTS,
   PROFILE_MCP,
   SAFE_BASH_RULES,
+  TOOL_MANIFEST_SOURCE,
   managedAssetMappings,
 } from "./install-defaults.mjs"
 
@@ -25,7 +26,22 @@ export async function projectVersion() {
   return JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8")).version
 }
 
-export async function ensurePluginBuild({ force = false } = {}) {
+export async function compatibilityDiagnostic() {
+  const packageJson = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"))
+  const dependencies = packageJson.dependencies ?? {}
+  return {
+    pluginPackage: "@opencode-ai/plugin",
+    pluginPackageVersion: dependencies["@opencode-ai/plugin"] ?? "unknown",
+    sdkPackage: "@opencode-ai/sdk",
+    sdkPackageVersion: dependencies["@opencode-ai/sdk"] ?? "unknown",
+    verifiedHostVersion: "1.19.4",
+    policy: "verified against OpenCode 1.19.4; OpenCode 1.18.x is unverified; OpenCode 2.x is unsupported",
+    hostVersion: null,
+    hostVersionDetection: "unavailable; no supported host-version API",
+  }
+}
+
+export async function ensurePluginBuild({ force = false, quiet = false } = {}) {
   const bundled = path.join(repoRoot, "dist", "plugin", "index.js")
   const hasSource = existsSync(path.join(repoRoot, "src", "plugin.ts")) && existsSync(path.join(repoRoot, "tools"))
   if (!force && existsSync(bundled)) return bundled
@@ -33,7 +49,7 @@ export async function ensurePluginBuild({ force = false } = {}) {
   if (!hasSource) throw new Error("Bundled OpenCode for CTF plugin is missing and source files are not available.")
   const result = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "build-plugin.mjs")], {
     cwd: repoRoot,
-    stdio: "inherit",
+    stdio: quiet ? ["ignore", "ignore", "pipe"] : "inherit",
     shell: false,
   })
   if (result.status !== 0 || !existsSync(bundled)) {
@@ -124,27 +140,19 @@ export async function probeRuntimeModule(entryFile, options = {}) {
     return { ok: false, error: `missing file: ${entryFile}`, exportNames: [] }
   }
 
-  try {
-    const moduleUrl = pathToFileURL(entryFile)
-    moduleUrl.searchParams.set("ctf_probe", `${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`)
-    const loaded = await import(moduleUrl.href)
-    const exportNames = Object.keys(loaded).sort()
-    const missingExports = expectedExports.filter((name) => !(name in loaded))
-    if (missingExports.length) {
-      return {
-        ok: false,
-        error: `loaded module but missing expected exports: ${missingExports.join(", ")}`,
-        exportNames,
-      }
-    }
-    return { ok: true, exportNames }
-  } catch (error) {
+  const moduleUrl = pathToFileURL(entryFile)
+  moduleUrl.searchParams.set("ctf_probe", `${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`)
+  const loaded = await import(moduleUrl.href)
+  const exportNames = Object.keys(loaded).sort()
+  const missingExports = expectedExports.filter((name) => !(name in loaded))
+  if (missingExports.length) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : String(error),
-      exportNames: [],
+      error: `loaded module but missing expected exports: ${missingExports.join(", ")}`,
+      exportNames,
     }
   }
+  return { ok: true, exportNames }
 }
 
 export async function probeInstalledPluginRuntime(configDir = opencodeConfigDir()) {
@@ -333,22 +341,6 @@ export async function buildConfigOperations(config, profile, configDir, previous
     operations.push({
       path: parts,
       value: next,
-      previousExists: previous?.previousExists ?? hasOwnAtPath(config, parts),
-      previousValue: previous?.previousValue ?? currentValue,
-      parentExisted: previous?.parentExisted ?? (parts.length < 2 || hasOwnAtPath(config, parts.slice(0, -1))),
-    })
-  }
-
-  function removeManagedArrayValues(parts, managedValues) {
-    const previous = previousByPath.get(JSON.stringify(parts))
-    const currentValue = getAtPath(config, parts)
-    if (previous && !sameValue(currentValue, previous.value)) return
-    const current = Array.isArray(currentValue) ? currentValue : []
-    const next = current.filter((entry) => !managedValues.some((value) => sameValue(entry, value)))
-    if (sameValue(current, next) && !previous) return
-    operations.push({
-      path: parts,
-      value: next.length ? next : undefined,
       previousExists: previous?.previousExists ?? hasOwnAtPath(config, parts),
       previousValue: previous?.previousValue ?? currentValue,
       parentExisted: previous?.parentExisted ?? (parts.length < 2 || hasOwnAtPath(config, parts.slice(0, -1))),
@@ -549,7 +541,12 @@ export async function copyManagedFiles(configDir = opencodeConfigDir()) {
   try {
     for (const mapping of managedAssetMappings()) {
       const source = path.join(repoRoot, mapping.source)
-      if (!existsSync(source)) continue
+      if (!existsSync(source)) {
+        if (mapping.source === TOOL_MANIFEST_SOURCE) {
+          throw new Error(`Required managed asset is missing: ${mapping.source}`)
+        }
+        continue
+      }
       for (const rel of await listFiles(source)) {
         if (!(await shouldCopyManagedRelative(mapping.source, rel))) continue
         const override = managedBuiltSourceOverride(mapping.source, rel)
@@ -600,7 +597,12 @@ export async function upgradeManagedFiles(configDir, previousManifest) {
   try {
     for (const mapping of managedAssetMappings()) {
       const source = path.join(repoRoot, mapping.source)
-      if (!existsSync(source)) continue
+      if (!existsSync(source)) {
+        if (mapping.source === TOOL_MANIFEST_SOURCE) {
+          throw new Error(`Required managed asset is missing: ${mapping.source}`)
+        }
+        continue
+      }
       for (const rel of await listFiles(source)) {
         if (!(await shouldCopyManagedRelative(mapping.source, rel))) continue
         const override = managedBuiltSourceOverride(mapping.source, rel)
