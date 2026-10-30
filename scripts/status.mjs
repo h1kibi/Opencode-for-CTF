@@ -15,6 +15,7 @@ import {
   projectVersion,
   compatibilityDiagnostic,
   readJsonc,
+  repoRoot,
   tryWritePluginHealthReport,
 } from "./lib/opencode-ctf-install.mjs"
 import { PROFILE_MCP } from "./lib/install-defaults.mjs"
@@ -42,6 +43,13 @@ async function pluginRuntimeDiagnostic(configDir, config) {
     sourcePluginRisk: Boolean(rawSourcePlugin),
     installedPluginPresent: existsSync(installed),
     bundledPluginPresent: false,
+    /**
+     * Installing copies the bundle at a point in time, so an installed tree can
+     * be perfectly self-consistent (manifest hashes match) while running older
+     * code than the checkout. Comparing against the current build makes that
+     * visible: a stale bundle registers fewer tools than the source expects.
+     */
+    buildDrift: "unknown",
     pluginImportOk: false,
     pluginImportError: null,
     pluginExportNames: [],
@@ -54,6 +62,12 @@ async function pluginRuntimeDiagnostic(configDir, config) {
     diagnostics.bundledPluginPresent = true
   } catch {
     diagnostics.bundledPluginPresent = false
+  }
+
+  const builtBundle = path.join(repoRoot, "dist", "plugin", "index.js")
+  if (diagnostics.installedPluginPresent && existsSync(builtBundle)) {
+    const [installedHash, builtHash] = await Promise.all([managedFileHash(installed), managedFileHash(builtBundle)])
+    diagnostics.buildDrift = installedHash === builtHash ? "up-to-date" : "outdated"
   }
 
   if (diagnostics.installedPluginPresent) {
@@ -71,6 +85,9 @@ async function pluginRuntimeDiagnostic(configDir, config) {
       "Managed plugin bundle is missing from the OpenCode config directory. Re-run npm run ctf:install or npm run ctf:upgrade."
   } else if (!diagnostics.pluginImportOk) {
     diagnostics.nextAction = `Managed plugin bundle exists but cannot be imported: ${diagnostics.pluginImportError}. Re-run npm run build:plugin && npm run ctf:upgrade, then restart OpenCode.`
+  } else if (diagnostics.buildDrift === "outdated") {
+    diagnostics.nextAction =
+      "Installed bundle differs from the current build, so the running plugin can register fewer tools than this checkout. Run npm run ctf:upgrade, then restart OpenCode."
   } else {
     diagnostics.nextAction =
       "Managed plugin bundle path is present. If tools are still missing, restart OpenCode and inspect host logs for plugin dependency/runtime errors."
@@ -152,7 +169,8 @@ if (!existsSync(manifestFile)) {
       !pluginRegistered ||
       !skillPathsRegistered ||
       !mcpStubsRegistered ||
-      !pluginDiagnostic.pluginImportOk
+      !pluginDiagnostic.pluginImportOk ||
+      pluginDiagnostic.buildDrift === "outdated"
         ? "degraded"
         : "installed",
     profile: manifest.profile ?? "unknown",
@@ -213,6 +231,7 @@ if (!existsSync(manifestFile)) {
     if (result.missingMcpEntries.length) console.log(`missing_mcp_stubs: ${result.missingMcpEntries.join(", ")}`)
     console.log(`plugin_bundle_present: ${result.pluginDiagnostic.installedPluginPresent ? "yes" : "no"}`)
     console.log(`bundled_build_present: ${result.pluginDiagnostic.bundledPluginPresent ? "yes" : "no"}`)
+    console.log(`plugin_build: ${result.pluginDiagnostic.buildDrift}`)
     console.log(`plugin_import_ok: ${result.pluginDiagnostic.pluginImportOk ? "yes" : "no"}`)
     if (!result.pluginDiagnostic.pluginImportOk && result.pluginDiagnostic.pluginImportError) {
       console.log(`plugin_import_error: ${result.pluginDiagnostic.pluginImportError}`)

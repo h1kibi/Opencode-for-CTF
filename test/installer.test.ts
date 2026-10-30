@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
-import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rm, symlink, writeFile, appendFile } from "node:fs/promises"
 import path from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { makeTestWorkspaceAsync } from "./support/test-workspace.ts"
@@ -405,6 +405,17 @@ describe.sequential("managed installer", () => {
       source: "status",
       state: "installed",
       pluginRegistered: true,
+    })
+
+    // An installed tree can be self-consistent while running older code: the
+    // manifest hashes still match their own files. Status has to compare the
+    // installed bundle against the current build to notice that.
+    await appendFile(path.join(configDir, "opencode-for-ctf", "plugin", "index.js"), "\n// stale build\n")
+    const drifted = run("status.mjs", ["--json", "--strict"])
+    expect(drifted.status, drifted.stderr).toBe(1)
+    expect(JSON.parse(drifted.stdout)).toMatchObject({
+      state: "degraded",
+      pluginDiagnostic: { buildDrift: "outdated", pluginImportOk: true },
     })
 
     const installedConfig = await readJsonc(file)
