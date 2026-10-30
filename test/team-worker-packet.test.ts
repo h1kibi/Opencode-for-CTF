@@ -1,175 +1,102 @@
 import { describe, expect, it } from "vitest"
-import { parseWorkerPackets } from "../src/team/team-worker-packet.ts"
+import { collectWorkerResult, parseProbeResult, type WorkerMessage } from "../src/team/team-worker-packet.ts"
 
-describe("team worker packet parser", () => {
-  it("extracts a valid structured fact packet from worker markdown", () => {
-    const markdown = [
-      "Here is the local assessment of the target.",
-      "```json",
-      JSON.stringify({
-        protocol: "ctf.team.worker.v1",
-        type: "fact",
-        intentId: "intent-1",
-        routeId: "R1",
-        statement: "Binary is 64-bit ELF with NX and no canary.",
+function result(overrides: Record<string, unknown> = {}) {
+  return {
+    protocol: "ctf.team.probe.v1",
+    type: "probe_result",
+    status: "completed",
+    summary: "confirmed the target behavior",
+    observations: [
+      {
         kind: "observation",
-        confidence: "observed",
-        evidence: [
-          { type: "command", value: "checksec --file=chall" },
-          { type: "response", value: "NX enabled, No canary found" },
+        statement: "The service accepts the documented request.",
+        evidence: [{ type: "command", value: "./probe --check" }],
+      },
+    ],
+    artifacts: ["work/probe.txt"],
+    ...overrides,
+  }
+}
+
+function fenced(value: unknown) {
+  return `\n\`\`\`json\n${JSON.stringify(value)}\n\`\`\`\n`
+}
+
+describe("team ProbeResult parser", () => {
+  it("parses a valid probe_result with observations, evidence, and artifacts", () => {
+    const parsed = parseProbeResult(
+      `worker report${fenced(result({ status: "blocked", next: "compare the remote response" }))}`,
+    )
+
+    expect(parsed).toEqual(result({ status: "blocked", next: "compare the remote response" }))
+  })
+
+  it("rejects malformed JSON, unknown status, and unknown packet protocols", () => {
+    const text = [
+      "```json\n{ invalid json\n```",
+      fenced(result({ status: "running" })),
+      fenced(result({ protocol: "ctf.team.unknown.v1" })),
+    ].join("\n")
+
+    expect(() => parseProbeResult(text)).toThrow()
+    expect(() => parseProbeResult("")).toThrow("Worker output is empty")
+  })
+
+  it("rejects missing or malformed evidence and oversized bounded fields", () => {
+    const cases = [
+      result({ observations: [{ kind: "observation", statement: "missing evidence" }] }),
+      result({
+        observations: [{ kind: "observation", statement: "bad evidence", evidence: [{ type: "command", value: "" }] }],
+      }),
+      result({
+        observations: [
+          { kind: "observation", statement: "unknown evidence", evidence: [{ type: "socket", value: "x" }] },
         ],
       }),
-      "```",
-      "Next, proceeding with stack pivot verification.",
+      result({ summary: "x".repeat(2_001) }),
+      result({ observations: [{ kind: "observation", statement: "x".repeat(2_001), evidence: [] }] }),
+      result({ artifacts: ["x".repeat(1_001)] }),
+    ]
+
+    for (const value of cases) expect(() => parseProbeResult(fenced(value))).toThrow()
+  })
+
+  it("rejects a later malformed result instead of hiding it", () => {
+    const text = [
+      fenced(result({ summary: "first" })),
+      fenced(result({ summary: "newest valid", status: "failed" })),
+      "```json\nnot valid\n```",
     ].join("\n")
 
-    const packets = parseWorkerPackets(markdown)
-    expect(packets).toHaveLength(1)
-    expect(packets[0]).toMatchObject({
-      protocol: "ctf.team.worker.v1",
-      type: "fact",
-      intentId: "intent-1",
-      routeId: "R1",
-      statement: "Binary is 64-bit ELF with NX and no canary.",
-      kind: "observation",
-      confidence: "observed",
-    })
-    expect(packets[0].evidence).toHaveLength(2)
+    expect(() => parseProbeResult(text)).toThrow()
+    expect(
+      parseProbeResult([fenced(result({ summary: "first" })), fenced(result({ summary: "second" }))].join("\n"))
+        ?.summary,
+    ).toBe("second")
   })
 
-  it("extracts intent result packet", () => {
-    const markdown = [
-      "Completed assigned analysis.",
-      "```json",
-      JSON.stringify({
-        protocol: "ctf.team.worker.v1",
-        type: "intent_result",
-        intentId: "intent-2",
-        routeId: "R2",
-        status: "completed",
-        summary: "Verified vulnerability: format string leak reachable via /profile.",
-        factIds: ["fact-10", "fact-11"],
-        artifacts: ["work/poc.py"],
-      }),
-      "```",
-    ].join("\n")
+  it("bounds trailing output while retaining a result at the end", () => {
+    const parsed = parseProbeResult("x".repeat(12_001) + fenced(result({ summary: "tail result" })))
 
-    const packets = parseWorkerPackets(markdown)
-    expect(packets).toHaveLength(1)
-    expect(packets[0]).toMatchObject({
-      protocol: "ctf.team.worker.v1",
-      type: "intent_result",
-      intentId: "intent-2",
-      routeId: "R2",
-      status: "completed",
-      artifacts: ["work/poc.py"],
-    })
+    expect(parsed?.summary).toBe("tail result")
   })
 
-  it("safely ignores malformed or invalid packets without throwing", () => {
-    const invalidMarkdown = [
-      "```json",
-      "{ invalid json",
-      "```",
-      "```json",
-      JSON.stringify({
-        protocol: "wrong.protocol",
-        type: "fact",
-      }),
-      "```",
-      "```json",
-      JSON.stringify({
-        protocol: "ctf.team.worker.v1",
-        type: "fact",
-        statement: "",
-        evidence: [],
-      }),
-      "```",
-    ].join("\n")
-
-    expect(parseWorkerPackets(invalidMarkdown)).toEqual([])
-    expect(parseWorkerPackets("")).toEqual([])
+  it("collects only assistant messages after the persisted cursor", () => {
+    const messages: WorkerMessage[] = [
+      { info: { role: "assistant", id: "old" }, parts: [{ type: "text", text: fenced(result({ summary: "old" })) }] },
+      { info: { role: "user", id: "prompt" }, parts: [{ type: "text", text: "ignore" }] },
+      { info: { role: "assistant", id: "new" }, parts: [{ type: "text", text: fenced(result({ summary: "new" })) }] },
+    ]
+    expect(collectWorkerResult(messages, "old")).toMatchObject({ packet: { summary: "new" }, lastMessageID: "new" })
   })
 
-  it("coerces a worker-declared confirmed fact instead of discarding it", () => {
-    // Only the Expert may produce `confirmed`; dropping the packet lost the
-    // observation and its evidence entirely.
-    const markdown = [
-      "```json",
-      JSON.stringify({
-        protocol: "ctf.team.worker.v1",
-        type: "fact",
-        statement: "The admin cookie is forgeable.",
-        kind: "candidate",
-        confidence: "confirmed",
-        evidence: [{ type: "response", value: "Set-Cookie: admin=1" }],
-      }),
-      "```",
-    ].join("\n")
-
-    const packets = parseWorkerPackets(markdown)
-    expect(packets).toHaveLength(1)
-    expect(packets[0].confidence).toBe("observed")
-  })
-
-  it("accepts an error fact without evidence but still requires it for observations", () => {
-    const errorFact = [
-      "```json",
-      JSON.stringify({
-        protocol: "ctf.team.worker.v1",
-        type: "fact",
-        statement: "pwntools import failed with ModuleNotFoundError",
-        kind: "error",
-        confidence: "observed",
-        evidence: [],
-      }),
-      "```",
-    ].join("\n")
-    expect(parseWorkerPackets(errorFact)).toHaveLength(1)
-
-    const observation = errorFact.replace('"error"', '"observation"')
-    expect(parseWorkerPackets(observation)).toHaveLength(0)
-  })
-
-  it("finds packets emitted before a long trailing report", () => {
-    // Regression: parsing only the tail of the message silently dropped every
-    // packet emitted earlier in a verbose report.
-    const early = JSON.stringify({
-      protocol: "ctf.team.worker.v1",
-      type: "fact",
-      statement: "early",
-      kind: "observation",
-      confidence: "observed",
-      evidence: [{ type: "command", value: "file ./chall" }],
-    })
-    const markdown = [`\`\`\`json\n${early}\n\`\`\``, "x".repeat(14_000)].join("\n")
-    const packets = parseWorkerPackets(markdown)
-    expect(packets.map((packet) => packet.statement)).toContain("early")
-  })
-
-  it("retains a tail packet while bounding verbose head output", () => {
-    const tail = JSON.stringify({
-      protocol: "ctf.team.worker.v1",
-      type: "fact",
-      statement: "tail",
-      kind: "observation",
-      confidence: "observed",
-      evidence: [{ type: "command", value: "tail-probe" }],
-    })
-    const packets = parseWorkerPackets(["x".repeat(7_000), `\`\`\`json\n${tail}\n\`\`\``].join("\n"))
-    expect(packets.map((packet) => packet.statement)).toContain("tail")
-  })
-
-  it("caps accepted packets from a hostile verbose response", () => {
-    const packet = JSON.stringify({
-      protocol: "ctf.team.worker.v1",
-      type: "fact",
-      statement: "bounded",
-      kind: "observation",
-      confidence: "observed",
-      evidence: [{ type: "command", value: "probe" }],
-    })
-    const packets = parseWorkerPackets(Array.from({ length: 80 }, () => `\`\`\`json\n${packet}\n\`\`\``).join("\n"))
-    expect(packets).toHaveLength(64)
+  it("retains bounded raw output when collection packet parsing fails", () => {
+    const collected = collectWorkerResult([
+      { info: { role: "assistant", id: "bad" }, parts: [{ type: "text", text: "x".repeat(20_000) }] },
+    ])
+    expect(collected.serializationError).toBeDefined()
+    expect(collected.result.length).toBe(6_000)
+    expect(collected.lastMessageID).toBe("bad")
   })
 })

@@ -1,4 +1,5 @@
 ﻿import type { Hooks, Plugin } from "@opencode-ai/plugin"
+import { formatOpenCodeCompatibilityDiagnostic } from "./opencode-compatibility.ts"
 import path from "node:path"
 import { loadCtfToolsWithReport } from "./ctf-tools.ts"
 import { createTeamTools, initializeTeamRuntime } from "./team-runtime.ts"
@@ -29,32 +30,8 @@ function looksLikeFilesystemRoot(worktree: string): boolean {
   return /^[a-zA-Z]:[\\/]$/.test(worktree) || worktree === "/" || worktree === "\\"
 }
 
-/**
- * Wrap a side-effect hook so an unexpected failure degrades to a warning
- * instead of killing message/session processing. Hooks that use throw as a
- * control-flow gate (tool.execute.before, command.execute.before) are NOT
- * wrapped.
- */
-function safeHook<Args extends unknown[], Out>(name: string, fn: (...args: Args) => Promise<Out> | Out) {
-  return async (...args: Args): Promise<Out | undefined> => {
-    try {
-      return await fn(...args)
-    } catch (err) {
-      console.warn(`[plugin] hook ${name} failed (non-fatal):`, err instanceof Error ? err.message : String(err))
-      return undefined
-    }
-  }
-}
-
-// OpenCode 2.x compatibility guard
-if (process.env.OPENCODE_VERSION?.startsWith("2.")) {
-  throw new Error(
-    "OpenCode 2.x requires plugin migration. Current plugin supports OpenCode 1.18.x - 1.19.x only. " +
-      "See https://github.com/h1kibi/Opencode-for-CTF#compatibility for details.",
-  )
-}
-
 const RuntimePlugin: Plugin = async (input, _options) => {
+  console.log(`[plugin] compatibility: ${formatOpenCodeCompatibilityDiagnostic()}`)
   // opencode desktop may report a filesystem root (e.g. "C:\\") as the
   // worktree for projects without a detected VCS root. State files written
   // under a drive root scatter across the machine and are easy to corrupt;
@@ -62,9 +39,7 @@ const RuntimePlugin: Plugin = async (input, _options) => {
   if (input.worktree && looksLikeFilesystemRoot(input.worktree)) {
     input.worktree = input.directory
   }
-  await restoreSessionSurfaces(input.worktree || input.directory).catch((err) =>
-    console.warn("[plugin] session-surface restore (non-fatal):", err),
-  )
+  await restoreSessionSurfaces(input.worktree || input.directory)
   const loaded = await loadPluginConfigWithPath(input.directory)
   const pluginConfig: PluginUserConfig = loaded.config
   const pluginConfigPath = loaded.path
@@ -91,12 +66,11 @@ const RuntimePlugin: Plugin = async (input, _options) => {
     })
     Object.assign(tools, teamTools)
   }
-  // Reconcile any dangling worker sessions on plugin startup
   if (teamEventsEnabled()) {
-    initializeTeamRuntime(input.client, input.directory, input.worktree, {
+    await initializeTeamRuntime(input.client, input.directory, input.worktree, {
       maxWorkers: pluginConfig.team_mode.max_workers,
       maxJobAttempts: pluginConfig.team_mode.max_job_attempts,
-    }).catch((err) => console.warn("[plugin] team-runtime init (non-fatal):", err))
+    })
   }
   const registeredToolNames = Object.keys(tools)
   const toolRegistrySummary = summarizeRuntimeToolRegistry({
@@ -124,14 +98,10 @@ const RuntimePlugin: Plugin = async (input, _options) => {
       )
     }
   }
-  try {
-    await saveJsonFile(
-      path.join(runtimeStateRoot(input.worktree || input.directory), "tool-load-report.json"),
-      toolLoadReport,
-    )
-  } catch (err) {
-    console.warn("[plugin] failed to persist tool-load report (non-fatal):", err)
-  }
+  await saveJsonFile(
+    path.join(runtimeStateRoot(input.worktree || input.directory), "tool-load-report.json"),
+    toolLoadReport,
+  )
 
   function expertReadinessReport() {
     return evaluateExpertReadiness({
@@ -164,22 +134,18 @@ const RuntimePlugin: Plugin = async (input, _options) => {
     if (!report.ready) throw new Error(expertReadinessFailureText(userText, sessionNote))
   }
 
-  function promoteExpertSurface(sessionID: string | undefined | null, source: "explicit" | "route" = "explicit") {
+  async function promoteExpertSurface(sessionID: string | undefined | null, source: "explicit" | "route" = "explicit") {
     rememberSessionSurface(sessionID ?? undefined, "ctf-expert")
-    void persistSessionSurface(input.worktree || input.directory, sessionID, "ctf-expert", source).catch((err) =>
-      console.warn("[plugin] session-surface persist (non-fatal):", err),
-    )
+    await persistSessionSurface(input.worktree || input.directory, sessionID, "ctf-expert", source)
   }
 
-  function promoteFastSurface(sessionID: string | undefined | null, source: "explicit-fast" = "explicit-fast") {
+  async function promoteFastSurface(sessionID: string | undefined | null, source: "explicit-fast" = "explicit-fast") {
     rememberSessionSurface(sessionID ?? undefined, "ctf-fast")
-    void persistSessionSurface(input.worktree || input.directory, sessionID, "ctf-fast", source).catch((err) =>
-      console.warn("[plugin] session-surface persist (non-fatal):", err),
-    )
+    await persistSessionSurface(input.worktree || input.directory, sessionID, "ctf-fast", source)
   }
 
   const hooks: Hooks = {
-    event: safeHook("event", async ({ event }) => {
+    event: async ({ event }) => {
       await handleEventHook({
         event,
         pluginConfig,
@@ -187,14 +153,14 @@ const RuntimePlugin: Plugin = async (input, _options) => {
         isHookEnabled: (hook) => isHookEnabled(pluginConfig, hook),
         teamEventsEnabled,
       })
-    }),
-    "chat.message": safeHook("chat.message", async (meta) => {
+    },
+    "chat.message": async (meta) => {
       await handleChatMessageHook({
         meta,
         input,
         isHookEnabled: (hook) => isHookEnabled(pluginConfig, hook),
       })
-    }),
+    },
     "command.execute.before": async (_meta, output) => {
       await handleCommandExecuteBefore({
         meta: _meta as Record<string, unknown>,
@@ -219,35 +185,38 @@ const RuntimePlugin: Plugin = async (input, _options) => {
         isHookEnabled: (hook) => isHookEnabled(pluginConfig, hook),
         expertReadinessReport,
         expertReadinessFailureText,
+        routePolicy: pluginConfig.route_policy,
+        cleanRoom: pluginConfig.clean_room,
       })
     },
-    "tool.execute.after": safeHook("tool.execute.after", async (meta, output) => {
+    "tool.execute.after": async (meta, output) => {
       await handleToolExecuteAfter({
         meta: meta as Record<string, any>,
         output: output as Record<string, any>,
         isHookEnabled: (hook) => isHookEnabled(pluginConfig, hook),
       })
-    }),
-    "permission.ask": safeHook("permission.ask", async (input_, output) => {
+    },
+    "permission.ask": async (input_, output) => {
       await handlePermissionAsk({
         input: input_,
         output,
         isHookEnabled: (hook) => isHookEnabled(pluginConfig, hook),
       })
-    }),
-    "chat.params": safeHook("chat.params", async (_meta, output) => {
+    },
+    "chat.params": async (_meta, output) => {
       await handleChatParams({
         meta: _meta,
         output,
         isHookEnabled: (hook) => isHookEnabled(pluginConfig, hook),
+        explorerDefaults: pluginConfig.explorer_sampling,
       })
-    }),
-    "experimental.session.compacting": safeHook("experimental.session.compacting", async (_meta, output) => {
+    },
+    "experimental.session.compacting": async (_meta, output) => {
       await handleSessionCompacting({
         output,
         isHookEnabled: (hook) => isHookEnabled(pluginConfig, hook),
       })
-    }),
+    },
   }
 
   return { ...hooks, tool: tools }

@@ -1,11 +1,11 @@
 import { mkdir, readFile, readdir, rename, stat } from "node:fs/promises"
 import path from "node:path"
-import { DEFAULT_FILE_LOCK_STALE_MS } from "../file-lock.ts"
-import { atomicUpdateJsonFile } from "../state-store.ts"
+import { DEFAULT_FILE_LOCK_STALE_MS, withFileLock } from "../file-lock.ts"
+import { atomicUpdateJsonFile, saveJsonFile } from "../state-store.ts"
 import { TEAM_AGENTS, TEAM_ROUTE_IDS } from "./team-types.ts"
 import type { TeamJob, TeamRun, TeamState } from "./team-types.ts"
 import { STATE_FILE, STATE_VERSION, now } from "./team-types.ts"
-import { deriveTeamRunStatus } from "../team-reducer.ts"
+import { deriveTeamRunStatus, isTerminalTeamJob } from "../team-reducer.ts"
 
 export function teamStatePath(directory: string) {
   return path.join(directory, STATE_FILE)
@@ -36,21 +36,7 @@ const TEAM_JOB_STATUSES = [
   "orphaned",
 ] as const
 
-const TEAM_FACT_STATUSES = ["pending", "accepted", "rejected", "superseded"] as const
-
-const TEAM_INTENT_STATUSES = [
-  "open",
-  "claimed",
-  "running",
-  "blocked",
-  "completed",
-  "failed",
-  "cancelled",
-  "superseded",
-] as const
-
-const TEAM_INTENT_CONCURRENCIES = ["exclusive", "parallel", "speculative"] as const
-
+const TEAM_PROBE_STATUSES = ["queued", "running", "completed", "blocked", "failed", "cancelled"] as const
 const TEAM_RUN_STATUSES = [
   "dispatching",
   "running",
@@ -60,9 +46,48 @@ const TEAM_RUN_STATUSES = [
   "cancelled",
   "cancelling",
 ] as const
+const TEAM_PROBE_KINDS = ["observation", "measurement", "artifact", "error", "negative", "candidate"] as const
 
 function isOneOf<T extends readonly string[]>(values: T, value: unknown): value is T[number] {
   return typeof value === "string" && values.includes(value)
+}
+
+function validProbeResult(value: unknown): boolean {
+  if (
+    !isObject(value) ||
+    value.protocol !== "ctf.team.probe.v1" ||
+    value.type !== "probe_result" ||
+    !isOneOf(["completed", "blocked", "failed"] as const, value.status) ||
+    typeof value.summary !== "string" ||
+    value.summary.length === 0 ||
+    value.summary.length > 2_000 ||
+    !Array.isArray(value.observations) ||
+    value.observations.length > 64 ||
+    !Array.isArray(value.artifacts) ||
+    value.artifacts.length > 32 ||
+    value.artifacts.some((artifact) => typeof artifact !== "string" || !artifact || artifact.length > 1_000) ||
+    (value.next !== undefined && (typeof value.next !== "string" || !value.next || value.next.length > 2_000))
+  ) {
+    return false
+  }
+  return value.observations.every(
+    (observation) =>
+      isObject(observation) &&
+      isOneOf(TEAM_PROBE_KINDS, observation.kind) &&
+      typeof observation.statement === "string" &&
+      observation.statement.length > 0 &&
+      observation.statement.length <= 2_000 &&
+      Array.isArray(observation.evidence) &&
+      observation.evidence.length <= 16 &&
+      observation.evidence.every(
+        (evidence) =>
+          isObject(evidence) &&
+          isOneOf(["command", "file", "response", "hash", "trace"] as const, evidence.type) &&
+          typeof evidence.value === "string" &&
+          evidence.value.length > 0 &&
+          evidence.value.length <= 2_000,
+      ),
+  )
 }
 
 export function parseTeamState(value: unknown): TeamState {
@@ -83,9 +108,47 @@ export function parseTeamState(value: unknown): TeamState {
     if (!isOneOf(TEAM_RUN_STATUSES, run.status)) {
       throw new Error(`Invalid CTF team state: run ${run.id} has an unknown status.`)
     }
-    if (!Array.isArray(run.jobs)) throw new Error(`Invalid CTF team state: run ${run.id} jobs must be an array.`)
+    if (!Array.isArray(run.probes) || !Array.isArray(run.jobs)) {
+      throw new Error(`Invalid CTF team state: run ${run.id} requires probes and jobs arrays.`)
+    }
+
+    const probeIDs = new Set<string>()
+    for (const probe of run.probes) {
+      if (!isObject(probe) || typeof probe.id !== "string" || !probe.id) {
+        throw new Error(`Invalid CTF team state: run ${run.id} contains a probe without an id.`)
+      }
+      if (probeIDs.has(probe.id))
+        throw new Error(`Invalid CTF team state: duplicate probe id ${probe.id} in run ${run.id}.`)
+      probeIDs.add(probe.id)
+      if (!isOneOf(TEAM_ROUTE_IDS, probe.routeId)) {
+        throw new Error(`Invalid CTF team state: probe ${probe.id} has an unknown route.`)
+      }
+      if (!isOneOf(TEAM_PROBE_STATUSES, probe.status)) {
+        throw new Error(`Invalid CTF team state: probe ${probe.id} has an unknown status.`)
+      }
+      if (
+        typeof probe.title !== "string" ||
+        probe.title.length === 0 ||
+        probe.title.length > 160 ||
+        typeof probe.objective !== "string" ||
+        probe.objective.length === 0 ||
+        probe.objective.length > 8_000
+      ) {
+        throw new Error(`Invalid CTF team state: probe ${probe.id} has invalid dispatch content.`)
+      }
+      if (probe.concurrency !== "independent" && probe.concurrency !== "shared_state") {
+        throw new Error(`Invalid CTF team state: probe ${probe.id} has an unknown concurrency mode.`)
+      }
+      if (!isOneOf(TEAM_AGENTS, probe.agent)) {
+        throw new Error(`Invalid CTF team state: probe ${probe.id} has an unknown agent.`)
+      }
+      if (probe.result !== undefined && !validProbeResult(probe.result)) {
+        throw new Error(`Invalid CTF team state: probe ${probe.id} has an invalid result.`)
+      }
+    }
 
     const jobIDs = new Set<string>()
+    const linkedProbeIDs = new Set<string>()
     for (const job of run.jobs) {
       if (!isObject(job) || typeof job.id !== "string" || !job.id) {
         throw new Error(`Invalid CTF team state: run ${run.id} contains a job without an id.`)
@@ -110,11 +173,30 @@ export function parseTeamState(value: unknown): TeamState {
         job.status = "orphaned"
         job.error = job.error || `Unknown agent ${originalAgent}; worker is orphaned and cannot be restarted.`
       }
-      if (job.routeId !== undefined && !isOneOf(TEAM_ROUTE_IDS, job.routeId)) {
-        throw new Error(`Invalid CTF team state: job ${job.id} has an unknown route.`)
+      if (typeof job.probeId !== "string" || !probeIDs.has(job.probeId)) {
+        throw new Error(`Invalid CTF team state: job ${job.id} references an unknown probe.`)
       }
-      if (job.concurrency !== undefined && job.concurrency !== "independent" && job.concurrency !== "shared_state") {
-        throw new Error(`Invalid CTF team state: job ${job.id} has an unknown concurrency mode.`)
+      if (linkedProbeIDs.has(job.probeId)) {
+        throw new Error(`Invalid CTF team state: probe ${job.probeId} is assigned to multiple jobs.`)
+      }
+      if (typeof job.serializationRepairAttempts !== "undefined") {
+        if (
+          typeof job.serializationRepairAttempts !== "number" ||
+          !Number.isInteger(job.serializationRepairAttempts) ||
+          job.serializationRepairAttempts < 0 ||
+          job.serializationRepairAttempts > 1
+        ) {
+          throw new Error(`Invalid CTF team state: job ${job.id} has an invalid serialization repair attempt count.`)
+        }
+      }
+      if (
+        typeof job.serializationRepairPending !== "undefined" &&
+        typeof job.serializationRepairPending !== "boolean"
+      ) {
+        throw new Error(`Invalid CTF team state: job ${job.id} has an invalid serialization repair pending flag.`)
+      }
+      if (job.serializationRepairPending === true && (job.serializationRepairAttempts ?? 0) !== 1) {
+        throw new Error(`Invalid CTF team state: job ${job.id} has a repair pending without a reserved attempt.`)
       }
       if (job.sessionID !== undefined) {
         if (typeof job.sessionID !== "string" || !job.sessionID) {
@@ -125,212 +207,10 @@ export function parseTeamState(value: unknown): TeamState {
         }
         sessionIDs.add(job.sessionID)
       }
+      linkedProbeIDs.add(job.probeId)
     }
-
-    const factIDs = new Set<string>()
-    if (run.facts !== undefined) {
-      if (!Array.isArray(run.facts)) throw new Error(`Invalid CTF team state: run ${run.id} facts must be an array.`)
-      for (const fact of run.facts) {
-        if (!isObject(fact) || typeof fact.id !== "string" || !fact.id) {
-          throw new Error(`Invalid CTF team state: run ${run.id} contains a fact without an id.`)
-        }
-        if (factIDs.has(fact.id))
-          throw new Error(`Invalid CTF team state: duplicate fact id ${fact.id} in run ${run.id}.`)
-        factIDs.add(fact.id)
-      }
-    }
-
-    const intentIDs = new Set<string>()
-    if (run.intents !== undefined) {
-      if (!Array.isArray(run.intents))
-        throw new Error(`Invalid CTF team state: run ${run.id} intents must be an array.`)
-      for (const intent of run.intents) {
-        if (!isObject(intent) || typeof intent.id !== "string" || !intent.id) {
-          throw new Error(`Invalid CTF team state: run ${run.id} contains an intent without an id.`)
-        }
-        if (intentIDs.has(intent.id))
-          throw new Error(`Invalid CTF team state: duplicate intent id ${intent.id} in run ${run.id}.`)
-        intentIDs.add(intent.id)
-      }
-    }
-
-    for (const fact of run.facts ?? []) {
-      if (!isObject(fact)) continue
-      if (fact.runId !== run.id) throw new Error(`Invalid CTF team state: fact ${fact.id} belongs to another run.`)
-      if (!isOneOf(TEAM_FACT_STATUSES, fact.status))
-        throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown status.`)
-      if (!isOneOf(TEAM_ROUTE_IDS, fact.routeId))
-        throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown route.`)
-      if (!isOneOf(["observation", "measurement", "artifact", "error", "negative", "candidate"] as const, fact.kind))
-        throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown kind.`)
-      if (!isOneOf(["observed", "probable", "speculative", "confirmed"] as const, fact.confidence))
-        throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown confidence.`)
-      if (fact.status === "accepted" && fact.confidence !== "confirmed")
-        throw new Error(`Invalid CTF team state: accepted fact ${fact.id} must be confirmed.`)
-      if (fact.status !== "accepted" && fact.confidence === "confirmed")
-        throw new Error(`Invalid CTF team state: unaccepted fact ${fact.id} cannot be confirmed.`)
-      if (
-        fact.status === "accepted" &&
-        (typeof fact.reviewedBy !== "string" ||
-          !fact.reviewedBy ||
-          typeof fact.reviewedAt !== "string" ||
-          !fact.reviewedAt)
-      )
-        throw new Error(`Invalid CTF team state: accepted fact ${fact.id} lacks reviewer provenance.`)
-      if (typeof fact.sourceJobId !== "string" || !jobIDs.has(fact.sourceJobId))
-        throw new Error(`Invalid CTF team state: fact ${fact.id} has an unknown source job.`)
-      const sourceJob = run.jobs.find((job) => isObject(job) && job.id === fact.sourceJobId)
-      // Allow sourceSessionId to match either the current sessionID or any retrySessionID in the attempt history
-      const validSessionIds = new Set([sourceJob?.sessionID, sourceJob?.retrySessionID].filter(Boolean))
-      if (
-        typeof fact.sourceSessionId !== "string" ||
-        !fact.sourceSessionId ||
-        !validSessionIds.has(fact.sourceSessionId)
-      )
-        throw new Error(`Invalid CTF team state: fact ${fact.id} has an invalid source session.`)
-      if (fact.intentId !== undefined && (typeof fact.intentId !== "string" || !intentIDs.has(fact.intentId)))
-        throw new Error(`Invalid CTF team state: fact ${fact.id} references an unknown intent.`)
-      if (fact.supersedesFactId !== undefined) {
-        if (
-          typeof fact.supersedesFactId !== "string" ||
-          !factIDs.has(fact.supersedesFactId) ||
-          fact.supersedesFactId === fact.id
-        )
-          throw new Error(`Invalid CTF team state: fact ${fact.id} has an invalid replacement reference.`)
-        if (fact.status !== "pending" && fact.status !== "accepted")
-          throw new Error(`Invalid CTF team state: replacement fact ${fact.id} has invalid status.`)
-        if (
-          fact.status === "accepted" &&
-          (typeof fact.reviewedBy !== "string" ||
-            !fact.reviewedBy ||
-            typeof fact.reviewedAt !== "string" ||
-            !fact.reviewedAt)
-        )
-          throw new Error(`Invalid CTF team state: accepted replacement fact ${fact.id} lacks reviewer provenance.`)
-        const superseded = (run.facts ?? []).find(
-          (candidate) => isObject(candidate) && candidate.id === fact.supersedesFactId,
-        )
-        if (!superseded || superseded.status !== "superseded")
-          throw new Error(`Invalid CTF team state: fact ${fact.id} replaces a fact that is not superseded.`)
-      }
-      if (typeof fact.statement !== "string" || fact.statement.length === 0 || fact.statement.length > 2_000)
-        throw new Error(`Invalid CTF team state: fact ${fact.id} has an invalid statement.`)
-      if (
-        !Array.isArray(fact.evidence) ||
-        (fact.kind !== "error" && fact.evidence.length === 0) ||
-        fact.evidence.length > 16
-      )
-        throw new Error(`Invalid CTF team state: fact ${fact.id} evidence must be a bounded non-empty array.`)
-      for (const evidence of fact.evidence) {
-        if (
-          !isObject(evidence) ||
-          !isOneOf(["command", "file", "response", "hash", "trace"] as const, evidence.type) ||
-          typeof evidence.value !== "string" ||
-          evidence.value.length === 0 ||
-          evidence.value.length > 2_000
-        ) {
-          throw new Error(`Invalid CTF team state: fact ${fact.id} contains invalid evidence.`)
-        }
-      }
-    }
-
-    for (const intent of run.intents ?? []) {
-      if (!isObject(intent)) continue
-      if (intent.runId !== run.id)
-        throw new Error(`Invalid CTF team state: intent ${intent.id} belongs to another run.`)
-      if (!isOneOf(TEAM_INTENT_STATUSES, intent.status))
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has an unknown status.`)
-      if (!isOneOf(TEAM_ROUTE_IDS, intent.routeId))
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has an unknown route.`)
-      if (!isOneOf(TEAM_INTENT_CONCURRENCIES, intent.concurrency))
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has an unknown concurrency mode.`)
-      if (typeof intent.createdBy !== "string" || !isOneOf(["expert", "migration"] as const, intent.createdBy))
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has an unknown creator.`)
-      if (typeof intent.title !== "string" || intent.title.length === 0 || intent.title.length > 160)
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has an invalid title.`)
-      if (typeof intent.objective !== "string" || intent.objective.length === 0 || intent.objective.length > 8_000)
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has an invalid objective.`)
-      if (
-        (typeof intent.expectedObservation !== "undefined" &&
-          (typeof intent.expectedObservation !== "string" ||
-            intent.expectedObservation.trim().length === 0 ||
-            intent.expectedObservation.length > 2_000)) ||
-        (typeof intent.stopCondition !== "undefined" &&
-          (typeof intent.stopCondition !== "string" ||
-            intent.stopCondition.trim().length === 0 ||
-            intent.stopCondition.length > 2_000)) ||
-        (typeof intent.failureCondition !== "undefined" &&
-          (typeof intent.failureCondition !== "string" ||
-            intent.failureCondition.trim().length === 0 ||
-            intent.failureCondition.length > 2_000))
-      )
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has an invalid convergence condition.`)
-      if (
-        (!intent.expectedObservation || intent.expectedObservation.trim().length === 0) &&
-        (!intent.stopCondition || intent.stopCondition.trim().length === 0)
-      )
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has no convergence condition.`)
-      if (
-        !Array.isArray(intent.basedOnFactIds) ||
-        new Set(intent.basedOnFactIds).size !== intent.basedOnFactIds.length ||
-        intent.basedOnFactIds.some((id) => typeof id !== "string" || !factIDs.has(id))
-      )
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid fact references.`)
-      if (
-        !Array.isArray(intent.requiredCapabilities) ||
-        intent.requiredCapabilities.length > 32 ||
-        intent.requiredCapabilities.some(
-          (capability) => typeof capability !== "string" || capability.length === 0 || capability.length > 128,
-        )
-      )
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid capabilities.`)
-      if (
-        typeof intent.attempts !== "number" ||
-        !Number.isInteger(intent.attempts) ||
-        intent.attempts < 0 ||
-        typeof intent.maxAttempts !== "number" ||
-        !Number.isInteger(intent.maxAttempts) ||
-        intent.maxAttempts < 1 ||
-        intent.attempts > intent.maxAttempts
-      )
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid attempt counters.`)
-      if (
-        intent.resultFactIds !== undefined &&
-        (!Array.isArray(intent.resultFactIds) ||
-          new Set(intent.resultFactIds).size !== intent.resultFactIds.length ||
-          intent.resultFactIds.some((id) => typeof id !== "string" || !factIDs.has(id)))
-      )
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid result fact references.`)
-      if (
-        intent.resultArtifacts !== undefined &&
-        (!Array.isArray(intent.resultArtifacts) ||
-          intent.resultArtifacts.length > 32 ||
-          intent.resultArtifacts.some(
-            (artifact) => typeof artifact !== "string" || artifact.length === 0 || artifact.length > 1_000,
-          ))
-      )
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has invalid result artifacts.`)
-      if (intent.claimedBy !== undefined) {
-        if (typeof intent.claimedBy !== "string" || !jobIDs.has(intent.claimedBy))
-          throw new Error(
-            `Invalid CTF team state: intent ${intent.id} is claimed by unknown job ${String(intent.claimedBy)}.`,
-          )
-        const hasAnyFence = intent.claimToken !== undefined || intent.claimExpiresAt !== undefined
-        const hasCompleteFence = intent.claimToken !== undefined && intent.claimExpiresAt !== undefined
-        if (hasAnyFence && !hasCompleteFence)
-          throw new Error(`Invalid CTF team state: intent ${intent.id} has an incomplete claim fence.`)
-        if ((intent.status === "claimed" || intent.status === "running") && !hasCompleteFence)
-          throw new Error(`Invalid CTF team state: active intent ${intent.id} has no complete claim fence.`)
-        if (hasCompleteFence) {
-          const claimedJob = run.jobs.find((job) => isObject(job) && job.id === intent.claimedBy)
-          if (!claimedJob || claimedJob.intentId !== intent.id || claimedJob.ownerToken !== intent.claimToken)
-            throw new Error(`Invalid CTF team state: intent ${intent.id} claim fence does not match its job.`)
-        }
-      } else if (intent.claimToken !== undefined || intent.claimExpiresAt !== undefined) {
-        throw new Error(`Invalid CTF team state: intent ${intent.id} has an incomplete claim fence.`)
-      }
-      if ((intent.status === "claimed" || intent.status === "running") && !intent.claimedBy)
-        throw new Error(`Invalid CTF team state: active intent ${intent.id} has no claim owner.`)
+    if (linkedProbeIDs.size !== probeIDs.size) {
+      throw new Error(`Invalid CTF team state: run ${run.id} must have exactly one job per probe.`)
     }
   }
   return value as TeamState
@@ -341,7 +221,20 @@ export async function readTeamState(directory: string): Promise<TeamState> {
     return parseTeamState(JSON.parse(await readFile(statePath(directory), "utf8")))
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return emptyTeamState()
+    if (await isLegacyTeamState(directory)) {
+      await quarantineTeamState(directory, `legacy Team schema v1; clean cutover to schema v${STATE_VERSION}`)
+      return readTeamState(directory)
+    }
     throw error
+  }
+}
+
+async function isLegacyTeamState(directory: string): Promise<boolean> {
+  try {
+    const raw = JSON.parse(await readFile(statePath(directory), "utf8")) as unknown
+    return isObject(raw) && raw.schemaVersion === 1
+  } catch {
+    return false
   }
 }
 
@@ -356,26 +249,39 @@ export type TeamStateQuarantineResult = {
   reason: string
 }
 
-/** Preserve an unreadable state file and reset the live state atomically enough
- * for a subsequent dispatch. This is deliberately explicit: callers must
- * choose repair/quarantine rather than silently discarding evidence. */
+/** Preserve an unreadable state file and reset the live state while holding its state lock. */
 export async function quarantineTeamState(directory: string, reason: string): Promise<TeamStateQuarantineResult> {
   const source = statePath(directory)
-  const quarantineDir = path.join(directory, ".ctf-team-quarantine")
-  try {
-    await stat(source)
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return { quarantined: false, source, reason: "state file does not exist" }
+  return withFileLock(source, async (lease) => {
+    let current: unknown | undefined
+    let readable = true
+    try {
+      current = JSON.parse(await readFile(source, "utf8")) as unknown
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return { quarantined: false, source, reason: "state file does not exist" }
+      }
+      readable = false
+      if (reason.startsWith("legacy Team schema v1")) {
+        return { quarantined: false, source, reason: "state changed before legacy quarantine" }
+      }
     }
-    throw error
-  }
-  await mkdir(quarantineDir, { recursive: true })
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-")
-  const destination = path.join(quarantineDir, `${STATE_FILE}.${stamp}.json`)
-  await rename(source, destination)
-  await writeTeamState(directory, emptyTeamState())
-  return { quarantined: true, source, destination, reason }
+    if (
+      reason.startsWith("legacy Team schema v1") &&
+      (!readable || !isObject(current) || current.schemaVersion !== 1)
+    ) {
+      return { quarantined: false, source, reason: "state changed before legacy quarantine" }
+    }
+    const quarantineDir = path.join(directory, ".ctf-team-quarantine")
+    await mkdir(quarantineDir, { recursive: true })
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-")
+    const destination = path.join(quarantineDir, `${STATE_FILE}.${stamp}-${process.pid}.json`)
+    await lease.assertOwned()
+    await rename(source, destination)
+    await saveJsonFile(source, emptyTeamState())
+    await lease.assertOwned()
+    return { quarantined: true, source, destination, reason }
+  })
 }
 
 export async function readRawTeamState(directory: string): Promise<unknown | undefined> {
@@ -418,9 +324,7 @@ export function findJobBySession(state: TeamState, sessionID: string) {
   return undefined
 }
 
-export function isTerminalJob(status: TeamJob["status"]) {
-  return ["completed", "failed", "cancelled", "cancel_failed", "interrupted", "orphaned"].includes(status)
-}
+export { isTerminalTeamJob as isTerminalJob } from "../team-reducer.ts"
 
 function isClosedRun(status: TeamRun["status"]) {
   return status === "completed" || status === "cancelled"
@@ -435,11 +339,11 @@ function isClosedRun(status: TeamRun["status"]) {
  * `ctf-team-status`.
  */
 function deriveRunStatusFromJobs(run: TeamRun): TeamRun["status"] {
-  if (isClosedRun(run.status) && run.jobs.every((job) => isTerminalJob(job.status))) return run.status
+  if (isClosedRun(run.status) && run.jobs.every((job) => isTerminalTeamJob(job.status))) return run.status
   // A closed run with a live job is inconsistent (usually a crash or a late
   // cancellation race). Pass no `current` so the canonical deriver re-derives
   // from the jobs instead of short-circuiting on the stale closed flag.
-  return run.jobs.some((job) => !isTerminalJob(job.status))
+  return run.jobs.some((job) => !isTerminalTeamJob(job.status))
     ? deriveTeamRunStatus(run.jobs)
     : deriveTeamRunStatus(run.jobs, run.status)
 }
@@ -457,16 +361,16 @@ export function normalizeTeamState(state: TeamState): TeamStateHygieneReport {
     const nextStatus = deriveRunStatusFromJobs(run)
     if (
       previousStatus !== nextStatus &&
-      (run.jobs.every((job) => isTerminalJob(job.status)) ||
+      (run.jobs.every((job) => isTerminalTeamJob(job.status)) ||
         previousStatus === "dispatching" ||
         previousStatus === "running" ||
-        (isClosedRun(previousStatus) && !run.jobs.every((job) => isTerminalJob(job.status))))
+        (isClosedRun(previousStatus) && !run.jobs.every((job) => isTerminalTeamJob(job.status))))
     ) {
       run.status = nextStatus
       repairs.push(`run ${run.id}: status ${previousStatus} -> ${nextStatus}`)
     }
 
-    if (!run.jobs.every((job) => isTerminalJob(job.status))) {
+    if (!run.jobs.every((job) => isTerminalTeamJob(job.status))) {
       if (run.notificationPending) {
         run.notificationPending = false
         repairs.push(`run ${run.id}: cleared notificationPending while workers are still active`)
@@ -540,6 +444,13 @@ function detectUnknownAgentRepairs(value: unknown): string[] {
 
 export async function normalizePersistedTeamState(directory: string): Promise<{ state: TeamState; repairs: string[] }> {
   const raw = await readRawTeamState(directory)
+  if (raw !== undefined && isObject(raw) && raw.schemaVersion === 1) {
+    await quarantineTeamState(directory, `legacy Team schema v1; clean cutover to schema v${STATE_VERSION}`)
+    return {
+      state: await readTeamState(directory),
+      repairs: ["legacy Team state quarantined; started an empty Probe runtime state"],
+    }
+  }
   const unknownAgentRepairs = detectUnknownAgentRepairs(raw)
   const current = raw === undefined ? emptyTeamState() : parseTeamState(raw)
   const initial = normalizeTeamState(current)
@@ -624,40 +535,5 @@ export async function inspectTeamLockState(directory: string): Promise<{
       }
     }
     throw error
-  }
-}
-
-export function buildQueuedRun(args: {
-  title: string
-  parentSessionID: string
-  jobs: Array<Pick<TeamJob, "title" | "objective" | "agent" | "routeId" | "concurrency">>
-  runId: string
-}): TeamRun {
-  const timestamp = now()
-  return {
-    id: args.runId,
-    title: args.title,
-    parentSessionID: args.parentSessionID,
-    status: "dispatching",
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    notificationPending: false,
-    jobs: args.jobs.map((job, index) => ({
-      id: `job-${index + 1}-${
-        job.title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "")
-          .slice(0, 32) || "task"
-      }`,
-      title: job.title,
-      objective: job.objective,
-      agent: job.agent,
-      routeId: job.routeId,
-      concurrency: job.concurrency || "independent",
-      status: "queued",
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    })),
   }
 }

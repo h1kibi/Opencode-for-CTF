@@ -1,5 +1,5 @@
-import { canTransitionTeamJob, transitionTeamJob } from "../team-reducer.ts"
-import { isTerminalJob, readTeamState, updateTeamState } from "./team-state.ts"
+import { canTransitionTeamJob, isTerminalTeamJob, transitionTeamJob } from "../team-reducer.ts"
+import { readTeamState, updateTeamState } from "./team-state.ts"
 import { now, safeError, type TeamJob, type TeamRun } from "./team-types.ts"
 
 const MAX_PARENT_GONE_ABORT_PASSES = 4
@@ -15,7 +15,7 @@ function jobSessionIDs(job: TeamJob): string[] {
 }
 
 function isOpenJob(job: TeamJob): boolean {
-  return !isTerminalJob(job.status) || job.status === "cancel_failed"
+  return !isTerminalTeamJob(job.status) || job.status === "cancel_failed"
 }
 
 function isClosedRun(run: TeamRun): boolean {

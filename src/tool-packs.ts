@@ -1,3 +1,5 @@
+import { PACK_ALIAS_TARGETS } from "./tool-catalog.ts"
+
 /**
  * Tool pack classification and selection.
  *
@@ -59,9 +61,7 @@ export const ALL_TOOL_PACKS: ToolPackId[] = [
   "forensics-heavy",
 ]
 
-const TOOL_PACK_ALIASES: Record<string, ToolPackId> = {
-  "java-heavy": "java",
-}
+const TOOL_PACK_ALIASES = PACK_ALIAS_TARGETS
 
 /** Default packs registered without user config (main CTF categories, not rare specialists). */
 export const DEFAULT_TOOL_PACKS: ToolPackId[] = ["core", "web", "pwn", "rev", "crypto", "forensics", "misc", "aisec"]
@@ -85,10 +85,11 @@ const CORE_EXACT = new Set([
   "ctf-one-shot-triage",
   "ctf-python-inline",
   "ctf-route-plan",
-  "ctf-team-mode",
   "ctf-tool-packs",
   "ctf-mcp-control",
   "ctf-java-analyze",
+  "ctf-memstr",
+  "ctf-proto-probe",
   "doc-read",
   "image-file-info",
 ])
@@ -219,6 +220,7 @@ const JAVA_EXACT = new Set([
 const ANDROID_DYNAMIC_EXACT = new Set(["ctf-android-dynamic-macro"])
 
 const PREFIX_RULES: Array<{ prefix: string; pack: ToolPackId }> = [
+  { prefix: "ctf-team-", pack: "core" },
   { prefix: "ctf-web-observe", pack: "core" },
   { prefix: "ctf-android-", pack: "android" },
   { prefix: "ctf-apk-", pack: "android" },
@@ -245,18 +247,25 @@ const PREFIX_RULES: Array<{ prefix: string; pack: ToolPackId }> = [
   { prefix: "ctf-dns-", pack: "misc" },
   { prefix: "ctf-qr-", pack: "misc" },
   { prefix: "ctf-encoding-", pack: "misc" },
-  { prefix: "ctf-web-observe", pack: "core" },
   { prefix: "ctf-stego-", pack: "forensics" },
+  // Underscore MCP namespace injected at runtime (ctf_rag_*, ctf_filesystem_*).
+  // Must stay AFTER the ctf- hyphen rules so it never shadows them.
+  { prefix: "ctf_", pack: "core" },
   { prefix: "ctf-image-open", pack: "forensics" },
   { prefix: "ctf-media-open", pack: "forensics" },
   { prefix: "ctf-artifact-page", pack: "forensics" },
 ]
 
+/** Pack membership result; "quarantine" marks tools not registered in any pack. */
+export type ToolPackLookup = ToolPackId | "quarantine"
+
 /**
  * Assign a tool basename (no extension) to a pack.
- * Unknown tools fall into core so they stay available by default.
+ * Unknown tools are quarantined: dropping a new file into tools/ no longer
+ * auto-exposes it to agents — registration is an explicit product decision
+ * (roadmap W0 tool-surface stopgap; full registered_tools manifest pending).
  */
-export function packForTool(toolName: string): ToolPackId {
+export function packForTool(toolName: string): ToolPackLookup {
   if (CORE_EXACT.has(toolName)) return "core"
   if (MAINTENANCE_EXACT.has(toolName)) return "maintenance"
   if (PWN_HEAVY_EXACT.has(toolName)) return "pwn-heavy"
@@ -269,9 +278,7 @@ export function packForTool(toolName: string): ToolPackId {
   for (const rule of PREFIX_RULES) {
     if (toolName === rule.prefix || toolName.startsWith(rule.prefix)) return rule.pack
   }
-  // Generic helpers without a clear category stay core.
-  if (toolName.startsWith("ctf-")) return "core"
-  return "core"
+  return "quarantine"
 }
 
 export function isToolPackId(value: string): value is ToolPackId {
@@ -286,11 +293,11 @@ export function normalizeToolPackName(value: string): ToolPackId | undefined {
 
 /**
  * Resolve the pack set from user config / env.
- * - missing 闂?DEFAULT_TOOL_PACKS
- * - includes "all" 闂?every pack
- * - otherwise 闂?union with "core" always forced on
+ * - missing → DEFAULT_TOOL_PACKS
+ * - includes "all" → every pack
+ * - otherwise → union with "core" always forced on
  */
-export function resolveEnabledPacks(requested?: string[] | null): Set<ToolPackId> {
+export function resolveEnabledPacks(requested?: string[] | null): Set<ToolPackId | "quarantine"> {
   const envRaw = process.env.OPENCODE_CTF_TOOL_PACKS
   const fromEnv = envRaw
     ? envRaw
@@ -302,9 +309,14 @@ export function resolveEnabledPacks(requested?: string[] | null): Set<ToolPackId
   const tokens = fromConfig.length ? fromConfig : fromEnv
 
   if (!tokens.length) return new Set(DEFAULT_TOOL_PACKS)
-  if (tokens.includes("all") || tokens.includes("*")) return new Set(ALL_TOOL_PACKS)
+  // Quarantine is a pseudo-pack with an explicit escape hatch: "all" or an
+  // explicit "quarantine" token re-enables otherwise unregistered tools, so
+  // default-deny never becomes a silent feature removal for power users.
+  const withQuarantine = (packs: ToolPackId[]) => new Set<ToolPackId | "quarantine">([...packs, "quarantine"])
+  if (tokens.includes("all") || tokens.includes("*")) return withQuarantine(ALL_TOOL_PACKS)
 
-  const enabled = new Set<ToolPackId>(["core"])
+  const enabled = new Set<ToolPackId | "quarantine">(["core"])
+  if (tokens.includes("quarantine")) enabled.add("quarantine")
   for (const token of tokens) {
     const normalized = normalizeToolPackName(token)
     if (normalized) enabled.add(normalized)
@@ -312,16 +324,20 @@ export function resolveEnabledPacks(requested?: string[] | null): Set<ToolPackId
   return enabled
 }
 
-export function toolAllowedByPacks(toolName: string, enabled: Set<ToolPackId>): boolean {
+export function toolAllowedByPacks(toolName: string, enabled: Set<ToolPackId | "quarantine">): boolean {
   return enabled.has(packForTool(toolName))
 }
 
-/** Summarize pack membership for diagnostics. */
-export function summarizePacks(toolNames: string[]): Record<ToolPackId, string[]> {
-  const out = Object.fromEntries(ALL_TOOL_PACKS.map((p) => [p, [] as string[]])) as Record<ToolPackId, string[]>
+/** Summarize pack membership for diagnostics (quarantined tools listed separately). */
+export function summarizePacks(toolNames: string[]): Record<ToolPackId | "quarantine", string[]> {
+  const out = Object.fromEntries(ALL_TOOL_PACKS.map((p) => [p, [] as string[]])) as Record<
+    ToolPackId | "quarantine",
+    string[]
+  >
+  out.quarantine = []
   for (const name of toolNames) {
     out[packForTool(name)].push(name)
   }
-  for (const pack of ALL_TOOL_PACKS) out[pack].sort()
+  for (const key of Object.keys(out)) (out as Record<string, string[]>)[key].sort()
   return out
 }

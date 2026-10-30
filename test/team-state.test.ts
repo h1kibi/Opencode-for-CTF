@@ -1,6 +1,4 @@
-import { mkdtempSync } from "node:fs"
-import { readFile, rm, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { readdir, readFile, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 import { resolveFileLockPaths, withFileLock } from "../src/file-lock.ts"
@@ -9,272 +7,210 @@ import {
   normalizePersistedTeamState,
   normalizeTeamState,
   parseTeamState,
-  quarantineTeamState,
   readTeamState,
 } from "../src/team/team-state.ts"
 import type { TeamState } from "../src/team/team-types.ts"
 import { deriveTeamRunStatus } from "../src/team-reducer.ts"
 
-function makeState(overrides: Partial<TeamState> = {}): TeamState {
+import { makeTestWorkspace } from "./support/test-workspace.ts"
+const time = "2026-07-31T00:00:00.000Z"
+
+function probe(overrides: Record<string, unknown> = {}) {
   return {
-    schemaVersion: 1,
-    revision: 0,
-    updatedAt: "2026-07-31T00:00:00.000Z",
-    runs: [],
+    id: "probe-1",
+    title: "inspect target",
+    objective: "determine the target behavior",
+    agent: "ctf-pwn",
+    routeId: "R1",
+    concurrency: "independent",
+    status: "running",
+    createdAt: time,
+    updatedAt: time,
     ...overrides,
   }
 }
 
-describe("team state recovery", () => {
-  it("keeps unknown agents readable and marks the job orphaned", () => {
-    const state = parseTeamState({
-      schemaVersion: 1,
-      revision: 3,
-      updatedAt: "2026-07-31T00:00:00.000Z",
-      runs: [
-        {
-          id: "run-orphan",
-          title: "old wave",
-          parentSessionID: "parent-1",
-          status: "running",
-          createdAt: "2026-07-31T00:00:00.000Z",
-          updatedAt: "2026-07-31T00:00:00.000Z",
-          notificationPending: false,
-          jobs: [
-            {
-              id: "job-old",
-              title: "old worker",
-              objective: "recover",
-              agent: "ctf-web-removed",
-              routeId: "R1",
-              concurrency: "independent",
-              sessionID: "worker-old",
-              status: "running",
-              createdAt: "2026-07-31T00:00:00.000Z",
-              updatedAt: "2026-07-31T00:00:00.000Z",
-            },
-          ],
-        },
-      ],
-    })
-    const job = state.runs[0].jobs[0]
-    expect(job.status).toBe("orphaned")
-    expect(job.orphaned).toMatchObject({
-      state: "orphaned",
-      reason: "unknown_agent",
-      originalAgent: "ctf-web-removed",
-      recoverable: true,
-    })
-    expect(job.originalAgent).toBe("ctf-web-removed")
+function job(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "job-1",
+    probeId: "probe-1",
+    agent: "ctf-pwn",
+    status: "running",
+    sessionID: "worker-1",
+    createdAt: time,
+    updatedAt: time,
+    ...overrides,
+  }
+}
+
+function run(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "run-1",
+    title: "probe wave",
+    parentSessionID: "parent-1",
+    status: "running",
+    createdAt: time,
+    updatedAt: time,
+    probes: [probe()],
+    jobs: [job()],
+    notificationPending: false,
+    ...overrides,
+  }
+}
+
+function state(overrides: Record<string, unknown> = {}): TeamState {
+  return {
+    schemaVersion: 2,
+    revision: 0,
+    updatedAt: time,
+    runs: [],
+    ...overrides,
+  } as TeamState
+}
+
+describe("team state schema v2", () => {
+  it("accepts a Probe with exactly one linked Job", () => {
+    const parsed = parseTeamState(state({ runs: [run()] }))
+
+    expect(parsed.schemaVersion).toBe(2)
+    expect(parsed.runs[0].probes[0].id).toBe(parsed.runs[0].jobs[0].probeId)
   })
 
-  it("persists the orphan marker when normalization is requested", async () => {
-    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-orphan-persist-"))
-    try {
-      await writeFile(
-        path.join(directory, ".ctf-team.json"),
-        JSON.stringify({
-          schemaVersion: 1,
-          revision: 0,
-          updatedAt: "2026-07-31T00:00:00.000Z",
+  it("rejects a Job that references an unknown Probe", () => {
+    expect(() => parseTeamState(state({ runs: [run({ jobs: [job({ probeId: "probe-missing" })] })] }))).toThrow(
+      /references an unknown probe/,
+    )
+  })
+
+  it("rejects missing or duplicate Job relationships instead of accepting an incomplete run", () => {
+    expect(() => parseTeamState(state({ runs: [run({ jobs: [] })] }))).toThrow(/exactly one job per probe/)
+    expect(() => parseTeamState(state({ runs: [run({ jobs: [job(), job({ id: "job-2" })] })] }))).toThrow(
+      /assigned to multiple jobs/,
+    )
+  })
+
+  it("rejects a Probe with a malformed embedded ProbeResult", () => {
+    expect(() =>
+      parseTeamState(
+        state({
           runs: [
-            {
-              id: "run-orphan-persist",
-              title: "old wave",
-              parentSessionID: "parent-1",
-              status: "running",
-              createdAt: "2026-07-31T00:00:00.000Z",
-              updatedAt: "2026-07-31T00:00:00.000Z",
-              notificationPending: false,
-              jobs: [
-                {
-                  id: "job-old",
-                  title: "old job",
-                  objective: "inspect",
-                  agent: "ctf-removed",
-                  routeId: "R1",
-                  concurrency: "independent",
-                  sessionID: "worker-old",
-                  status: "running",
-                  createdAt: "2026-07-31T00:00:00.000Z",
-                  updatedAt: "2026-07-31T00:00:00.000Z",
-                },
+            run({
+              probes: [
+                probe({
+                  result: {
+                    protocol: "ctf.team.probe.v1",
+                    type: "probe_result",
+                    status: "completed",
+                    summary: "invalid evidence",
+                    observations: [{ kind: "observation", statement: "x", evidence: "not-an-array" }],
+                    artifacts: [],
+                  },
+                }),
               ],
-            },
+            }),
           ],
-          activeRunID: "run-orphan-persist",
         }),
-        "utf8",
-      )
-      const normalized = await normalizePersistedTeamState(directory)
-      expect(normalized.repairs.join("\n")).toContain("unknown agent ctf-removed marked orphaned")
-      const persisted = JSON.parse(await readFile(path.join(directory, ".ctf-team.json"), "utf8"))
-      expect(persisted.runs[0].jobs[0].orphaned).toMatchObject({
-        state: "orphaned",
-        reason: "unknown_agent",
-        recoverable: true,
-      })
-    } finally {
-      await rm(directory, { recursive: true, force: true })
-    }
+      ),
+    ).toThrow(/has an invalid result/)
   })
 
-  it("quarantines the original state and leaves a dispatchable fresh state", async () => {
-    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-repair-"))
-    try {
-      await writeFile(path.join(directory, ".ctf-team.json"), "{ invalid", "utf8")
-      const result = await quarantineTeamState(directory, "test repair")
-      expect(result.quarantined).toBe(true)
-      expect(result.destination).toBeTruthy()
-      expect(await readTeamState(directory)).toMatchObject({ schemaVersion: 1, runs: [] })
-      expect(await readFile(result.destination!, "utf8")).toBe("{ invalid")
-    } finally {
-      await rm(directory, { recursive: true, force: true })
+  it("orphanizes an unknown worker agent while preserving its Probe relationship", () => {
+    const parsed = parseTeamState(
+      state({ runs: [run({ jobs: [job({ agent: "ctf-worker-removed", status: "running" })] })] }),
+    )
+    const persistedJob = parsed.runs[0].jobs[0]
+
+    expect(persistedJob.status).toBe("orphaned")
+    expect(persistedJob.originalAgent).toBe("ctf-worker-removed")
+    expect(persistedJob.orphaned).toMatchObject({ state: "orphaned", reason: "unknown_agent", recoverable: true })
+    expect(parsed.runs[0].probes).toHaveLength(1)
+    expect(persistedJob.probeId).toBe(parsed.runs[0].probes[0].id)
+  })
+
+  it("quarantines v1 state through read and normalization without migration", async () => {
+    const original = JSON.stringify({
+      schemaVersion: 1,
+      revision: 7,
+      runs: [{ id: "legacy-run", legacyField: "preserve verbatim" }],
+    })
+    for (const operation of ["read", "normalize"] as const) {
+      const directory = makeTestWorkspace(`ctf-team-v1-${operation}`)
+      try {
+        await writeFile(path.join(directory, ".ctf-team.json"), original, "utf8")
+        const result =
+          operation === "read" ? await readTeamState(directory) : (await normalizePersistedTeamState(directory)).state
+        expect(result).toMatchObject({ schemaVersion: 2, revision: 0, runs: [] })
+        const quarantine = path.join(directory, ".ctf-team-quarantine")
+        const names = await readdir(quarantine)
+        expect(names).toHaveLength(1)
+        expect(await readFile(path.join(quarantine, names[0]), "utf8")).toBe(original)
+        expect(JSON.parse(await readFile(path.join(directory, ".ctf-team.json"), "utf8"))).toMatchObject({
+          schemaVersion: 2,
+          runs: [],
+        })
+      } finally {
+        await rm(directory, { recursive: true, force: true })
+      }
     }
   })
 })
 
 describe("team state hygiene", () => {
   it("reopens a closed run when a non-terminal worker is still persisted", () => {
-    const state = makeState({
+    const current = state({
       activeRunID: "run-1",
-      runs: [
-        {
-          id: "run-1",
-          title: "stale closed",
-          parentSessionID: "parent-1",
-          status: "completed",
-          createdAt: "2026-07-31T00:00:00.000Z",
-          updatedAt: "2026-07-31T00:00:00.000Z",
-          notificationPending: false,
-          jobs: [
-            {
-              id: "job-1",
-              title: "live",
-              objective: "reconcile",
-              agent: "ctf-web",
-              routeId: "R1",
-              concurrency: "independent",
-              sessionID: "worker-1",
-              status: "running",
-              createdAt: "2026-07-31T00:00:00.000Z",
-              updatedAt: "2026-07-31T00:00:00.000Z",
-            },
-          ],
-        },
-      ],
+      runs: [run({ status: "completed" })],
     })
 
-    const report = normalizeTeamState(state)
+    const report = normalizeTeamState(current)
     expect(report.changed).toBe(true)
-    expect(state.runs[0].status).toBe("running")
-    expect(state.activeRunID).toBe("run-1")
+    expect(current.runs[0].status).toBe("running")
+    expect(current.activeRunID).toBe("run-1")
   })
 
   it("repairs completed jobs that never promoted the run to synthesis", () => {
-    const state = makeState({
+    const current = state({
       activeRunID: "run-1",
-      runs: [
-        {
-          id: "run-1",
-          title: "wave",
-          parentSessionID: "parent-1",
-          status: "running",
-          createdAt: "2026-07-31T00:00:00.000Z",
-          updatedAt: "2026-07-31T00:00:00.000Z",
-          notificationPending: false,
-          jobs: [
-            {
-              id: "job-1",
-              title: "task",
-              objective: "objective",
-              agent: "ctf-web",
-              routeId: "R1",
-              concurrency: "independent",
-              status: "completed",
-              createdAt: "2026-07-31T00:00:00.000Z",
-              updatedAt: "2026-07-31T00:00:00.000Z",
-            },
-          ],
-        },
-      ],
+      runs: [run({ status: "running", jobs: [job({ status: "completed" })] })],
     })
 
-    const report = normalizeTeamState(state)
-
+    const report = normalizeTeamState(current)
     expect(report.changed).toBe(true)
-    expect(state.runs[0].status).toBe("ready_for_synthesis")
-    expect(state.runs[0].notificationPending).toBe(true)
-    expect(state.activeRunID).toBe("run-1")
+    expect(current.runs[0].status).toBe("ready_for_synthesis")
+    expect(current.runs[0].notificationPending).toBe(true)
+    expect(current.activeRunID).toBe("run-1")
   })
 
   it("clears stale activeRunID and notification metadata for closed or active runs", () => {
-    const state = makeState({
+    const current = state({
       activeRunID: "done-run",
       runs: [
-        {
-          id: "done-run",
-          title: "done",
-          parentSessionID: "parent-1",
-          status: "completed",
-          createdAt: "2026-07-31T00:00:00.000Z",
-          updatedAt: "2026-07-31T00:00:00.000Z",
-          notificationPending: true,
-          jobs: [
-            {
-              id: "job-1",
-              title: "task",
-              objective: "objective",
-              agent: "ctf-web",
-              routeId: "R1",
-              concurrency: "independent",
-              status: "completed",
-              createdAt: "2026-07-31T00:00:00.000Z",
-              updatedAt: "2026-07-31T00:00:00.000Z",
-            },
-          ],
-        },
-        {
+        run({ id: "done-run", status: "completed", notificationPending: true, jobs: [job({ status: "completed" })] }),
+        run({
           id: "live-run",
-          title: "live",
-          parentSessionID: "parent-2",
           status: "running",
-          createdAt: "2026-07-31T00:00:00.000Z",
-          updatedAt: "2026-07-31T00:00:00.000Z",
           notificationPending: true,
           notificationSentAt: "2026-07-31T00:01:00.000Z",
           notificationError: "old error",
-          jobs: [
-            {
-              id: "job-2",
-              title: "task",
-              objective: "objective",
-              agent: "ctf-pwn",
-              routeId: "R2",
-              concurrency: "independent",
-              status: "running",
-              createdAt: "2026-07-31T00:00:00.000Z",
-              updatedAt: "2026-07-31T00:00:00.000Z",
-            },
-          ],
-        },
+          probes: [probe({ id: "probe-2" })],
+          jobs: [job({ id: "job-2", probeId: "probe-2", agent: "ctf-pwn" })],
+        }),
       ],
     })
 
-    const report = normalizeTeamState(state)
-
+    const report = normalizeTeamState(current)
     expect(report.changed).toBe(true)
-    expect(state.activeRunID).toBe("live-run")
-    expect(state.runs[0].notificationPending).toBe(false)
-    expect(state.runs[1].notificationPending).toBe(false)
-    expect(state.runs[1].notificationSentAt).toBeUndefined()
-    expect(state.runs[1].notificationError).toBeUndefined()
+    expect(current.activeRunID).toBe("live-run")
+    expect(current.runs[0].notificationPending).toBe(false)
+    expect(current.runs[1].notificationPending).toBe(false)
+    expect(current.runs[1].notificationSentAt).toBeUndefined()
+    expect(current.runs[1].notificationError).toBeUndefined()
   })
 })
 
 describe("team lock diagnostics", () => {
   it("reports active and released sentinels in the owning worktree", async () => {
-    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-lock-diagnostics-"))
+    const directory = makeTestWorkspace("ctf-team-lock-diagnostics")
     const file = path.join(directory, "state.json")
     let release!: () => void
     const held = withFileLock(file, async () => {
@@ -309,265 +245,7 @@ describe("team lock diagnostics", () => {
   })
 })
 
-describe("team state fact and intent validation", () => {
-  const baseRun = {
-    id: "run-1",
-    title: "validation",
-    parentSessionID: "parent-1",
-    status: "running",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    jobs: [
-      {
-        id: "job-1",
-        title: "pwn",
-        objective: "test",
-        agent: "ctf-pwn",
-        routeId: "R1",
-        concurrency: "independent",
-        intentId: "intent-1",
-        ownerToken: "claim-token",
-        status: "running",
-        sessionID: "worker-1",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ],
-  }
-  const write = async (directory: string, run: Record<string, unknown>) => {
-    await writeFile(
-      path.join(directory, ".ctf-team.json"),
-      JSON.stringify({ schemaVersion: 1, revision: 1, updatedAt: new Date().toISOString(), runs: [run] }),
-      "utf8",
-    )
-  }
-
-  it("accepts a well-formed fact and intent ledger", async () => {
-    const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-valid-ledger-"))
-    try {
-      await write(directory, {
-        ...baseRun,
-        facts: [
-          {
-            id: "fact-1",
-            runId: "run-1",
-            routeId: "R1",
-            sourceJobId: "job-1",
-            sourceSessionId: "worker-1",
-            kind: "observation",
-            statement: "NX enabled",
-            evidence: [{ type: "command", value: "checksec ./chall" }],
-            confidence: "observed",
-            status: "pending",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ],
-        intents: [
-          {
-            id: "intent-1",
-            runId: "run-1",
-            routeId: "R1",
-            title: "confirm control",
-            objective: "confirm RIP control",
-            basedOnFactIds: ["fact-1"],
-            stopCondition: "confirmed or ruled out",
-            concurrency: "exclusive",
-            requiredCapabilities: [],
-            status: "claimed",
-            claimedBy: "job-1",
-            claimToken: "claim-token",
-            claimExpiresAt: new Date(Date.now() + 60_000).toISOString(),
-            attempts: 1,
-            maxAttempts: 2,
-            createdBy: "expert",
-            updatedAt: new Date().toISOString(),
-          },
-        ],
-      })
-      const state = await readTeamState(directory)
-      expect(state.runs[0].facts).toHaveLength(1)
-      expect(state.runs[0].intents).toHaveLength(1)
-    } finally {
-      await rm(directory, { recursive: true, force: true })
-    }
-  })
-
-  it("fails closed on a malformed fact or intent ledger", async () => {
-    const cases: Array<Record<string, unknown>> = [
-      { intents: "not-an-array" },
-      { facts: { id: "fact-1" } },
-      { intents: [{ id: "intent-1", status: "bogus", routeId: "R1", concurrency: "exclusive" }] },
-      { intents: [{ id: "intent-1", status: "open", routeId: "R9", concurrency: "exclusive" }] },
-      { facts: [{ id: "fact-1", status: "pending", statement: "s", evidence: "not-an-array" }] },
-      { facts: [{ id: "fact-1", status: "nope", statement: "s", evidence: [] }] },
-      { intents: [{ id: "intent-1", status: "open", routeId: "R1", concurrency: "exclusive", claimedBy: "ghost" }] },
-      {
-        facts: [
-          {
-            id: "fact-1",
-            runId: "run-1",
-            routeId: "R1",
-            sourceJobId: "job-1",
-            sourceSessionId: "worker-1",
-            kind: "bogus",
-            statement: "s",
-            evidence: [{ type: "command", value: "v" }],
-            confidence: "observed",
-            status: "pending",
-          },
-        ],
-      },
-      {
-        facts: [
-          {
-            id: "fact-1",
-            runId: "run-1",
-            routeId: "R1",
-            sourceJobId: "job-1",
-            sourceSessionId: "worker-1",
-            kind: "observation",
-            statement: "s",
-            evidence: [{ type: "command", value: "v" }],
-            confidence: "confirmed",
-            status: "pending",
-          },
-        ],
-      },
-      {
-        intents: [
-          {
-            id: "intent-1",
-            status: "claimed",
-            routeId: "R1",
-            title: "t",
-            objective: "o",
-            basedOnFactIds: [],
-            requiredCapabilities: [],
-            concurrency: "exclusive",
-            attempts: 1,
-            maxAttempts: 2,
-            createdBy: "expert",
-          },
-        ],
-      },
-      {
-        intents: [
-          {
-            id: "intent-1",
-            status: "open",
-            routeId: "R1",
-            title: "t",
-            objective: "o",
-            basedOnFactIds: ["f", "f"],
-            requiredCapabilities: [],
-            concurrency: "exclusive",
-            attempts: 0,
-            maxAttempts: 2,
-            createdBy: "expert",
-          },
-        ],
-      },
-      {
-        intents: [
-          {
-            id: "intent-1",
-            runId: "run-1",
-            status: "claimed",
-            routeId: "R1",
-            title: "t",
-            objective: "o",
-            basedOnFactIds: [],
-            requiredCapabilities: [],
-            concurrency: "exclusive",
-            attempts: 1,
-            maxAttempts: 2,
-            createdBy: "expert",
-            stopCondition: "done",
-            claimedBy: "job-1",
-            claimToken: "token-a",
-            claimExpiresAt: new Date(Date.now() + 60_000).toISOString(),
-          },
-        ],
-      },
-      {
-        intents: [
-          {
-            id: "intent-1",
-            runId: "run-1",
-            status: "claimed",
-            routeId: "R1",
-            title: "t",
-            objective: "o",
-            basedOnFactIds: [],
-            requiredCapabilities: [],
-            concurrency: "exclusive",
-            attempts: 1,
-            maxAttempts: 2,
-            createdBy: "expert",
-            stopCondition: "done",
-            claimedBy: "job-1",
-          },
-        ],
-      },
-    ]
-    const validJob = { ...baseRun.jobs[0], sessionID: "worker-1" }
-    const validFact = {
-      id: "fact-1",
-      runId: "run-1",
-      routeId: "R1",
-      sourceJobId: "job-1",
-      sourceSessionId: "worker-1",
-      kind: "observation",
-      statement: "s",
-      evidence: [{ type: "command", value: "v" }],
-      confidence: "observed",
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    const validIntent = {
-      id: "intent-1",
-      runId: "run-1",
-      routeId: "R1",
-      title: "t",
-      objective: "o",
-      basedOnFactIds: ["fact-1"],
-      requiredCapabilities: [],
-      concurrency: "exclusive",
-      status: "open",
-      attempts: 0,
-      maxAttempts: 2,
-      createdBy: "expert",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    const duplicateCases = [
-      { facts: [validFact, { ...validFact }], intents: [validIntent] },
-      { facts: [validFact], intents: [validIntent, { ...validIntent }] },
-    ]
-    for (const ledger of duplicateCases) {
-      const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-duplicate-ledger-"))
-      try {
-        await write(directory, { ...baseRun, jobs: [validJob], ...ledger })
-        await expect(readTeamState(directory)).rejects.toThrow(/duplicate (fact|intent) id/)
-      } finally {
-        await rm(directory, { recursive: true, force: true })
-      }
-    }
-    for (const malformed of cases) {
-      const directory = mkdtempSync(path.join(os.tmpdir(), "ctf-team-bad-ledger-"))
-      try {
-        await write(directory, { ...baseRun, ...malformed })
-        await expect(readTeamState(directory), JSON.stringify(malformed).slice(0, 60)).rejects.toThrow(
-          /Invalid CTF team state/,
-        )
-      } finally {
-        await rm(directory, { recursive: true, force: true })
-      }
-    }
-  })
-
+describe("team run status derivation", () => {
   it("derives cancelled for a run whose workers were all cancelled", () => {
     expect(deriveTeamRunStatus([{ status: "cancelled" }, { status: "cancelled" }], "running")).toBe("cancelled")
   })

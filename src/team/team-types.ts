@@ -9,7 +9,6 @@ export const TEAM_AGENTS = [
   "ctf-forensics",
   "ctf-misc",
   "ctf-aisec",
-  "ctf-retro",
 ] as const
 
 export type TeamAgent = (typeof TEAM_AGENTS)[number]
@@ -61,102 +60,53 @@ export type TeamRunStatus =
 
 export type TeamRouteId = "recon" | "R1" | "R2" | "R3" | "general"
 
-export type TeamFactKind = "observation" | "measurement" | "artifact" | "error" | "negative" | "candidate"
-export type TeamFactConfidence = "observed" | "probable" | "speculative" | "confirmed"
-export type TeamFactStatus = "pending" | "accepted" | "rejected" | "superseded"
+export type ProbeObservationKind = "observation" | "measurement" | "artifact" | "error" | "negative" | "candidate"
 
 export type TeamEvidenceRef = {
   type: "command" | "file" | "response" | "hash" | "trace"
   value: string
 }
 
-export type TeamFact = {
-  id: string
-  runId: string
-  routeId: TeamRouteId
-  sourceJobId: string
-  sourceSessionId: string
-  intentId?: string
-  kind: TeamFactKind
+export type ProbeObservation = {
+  kind: ProbeObservationKind
   statement: string
   evidence: TeamEvidenceRef[]
-  confidence: TeamFactConfidence
-  status: TeamFactStatus
-  reviewedBy?: string
-  reviewedAt?: string
-  reviewReason?: string
-  supersedesFactId?: string
-  createdAt: string
-  updatedAt: string
 }
 
-export type TeamIntentConcurrency = "exclusive" | "parallel" | "speculative"
-export type TeamIntentStatus =
-  "open" | "claimed" | "running" | "blocked" | "completed" | "failed" | "cancelled" | "superseded"
+export type ProbeResult = {
+  protocol: "ctf.team.probe.v1"
+  type: "probe_result"
+  status: "completed" | "blocked" | "failed"
+  summary: string
+  observations: ProbeObservation[]
+  artifacts: string[]
+  next?: string
+}
 
-export type TeamIntent = {
+export type TeamProbeStatus = "queued" | "running" | "completed" | "blocked" | "failed" | "cancelled"
+
+export type TeamProbe = {
   id: string
-  runId: string
-  routeId: TeamRouteId
   title: string
   objective: string
-  basedOnFactIds: string[]
-  expectedObservation?: string
-  stopCondition?: string
-  failureCondition?: string
-  requiredCapabilities: string[]
-  concurrency: TeamIntentConcurrency
-  status: TeamIntentStatus
-  claimedBy?: string
-  claimToken?: string
-  claimExpiresAt?: string
-  attempts: number
-  maxAttempts: number
-  createdBy: "expert" | "migration"
-  resultSummary?: string
-  resultFactIds?: string[]
-  resultArtifacts?: string[]
+  agent: TeamAgent
+  routeId: TeamRouteId
+  concurrency: "independent" | "shared_state"
+  status: TeamProbeStatus
   createdAt: string
   updatedAt: string
-}
-
-export type TeamWorkerPacket = {
-  protocol: "ctf.team.worker.v1"
-  type: "fact" | "intent_result"
-  intentId?: string
-  routeId?: TeamRouteId
-  statement?: string
-  kind?: TeamFactKind
-  evidence?: TeamEvidenceRef[]
-  confidence?: Exclude<TeamFactConfidence, "confirmed">
-  status?: "completed" | "blocked" | "failed"
-  summary?: string
-  factIds?: string[]
-  artifacts?: string[]
+  result?: ProbeResult
 }
 
 export type TeamEventType =
-  | "fact_submitted"
-  | "fact_accepted"
-  | "fact_rejected"
-  | "fact_superseded"
-  | "fact_dropped"
-  | "intent_created"
-  | "intent_claimed"
-  | "intent_started"
-  | "intent_blocked"
-  | "intent_completed"
-  | "intent_failed"
-  | "intent_released"
-  | "intent_superseded"
+  "probe_created" | "probe_started" | "probe_completed" | "probe_blocked" | "probe_failed" | "probe_cancelled"
 
 export type TeamEvent = {
   id: string
   type: TeamEventType
   runId: string
   jobId?: string
-  intentId?: string
-  factId?: string
+  probeId?: string
   at: string
   data?: Record<string, unknown>
 }
@@ -173,17 +123,12 @@ export type TeamOrphanedMetadata = {
 
 export type TeamJob = {
   id: string
-  title: string
-  objective: string
+  probeId: string
   /** Last valid agent identity used for type compatibility. Orphaned jobs fail closed. */
   agent: TeamAgent
   /** Raw agent name retained when the persisted state referenced an unknown agent. */
   originalAgent?: string
   orphaned?: TeamOrphanedMetadata
-  routeId: TeamRouteId
-  /** Stable decision object that produced this worker attempt. */
-  intentId?: string
-  concurrency: "independent" | "shared_state"
   sessionID?: string
   status: TeamJobStatus
   createdAt: string
@@ -209,6 +154,11 @@ export type TeamJob = {
   retryPending?: boolean
   /** Replacement session persisted before prompt so restart recovery can abort it. */
   retrySessionID?: string
+  /** Bounded serialization repair prompts sent to this worker session (0 or 1). */
+  serializationRepairAttempts?: number
+  /** Repair prompt has been reserved but not yet acknowledged by the client. */
+  serializationRepairPending?: boolean
+  /** Bounded raw worker output, retained for diagnostics alongside structured ProbeResult. */
   result?: string
   /** Cursor: last collected message id/digest so collect extracts incrementally. */
   lastCollectedMessageId?: string
@@ -238,27 +188,26 @@ export type TeamRun = {
   id: string
   title: string
   parentSessionID: string
-  /** Evidence case that owns this Team run's facts and audit events. */
+  /** Evidence case that owns this run's audit events. */
   caseId?: string
   /** Explicit parent-session rebind audit trail; bounded by the runtime. */
   adoptionHistory?: TeamParentAdoption[]
   status: TeamRunStatus
   createdAt: string
   updatedAt: string
+  probes: TeamProbe[]
   jobs: TeamJob[]
-  /** Structured facts collected from workers or accepted by expert. */
-  facts?: TeamFact[]
-  /** Open or active intents for this run. */
-  intents?: TeamIntent[]
   notificationPending: boolean
   notificationSentAt?: string
   notificationError?: string
   outcome?: "solved" | "continue" | "blocked"
   synthesisSummary?: string
+  /** Runtime-observable failure labels stamped at close (see failure-attribution.ts). */
+  failureAttribution?: { modes: string[]; signals: string[]; at: string }
 }
 
 export type TeamState = {
-  schemaVersion: 1
+  schemaVersion: 2
   revision: number
   updatedAt: string
   activeRunID?: string
@@ -272,8 +221,6 @@ export type TeamModel = {
 
 export type CreateTeamToolsOptions = {
   maxWorkers?: number
-  /** @deprecated Team workers always inherit the parent provider/model; false is rejected at dispatch. */
-  inheritParentModel?: boolean
   /** Supervisor retry budget: how many deadline exceedances before a worker fails. */
   maxJobAttempts?: number
   runtimeVisibility?: {
@@ -289,11 +236,9 @@ export const TEAM_AGENT = "ctf-expert"
 export const DEFAULT_MAX_JOBS = 8
 export const ABSOLUTE_MAX_JOBS = 16
 export const MAX_JOB_RESULT = 6_000
-/** Bound the per-run Fact ledger: an unbounded ledger is persisted in state. */
-export const MAX_FACTS_PER_RUN = 400
 export const MAX_COLLECT_OUTPUT = 32_000
 export const STATE_FILE = ".ctf-team.json"
-export const STATE_VERSION = 1
+export const STATE_VERSION = 2
 
 export const DEFAULT_JOB_TIMEOUT_MINUTES = 30
 export const DEFAULT_MAX_JOB_ATTEMPTS = 2
@@ -307,7 +252,7 @@ export function resolveMaxJobs(maxWorkers?: number): number {
   if (typeof maxWorkers !== "number" || !Number.isFinite(maxWorkers) || maxWorkers <= 0) {
     return DEFAULT_MAX_JOBS
   }
-  return Math.min(ABSOLUTE_MAX_JOBS, Math.max(2, Math.floor(maxWorkers)))
+  return Math.min(ABSOLUTE_MAX_JOBS, Math.max(1, Math.floor(maxWorkers)))
 }
 
 export function now() {
