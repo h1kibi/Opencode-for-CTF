@@ -15,10 +15,10 @@ export default defineConfig({
         // Ratchet: only raise these, never lower. Each floor sits a few points
         // under the measured value so an intentional refactor can land, while a
         // dropped test suite fails the build.
-        lines: 48,
-        functions: 50,
+        lines: 50,
+        functions: 52,
         branches: 64,
-        statements: 48,
+        statements: 50,
         "src/**/*.ts": {
           lines: 72,
           functions: 78,
