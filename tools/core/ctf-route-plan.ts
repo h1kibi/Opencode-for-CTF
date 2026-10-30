@@ -1,5 +1,5 @@
 import { tool } from "@opencode-ai/plugin"
-import { probeFileMagic, probeFileTree } from "../../packages/ctf-core/src/index.ts"
+import { probeFileMagic, probeFileTree } from "ctf-core"
 import { loadPluginConfig } from "../../src/plugin-config.ts"
 import { formatHardRouteHandoff, planRoute, primaryAgentForDecision } from "../../src/route-runtime.ts"
 import { getSessionSurface, persistSessionSurface, rememberSessionSurface } from "../../src/session-surface.ts"

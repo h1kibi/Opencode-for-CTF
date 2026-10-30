@@ -1,5 +1,5 @@
 ﻿import { tool } from "@opencode-ai/plugin"
-import { lstat, open, readFile } from "node:fs/promises"
+import { lstat, readFile } from "node:fs/promises"
 import { safeExec } from "../lib/exec-utils.ts"
 import path from "node:path"
 import {
@@ -28,9 +28,6 @@ function u16(buf: Buffer, off: number) {
 }
 function u32(buf: Buffer, off: number) {
   return off + 4 <= buf.length ? buf.readUInt32LE(off) : 0
-}
-function i32(buf: Buffer, off: number) {
-  return off + 4 <= buf.length ? buf.readInt32LE(off) : 0
 }
 
 function machineName(machine: number) {

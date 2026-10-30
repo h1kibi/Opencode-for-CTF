@@ -54,30 +54,10 @@ function filenameHints(name: string): string[] {
   return hints
 }
 
-function safetensorsMetadata(buffer: Buffer): Record<string, unknown> | undefined {
-  if (buffer.length < 8) return undefined
-  const headerLength = Number(buffer.readBigUInt64LE(0))
-  if (
-    !Number.isSafeInteger(headerLength) ||
-    headerLength <= 0 ||
-    headerLength > MAX_HEADER_BYTES ||
-    8 + headerLength > buffer.length
-  )
-    return undefined
-  try {
-    const header = JSON.parse(buffer.subarray(8, 8 + headerLength).toString("utf8")) as Record<string, unknown>
-    const tensors = Object.keys(header).filter((key) => key !== "__metadata__")
-    return {
-      header_bytes: headerLength,
-      tensor_count: tensors.length,
-      metadata_keys:
-        header.__metadata__ && typeof header.__metadata__ === "object"
-          ? Object.keys(header.__metadata__ as object)
-          : [],
-      tensor_names_sample: tensors.slice(0, 12),
-    }
-  } catch {
-    return undefined
+function externalMetadataUnavailable(): Record<string, unknown> {
+  return {
+    metadata_unavailable: true,
+    reason: "SafeTensors metadata is delegated to a format-aware external tool",
   }
 }
 
@@ -132,7 +112,7 @@ async function inspectFile(filePath: string, root: string): Promise<ArtifactFile
     sha256 = digest.digest("hex")
   }
   let metadata: Record<string, unknown> | undefined
-  if (kind === "safetensors") metadata = safetensorsMetadata(sample)
+  if (kind === "safetensors") metadata = externalMetadataUnavailable()
   if (kind === "json" && stats.size <= MAX_HEADER_BYTES) {
     try {
       const parsed = JSON.parse(header.toString("utf8")) as Record<string, unknown>

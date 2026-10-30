@@ -6,7 +6,7 @@ import { objectToStringRecord, parseJsonObjectArg } from "../lib/json-args.ts"
 import { resolvePythonLauncher } from "../lib/python-launcher.ts"
 import { resolveAllowedPath } from "../lib/path-policy.ts"
 import { directoryFromContext, resolveInsideWorkspace, workspaceRootFromContext } from "../lib/workspace-path.ts"
-import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
+import { extractFlagCandidates } from "ctf-core"
 import {
   classifySolverOutcome,
   successClassFrom,

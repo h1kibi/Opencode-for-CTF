@@ -121,7 +121,7 @@ export default tool({
         args: ["--version"],
         required: false,
         category: "sandbox",
-        hint: "gem install seccomp-tools",
+        hint: "gem install seccomp-tools; ptrace-based — requires WSL/Linux.",
       },
       {
         name: "patchelf",
@@ -129,7 +129,7 @@ export default tool({
         args: ["--version"],
         required: false,
         category: "libc",
-        hint: "Install patchelf.",
+        hint: "Install patchelf; on Windows use WSL (Kali/Ubuntu) — no native build exists.",
       },
       {
         name: "pwninit",
@@ -169,7 +169,7 @@ export default tool({
         args: ["-h"],
         required: false,
         category: "remote",
-        hint: "Install netcat/ncat for manual remote connectivity checks.",
+        hint: "Install netcat/ncat for manual remote connectivity checks (ncat from Nmap also satisfies this).",
       },
       {
         name: "qemu-x86_64",
@@ -206,6 +206,7 @@ export default tool({
       required_total: baseSummary.required_total,
       optional_missing: baseSummary.optional_missing,
       required_missing: baseSummary.required_missing,
+      degraded: baseSummary.degraded,
       results,
       assembler_available: results.find((x) => x.name === "assembler")?.ok ?? false,
       glibc_version: results.find((x) => x.name === "glibc-ldd")?.version ?? "unchecked",
@@ -230,10 +231,11 @@ export default tool({
       `required_ok: ${summary.required_ok}/${summary.required_total}`,
       `required_missing: ${summary.required_missing.length ? summary.required_missing.join(" | ") : "none"}`,
       `optional_missing: ${summary.optional_missing.length ? summary.optional_missing.join(" | ") : "none"}`,
+      `degraded_present_but_unprobed: ${summary.degraded.length ? summary.degraded.join(" | ") : "none"}`,
       "checks:",
       ...results.map(
         (r) =>
-          `- ${r.ok ? "OK" : r.required ? "MISSING_REQUIRED" : "missing_optional"} ${r.name} [${r.category}]: ${r.version}${r.ok ? "" : ` | hint: ${r.hint}`}`,
+          `- ${r.ok ? (r.probed === "degraded" ? "OK(degraded)" : "OK") : r.required ? "MISSING_REQUIRED" : "missing_optional"} ${r.name} [${r.category}]: ${r.version}${r.detail ? ` | ${r.detail}` : ""}${r.ok ? "" : ` | hint: ${r.hint}`}`,
       ),
       "recommendation:",
       summary.ready

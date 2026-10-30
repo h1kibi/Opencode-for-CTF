@@ -4,7 +4,7 @@ import path from "node:path"
 import { safeExec } from "../lib/exec-utils.ts"
 import { resolveAllowedPath } from "../lib/path-policy.ts"
 import { directoryFromContext, workspaceRootFromContext } from "../lib/workspace-path.ts"
-import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
+import { extractFlagCandidates } from "ctf-core"
 
 function unique(values: string[], max = 100): string[] {
   return [...new Set(values.filter(Boolean))].slice(0, max)

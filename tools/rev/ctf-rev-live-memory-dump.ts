@@ -79,6 +79,22 @@ export default tool({
     const substrateHint = (args.substrateHint?.trim() || "docker").toLowerCase()
     const dumpFile = normalizeRel(path.relative(directory, path.join(outDir, "payload.dump.bin")))
     const scriptPath = path.join(outDir, "rev_live_dump.sh")
+    const dumpHelperPath = path.join(outDir, "rev_live_dump.py")
+    const dumpHelper =
+      [
+        "import sys",
+        "pid, start_s, size_s, out = sys.argv[1:5]",
+        "start = int(start_s, 0)",
+        "size = int(size_s, 0)",
+        "with open(f'/proc/{pid}/mem', 'rb', buffering=0) as mem:",
+        "    mem.seek(start)",
+        "    data = mem.read(size)",
+        "with open(out, 'wb') as f:",
+        "    f.write(data)",
+        "print(f'WROTE {len(data)} bytes to {out}')",
+      ].join("\\n") + "\\n"
+    await writeFile(dumpHelperPath, dumpHelper, "utf8")
+    const helperFile = normalizeRel(path.relative(directory, dumpHelperPath))
 
     const script =
       [
@@ -90,29 +106,20 @@ export default tool({
         `DUMP_SIZE=${JSON.stringify(dumpSize)}`,
         `DUMP_OUT=${JSON.stringify(path.posix.join("/work", normalizeRel(path.relative(directory, path.join(outDir, "payload.dump.bin")))))}`,
         `TARGET_ARGS=(${argv.map(shellQuote).join(" ")})`,
-        "fifo=$(mktemp -u)",
+        `fifo=${JSON.stringify(path.posix.join("/work", "rev_live_dump.fifo"))}`,
+        `stdoutFile=${JSON.stringify(path.posix.join("/work", "rev_live_dump.stdout"))}`,
+        'rm -f "$fifo" "$stdoutFile"',
         'mkfifo "$fifo"',
-        'cleanup() { rm -f "$fifo"; }',
+        'cleanup() { rm -f "$fifo" "$stdoutFile"; }',
         "trap cleanup EXIT",
-        '"$TARGET" "${TARGET_ARGS[@]}" < "$fifo" | tee /tmp/rev_live_dump.stdout &',
+        '"$TARGET" "${TARGET_ARGS[@]}" < "$fifo" | tee "$stdoutFile" &',
         "pid=$!",
         "while IFS= read -r line; do",
         '  if [[ -n "$MARKER" && "$line" == *"$MARKER"* ]]; then',
-        '    python3 - <<\'PY\' "$pid" "$DUMP_START" "$DUMP_SIZE" "$DUMP_OUT"',
-        "import sys",
-        "pid, start_s, size_s, out = sys.argv[1:5]",
-        "start = int(start_s, 0)",
-        "size = int(size_s, 0)",
-        "with open(f'/proc/{pid}/mem', 'rb', buffering=0) as mem:",
-        "    mem.seek(start)",
-        "    data = mem.read(size)",
-        "with open(out, 'wb') as f:",
-        "    f.write(data)",
-        "print(f'WROTE {len(data)} bytes to {out}')",
-        "PY",
+        `    python3 ${shellQuote(`./${helperFile}`)} "$pid" "$DUMP_START" "$DUMP_SIZE" "$DUMP_OUT"`,
         "    break",
         "  fi",
-        "done < /tmp/rev_live_dump.stdout",
+        'done < "$stdoutFile"',
         "wait $pid || true",
       ].join("\n") + "\n"
 

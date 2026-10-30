@@ -9,7 +9,7 @@ import {
   resolveInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
+import { extractFlagCandidates } from "ctf-core"
 function collectFlagCandidates(text: string, customPattern?: string) {
   if (customPattern) {
     const regex = new RegExp(customPattern, "g")
@@ -94,8 +94,7 @@ export default tool({
       : ""
     const relExploit = exploit ? path.relative(workspace, exploit).replace(/\\/g, "/") : ""
     const containerMountRoot = args.containerMountRoot || defaults.containerMountRoot || "/work"
-    const script = `#!/usr/bin/env python3
-from pwn import *
+    const script = `from pwn import *
 import os, re, runpy, sys, time
 context.log_level='error'
 cmds = ${JSON.stringify(cmds)}

@@ -1,7 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
 import { resolveAllowedPath } from "../lib/path-policy.ts"
 import { verifyCandidateFlag, type VerifyCandidateFlagArgs } from "../../src/flag-oracle.ts"
-import type { FlagEvidenceContext } from "../../packages/ctf-core/src/flag-rules.ts"
+import type { FlagEvidenceContext } from "ctf-core"
 
 function parseCandidates(value: string | undefined, single: string | undefined): string[] {
   if (single?.trim()) return [single.trim()]

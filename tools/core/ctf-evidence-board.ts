@@ -4,7 +4,9 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
 import path from "node:path"
 import { z } from "zod"
+import { CASE_ROUTE_STATES, type CaseRouteState } from "ctf-core"
 import { withFileLock } from "../../src/file-lock.ts"
+import { loadPluginConfig } from "../../src/plugin-config.ts"
 import { saveJsonFile } from "../../src/state-store.ts"
 import { resolveInsideWorkspace } from "../lib/workspace-path.ts"
 import {
@@ -32,7 +34,7 @@ import { findRun, readTeamState } from "../../src/team/team-state.ts"
  *   live     -> correct path toward flag
  */
 
-export type RouteState = "untested" | "blocked" | "dead" | "live"
+export type RouteState = CaseRouteState
 
 type EvidenceStatus = "confirmed" | "refuted" | "inconclusive" | "blocked" | "in_progress"
 type EvidenceType =
@@ -88,14 +90,14 @@ type EvidenceBoard = {
   updatedAt: string
 }
 
-const ROUTE_STATES: RouteState[] = ["untested", "blocked", "dead", "live"]
+const ROUTE_STATES: readonly RouteState[] = CASE_ROUTE_STATES
 const MIN_DEAD_ATTEMPTS = 2
 
 // ---------------------------------------------------------------------------
 // Runtime schema validation (zod) + board invariants
 // ---------------------------------------------------------------------------
 
-const routeStateSchema = z.enum(["untested", "blocked", "dead", "live"])
+const routeStateSchema = z.enum(CASE_ROUTE_STATES)
 
 const routeSchema = z.object({
   id: z.string(),
@@ -247,7 +249,16 @@ function defaultPaths(
     throw new Error("board and evidenceMd must belong to the same evidence case directory")
   const explicitCase = boardParent || mdParent
   const currentSlug = useCurrent && !explicitCase ? readCurrentEvidenceSlug(contextDir) : null
-  const slug = explicitCase || currentSlug || buildEvidenceSlug(category || "misc", challengeName)
+  let slug = explicitCase || currentSlug || ""
+  if (!slug) {
+    // Fresh case: name the record folder by creation timestamp (YYMMDDHHmm);
+    // same-minute inits get a -2/-3 suffix so each solve keeps its own folder.
+    const base = buildEvidenceSlug(category || "misc", challengeName)
+    let candidate = base
+    let suffix = 2
+    while (existsSync(getEvidenceDir(contextDir, candidate))) candidate = `${base}-${suffix++}`
+    slug = candidate
+  }
   const evidenceDir = getEvidenceDir(contextDir, slug)
   const boardPath = explicitBoard || path.join(evidenceDir, ".ctf-evidence-board.json")
   const mdPath = explicitMd || path.join(evidenceDir, "Evidence.md")
@@ -347,11 +358,13 @@ function renderEvidenceMd(board: EvidenceBoard): string {
       lines.push(`- [${escapeMarkdown(clue.agent)}/w${clue.wave}] ${escapeMarkdown(clue.finding)}`)
   }
 
-  lines.push("", "## Routes (active <= 3)", "", "States: untested | blocked (not dead) | dead | live", "")
+  lines.push("", "## Routes (within route_policy band)", "", "States: untested | blocked (not dead) | dead | live", "")
 
   const showRoutes = active.length ? active : board.routes
   if (!showRoutes.length) {
-    lines.push("_No routes yet. After recon, set exactly 3 routes with `set-routes`._")
+    lines.push(
+      "_No routes yet. After recon, set routes within your `route_policy` band (default 2-6) with `set-routes`._",
+    )
   } else {
     for (const route of showRoutes) {
       lines.push(
@@ -393,7 +406,7 @@ function renderEvidenceMd(board: EvidenceBoard): string {
     "",
     "## Rules (do not violate)",
     "",
-    "1. Keep **exactly 3** active routes when in analysis/verify (replace a dead route with a new one).",
+    "1. Keep active routes within your `route_policy` band (default **2-6**; 3 is the norm) when in analysis/verify (replace a dead route with a new one).",
     "2. **blocked != dead** -> WAF/errors/missing leaks may mean the route is correct but obstructed.",
     `3. Mark **dead** only after >= ${MIN_DEAD_ATTEMPTS} same-family attempts with differential proof of wrong direction.`,
     "4. On **live** or flag -> cancel other workers and return the flag directly (do not require flag files).",
@@ -425,51 +438,26 @@ async function atomicWriteText(file: string, content: string) {
   }
 }
 
-/**
- * Project the Team run's Fact/Intent ledger into Evidence.md.
- *
- * The ledger is canonical in `.ctf-team.json`; this is a read-only projection,
- * so the Expert can see the Challenge -> Fact -> Intent -> Job chain without
- * opening the raw state file, and the two files cannot drift into competing
- * ledgers. A missing/unreadable Team state renders nothing rather than failing
- * the evidence board.
- */
-async function loadTeamProjection(
-  worktree: string,
-  directory: string,
-  caseId: string,
-  runId?: string,
-): Promise<string[]> {
+/** Team observations remain in Probe results until the Expert promotes them into the Case. */
+async function loadTeamProjection(directory: string, caseId: string, runId?: string): Promise<string[]> {
   try {
     const state = await readTeamState(directory)
     const matching = state.runs.filter((candidate) => candidate.caseId === caseId)
     const run = runId ? findRun(state, runId) : matching[matching.length - 1]
     if (!run || run.caseId !== caseId) return []
-    const lines = ["", `## Team Ledger (${escapeMarkdown(run.status)})`, ""]
-    const facts = run.facts ?? []
-    if (!facts.length) lines.push("- (no facts yet)")
-    for (const fact of facts.slice(-40)) {
-      const statement = escapeMarkdown(fact.statement.slice(0, 2_000))
+    const lines = ["", `## Team Probes (${escapeMarkdown(run.status)})`, ""]
+    for (const probe of run.probes.slice(-40)) {
       lines.push(
-        `- [${escapeMarkdown(fact.id)}] ${escapeMarkdown(fact.status)}/${escapeMarkdown(fact.confidence)} route=${escapeMarkdown(fact.routeId)} source=${escapeMarkdown(fact.sourceJobId)}` +
-          `${fact.reviewedBy ? ` acceptedBy=${escapeMarkdown(fact.reviewedBy)}` : ""}`,
+        `- [${escapeMarkdown(probe.id)}] ${escapeMarkdown(probe.status)} route=${escapeMarkdown(probe.routeId)}: ${escapeMarkdown(probe.title)}`,
       )
-      lines.push(`  - ${statement}`)
-      const derived = (run.intents ?? []).filter((intent) => intent.basedOnFactIds?.includes(fact.id))
-      if (derived.length)
-        lines.push(`  - derived intents: ${derived.map((intent) => escapeMarkdown(intent.id)).join(", ")}`)
-    }
-    const intents = run.intents ?? []
-    if (intents.length) {
-      lines.push("", "### Intents", "")
-      for (const intent of intents) {
-        lines.push(
-          `- [${escapeMarkdown(intent.id)}] ${escapeMarkdown(intent.status)} route=${escapeMarkdown(intent.routeId)}${intent.claimedBy ? ` worker=${escapeMarkdown(intent.claimedBy)}` : ""}`,
-        )
-        lines.push(`  - objective: ${escapeMarkdown(intent.objective.slice(0, 8_000))}`)
-        if (intent.basedOnFactIds?.length)
-          lines.push(`  - based on: ${intent.basedOnFactIds.map(escapeMarkdown).join(", ")}`)
-        if (intent.stopCondition) lines.push(`  - stop: ${escapeMarkdown(intent.stopCondition.slice(0, 2_000))}`)
+      if (probe.result) {
+        lines.push(`  - ${escapeMarkdown(probe.result.summary.slice(0, 2_000))}`)
+        for (const observation of probe.result.observations.slice(0, 12)) {
+          lines.push(`  - [${escapeMarkdown(observation.kind)}] ${escapeMarkdown(observation.statement)}`)
+        }
+        if (probe.result.artifacts.length) {
+          lines.push(`  - artifacts: ${probe.result.artifacts.map(escapeMarkdown).join(", ")}`)
+        }
       }
     }
     return lines
@@ -487,8 +475,8 @@ async function persist(
   caseId: string,
   runId?: string,
 ) {
-  await withFileLock(boardPath, async (lease) => {
-    const teamProjection = await loadTeamProjection(worktree, directory, caseId, runId)
+  return withFileLock(boardPath, async (lease) => {
+    const teamProjection = await loadTeamProjection(directory, caseId, runId)
     board.updatedAt = now()
     board.evidenceMdPath = path.relative(path.dirname(boardPath), mdPath) || "Evidence.md"
     const violations = validateBoard(board)
@@ -576,7 +564,7 @@ export default tool({
       .string()
       .optional()
       .describe(
-        "Evidence case folder name under work/ctf-evidence (default category-challengeName or category-MMDDHHmmss)",
+        "Explicit evidence case folder name under work/ctf-evidence (default: creation timestamp YYMMDDHHmm, e.g. 2610251156 = 2026-10-25 11:56)",
       ),
     category: tool.schema.string().optional(),
     target: tool.schema.string().optional(),
@@ -599,8 +587,10 @@ export default tool({
     routesJson: tool.schema
       .string()
       .optional()
-      .describe('JSON array of exactly 3 routes: [{"name","whyNow","evidence","verifyMethod","expected","nextProbe"}]'),
-    routeId: tool.schema.string().optional().describe("R1 | R2 | R3 or full route id"),
+      .describe(
+        'JSON array of distinct routes within your route_policy band (default 2-6): [{"name","whyNow","evidence","verifyMethod","expected","nextProbe"}]',
+      ),
+    routeId: tool.schema.string().optional().describe("R1..Rn or full route id"),
     routeState: tool.schema.string().optional().describe("untested | blocked | dead | live"),
     attempts: tool.schema.number().optional(),
     nextProbe: tool.schema.string().optional(),
@@ -642,7 +632,7 @@ export default tool({
       switch (args.command) {
         case "init": {
           if (!args.category || !args.target) {
-            return "ERROR: init requires category and target (challengeName optional; fallback case id is category-MMDDHHmmss)"
+            return "ERROR: init requires category and target (challengeName optional; the record folder is named by creation timestamp YYMMDDHHmm)"
           }
           const challengeName = args.challengeName || slug
           const category = args.category
@@ -665,7 +655,7 @@ export default tool({
             `   json: ${boardPath}`,
             `   md:   ${mdPath}`,
             `   challenge: ${challengeName} (${category})`,
-            `Next: recon with concurrent workers -> set-routes (exactly 3) -> verify.`,
+            `Next: recon with concurrent workers -> set-routes (within route_policy band) -> verify.`,
           ].join("\n")
         }
 
@@ -797,10 +787,11 @@ export default tool({
         }
 
         case "set-routes": {
-          if (!args.routesJson) return "ERROR: set-routes requires routesJson (array of exactly 3 routes)"
+          if (!args.routesJson) return "ERROR: set-routes requires routesJson (JSON array of routes)"
           const parsed = parseRoutesJson(args.routesJson)
-          if (parsed.length !== 3) {
-            return `ERROR: exactly 3 routes required, got ${parsed.length}`
+          const band = (await loadPluginConfig(boardDirectory)).route_policy
+          if (parsed.length < band.min || parsed.length > band.max) {
+            return `ERROR: set-routes requires ${band.min}-${band.max} distinct routes (route_policy), got ${parsed.length}`
           }
           const board = await loadBoard(boardPath)
           const ts = now()
@@ -835,7 +826,7 @@ export default tool({
           })
           await persist(board, boardPath, mdPath, cwd, boardDirectory, slug)
           return [
-            `3 routes recorded (round ${board.round})`,
+            `${board.routes.length} routes recorded (round ${board.round})`,
             ...board.routes.map((r) => `   ${r.id} ${stateEmoji(r.state)} ${r.name}`),
             `   Evidence.md -> ${mdPath}`,
           ].join("\n")

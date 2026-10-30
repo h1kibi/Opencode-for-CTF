@@ -6,7 +6,7 @@ import path from "node:path"
 import { resolveAllowedPath } from "../lib/path-policy.ts"
 import { safeExec } from "../lib/exec-utils.ts"
 import { printableStrings } from "../lib/triage-core.ts"
-import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
+import { extractFlagCandidates } from "ctf-core"
 
 const SAMPLE_BYTES = 1024 * 1024
 
@@ -137,7 +137,7 @@ function detectArtifactKind(name: string, sample: Buffer, strings: string[]): { 
   return { kind: "unknown", hints }
 }
 
-async function scanSourceAt(dir: string, slug: string): Promise<{ entries: AnalysisEntry[]; calls: CallEdge[] }> {
+async function scanSourceAt(dir: string): Promise<{ entries: AnalysisEntry[]; calls: CallEdge[] }> {
   const entries: AnalysisEntry[] = []
   const calls: CallEdge[] = []
   const allEntries = await readdir(dir, { withFileTypes: true, recursive: true }).catch(() => [])
@@ -302,7 +302,7 @@ async function buildIr(target: string, slug: string, workDir: string): Promise<s
   if (stat.isDirectory()) {
     kind = "source"
     language = detectLanguage(await readdir(target))
-    const scanned = await scanSourceAt(target, slug)
+    const scanned = await scanSourceAt(target)
     entries = scanned.entries
     calls = scanned.calls
   } else {

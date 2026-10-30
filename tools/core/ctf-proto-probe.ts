@@ -1,10 +1,10 @@
 import { tool } from "@opencode-ai/plugin"
 import { randomUUID } from "node:crypto"
 import { mkdir, rm, writeFile } from "node:fs/promises"
-import os from "node:os"
 import path from "node:path"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
 import { resolvePythonLauncher } from "../lib/python-launcher.ts"
+import { workspaceRootFromContext } from "../lib/workspace-path.ts"
 
 function compact(s: string, max = 12000) {
   const clean = String(s || "").replace(/\x1b\[[0-9;]*[A-Za-z]/g, "")
@@ -47,17 +47,17 @@ export default tool({
     retries: tool.schema.number().optional().describe("Connection attempts. Default 1."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
-  async execute(args) {
+  async execute(args, context) {
     const recvSize = Math.max(64, Math.min(args.recvSize ?? 512, 8192))
     const recvTimeoutMs = Math.max(100, Math.min(args.recvTimeoutMs ?? 1200, 10000))
     const preReadMs = Math.max(50, Math.min(args.preReadMs ?? 400, 5000))
     const retries = Math.max(1, Math.min(args.retries ?? 1, 5))
     const lineMode = args.lineMode !== false
-    const driverDir = path.join(os.tmpdir(), `proto-probe-${randomUUID().slice(0, 12)}`)
+    const workspace = workspaceRootFromContext(context)
+    const driverDir = path.join(workspace, "work", ".tmp", `proto-probe-${randomUUID()}`)
     await mkdir(driverDir, { recursive: true })
     const driver = path.join(driverDir, "proto_probe.py")
-    const script = `#!/usr/bin/env python3
-from pwn import *
+    const script = `from pwn import *
 import json
 
 HOST = ${JSON.stringify(String(args.host))}

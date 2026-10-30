@@ -1,8 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
-import { rebuildPeFromMemory, parsePe } from "../lib/pe-utils.ts"
 import {
   directoryFromContext,
   resolveFromDirectoryInsideWorkspace,
@@ -242,7 +241,7 @@ try {
 
 export default tool({
   description:
-    "CTF Windows runtime dump + PE rebuild: locate a running or freshly launched process, enumerate committed memory, dump PE image regions, and reconstruct analyzable PE files from memory (shell detection / memory-dump / rebuild in one step).",
+    "CTF Windows runtime dump: locate a running or freshly launched process and dump PE image regions; PE reconstruction is delegated to external format-aware tools.",
   args: {
     processName: tool.schema
       .string()
@@ -371,30 +370,10 @@ export default tool({
       sections: number
       error?: string
     }> = []
-    const failures: string[] = []
-    for (const module of summary.modules ?? []) {
-      const sourceFile = path.join(outDir, `${module.name}.bin`)
-      const sourceRel = normalizeRel(path.relative(directory, sourceFile))
-      try {
-        const image = await readFile(sourceFile)
-        const pe = parsePe(image)
-        if (!pe) throw new Error("memory image did not contain a valid PE header at region base")
-        const rebuiltBuffer = rebuildPeFromMemory(image)
-        const outputName = `rebuild_${module.name}.exe`
-        const outputFile = path.join(outDir, outputName)
-        await writeFile(outputFile, rebuiltBuffer)
-        rebuilt.push({
-          source: sourceRel,
-          output: normalizeRel(path.relative(directory, outputFile)),
-          base: `0x${module.base.toString(16)}`,
-          machine: pe.machine,
-          pe32_plus: pe.pe32Plus,
-          sections: pe.numberOfSections,
-        })
-      } catch (err) {
-        failures.push(`${module.name}: ${err instanceof Error ? err.message : String(err)}`)
-      }
-    }
+    const failures = (summary.modules ?? []).map(
+      (module) =>
+        `${module.name}: PE rebuilding requires an external format-aware tool (dumpbin, llvm-readobj, or Ghidra)`,
+    )
 
     const manifest = {
       schema_version: "ctf_runtime_dump.v1",

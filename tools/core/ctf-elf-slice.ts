@@ -5,16 +5,10 @@ import { safeExec, safeExecDocker } from "../lib/exec-utils.ts"
 import { pwnImage } from "../lib/docker-config.ts"
 import { analyzePwnDisasmText } from "../lib/pwn-disasm-analysis.ts"
 import {
-  buildGoCallHints,
-  buildGoExecutionPlan,
-  buildGoHelperChains,
-  buildGoPivotHints,
   classifyGoFunctions,
   collectGoNameCandidates,
   detectGoFromStrings,
   findGopclntabOffsets,
-  parseElfSections,
-  parseGoPclntab,
 } from "../lib/go-elf-analysis.ts"
 import {
   directoryFromContext,
@@ -145,18 +139,6 @@ function collectFunctionLabels(lines: string[], preferred: string[], max = 12) {
   return out
 }
 
-function addrToLineTarget(name: string, functions: Array<{ name: string; entry: string }>) {
-  const hit = functions.find((f) => f.name === name)
-  return hit ? hit.entry.replace(/^0x/i, "") : ""
-}
-
-function toTargetHint(name: string, functions: Array<{ name: string; entry: string }>, mode: "reva" | "slice") {
-  const hit = functions.find((f) => f.name === name)
-  if (!hit) return ""
-  if (mode === "reva") return `ReVa_get-decompilation functionNameOrAddress=${hit.entry}  # ${name}`
-  return `ctf-elf-slice address=${hit.entry.replace(/^0x/i, "")}  # ${name}`
-}
-
 export default tool({
   description:
     "CTF core ELF slice: extract compact ELF metadata, sections, interesting strings/symbols, and function/keyword-focused objdump slices without scrolling huge outputs.",
@@ -212,25 +194,11 @@ export default tool({
     const interestingStrings = strings.filter((s) => kw.test(s.text)).slice(0, maxStrings)
     const allStrings = printableStrings(whole)
     const goInfo = detectGoFromStrings(allStrings.map((s) => s.text))
-    const sectionsParsed = parseElfSections(whole)
-    const gopclntab = sectionsParsed.find((s) => s.name === ".gopclntab")
-    const pcln =
-      gopclntab && gopclntab.offset + gopclntab.size <= whole.length
-        ? parseGoPclntab(whole.subarray(gopclntab.offset, gopclntab.offset + gopclntab.size), gopclntab.addr)
-        : { header_ok: false, ptr_size: 0, nfunc: 0, text_start: 0, funcname_offset: 0, pcln_offset: 0, functions: [] }
     const goFunctionNameHits = Array.from(
-      new Set([
-        ...goInfo.functionNameHits,
-        ...collectGoNameCandidates(whole, 800),
-        ...pcln.functions.map((f) => f.name),
-      ]),
+      new Set([...goInfo.functionNameHits, ...collectGoNameCandidates(whole, 800)]),
     ).slice(0, 120)
     const goClassified = classifyGoFunctions(goFunctionNameHits)
-    const gopclntabOffsets = [
-      ...findGopclntabOffsets(sample),
-      ...(gopclntab ? [`0x${gopclntab.offset.toString(16)}`] : []),
-    ]
-    const goPivots = buildGoPivotHints(pcln.functions)
+    const gopclntabOffsets = findGopclntabOffsets(sample)
 
     const readelfHeaderRes = await toolAwareExec(workspace, target, "readelf", ["-h", target], 12000)
     const readelfSectionsRes = await toolAwareExec(workspace, target, "readelf", ["-S", target], 12000)
@@ -279,9 +247,6 @@ export default tool({
     const disasmLines = objdumpDisasm.split(/\r?\n/)
     const candidateFunctions = collectFunctionLabels(disasmLines, Object.keys(namedSymbols))
     const disasmAnalysis = analyzePwnDisasmText(objdumpDisasm)
-    const goCalls = buildGoCallHints(objdumpDisasm, pcln.functions)
-    const goChains = buildGoHelperChains(pcln.functions, goCalls.hints)
-    const goPlan = buildGoExecutionPlan(pcln.functions, goChains.bestFirstTargets)
     const stackLayoutHints = disasmAnalysis.stackLayoutHints
     const disasmSlices: string[] = []
     for (let i = 0; i < disasmLines.length; i++) {
@@ -289,13 +254,7 @@ export default tool({
       const fnHit = args.functionName && new RegExp(`<${args.functionName}>`, "i").test(line)
       const kwHit = kw.test(line)
       const addrHit = args.address && line.includes(args.address.replace(/^0x/i, ""))
-      const chainHit = goChains.bestFirstTargets.some(
-        (targetName) =>
-          line.includes(`<${targetName}>`) ||
-          (addrToLineTarget(targetName, pcln.functions) &&
-            line.includes(addrToLineTarget(targetName, pcln.functions)!)),
-      )
-      if (!fnHit && !kwHit && !addrHit && !chainHit) continue
+      if (!fnHit && !kwHit && !addrHit) continue
       disasmSlices.push(sliceAroundLines(disasmLines, i, radius).join("\n"))
       if (disasmSlices.length >= maxSlices) break
     }
@@ -312,34 +271,24 @@ export default tool({
       language_runtime: goInfo.runtime,
       go_signals: goInfo.goSignals,
       gopclntab_offsets: gopclntabOffsets,
-      gopclntab_section: gopclntab
-        ? {
-            offset: `0x${gopclntab.offset.toString(16)}`,
-            size: gopclntab.size,
-            addr: `0x${gopclntab.addr.toString(16)}`,
-          }
-        : null,
-      pclntab_header_ok: pcln.header_ok,
-      pclntab_ptr_size: pcln.ptr_size,
-      function_address_map: pcln.functions.slice(0, 120),
+      gopclntab_section: null,
+      pclntab_header_ok: false,
+      pclntab_ptr_size: 0,
+      function_address_map: [],
       go_function_name_hits: goFunctionNameHits,
       go_user_code_candidates: goClassified.userCode.slice(0, 80),
       go_runtime_noise_candidates: goClassified.runtimeNoise.slice(0, 40),
       go_decoder_like_candidates: goClassified.decoderLike.slice(0, 60),
-      go_priority_function_addresses: goPivots.priorityFunctions,
-      go_analysis_pivots: goPivots.pivotLines,
-      go_call_hints: goCalls.hints,
-      go_call_summary: goCalls.summary,
-      go_helper_chains: goChains.helperChains,
-      go_shortest_logic_chain: goChains.shortestLogicChain,
-      go_best_first_targets: goChains.bestFirstTargets,
-      go_execution_plan: goPlan,
-      preferred_reva_targets: goChains.bestFirstTargets
-        .map((name) => toTargetHint(name, pcln.functions, "reva"))
-        .filter(Boolean),
-      preferred_slice_targets: goChains.bestFirstTargets
-        .map((name) => toTargetHint(name, pcln.functions, "slice"))
-        .filter(Boolean),
+      go_priority_function_addresses: [],
+      go_analysis_pivots: [],
+      go_call_hints: [],
+      go_call_summary: [],
+      go_helper_chains: [],
+      go_shortest_logic_chain: null,
+      go_best_first_targets: [],
+      go_execution_plan: { summary: "unavailable (use external Go tooling)", steps: [] },
+      preferred_reva_targets: [],
+      preferred_slice_targets: [],
       stack_layout_hints: stackLayoutHints,
       red_flag_tags: disasmAnalysis.redFlagTags,
       constraint_hints: disasmAnalysis.constraintHints,
@@ -378,11 +327,11 @@ export default tool({
       ...(goInfo.goSignals.length ? goInfo.goSignals.map((x) => `- ${x}`) : ["- none"]),
       "gopclntab_offsets:",
       ...(gopclntabOffsets.length ? gopclntabOffsets.map((x) => `- ${x}`) : ["- none"]),
-      `gopclntab_section: ${gopclntab ? `${payload.gopclntab_section?.offset} size=${payload.gopclntab_section?.size} addr=${payload.gopclntab_section?.addr}` : "none"}`,
-      `pclntab_header_ok: ${pcln.header_ok}`,
-      `pclntab_ptr_size: ${pcln.ptr_size}`,
-      "function_address_map:",
-      ...(pcln.functions.length ? pcln.functions.slice(0, 120).map((f) => `- ${f.name}: ${f.entry}`) : ["- none"]),
+      "gopclntab_section: unavailable (use readelf/objdump output)",
+      "pclntab_header_ok: unavailable (use external Go tooling)",
+      "pclntab_ptr_size: unavailable (use external Go tooling)",
+      "function_address_map: unavailable (use external Go tooling)",
+      "- none",
       "go_function_name_hits:",
       ...(goFunctionNameHits.length ? goFunctionNameHits.map((x) => `- ${x}`) : ["- none"]),
       "go_user_code_candidates:",
@@ -391,32 +340,6 @@ export default tool({
       ...(goClassified.runtimeNoise.length ? goClassified.runtimeNoise.slice(0, 40).map((x) => `- ${x}`) : ["- none"]),
       "go_decoder_like_candidates:",
       ...(goClassified.decoderLike.length ? goClassified.decoderLike.slice(0, 60).map((x) => `- ${x}`) : ["- none"]),
-      "go_priority_function_addresses:",
-      ...(goPivots.priorityFunctions.length
-        ? goPivots.priorityFunctions.map((f) => `- ${f.name}: ${f.entry}`)
-        : ["- none"]),
-      "go_analysis_pivots:",
-      ...(goPivots.pivotLines.length ? goPivots.pivotLines.map((x) => `- ${x}`) : ["- none"]),
-      "go_call_summary:",
-      ...(goCalls.summary.length ? goCalls.summary.map((x) => `- ${x}`) : ["- none"]),
-      "go_helper_chains:",
-      ...(goChains.helperChains.length
-        ? goChains.helperChains.map((c) => `- ${c.chain.join(" -> ")} (${c.reason})`)
-        : ["- none"]),
-      `go_shortest_logic_chain: ${goChains.shortestLogicChain ? goChains.shortestLogicChain.chain.join(" -> ") : "none"}`,
-      "go_best_first_targets:",
-      ...(goChains.bestFirstTargets.length ? goChains.bestFirstTargets.map((x) => `- ${x}`) : ["- none"]),
-      `go_execution_plan: ${goPlan.summary}`,
-      "go_execution_plan_steps:",
-      ...(goPlan.steps.length ? goPlan.steps.map((s) => `- ${s.tool} ${s.target} (${s.note})`) : ["- none"]),
-      "preferred_reva_targets:",
-      ...(
-        goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "reva")).filter(Boolean) as string[]
-      ).map((x) => `- ${x}`),
-      "preferred_slice_targets:",
-      ...(
-        goChains.bestFirstTargets.map((name) => toTargetHint(name, pcln.functions, "slice")).filter(Boolean) as string[]
-      ).map((x) => `- ${x}`),
       "stack_layout_hints:",
       ...(stackLayoutHints.length ? stackLayoutHints.map((x: string) => `- ${x}`) : ["- none"]),
       "red_flag_tags:",

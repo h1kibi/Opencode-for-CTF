@@ -1,6 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
 import { verifyCandidateFlag } from "../../src/flag-oracle.ts"
-import { DEFAULT_FLAG_PATTERN } from "../../packages/ctf-core/src/flag-rules.ts"
+import { DEFAULT_FLAG_PATTERN } from "ctf-core"
 
 /**
  * Misc: auto-detect and unroll encoding chains.

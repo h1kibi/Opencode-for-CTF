@@ -1,5 +1,5 @@
 ﻿import { tool } from "@opencode-ai/plugin"
-import { lstat, open, readFile } from "node:fs/promises"
+import { lstat, open } from "node:fs/promises"
 import path from "node:path"
 import { safeExec } from "../lib/exec-utils.ts"
 import {
@@ -7,7 +7,7 @@ import {
   resolveFromDirectoryInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
+import { extractFlagCandidates } from "ctf-core"
 
 const SIGNATURES: Array<[string, Buffer]> = [
   ["zip", Buffer.from([0x50, 0x4b, 0x03, 0x04])],

@@ -1,6 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
 import { safeExec } from "../lib/exec-utils.ts"
-import { DOCKER_IMAGES } from "../lib/docker-config.ts"
+import { resolveCommand } from "../lib/env-check-core.ts"
 import path from "node:path"
 import { existsSync, readFileSync } from "node:fs"
 import { PLUGIN_ROOT } from "../../src/asset-paths.ts"
@@ -20,18 +20,6 @@ type EnvCheckResult = {
   category: string
   detail: string
   hint: string
-}
-
-type EnvCheckJson = {
-  category: string
-  ready: boolean
-  missing_critical: string[]
-  missing_optional: string[]
-  pwn_build_commands: string[]
-  rev_build_commands: string[]
-  results: EnvCheckResult[]
-  environment_probes: Record<string, EnvironmentProbeResult>
-  readiness: ReturnType<typeof evaluateAllFamilyReadiness>
 }
 
 type ExecProbe = {
@@ -68,6 +56,9 @@ function probePythonScript(script: string | undefined, args: string[]) {
 }
 
 function probePythonModule(moduleName: string, code?: string, label?: string): ExecProbe {
+  // probe() path: checkAny will resolve+execute this via the alias-aware path.
+  // The multi-interpreter fallback lives in checkAny's resolveCommand, which
+  // finds C:\Projects\python\python.exe even when PATH python differs.
   return {
     command: "python",
     args: ["-c", code || `import ${moduleName}; print(getattr(${moduleName}, '__version__', 'present'))`],
@@ -92,12 +83,22 @@ async function checkAny(
       lastOutput = `${label}: not found`
       continue
     }
-    const r = await safeExec(candidate.command, candidate.args, {
+    // Alias/shim-aware resolution first (PATH via where.exe + C:\Tools\ctf-bin
+    // + ~/bin roots + nc→ncat style aliases), so .cmd wrappers count.
+    const located = await resolveCommand(candidate.command)
+    const target = located.resolved ?? candidate.command
+    const isShim = /\.(cmd|bat)$/i.test(target)
+    const r = await safeExec(target, candidate.args, {
       timeoutMs: timeout,
-      shell: candidate.shell ?? false,
+      shell: candidate.shell ?? isShim,
     })
     const output = (r.output || "").trim().slice(0, 200)
-    if (r.ok) return { ok: true, output: `${label}: ${output}` }
+    if (r.ok) return { ok: true, output: `${label}: ${output}${located.source ? ` [via ${located.source}]` : ""}` }
+    // cmd.exe retry for spawn failures on Windows (EINVAL etc.)
+    if (!r.ok && process.platform === "win32" && r.exitCode === null) {
+      const retry = await safeExec("cmd.exe", ["/c", target, ...candidate.args], { timeoutMs: timeout })
+      if (retry.ok) return { ok: true, output: `${label}: ${(retry.output || "").trim().slice(0, 200)}` }
+    }
     lastOutput = `${label}: ${output}`
   }
   return { ok: false, output: lastOutput }
@@ -918,7 +919,6 @@ export default tool({
     }
 
     // -- Summarize --
-    const hardRequired = ["python3", "pwntools", "file", "strings"]
     const missingCritical = results.filter((r) => r.required && !r.ok)
     const missingOptional = results.filter((r) => !r.required && !r.ok)
     const ready = missingCritical.length === 0

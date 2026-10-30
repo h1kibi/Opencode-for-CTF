@@ -207,7 +207,7 @@ export default tool({
         "set pagination off",
         "set confirm off",
         ...allBreakpoints.map((bp) => `break ${bp}`),
-        "run < /tmp/opencode_stage_fifo",
+        "run < /work/opencode_stage_fifo",
         'printf \\"register snapshot:\\\\n\\"',
         "info registers",
         'printf \\"stack snapshot:\\\\n\\"',
@@ -215,15 +215,16 @@ export default tool({
         "bt",
       ].join("\\n")
       const feed = payloadFiles
-        .map((p) => `cat ${dockerQuote(path.posix.join(containerMountRoot, p))} >> /tmp/opencode_stage_fifo`)
+        .map((p) => `cat ${dockerQuote(path.posix.join(containerMountRoot, p))} >> /work/opencode_stage_fifo`)
         .join("; sleep 0.15; ")
+      const gdbScriptPath = path.posix.join(containerMountRoot, "opencode_stage.gdb")
       const script = [
-        "rm -f /tmp/opencode_stage_fifo",
-        "mkfifo /tmp/opencode_stage_fifo",
+        "rm -f /work/opencode_stage_fifo /work/opencode_stage.gdb",
+        "mkfifo /work/opencode_stage_fifo",
         `( sleep 0.2; ${feed}; sleep 0.2 ) &`,
-        `cat > /tmp/opencode_stage.gdb <<'GDB'\n${gdbCmds}\nGDB`,
-        `gdb -nx -q -batch -x /tmp/opencode_stage.gdb ${path.posix.join(containerMountRoot, relBinary)}`,
-      ].join("\n")
+        `printf '%s\\n' ${dockerQuote(gdbCmds)} > ${dockerQuote(gdbScriptPath)}`,
+        `gdb -nx -q -batch -x ${dockerQuote(gdbScriptPath)} ${path.posix.join(containerMountRoot, relBinary)}`,
+      ].join("\\n")
       const dockerOut = await runSingleSessionGdb(
         { directory, worktree: workspace },
         {

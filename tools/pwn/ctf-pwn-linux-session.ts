@@ -1,4 +1,5 @@
 ﻿import { tool } from "@opencode-ai/plugin"
+import { createHash } from "node:crypto"
 import { lstat, mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { pwnImage } from "../lib/docker-config.ts"
@@ -127,8 +128,20 @@ export default tool({
     const binaryPosix = binaryWorkspaceRel
     const binaryDirPosix =
       path.posix.dirname(binaryPosix) === "." ? "/work" : path.posix.join("/work", path.posix.dirname(binaryPosix))
+    const fileHash = async (abs: string) =>
+      abs
+        ? createHash("sha256")
+            .update(await readFile(abs))
+            .digest("hex")
+        : ""
     const payload = {
       schema_version: "pwn_linux_session.v1",
+      invariant_baseline: {
+        binary_sha256: await fileHash(binaryAbs),
+        libc_sha256: await fileHash(libcAbs),
+        ld_sha256: await fileHash(ldAbs),
+        recorded_at: new Date().toISOString(),
+      },
       session_id: args.sessionId || runtimeProfileId,
       runtime_profile_id: args.sessionId || runtimeProfileId,
       binary: binaryWorkspaceRel,

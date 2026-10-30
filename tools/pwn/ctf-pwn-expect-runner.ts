@@ -1,7 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
 import { randomUUID } from "node:crypto"
 import { lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises"
-import os from "node:os"
 import path from "node:path"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
 import { objectToStringRecord, parseJsonArrayArg, parseJsonObjectArg, parseStringArrayArg } from "../lib/json-args.ts"
@@ -11,7 +10,7 @@ import {
   resolveInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-import { extractFlagCandidates, FLAG_REGEX } from "../../packages/ctf-core/src/flag-rules.ts"
+import { extractFlagCandidates, FLAG_REGEX } from "ctf-core"
 const FLAG_RE = FLAG_REGEX
 
 function collectFlagCandidates(text: string, customPattern?: string) {
@@ -254,15 +253,7 @@ export default tool({
       ].join("\n")
     }
 
-    const tempRoot =
-      mode === "docker"
-        ? resolveInsideWorkspace(workspace, `work/pwn-expect-runner/${randomUUID().slice(0, 12)}`)
-        : await (async () => {
-            const tmpDir = await import("node:fs/promises").then((fs) =>
-              fs.mkdtemp(path.join(os.tmpdir(), "pwn-expect-runner-")),
-            )
-            return tmpDir
-          })()
+    const tempRoot = resolveInsideWorkspace(workspace, `work/.tmp/pwn-expect-runner-${randomUUID()}`)
     await mkdir(tempRoot, { recursive: true })
     const driver = path.join(tempRoot, "driver.py")
 
@@ -335,8 +326,7 @@ export default tool({
       }
     }
 
-    const script = `#!/usr/bin/env python3
-import json, os, re, time
+    const script = `import json, os, re, time
 from pwn import *
 
 MODE = ${JSON.stringify(driverMode)}

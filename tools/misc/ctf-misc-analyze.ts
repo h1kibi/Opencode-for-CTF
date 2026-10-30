@@ -122,7 +122,6 @@ function fileContentSource(nextTarget: string) {
 
 function classifyMiscShape(parsed: ParsedTriage, contextText: string, service?: string): MiscShapeRoute {
   const text = `${service ?? ""}\n${contextText}`
-  const lower = text.toLowerCase()
 
   const qrClue = /\b(qr(?: code)?|barcode|datamatrix|aztec code)\b/i.test(text)
   if (qrClue) {

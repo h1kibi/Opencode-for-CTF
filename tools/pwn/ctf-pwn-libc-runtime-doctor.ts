@@ -1,7 +1,7 @@
 ﻿import { tool } from "@opencode-ai/plugin"
 import { lstat, mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { pwnImage, revImage, DOCKER_IMAGES } from "../lib/docker-config.ts"
+import { pwnImage } from "../lib/docker-config.ts"
 import { safeExec } from "../lib/exec-utils.ts"
 import {
   directoryFromContext,

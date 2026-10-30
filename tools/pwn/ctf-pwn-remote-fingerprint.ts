@@ -1,10 +1,10 @@
 import { tool } from "@opencode-ai/plugin"
 import { randomUUID } from "node:crypto"
 import { mkdir, writeFile, rm } from "node:fs/promises"
-import os from "node:os"
 import path from "node:path"
+import { workspaceRootFromContext } from "../lib/workspace-path.ts"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
-import { extractFlagCandidates, FLAG_REGEX } from "../../packages/ctf-core/src/flag-rules.ts"
+import { extractFlagCandidates, FLAG_REGEX } from "ctf-core"
 
 const DEFAULT_FLAG_RE = FLAG_REGEX
 
@@ -117,21 +117,17 @@ export default tool({
     flagPattern: tool.schema.string().optional().describe("Optional flag regex source."),
     jsonOnly: tool.schema.boolean().optional().describe("Return JSON only. Default false."),
   },
-  async execute(args) {
+  async execute(args, context) {
     const timeoutMs = Math.max(1000, Math.min(args.timeoutMs ?? 10000, 30000))
     const preReadMs = Math.max(100, Math.min(args.preReadMs ?? 600, 5000))
     const postReadMs = Math.max(100, Math.min(args.postReadMs ?? 1200, 8000))
     const baselineLine = args.baselineLine !== false
     const mutantLine = args.mutantLine !== false
-    const driverDir = await mkdir(path.join(os.tmpdir(), `pwn-remote-fingerprint-${randomUUID().slice(0, 12)}`), {
-      recursive: true,
-    })
-      .then(() => path.join(os.tmpdir(), `pwn-remote-fingerprint-${randomUUID().slice(0, 12)}`))
-      .catch(() => path.join(os.tmpdir(), `pwn-remote-fingerprint-fallback-${randomUUID().slice(0, 12)}`))
+    const workspace = workspaceRootFromContext(context)
+    const driverDir = path.join(workspace, "work", ".tmp", `pwn-remote-fingerprint-${randomUUID()}`)
     await mkdir(driverDir, { recursive: true })
     const driver = path.join(driverDir, "remote_fp.py")
-    const script = `#!/usr/bin/env python3
-from pwn import *
+    const script = `from pwn import *
 import json, re, sys, time
 
 HOST = ${JSON.stringify(String(args.host))}

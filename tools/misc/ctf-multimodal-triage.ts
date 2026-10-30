@@ -1,5 +1,5 @@
-import { access, mkdtemp, open, readFile, rm, stat } from "node:fs/promises"
-import os from "node:os"
+import { randomUUID } from "node:crypto"
+import { access, mkdir, open, readFile, rm, stat } from "node:fs/promises"
 import path from "node:path"
 import { tool, type ToolAttachment, type ToolResult } from "@opencode-ai/plugin"
 import docRead from "../core/doc-read.ts"
@@ -1347,7 +1347,8 @@ export default tool({
     const detectedKind = detectKind(target, sample)
     const mediaKind: MediaKind = args.mode && args.mode !== "auto" ? args.mode : detectedKind
     const mime = mimeFor(target, mediaKind)
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "ctf-multimodal-"))
+    const tempDir = path.join(workspace, "work", ".tmp", `ctf-multimodal-${randomUUID()}`)
+    await mkdir(tempDir, { recursive: true })
     const baseContext = { directory, worktree: workspace }
     const maxAttachmentBytes = Math.max(
       64 * 1024,

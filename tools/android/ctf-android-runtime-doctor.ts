@@ -1,7 +1,7 @@
 ﻿import { tool } from "@opencode-ai/plugin"
-import { readFile } from "node:fs/promises"
 import { safeExec } from "../lib/exec-utils.ts"
 import { resolveInsideWorkspace } from "../lib/workspace-path.ts"
+import { listArchiveEntries } from "../lib/archive-utils.ts"
 
 function firstDevice(adbDevices: string) {
   return (
@@ -33,61 +33,6 @@ function profileDrift(targetAndroid: string, model: string, manufacturer: string
   const targetLooksPixel = /pixel/i.test(targetAndroid)
   const deviceLooksPixel = /pixel/i.test(`${model} ${manufacturer}`)
   return targetLooksPixel && !deviceLooksPixel
-}
-
-function u16(buf: Buffer, off: number) {
-  return off + 2 <= buf.length ? buf.readUInt16LE(off) : 0
-}
-function u32(buf: Buffer, off: number) {
-  return off + 4 <= buf.length ? buf.readUInt32LE(off) : 0
-}
-
-type ZipEntry = {
-  name: string
-  method: number
-  compressedSize: number
-  uncompressedSize: number
-  localHeaderOffset: number
-}
-
-function listZip(buf: Buffer): ZipEntry[] {
-  let eocd = -1
-  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 0x10000 - 22); i--) {
-    if (u32(buf, i) === 0x06054b50) {
-      eocd = i
-      break
-    }
-  }
-  if (eocd < 0) throw new Error("invalid zip/apk: EOCD not found")
-  const total = u16(buf, eocd + 10)
-  const cdOffset = u32(buf, eocd + 16)
-  const entries: ZipEntry[] = []
-  let off = cdOffset
-  for (let i = 0; i < total && off + 46 <= buf.length; i++) {
-    if (u32(buf, off) !== 0x02014b50) break
-    const method = u16(buf, off + 10)
-    const compressedSize = u32(buf, off + 20)
-    const uncompressedSize = u32(buf, off + 24)
-    const nameLen = u16(buf, off + 28)
-    const extraLen = u16(buf, off + 30)
-    const commentLen = u16(buf, off + 32)
-    const localHeaderOffset = u32(buf, off + 42)
-    const name = buf.subarray(off + 46, off + 46 + nameLen).toString("utf8")
-    entries.push({ name, method, compressedSize, uncompressedSize, localHeaderOffset })
-    off += 46 + nameLen + extraLen + commentLen
-  }
-  return entries
-}
-
-function apkLibAbis(buf: Buffer) {
-  return [
-    ...new Set(
-      listZip(buf)
-        .filter((entry) => /^lib\/[^/]+\/[^/]+\.so$/i.test(entry.name))
-        .map((entry) => entry.name.split("/")[1])
-        .filter(Boolean),
-    ),
-  ]
 }
 
 function hasArm64(abis: string[]) {
@@ -128,12 +73,12 @@ export default tool({
     const targetAndroid = args.targetAndroid || "Android 11"
     let inferredApkAbis: string[] = []
     if (args.apk) {
-      try {
-        const apkPath = resolveInsideWorkspace(workspace, args.apk)
-        inferredApkAbis = apkLibAbis(await readFile(apkPath))
-      } catch {
-        inferredApkAbis = []
-      }
+      const apkPath = resolveInsideWorkspace(workspace, args.apk)
+      inferredApkAbis = (await listArchiveEntries(apkPath))
+        .map((entry) => entry.name)
+        .filter((name) => /^lib\/[^/]+\/[^/]+\.so$/i.test(name))
+        .map((name) => name.split("/")[1])
+        .filter(Boolean)
     }
     const targetAbi = args.targetAbi || inferredApkAbis[0] || "arm64-v8a"
     const adb = await safeExec("adb", ["devices"], undefined, 6000)

@@ -1,5 +1,5 @@
 import { tool } from "@opencode-ai/plugin"
-import { findFlags } from "../../packages/ctf-core/src/flag-rules.ts"
+import { findFlags } from "ctf-core"
 
 function extractPointers(text: string) {
   return [...text.matchAll(/0x[0-9a-fA-F]{4,16}/g)].map((m) => m[0])

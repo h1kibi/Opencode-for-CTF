@@ -4,16 +4,10 @@ import { createReadStream } from "node:fs"
 import { lstat, open } from "node:fs/promises"
 import path from "node:path"
 import {
-  buildGoExecutionPlan,
-  buildGoHelperChains,
-  buildGoPivotHints,
   classifyGoFunctions,
   collectGoNameCandidates,
   detectGoFromStrings,
   findGopclntabOffsets,
-  parseElfSections,
-  parseGoPclntab,
-  type GoPclnFunction,
 } from "../lib/go-elf-analysis.ts"
 import {
   directoryFromContext,
@@ -22,7 +16,7 @@ import {
 } from "../lib/workspace-path.ts"
 import { safeExec, safeExecDocker, shellQuote } from "../lib/exec-utils.ts"
 import { pwnImage } from "../lib/docker-config.ts"
-import { extractFlagCandidates, FLAG_REGEX_ONCE } from "../../packages/ctf-core/src/flag-rules.ts"
+import { extractFlagCandidates, FLAG_REGEX_ONCE } from "ctf-core"
 
 const INTERESTING_RE =
   /\b(win|flag|shell|system|execve|gets|scanf|printf|puts|read|write|open|openat|sendfile|strcpy|strcat|sprintf|memcpy|malloc|free|realloc|mprotect|mmap|seccomp|canary|libc|\/bin\/sh)\b/i
@@ -378,38 +372,12 @@ export default tool({
     const packer = packerSignals(sample, strings, fileOut, readelfHeader, readelfNotes)
     const seeds = routeSeeds(mitigations, combined, symbolHits, interestingStrings)
     const runtime = detectLanguageRuntime(fileOut, strings)
-    const goSections = isElf ? parseElfSections(whole) : []
-    const gopclntab = goSections.find((s) => s.name === ".gopclntab")
-    const goPcln =
-      gopclntab && gopclntab.offset + gopclntab.size <= whole.length
-        ? parseGoPclntab(whole.subarray(gopclntab.offset, gopclntab.offset + gopclntab.size), gopclntab.addr)
-        : {
-            header_ok: false,
-            ptr_size: 0,
-            nfunc: 0,
-            text_start: 0,
-            funcname_offset: 0,
-            pcln_offset: 0,
-            functions: [] as GoPclnFunction[],
-          }
     const goFunctionHits =
       runtime.runtime === "go"
-        ? Array.from(
-            new Set([
-              ...runtime.goFunctionNameHits,
-              ...collectGoNameCandidates(whole, 400),
-              ...goPcln.functions.map((f) => f.name),
-            ]),
-          ).slice(0, 80)
+        ? Array.from(new Set([...runtime.goFunctionNameHits, ...collectGoNameCandidates(whole, 400)])).slice(0, 80)
         : []
     const goClassified = classifyGoFunctions(goFunctionHits)
-    const gopclntabOffsets =
-      runtime.runtime === "go"
-        ? [...findGopclntabOffsets(sample), ...(gopclntab ? [`0x${gopclntab.offset.toString(16)}`] : [])]
-        : []
-    const goPivots = buildGoPivotHints(goPcln.functions)
-    const goChains = buildGoHelperChains(goPcln.functions, [])
-    const goPlan = buildGoExecutionPlan(goPcln.functions, goChains.bestFirstTargets)
+    const gopclntabOffsets = runtime.runtime === "go" ? findGopclntabOffsets(sample) : []
     if (/not stripped/.test(combined) && /win|flag/.test(combined) && !hasVmDispatcher)
       recommendations.push("try direct symbol path first: inspect/call win/flag function before gadget hunting")
     if (/no canary|canary.*disabled/.test(combined))
@@ -442,10 +410,6 @@ export default tool({
     if (runtime.runtime === "go")
       recommendations.push(
         "Go binary signals detected: pivot from runtime noise to main.main/custom main.* names, then use string/xref guided checker slicing",
-      )
-    if (runtime.runtime === "go" && goPcln.functions.length)
-      recommendations.push(
-        "function_address_map available: pivot directly to mapped main.main/init/decode/check addresses in ReVa",
       )
     if (!recommendations.length)
       recommendations.push(
@@ -497,31 +461,15 @@ export default tool({
       ...(runtime.goSignals.length ? runtime.goSignals.map((x) => `- ${x}`) : ["- none"]),
       "gopclntab_offsets:",
       ...(gopclntabOffsets.length ? gopclntabOffsets.map((x) => `- ${x}`) : ["- none"]),
-      `pclntab_header_ok: ${goPcln.header_ok}`,
-      "go_function_address_map:",
-      ...(goPcln.functions.length ? goPcln.functions.slice(0, 80).map((f) => `- ${f.name}: ${f.entry}`) : ["- none"]),
+      `pclntab_header_ok: unavailable (use external Go tooling)`,
+      "go_function_address_map: unavailable (use external Go tooling)",
+      "- none",
       "go_function_name_hits:",
       ...(goFunctionHits.length ? goFunctionHits.map((x) => `- ${x}`) : ["- none"]),
       "go_user_code_candidates:",
       ...(goClassified.userCode.length ? goClassified.userCode.slice(0, 40).map((x) => `- ${x}`) : ["- none"]),
       "go_decoder_like_candidates:",
       ...(goClassified.decoderLike.length ? goClassified.decoderLike.slice(0, 40).map((x) => `- ${x}`) : ["- none"]),
-      "go_priority_function_addresses:",
-      ...(goPivots.priorityFunctions.length
-        ? goPivots.priorityFunctions.map((f) => `- ${f.name}: ${f.entry}`)
-        : ["- none"]),
-      "go_analysis_pivots:",
-      ...(goPivots.pivotLines.length ? goPivots.pivotLines.map((x) => `- ${x}`) : ["- none"]),
-      "go_helper_chains:",
-      ...(goChains.helperChains.length
-        ? goChains.helperChains.map((c) => `- ${c.chain.join(" -> ")} (${c.reason})`)
-        : ["- none"]),
-      `go_shortest_logic_chain: ${goChains.shortestLogicChain ? goChains.shortestLogicChain.chain.join(" -> ") : "none"}`,
-      "go_best_first_targets:",
-      ...(goChains.bestFirstTargets.length ? goChains.bestFirstTargets.map((x) => `- ${x}`) : ["- none"]),
-      `go_execution_plan: ${goPlan.summary}`,
-      "go_execution_plan_steps:",
-      ...(goPlan.steps.length ? goPlan.steps.map((s) => `- ${s.tool} ${s.target} (${s.note})`) : ["- none"]),
       "pwn_fast_signals:",
       `- has_win_symbol: ${fastSignals.has_win_symbol ? "yes" : "no"}`,
       `- has_system_plt: ${fastSignals.has_system_plt ? "yes" : "no"}`,

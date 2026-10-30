@@ -1,7 +1,7 @@
 ﻿import { tool } from "@opencode-ai/plugin"
 import { access, lstat, mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { safeExec, safeExecDocker, shellQuote } from "../lib/exec-utils.ts"
+import { safeExec, safeExecDocker } from "../lib/exec-utils.ts"
 import { pwnImage, revImage } from "../lib/docker-config.ts"
 import { resolveInsideWorkspace } from "../lib/workspace-path.ts"
 

@@ -63,14 +63,15 @@ export default tool({
           .replace(/\\/g, "/")
       : ""
 
+    const binaryPath = binary ? path.posix.join(containerWorkdir, binary) : ""
     const probeScript = [
       "set +e",
       "echo PYTHON3=$(command -v python3 >/dev/null 2>&1 && echo ok || echo missing)",
-      "echo PWNTOOLS=$(python3 - <<'PY'\ntry:\n import pwn\n print('ok')\nexcept Exception:\n print('missing')\nPY\n)",
+      "echo PWNTOOLS=$(python3 -c 'import pwn' >/dev/null 2>&1 && echo ok || echo missing)",
       "echo GDB=$(command -v gdb >/dev/null 2>&1 && echo ok || echo missing)",
-      "echo ANGR=$(python3 - <<'PY'\ntry:\n import angr\n print('ok')\nexcept Exception:\n print('missing')\nPY\n)",
-      "echo CLARIPY=$(python3 - <<'PY'\ntry:\n import claripy\n print('ok')\nexcept Exception:\n print('missing')\nPY\n)",
-      "echo Z3_SOLVER=$(python3 - <<'PY'\ntry:\n import z3\n print('ok')\nexcept Exception:\n print('missing')\nPY\n)",
+      "echo ANGR=$(python3 -c 'import angr' >/dev/null 2>&1 && echo ok || echo missing)",
+      "echo CLARIPY=$(python3 -c 'import claripy' >/dev/null 2>&1 && echo ok || echo missing)",
+      "echo Z3_SOLVER=$(python3 -c 'import z3' >/dev/null 2>&1 && echo ok || echo missing)",
       "echo FILE=$(command -v file >/dev/null 2>&1 && echo ok || echo missing)",
       "echo CHECKSEC=$(command -v checksec >/dev/null 2>&1 && echo ok || echo missing)",
       "echo OBJDUMP=$(command -v objdump >/dev/null 2>&1 && echo ok || echo missing)",
@@ -90,16 +91,7 @@ export default tool({
         ? `if command -v checksec >/dev/null 2>&1 && [ -f ${JSON.stringify(path.posix.join(containerWorkdir, binary))} ]; then checksec --file=${JSON.stringify(path.posix.join(containerWorkdir, binary))}; fi`
         : "",
       binary
-        ? `if [ -f ${JSON.stringify(path.posix.join(containerWorkdir, binary))} ]; then python3 - <<'PY'
-from pathlib import Path
-import struct
-p = Path(${JSON.stringify(path.posix.join(containerWorkdir, binary))})
-b = p.read_bytes()[:64]
-ok = len(b) >= 20 and b[:4] == b'\x7fELF'
-machine = struct.unpack_from('<H', b, 18)[0] if ok else 0
-print('I386_RUNTIME=' + ('ok' if machine == 3 else 'n/a'))
-print('ELF_INTERPRETER_EXPECTED=' + ('/lib/ld-linux.so.2' if machine == 3 else 'n/a'))
-PY`
+        ? `if [ -f ${JSON.stringify(binaryPath)} ]; then python3 -c ${JSON.stringify(`import pathlib,struct; p=pathlib.Path(${JSON.stringify(binaryPath)}); b=p.read_bytes()[:64]; ok=len(b)>=20 and b[:4]==b'\\x7fELF'; m=struct.unpack_from('<H',b,18)[0] if ok else 0; print('I386_RUNTIME='+('ok' if m==3 else 'n/a')); print('ELF_INTERPRETER_EXPECTED='+('/lib/ld-linux.so.2' if m==3 else 'n/a'))`)}; fi`
         : "",
       binary
         ? `if [ -e /lib/ld-linux.so.2 ]; then echo I386_INTERPRETER=ok; else echo I386_INTERPRETER=missing; fi`

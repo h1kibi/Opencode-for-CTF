@@ -1,6 +1,6 @@
 ﻿import { tool } from "@opencode-ai/plugin"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { randomUUID } from "node:crypto"
+import { readFile, rm, writeFile, mkdir } from "node:fs/promises"
 import path from "node:path"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
 import {
@@ -108,7 +108,8 @@ export default tool({
     const stdinPayload = args.stdinPayload ?? filePayload ?? generatedPattern
     const argvFinalPayload = args.argvPayload ?? filePayload ?? generatedPattern
     const argvParts = [...parseArgvPrefix(args.argv, args.argvPrefixJson), argvFinalPayload]
-    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "pwn-crash-probe-"))
+    const tmpDir = path.join(workspace, "work", ".tmp", `pwn-crash-probe-${randomUUID()}`)
+    await mkdir(tmpDir, { recursive: true })
     const inputFile = path.join(tmpDir, "pattern.txt")
     await writeFile(inputFile, `${stdinPayload}\n`, "utf8")
     try {

@@ -1,9 +1,9 @@
 import { tool } from "@opencode-ai/plugin"
-import { lstat, open, readFile } from "node:fs/promises"
-import { createDecipheriv, createCipheriv } from "node:crypto"
 import path from "node:path"
+import { lstat, readFile } from "node:fs/promises"
+import { createDecipheriv } from "node:crypto"
 import { resolveAllowedPath } from "../lib/path-policy.ts"
-import { extractFlagCandidates, type FlagCandidate } from "../../packages/ctf-core/src/flag-rules.ts"
+import { extractFlagCandidates, type FlagCandidate } from "ctf-core"
 
 function decodeHexOrAscii(input: string): Buffer {
   const v = input.trim()
@@ -184,78 +184,7 @@ function readLength(buf: Buffer, off: number, size: number, endian: "little" | "
   return -1
 }
 
-// Simplified libpcap parser for classic pcap captures.
-function parsePcapIfPresent(buf: Buffer): {
-  isPcap: boolean
-  packets: Array<{ offset: number; payload: Buffer; tsSec: number; tsUsec: number; origLen: number }>
-} {
-  if (buf.length < 24) return { isPcap: false, packets: [] }
-  const m0 = buf.readUInt32BE(0)
-  const m1 = buf.readUInt32LE(0)
-  if (m0 !== 0xa1b2c3d4 && m0 !== 0xa1b2cd34 && m1 !== 0xa1b2c3d4 && m1 !== 0xa1b2cd34) {
-    return { isPcap: false, packets: [] }
-  }
-  const littleEndian = m1 === 0xa1b2c3d4 || m1 === 0xa1b2cd34
-  const rd16 = (off: number) => (littleEndian ? buf.readUInt16LE(off) : buf.readUInt16BE(off))
-  const rd32 = (off: number) => (littleEndian ? buf.readUInt32LE(off) : buf.readUInt32BE(off))
-  const snapLen = rd32(16)
-  const linkType = rd32(20)
-  const packets: Array<{ offset: number; payload: Buffer; tsSec: number; tsUsec: number; origLen: number }> = []
-  let off = 24
-  let count = 0
-  while (off + 16 <= buf.length && count < 200000) {
-    const tsSec = rd32(off)
-    const tsUsec = rd32(off + 4)
-    const inclLen = rd32(off + 8)
-    const origLen = rd32(off + 12)
-    if (inclLen > snapLen + 64 || inclLen > buf.length - off - 16) break
-    const payload = buf.subarray(off + 16, off + 16 + inclLen)
-    packets.push({ offset: off + 16, payload, tsSec, tsUsec, origLen })
-    off += 16 + inclLen
-    count++
-  }
-  return { isPcap: true, packets }
-}
-
-// Skip common L2/L3/L4 headers to approximate application-layer payload.
-function extractAppLayer(payload: Buffer, linkType: number): Buffer {
-  let off = 0
-  if (linkType === 1 && payload.length >= 14) {
-    // Ethernet
-    const ethType = payload.readUInt16BE(12)
-    off = 14
-    if (ethType === 0x0800 && payload.length >= off + 20) {
-      // IPv4
-      const ihl = (payload[off] & 0x0f) * 4
-      const proto = payload[off + 9]
-      off += ihl
-      if (proto === 6 && payload.length >= off + 20) {
-        // TCP
-        const dataOff = ((payload[off + 12] >> 4) & 0xf) * 4
-        off += dataOff
-      } else if (proto === 17 && payload.length >= off + 8) {
-        // UDP
-        off += 8
-      }
-    } else if (ethType === 0x86dd && payload.length >= off + 40) {
-      // IPv6
-      const nextHdr = payload[off + 6]
-      off += 40
-      if (nextHdr === 6 && payload.length >= off + 20) {
-        const dataOff = ((payload[off + 12] >> 4) & 0xf) * 4
-        off += dataOff
-      } else if (nextHdr === 17 && payload.length >= off + 8) {
-        off += 8
-      }
-    }
-  } else if (linkType === 101 && payload.length >= 4) {
-    // Raw IP
-    const ihl = (payload[0] & 0x0f) * 4
-    off = ihl
-  }
-  return off > 0 && off < payload.length ? payload.subarray(off) : payload
-}
-
+type RawCandidate = { source: string; data: Buffer }
 type CarvedFrame = {
   packetIndex: number
   frameIndex: number
@@ -338,27 +267,19 @@ export default tool({
     const cipher = (args.cipher ?? "none") as string
     const key = args.key ? decodeHexOrAscii(args.key) : Buffer.alloc(0)
     const iv = args.iv ? decodeHexOrAscii(args.iv) : Buffer.alloc(0)
-    const scanAppLayerOnly = args.scanAppLayerOnly ?? true
     const minFrameSize = Math.max(1, args.minFrameSize ?? 1)
     const maxFrameSize = Math.max(16, Math.min(65535, args.maxFrameSize ?? 4096))
     const maxFrames = Math.max(1, Math.min(5000, args.maxFrames ?? 200))
     const autoTryXorBytes = args.autoTryXorBytes ?? false
 
-    const { isPcap, packets } = parsePcapIfPresent(buf)
-    const linkType = isPcap ? buf.readUInt32LE(20) : 0
-
-    // Candidate buffers: per-packet application payloads, plus the whole file as fallback.
-    type Candidate = { source: string; data: Buffer }
-    const candidates: Candidate[] = []
-    if (isPcap && scanAppLayerOnly) {
-      packets.forEach((p, i) => {
-        const app = extractAppLayer(p.payload, linkType)
-        if (app.length >= 1) candidates.push({ source: `packet#${i}`, data: app })
-      })
-      candidates.push({ source: "whole_file", data: buf })
-    } else {
-      candidates.push({ source: isPcap ? "whole_pcap_bytes" : "raw_bytes", data: buf })
+    const isPcap = /\.(?:pcap|pcapng)$/i.test(path.basename(target))
+    if (isPcap) {
+      throw new Error(
+        "pcap carving requires the external tshark backend; use tshark -T fields to export packet payloads before raw-frame carving",
+      )
     }
+    // Raw streams are intentionally handled without mature capture-format parsing.
+    const candidates: RawCandidate[] = [{ source: "raw_bytes", data: buf }]
 
     const frames: CarvedFrame[] = []
     const flagCandidates: CarvedFlagCandidate[] = []
@@ -487,8 +408,6 @@ export default tool({
       target,
       size: st.size,
       is_pcap: isPcap,
-      pcap_link_type: isPcap ? linkType : null,
-      pcap_packet_count: isPcap ? packets.length : 0,
       magic_ascii: magic.toString("latin1"),
       magic_hex: magic.toString("hex"),
       length_size: lengthSize,
@@ -540,8 +459,7 @@ export default tool({
       `- target: ${target}`,
       `- size: ${st.size}`,
       `- is_pcap: ${isPcap}`,
-      `- pcap_link_type: ${isPcap ? linkType : "n/a"}`,
-      `- pcap_packet_count: ${isPcap ? packets.length : 0}`,
+      `- pcap_backend: ${isPcap ? "external tshark required" : "not applicable"}`,
       `- magic_ascii: ${magic.toString("latin1") || "(none)"}`,
       `- magic_hex: ${magic.toString("hex") || "(none)"}`,
       `- length_size: ${lengthSize}`,

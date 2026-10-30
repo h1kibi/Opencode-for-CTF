@@ -1,12 +1,12 @@
 import { tool } from "@opencode-ai/plugin"
 import path from "node:path"
+import { stat, open } from "node:fs/promises"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
 import {
   directoryFromContext,
   resolveFromDirectoryInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-
 function detect(buf: Buffer) {
   if (buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "png"
   if (buf.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) return "jpeg"
@@ -18,29 +18,6 @@ function detect(buf: Buffer) {
   return "unknown"
 }
 
-function dimensions(kind: string, buf: Buffer) {
-  try {
-    if (kind === "png" && buf.length >= 24) return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) }
-    if (kind === "gif" && buf.length >= 10) return { width: buf.readUInt16LE(6), height: buf.readUInt16LE(8) }
-    if (kind === "bmp" && buf.length >= 26) return { width: buf.readInt32LE(18), height: Math.abs(buf.readInt32LE(22)) }
-    if (kind === "jpeg") {
-      let off = 2
-      while (off + 9 < buf.length) {
-        if (buf[off] !== 0xff) {
-          off++
-          continue
-        }
-        const marker = buf[off + 1]
-        const len = buf.readUInt16BE(off + 2)
-        if (marker >= 0xc0 && marker <= 0xc3)
-          return { width: buf.readUInt16BE(off + 7), height: buf.readUInt16BE(off + 5) }
-        off += 2 + len
-      }
-    }
-  } catch {}
-  return undefined
-}
-
 async function optionalExec(cmd: string, args: string[], cwd: string) {
   const { stdout, stderr, ok } = await safeExecWithStreams(cmd, args, { cwd, timeoutMs: 10000, maxBuffer: 512 * 1024 })
   if (!ok) return `<${cmd} unavailable or failed: ${stderr || "no details"}>`
@@ -49,18 +26,17 @@ async function optionalExec(cmd: string, args: string[], cwd: string) {
 
 export default tool({
   description:
-    "Daily image/document file info: inspect local image-like files without model vision input; reports type, dimensions, metadata hints, trailing data, and optional exiftool output.",
+    "Daily image/document file info: inspect local image-like files without model vision input; reports type, metadata hints, trailing data, and optional exiftool output.",
   args: {
     target: tool.schema.string().describe("Workspace-relative image/document path to inspect"),
     exif: tool.schema.boolean().optional().describe("Run exiftool if available. Default true."),
   },
   async execute(args, context) {
-    const fs = await import("fs/promises")
     const workspace = workspaceRootFromContext(context)
     const directory = directoryFromContext(context)
     const target = resolveFromDirectoryInsideWorkspace(directory, workspace, args.target)
-    const st = await fs.stat(target)
-    const fd = await fs.open(target, "r")
+    const st = await stat(target)
+    const fd = await open(target, "r")
     let sample: Buffer
     try {
       sample = Buffer.alloc(Math.min(st.size, 512 * 1024))
@@ -70,7 +46,6 @@ export default tool({
       await fd.close()
     }
     const kind = detect(sample)
-    const dim = dimensions(kind, sample)
     const hints: string[] = []
     const pngEnd = Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82])
     const pngIdx = sample.indexOf(pngEnd)
@@ -89,14 +64,14 @@ export default tool({
       `target: ${target}`,
       `size: ${st.size}`,
       `kind: ${kind}`,
-      `dimensions: ${dim ? `${dim.width}x${dim.height}` : "unknown"}`,
+      "dimensions: use exiftool output when available; mature image metadata is not parsed locally",
       "hints:",
       ...(hints.length ? hints.map((x) => `- ${x}`) : ["- none"]),
       "metadata_exiftool:",
       exifOut.split(/\r?\n/).slice(0, 80).join("\n"),
       "next_actions:",
       "- For visual understanding, use ctf-forensics-analyze first; then ctf-multimodal-triage so a vision-capable model receives a bounded image attachment alongside this metadata.",
-      "- For daily engineering work, use metadata/dimensions/hints to decide whether manual viewing is needed.",
+      "- For daily engineering work, use exiftool metadata/hints to decide whether manual viewing is needed.",
       "- For CTF/stego tasks, use ctf-multimodal-triage first for visual evidence, then ctf-stego-probe only after the artifact is clearly stego-shaped.",
     ].join("\n")
   },

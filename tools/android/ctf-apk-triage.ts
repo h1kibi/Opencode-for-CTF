@@ -1,9 +1,8 @@
 ﻿import { tool } from "@opencode-ai/plugin"
 import { lstat, mkdir, readFile, writeFile } from "node:fs/promises"
 import { safeExec } from "../lib/exec-utils.ts"
-import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
+import { extractFlagCandidates } from "ctf-core"
 import path from "node:path"
-import { inflateRawSync } from "node:zlib"
 import crypto from "node:crypto"
 import {
   directoryFromContext,
@@ -11,68 +10,12 @@ import {
   resolveInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-
-type ZipEntry = {
-  name: string
-  method: number
-  compressedSize: number
-  uncompressedSize: number
-  localHeaderOffset: number
-}
+import { listArchiveEntries, readArchiveEntry } from "../lib/archive-utils.ts"
 
 const HIGH_SIGNAL =
   /(flag|ctf|check|verify|valid|invalid|success|correct|wrong|fail|serial|license|password|secret|token|key|native|jni|loadLibrary|RegisterNatives|JNI_OnLoad|decrypt|encrypt|decode|encode|base64|xor|aes|des|rc4|md5|sha|frida|xposed|magisk|root|debug|emulator|qemu|TracerPid|dexclassloader|pathclassloader|loadDex|loadClass)/i
 const PACKER_SIGNAL =
   /(jiagu|bangcle|ijiami|qihoo|tencent|legu|secneo|baiduprotect|sophix|tinker|protect|packer|DexClassLoader|PathClassLoader|loadDex|payload|libshell|stub|shell)/i
-
-function u16(buf: Buffer, off: number) {
-  return off + 2 <= buf.length ? buf.readUInt16LE(off) : 0
-}
-function u32(buf: Buffer, off: number) {
-  return off + 4 <= buf.length ? buf.readUInt32LE(off) : 0
-}
-
-function listZip(buf: Buffer): ZipEntry[] {
-  let eocd = -1
-  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 0x10000 - 22); i--) {
-    if (u32(buf, i) === 0x06054b50) {
-      eocd = i
-      break
-    }
-  }
-  if (eocd < 0) throw new Error("invalid zip/apk: EOCD not found")
-  const total = u16(buf, eocd + 10)
-  const cdOffset = u32(buf, eocd + 16)
-  const entries: ZipEntry[] = []
-  let off = cdOffset
-  for (let i = 0; i < total && off + 46 <= buf.length; i++) {
-    if (u32(buf, off) !== 0x02014b50) break
-    const method = u16(buf, off + 10)
-    const compressedSize = u32(buf, off + 20)
-    const uncompressedSize = u32(buf, off + 24)
-    const nameLen = u16(buf, off + 28)
-    const extraLen = u16(buf, off + 30)
-    const commentLen = u16(buf, off + 32)
-    const localHeaderOffset = u32(buf, off + 42)
-    const name = buf.subarray(off + 46, off + 46 + nameLen).toString("utf8")
-    entries.push({ name, method, compressedSize, uncompressedSize, localHeaderOffset })
-    off += 46 + nameLen + extraLen + commentLen
-  }
-  return entries
-}
-
-function extractEntry(buf: Buffer, entry: ZipEntry, maxBytes = 5_000_000): Buffer | null {
-  const off = entry.localHeaderOffset
-  if (u32(buf, off) !== 0x04034b50) return null
-  if (entry.uncompressedSize > maxBytes) return null
-  const nameLen = u16(buf, off + 26)
-  const extraLen = u16(buf, off + 28)
-  const start = off + 30 + nameLen + extraLen
-  const raw = buf.subarray(start, start + entry.compressedSize)
-  if (entry.method === 0) return raw
-  if (entry.method === 8) return inflateRawSync(raw)
-  return null
-}
 
 function printableStrings(buf: Buffer, max = 500) {
   const text = buf.toString("latin1")
@@ -175,7 +118,13 @@ export default tool({
     if (!st.isFile()) throw new Error("target must be a file")
     const buf = await readFile(target)
     const sha256 = crypto.createHash("sha256").update(buf).digest("hex")
-    const entries = listZip(buf)
+    const entries = (await listArchiveEntries(target)).map((entry) => ({
+      ...entry,
+      method: 0,
+      compressedSize: entry.size ?? 0,
+      uncompressedSize: entry.size ?? 0,
+      localHeaderOffset: 0,
+    }))
     const maxStrings = Math.max(20, Math.min(args.maxStrings ?? 120, 500))
     const outRel =
       args.outDir || path.join("work", "apk-triage", path.basename(target).replace(/[^A-Za-z0-9_.-]/g, "_"))
@@ -205,14 +154,12 @@ export default tool({
 
     const dexStrings: string[] = []
     for (const e of dexEntries.slice(0, 8)) {
-      const data = extractEntry(buf, e, 30_000_000)
-      if (!data) continue
+      const data = await readArchiveEntry(target, e.name, workspace, 30_000_000)
       dexStrings.push(...printableStrings(data, 2000).filter((s) => HIGH_SIGNAL.test(s)))
     }
     const nativeStrings: string[] = []
     for (const e of libEntries.slice(0, 12)) {
-      const data = extractEntry(buf, e, 20_000_000)
-      if (!data) continue
+      const data = await readArchiveEntry(target, e.name, workspace, 20_000_000)
       nativeStrings.push(...printableStrings(data, 1200).filter((s) => HIGH_SIGNAL.test(s)))
     }
 

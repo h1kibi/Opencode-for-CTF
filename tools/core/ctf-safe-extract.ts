@@ -1,8 +1,7 @@
 ﻿import { tool } from "@opencode-ai/plugin"
-import { access, lstat, mkdir, readdir, rm, stat, open, writeFile } from "node:fs/promises"
+import { access, lstat, mkdir, open, readdir, rm, stat } from "node:fs/promises"
 import path from "node:path"
 import { constants as fsConstants } from "node:fs"
-import { inflateRawSync } from "node:zlib"
 import { safeExec } from "../lib/exec-utils.ts"
 import {
   directoryFromContext,
@@ -10,7 +9,7 @@ import {
   resolveInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-import { DEFAULT_FLAG_REGEX } from "../../packages/ctf-core/src/flag-rules.ts"
+import { DEFAULT_FLAG_REGEX } from "ctf-core"
 
 const DEFAULT_FLAG_RE = DEFAULT_FLAG_REGEX
 const MAX_OUTPUT = 256 * 1024
@@ -33,15 +32,6 @@ type ExtractedFile = {
   flags: string[]
   suspicious: string[]
   binaryLike: boolean
-}
-
-type ZipLocalEntry = {
-  name: string
-  method: number
-  compressedSize: number
-  uncompressedSize: number
-  dataStart: number
-  flags: number
 }
 
 async function exists(cmd: string) {
@@ -94,256 +84,80 @@ function isDangerousMember(name: string) {
   return normalized.split("/").some((part) => part === "..")
 }
 
-function isInsideResolvedBase(targetPath: string, basePath: string) {
-  const rel = path.relative(basePath, targetPath)
-  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel))
-}
-
-function parse7zList(stdout: string) {
+function parse7zList(stdout: string): string[] {
   const names: string[] = []
   for (const line of stdout.split(/\r?\n/)) {
-    const m = line.match(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+\S{5}\s+\d+\s+\d*\s+(.+)$/)
-    if (m?.[1]) names.push(m[1].trim())
+    const match = line.match(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+\S{5}\s+\d+\s+\d*\s+(.+)$/)
+    if (match?.[1]) names.push(match[1].trim())
   }
   return names
 }
 
-async function listZipNative(target: string) {
-  const fd = await open(target, "r")
-  try {
-    const st = await fd.stat()
-    const tailSize = Math.min(st.size, 1024 * 1024)
-    const tail = Buffer.alloc(tailSize)
-    await fd.read(tail, 0, tailSize, st.size - tailSize)
-    let eocd = -1
-    for (let i = tail.length - 22; i >= 0; i--) {
-      if (tail.readUInt32LE(i) === 0x06054b50) {
-        eocd = i
-        break
-      }
-    }
-    if (eocd < 0) throw new Error("zip EOCD not found")
-    const entries = tail.readUInt16LE(eocd + 10)
-    const cdSize = tail.readUInt32LE(eocd + 12)
-    const cdOffset = tail.readUInt32LE(eocd + 16)
-    if (cdSize > 64 * 1024 * 1024) throw new Error("zip central directory too large")
-    const cd = Buffer.alloc(cdSize)
-    await fd.read(cd, 0, cdSize, cdOffset)
-    const names: string[] = []
-    let off = 0
-    for (let i = 0; i < entries && off + 46 <= cd.length; i++) {
-      if (cd.readUInt32LE(off) !== 0x02014b50) break
-      const nameLen = cd.readUInt16LE(off + 28)
-      const extraLen = cd.readUInt16LE(off + 30)
-      const commentLen = cd.readUInt16LE(off + 32)
-      const name = cd.subarray(off + 46, off + 46 + nameLen).toString("utf8")
-      if (name) names.push(name)
-      off += 46 + nameLen + extraLen + commentLen
-    }
-    return names
-  } finally {
-    await fd.close()
-  }
-}
-
-function inferZipDataEnd(buf: Buffer, entry: ZipLocalEntry) {
-  if (entry.compressedSize > 0 && entry.dataStart + entry.compressedSize <= buf.length)
-    return entry.dataStart + entry.compressedSize
-  const signatures = [0x04034b50, 0x02014b50, 0x06054b50, 0x08074b50]
-  for (let off = entry.dataStart; off + 4 <= buf.length; off += 1) {
-    const sig = buf.readUInt32LE(off)
-    if (signatures.includes(sig)) return off
-  }
-  return buf.length
-}
-
-async function scanZipLocalHeaders(target: string, maxEntries: number) {
-  const buf = await import("node:fs/promises").then((fs) => fs.readFile(target))
-  const entries: ZipLocalEntry[] = []
-  let off = 0
-  while (off + 30 <= buf.length && entries.length < maxEntries) {
-    const sig = buf.readUInt32LE(off)
-    if (sig !== 0x04034b50) {
-      off += 1
-      continue
-    }
-    const flags = buf.readUInt16LE(off + 6)
-    const method = buf.readUInt16LE(off + 8)
-    const compressedSize = buf.readUInt32LE(off + 18)
-    const uncompressedSize = buf.readUInt32LE(off + 22)
-    const nameLen = buf.readUInt16LE(off + 26)
-    const extraLen = buf.readUInt16LE(off + 28)
-    const nameStart = off + 30
-    const nameEnd = nameStart + nameLen
-    const dataStart = nameEnd + extraLen
-    if (dataStart > buf.length) break
-    const rawName = buf.subarray(nameStart, nameEnd)
-    const utf8 = (flags & 0x800) !== 0
-    const name = rawName.toString(utf8 ? "utf8" : "latin1")
-    const entry = { name, method, compressedSize, uncompressedSize, dataStart, flags }
-    entries.push(entry)
-    const next = inferZipDataEnd(buf, entry)
-    off = next > off ? next : off + 1
-  }
-  return { buf, entries }
-}
-
-async function listZipByLocalHeaders(target: string, maxEntries: number) {
-  const { entries } = await scanZipLocalHeaders(target, maxEntries)
-  return entries.map((x) => x.name).filter(Boolean)
-}
-
-async function extractZipByLocalHeaders(target: string, outDir: string, maxEntries: number) {
-  const { buf, entries } = await scanZipLocalHeaders(target, maxEntries)
-  const recovered: string[] = []
-  for (const entry of entries) {
-    const normalized = entry.name.replace(/\\/g, "/")
-    if (!normalized || isDangerousMember(normalized)) continue
-    const dest = path.resolve(outDir, normalized)
-    const base = path.resolve(outDir)
-    if (!isInsideResolvedBase(dest, base)) continue
-    if (normalized.endsWith("/")) {
-      await mkdir(dest, { recursive: true })
-      recovered.push(normalized)
-      continue
-    }
-    await mkdir(path.dirname(dest), { recursive: true })
-    const dataEnd = inferZipDataEnd(buf, entry)
-    if (dataEnd <= entry.dataStart || dataEnd > buf.length) continue
-    const compressed = buf.subarray(entry.dataStart, dataEnd)
-    let payload: Buffer
-    if (entry.method === 0) payload = compressed
-    else if (entry.method === 8) payload = inflateRawSync(compressed)
-    else continue
-    await writeFile(dest, payload)
-    recovered.push(normalized)
-  }
-  return recovered
-}
-
 async function powershellZip(target: string, outDir: string) {
-  const script = [
-    "$ErrorActionPreference='Stop'",
-    "Add-Type -AssemblyName System.IO.Compression.FileSystem",
-    "$zip=[System.IO.Compression.ZipFile]::OpenRead($args[0])",
-    "try { foreach($e in $zip.Entries) {",
-    "  $dest=[System.IO.Path]::GetFullPath([System.IO.Path]::Combine($args[1], $e.FullName))",
-    "  $base=[System.IO.Path]::GetFullPath($args[1])",
-    "  if(-not $dest.StartsWith($base, [System.StringComparison]::OrdinalIgnoreCase)) { throw 'zip slip blocked: '+$e.FullName }",
-    "  if($e.FullName.EndsWith('/') -or $e.FullName.EndsWith('\\')) { [System.IO.Directory]::CreateDirectory($dest) | Out-Null; continue }",
-    "  $parent=[System.IO.Path]::GetDirectoryName($dest)",
-    "  if($parent) { [System.IO.Directory]::CreateDirectory($parent) | Out-Null }",
-    "  [System.IO.Compression.ZipFileExtensions]::ExtractToFile($e, $dest, $true)",
-    "} } finally { $zip.Dispose() }",
-  ].join("; ")
   const result = await safeExec(
     "powershell",
-    ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script, target, outDir],
-    {
-      timeoutMs: 120000,
-      maxBuffer: MAX_OUTPUT,
-    },
+    ["-NoProfile", "-Command", "Expand-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force", target, outDir],
+    { timeoutMs: 120000, maxBuffer: MAX_OUTPUT },
   )
   if (!result.ok) throw new Error(result.output)
   return "powershell-zip"
 }
 
 async function listArchive(target: string, kind: ArchiveKind) {
-  function parseOutput(r: { ok: boolean; output: string }) {
-    if (!r.ok) return [] as string[]
-    const text = r.output === "<no output>" ? "" : r.output
-    return text
+  const parse = (text: string) =>
+    (text === "<no output>" ? "" : text)
       .split(/\r?\n/)
       .map((x) => x.trim())
       .filter(Boolean)
-  }
-
-  if (kind === "zip") {
-    try {
-      return await listZipNative(target)
-    } catch {
-      // fall through to tolerant recovery first
-    }
-    try {
-      const localHeaderNames = await listZipByLocalHeaders(target, 5000)
-      if (localHeaderNames.length) return localHeaderNames
-    } catch {
-      // continue to external backends
-    }
-    if (await exists("unzip")) {
-      const r = await safeExec("unzip", ["-Z", "-1", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
-      const names = parseOutput(r)
-      if (names.length) return names
-    }
-    if (await find7z()) {
-      const sevenZip = await find7z()
-      const r = await safeExec(sevenZip, ["l", "-ba", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
-      if (r.ok) return parse7zList(r.output)
-    }
-    if (await exists("jar")) {
-      const r = await safeExec("jar", ["tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
-      const names = parseOutput(r)
-      if (names.length) return names
-    }
-  }
-  if (kind === "tar") {
-    if (await exists("tar")) {
-      const r = await safeExec("tar", ["-tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
-      return parseOutput(r)
-    }
-  }
-  if (kind === "7z" || kind === "unknown") {
-    const sevenZip = await find7z()
-    if (sevenZip) {
-      const r = await safeExec(sevenZip, ["l", "-ba", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
-      if (r.ok) return parse7zList(r.output)
-    }
-  }
-  throw new Error(`no supported listing backend for archive kind ${kind}`)
-}
-
-async function extractArchive(target: string, kind: ArchiveKind, outDir: string) {
-  if (kind === "zip") {
-    try {
-      return await powershellZip(target, outDir)
-    } catch {
-      // fall through to tolerant recovery first
-    }
-    try {
-      const recovered = await extractZipByLocalHeaders(target, outDir, 5000)
-      if (recovered.length) return "zip-local-header-recovery"
-    } catch {
-      // continue to external backends
-    }
-    if (await exists("unzip")) {
-      const r = await safeExec("unzip", ["-q", target, "-d", outDir], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
-      if (r.ok) return "unzip"
-    }
-    if (await find7z()) {
-      const sevenZip = await find7z()
-      const r = await safeExec(sevenZip, ["x", target, `-o${outDir}`, "-y"], {
-        timeoutMs: 120000,
-        maxBuffer: MAX_OUTPUT,
-      })
-      if (r.ok) return "7z"
-    }
-    if (await exists("jar")) {
-      const r = await safeExec("jar", ["xf", target], { cwd: outDir, timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
-      if (r.ok) return "jar"
-    }
-  }
-  if (kind === "tar") {
-    if (await exists("tar")) {
-      const r = await safeExec("tar", ["-xf", target, "-C", outDir], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
-      if (r.ok) return "tar"
-    }
+  if (kind === "zip" && (await exists("unzip"))) {
+    const result = await safeExec("unzip", ["-Z", "-1", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+    if (result.ok) return parse(result.output)
   }
   const sevenZip = await find7z()
   if (sevenZip) {
-    const r = await safeExec(sevenZip, ["x", target, `-o${outDir}`, "-y"], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
-    if (r.ok) return "7z"
+    const result = await safeExec(sevenZip, ["l", "-ba", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+    if (result.ok) return parse7zList(result.output)
   }
-  throw new Error(`no supported extraction backend for archive kind ${kind}`)
+  if (kind === "zip" && (await exists("jar"))) {
+    const result = await safeExec("jar", ["tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+    if (result.ok) return parse(result.output)
+  }
+  if (kind === "tar" && (await exists("tar"))) {
+    const result = await safeExec("tar", ["-tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+    if (result.ok) return parse(result.output)
+  }
+  throw new Error(`no supported external listing backend for archive kind ${kind}`)
+}
+
+async function extractArchive(target: string, kind: ArchiveKind, outDir: string) {
+  if (kind === "zip" && process.platform === "win32") {
+    try {
+      return await powershellZip(target, outDir)
+    } catch {
+      /* try other installed backends */
+    }
+  }
+  if ((kind === "zip" || kind === "unknown") && (await exists("unzip"))) {
+    const result = await safeExec("unzip", ["-q", target, "-d", outDir], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+    if (result.ok) return "unzip"
+  }
+  const sevenZip = await find7z()
+  if (sevenZip) {
+    const result = await safeExec(sevenZip, ["x", target, `-o${outDir}`, "-y"], {
+      timeoutMs: 120000,
+      maxBuffer: MAX_OUTPUT,
+    })
+    if (result.ok) return "7z"
+  }
+  if ((kind === "zip" || kind === "unknown") && (await exists("jar"))) {
+    const result = await safeExec("jar", ["xf", target], { cwd: outDir, timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+    if (result.ok) return "jar"
+  }
+  if (kind === "tar" && (await exists("tar"))) {
+    const result = await safeExec("tar", ["-xf", target, "-C", outDir], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+    if (result.ok) return "tar"
+  }
+  throw new Error(`no supported external extraction backend for archive kind ${kind}`)
 }
 
 async function collectFiles(root: string, maxFiles: number, out: string[] = []) {
@@ -403,8 +217,7 @@ async function inspectExtracted(outDir: string, maxFiles: number, maxBytes: numb
     const st = await stat(file)
     if (!st.isFile()) continue
     totalBytes += st.size
-    if (totalBytes > maxBytes) break
-    const fd = await import("node:fs/promises").then((fs) => fs.open(file, "r"))
+    const fd = await open(file, "r")
     try {
       const buf = Buffer.alloc(Math.min(st.size, 128 * 1024))
       const { bytesRead } = await fd.read(buf, 0, buf.length, 0)

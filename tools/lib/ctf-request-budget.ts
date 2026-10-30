@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { fetchWithTimeout, readTextCapped } from "./web-http.ts"
+import { fetchWithTimeout, readTextCapped, validateWebUrl } from "./web-http.ts"
 
 export type RequestBudgetOptions = {
   maxRequests?: number
@@ -109,7 +109,7 @@ export class CtfRequestBudget {
     label = "request",
     maxBytes = 256_000,
   ): Promise<{ text: string; observation: RequestObservation; headers: Headers }> {
-    const target = new URL(String(url))
+    const target = validateWebUrl(String(url))
     if (this.options.allowedOrigin && target.origin !== this.options.allowedOrigin) {
       throw new BudgetStopError(
         "origin_blocked",

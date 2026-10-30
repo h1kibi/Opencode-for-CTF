@@ -1,5 +1,5 @@
 import { tool } from "@opencode-ai/plugin"
-import { safeExec } from "../lib/exec-utils.ts"
+import { probePythonCode, resolveCommand, execLocated } from "../lib/env-check-core.ts"
 
 type Probe = {
   id: string
@@ -36,22 +36,44 @@ function statusFor(checks: Check[], fallbackGroups: string[][] = []): Capability
 }
 
 async function runProbe(probe: Probe): Promise<Check> {
-  const args =
-    probe.kind === "python-module"
-      ? ["-c", `import ${probe.command}; print(getattr(${probe.command}, "__version__", "present"))`]
-      : (probe.args ?? ["--version"])
-  const result = await safeExec(probe.kind === "python-module" ? "python" : probe.command, args, {
-    // Capability checks should fail fast; they are diagnostics, not long-running probes.
-    timeoutMs: 2500,
-    // Avoid shell startup/quoting delays on Windows. `safeExec` resolves known wrappers.
-    shell: false,
-    maxBuffer: 128 * 1024,
-  })
+  // Python-module probes try every interpreter on the host until one imports
+  // the module — avoids false negatives when the PATH python differs from the
+  // environment that actually has the package installed.
+  if (probe.kind === "python-module") {
+    const code = `import ${probe.command}; print(getattr(${probe.command}, "__version__", "present"))`
+    const result = await probePythonCode(code, 4000)
+    return {
+      id: probe.id,
+      ok: result.ok,
+      required: probe.required === true,
+      detail: result.ok
+        ? `${result.output.slice(0, 200)}${result.interpreter ? ` [${result.interpreter}]` : ""}`
+        : result.output.slice(0, 300),
+      hint: result.ok ? "" : probe.hint,
+    }
+  }
+
+  // Command probes resolve aliases (nc→ncat, etc.) and shim/tool roots before
+  // executing, so C:\Tools\ctf-bin\*.cmd wrappers count as present.
+  const args = probe.args ?? ["--version"]
+  const { resolved, matchedName, source } = await resolveCommand(probe.command)
+  if (!resolved) {
+    return {
+      id: probe.id,
+      ok: false,
+      required: probe.required === true,
+      detail: `${probe.command}: not found on PATH, shim roots, or aliases`,
+      hint: probe.hint,
+    }
+  }
+  const result = await execLocated(resolved, args, 4000)
   return {
     id: probe.id,
     ok: result.ok,
     required: probe.required === true,
-    detail: result.ok ? result.output.slice(0, 200) : result.output.slice(0, 300),
+    detail: result.ok
+      ? `${matchedName ?? probe.command}: ${result.output.slice(0, 200)}${source ? ` [${source}]` : ""}`
+      : `${matchedName ?? probe.command}@${resolved}: ${result.output.slice(0, 300) || "probe failed"}`,
     hint: result.ok ? "" : probe.hint,
   }
 }

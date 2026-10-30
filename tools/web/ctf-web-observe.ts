@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { caseDirectory } from "../../src/case-state.ts"
 import { workspaceRootFromContext } from "../lib/workspace-path.ts"
-
+import { fetchWithTimeout, validateWebUrl } from "../lib/web-http.ts"
 export default tool({
   description: "Observe an authorized CTF web page and save a structured request/response artifact.",
   args: {
@@ -12,15 +12,8 @@ export default tool({
   },
   async execute(args, context) {
     const workspace = workspaceRootFromContext(context)
-    const url = new URL(args.url)
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 8_000)
-    let response: Response
-    try {
-      response = await fetch(url, { redirect: "manual", signal: controller.signal })
-    } finally {
-      clearTimeout(timer)
-    }
+    const url = validateWebUrl(args.url)
+    const response = await fetchWithTimeout(url, { redirect: "manual" }, 8_000)
     const body = await response.text()
     const headers = Object.fromEntries(response.headers.entries())
     const links = Array.from(body.matchAll(/href=["']([^"']+)/gi), (match) => match[1]).slice(0, 100)

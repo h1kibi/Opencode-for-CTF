@@ -1,6 +1,6 @@
 ﻿import { tool } from "@opencode-ai/plugin"
-import { mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
-import os from "node:os"
+import { randomUUID } from "node:crypto"
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
 import {
@@ -155,10 +155,10 @@ export default tool({
     } | null = null
 
     if (args.host && args.port) {
-      const driverDir = await mkdtemp(path.join(os.tmpdir(), "pwn-probe-"))
+      const driverDir = path.join(workspace, "work", ".tmp", `pwn-probe-${randomUUID()}`)
+      await mkdir(driverDir, { recursive: true })
       const driver = path.join(driverDir, "remote_probe.py")
-      const script = `#!/usr/bin/env python3
-from pwn import *
+      const script = `from pwn import *
 import json, re
 HOST=${JSON.stringify(String(args.host))}
 PORT=${Number(args.port)}

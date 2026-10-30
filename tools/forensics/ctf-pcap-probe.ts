@@ -1,5 +1,5 @@
 ﻿import { tool } from "@opencode-ai/plugin"
-import { open, lstat, access } from "node:fs/promises"
+import { open, lstat } from "node:fs/promises"
 import path from "node:path"
 import { safeExec, safeExecDocker, isFailureOutput, shellQuote } from "../lib/exec-utils.ts"
 import { pwnImage, revImage } from "../lib/docker-config.ts"
@@ -8,7 +8,7 @@ import {
   resolveFromDirectoryInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-import { extractFlagCandidates } from "../../packages/ctf-core/src/flag-rules.ts"
+import { extractFlagCandidates } from "ctf-core"
 
 async function dockerImageExists(image: string, cwd: string): Promise<boolean> {
   const { ok, output } = await safeExec("docker", ["image", "inspect", image, "--format", "{{.Id}}"], cwd, 5000)

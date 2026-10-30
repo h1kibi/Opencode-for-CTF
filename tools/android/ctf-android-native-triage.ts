@@ -2,7 +2,7 @@
 import { lstat, mkdir, readFile, writeFile } from "node:fs/promises"
 import { safeExec } from "../lib/exec-utils.ts"
 import path from "node:path"
-import { inflateRawSync } from "node:zlib"
+import { listArchiveEntries, readArchiveEntry } from "../lib/archive-utils.ts"
 import crypto from "node:crypto"
 import {
   directoryFromContext,
@@ -15,58 +15,8 @@ const JNI_RE =
 const SUSPICIOUS_RE =
   /(flag|ctf|check|verify|valid|wrong|correct|success|fail|strcmp|strncmp|memcmp|strlen|strstr|AES|DES|RC4|MD5|SHA|base64|xor|encrypt|decrypt|ptrace|TracerPid|frida|xposed|magisk|qemu|emulator|__android_log_print)/i
 
-type ZipEntry = {
-  name: string
-  method: number
-  compressedSize: number
-  uncompressedSize: number
-  localHeaderOffset: number
-}
-function u16(buf: Buffer, off: number) {
-  return off + 2 <= buf.length ? buf.readUInt16LE(off) : 0
-}
-function u32(buf: Buffer, off: number) {
-  return off + 4 <= buf.length ? buf.readUInt32LE(off) : 0
-}
 function isElf(buf: Buffer) {
   return buf.length > 4 && buf[0] === 0x7f && buf.subarray(1, 4).toString() === "ELF"
-}
-function listZip(buf: Buffer): ZipEntry[] {
-  let eocd = -1
-  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 0x10000 - 22); i--)
-    if (u32(buf, i) === 0x06054b50) {
-      eocd = i
-      break
-    }
-  if (eocd < 0) return []
-  const total = u16(buf, eocd + 10),
-    cdOffset = u32(buf, eocd + 16)
-  const entries: ZipEntry[] = []
-  let off = cdOffset
-  for (let i = 0; i < total && off + 46 <= buf.length; i++) {
-    if (u32(buf, off) !== 0x02014b50) break
-    const method = u16(buf, off + 10),
-      compressedSize = u32(buf, off + 20),
-      uncompressedSize = u32(buf, off + 24)
-    const nameLen = u16(buf, off + 28),
-      extraLen = u16(buf, off + 30),
-      commentLen = u16(buf, off + 32),
-      localHeaderOffset = u32(buf, off + 42)
-    const name = buf.subarray(off + 46, off + 46 + nameLen).toString("utf8")
-    entries.push({ name, method, compressedSize, uncompressedSize, localHeaderOffset })
-    off += 46 + nameLen + extraLen + commentLen
-  }
-  return entries
-}
-function extractEntry(buf: Buffer, entry: ZipEntry, maxBytes = 30_000_000) {
-  if (entry.uncompressedSize > maxBytes) return null
-  const off = entry.localHeaderOffset
-  if (u32(buf, off) !== 0x04034b50) return null
-  const start = off + 30 + u16(buf, off + 26) + u16(buf, off + 28)
-  const raw = buf.subarray(start, start + entry.compressedSize)
-  if (entry.method === 0) return raw
-  if (entry.method === 8) return inflateRawSync(raw)
-  return null
 }
 function printableStrings(buf: Buffer, max = 1200) {
   const text = buf.toString("latin1")
@@ -81,12 +31,6 @@ function printableStrings(buf: Buffer, max = 1200) {
 }
 function unique(xs: string[]) {
   return [...new Set(xs)]
-}
-function archFromElf(buf: Buffer) {
-  const cls = buf[4] === 2 ? "ELF64" : "ELF32"
-  const machine = u16(buf, 18)
-  const map: Record<number, string> = { 3: "x86", 40: "arm", 62: "x86_64", 183: "aarch64" }
-  return `${cls}/${map[machine] || `machine_0x${machine.toString(16)}`}`
 }
 
 export default tool({
@@ -116,9 +60,9 @@ export default tool({
     const libs: Array<{ name: string; data: Buffer }> = []
     if (isElf(raw)) libs.push({ name: path.basename(target), data: raw })
     else {
-      for (const e of listZip(raw).filter((x) => /^lib\/[^/]+\/[^/]+\.so$/.test(x.name))) {
-        const data = extractEntry(raw, e)
-        if (data && isElf(data)) libs.push({ name: e.name, data })
+      for (const e of (await listArchiveEntries(target)).filter((x) => /^lib\/[^/]+\/[^/]+\.so$/.test(x.name))) {
+        const data = await readArchiveEntry(target, e.name, workspace, 30_000_000)
+        if (isElf(data)) libs.push({ name: e.name, data })
       }
     }
     const reports = []
@@ -153,7 +97,7 @@ export default tool({
         extracted: path.relative(directory, libPath),
         sha256: crypto.createHash("sha256").update(lib.data).digest("hex"),
         size: lib.data.length,
-        arch: archFromElf(lib.data),
+        arch: (await safeExec("file", [libPath], outDir, 8000)).output,
         hasJNIOnLoad: /JNI_OnLoad/.test(`${symbolText}\n${strings.join("\n")}`),
         hasRegisterNatives: /RegisterNatives/.test(`${symbolText}\n${strings.join("\n")}`),
         exportedJni,

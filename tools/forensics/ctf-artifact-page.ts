@@ -1,6 +1,5 @@
 ﻿import { tool } from "@opencode-ai/plugin"
 import { lstat, readFile } from "node:fs/promises"
-import path from "node:path"
 import {
   directoryFromContext,
   resolveFromDirectoryInsideWorkspace,

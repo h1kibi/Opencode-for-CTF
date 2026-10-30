@@ -25,7 +25,7 @@ import {
   type RevRuntimeStage,
   type RevRuntimeSubstrate,
   type RevRuntimeEvidenceAnchorStatus,
-} from "../../packages/ctf-core/src/rev-runtime-session.ts"
+} from "ctf-core"
 import { resolveInsideWorkspace } from "./workspace-path.ts"
 
 export type RuntimeSessionContext = { workspace: string; directory: string }

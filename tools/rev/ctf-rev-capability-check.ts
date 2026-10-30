@@ -458,28 +458,16 @@ async function packSnapshot(family: RevFamily) {
   const enabled = resolveEnabledPacks()
   const toolNames = await listToolNames()
   const requiredPack = FAMILY_PACKS[family]
-  const packIds: ToolPackId[] = ["core", "rev", "android"]
-  const packStates = Object.fromEntries(
-    packIds.map((packId) => {
-      const registered = toolNames.some((name) => packForTool(name) === packId)
-      return [
-        packId,
-        {
-          enabled: enabled.has(packId),
-          registered,
-          requiredPack: packId,
-          restartRequired: !enabled.has(packId) && registered,
-        },
-      ]
-    }),
-  ) as Record<string, { enabled: boolean; registered: boolean; requiredPack: ToolPackId; restartRequired: boolean }>
   const relevant = requiredPack ? toolNames.filter((name) => packForTool(name) === requiredPack) : []
-  const internal = FAMILY_INTERNAL_TOOLS[family].map((name) => ({
-    name,
-    registered: toolNames.includes(name),
-    enabled: enabled.has(packForTool(name)),
-    pack: packForTool(name),
-  }))
+  const internal = FAMILY_INTERNAL_TOOLS[family].map((name) => {
+    const pack = packForTool(name)
+    return {
+      name,
+      registered: toolNames.includes(name),
+      enabled: enabled.has(pack),
+      pack,
+    }
+  })
   return {
     enabled: requiredPack ? enabled.has(requiredPack) : true,
     registered: relevant.length > 0,

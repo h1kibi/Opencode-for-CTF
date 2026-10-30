@@ -98,11 +98,9 @@ export default tool({
     const knownK = parseArg(args.k)
     let k: bigint | null = null
     let d: bigint | null = null
-    let attack = ""
 
     if (knownK !== undefined) {
       // Weak/known nonce: d = (s*k - m) * r^-1 mod n
-      attack = "known-nonce"
       const sig = sig1
       d = (((((sig.s * knownK - sig.m) % n) + n) % n) * invmod(sig.r, n)) % n
       k = knownK
@@ -119,7 +117,6 @@ export default tool({
           "hint: r1 != r2 — the two signatures did NOT reuse the same k; direct recovery is not possible without lattice methods",
         )
       }
-      attack = "nonce-reuse"
       try {
         k = (((((sig1.m - sig2.m) % n) + n) % n) * invmod((((sig1.s - sig2.s) % n) + n) % n, n)) % n
         d = (((((sig1.s * k - sig1.m) % n) + n) % n) * invmod(sig1.r, n)) % n

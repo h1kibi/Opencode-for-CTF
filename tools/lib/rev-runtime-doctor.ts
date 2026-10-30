@@ -5,7 +5,7 @@ import {
   type RevRuntimeDoctor,
   type RevRuntimeDoctorCheck,
   type RevRuntimeDoctorRequirement,
-} from "../../packages/ctf-core/src/rev-runtime-session.ts"
+} from "ctf-core"
 import { safeExec } from "./exec-utils.ts"
 
 export type RevRuntimeDoctorOptions = {

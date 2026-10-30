@@ -3,7 +3,7 @@ import { lstat, mkdir, readFile, writeFile } from "node:fs/promises"
 import { spawn } from "node:child_process"
 import path from "node:path"
 import crypto from "node:crypto"
-import { pwnImage, revImage, DOCKER_IMAGES } from "../lib/docker-config.ts"
+import { pwnImage } from "../lib/docker-config.ts"
 import {
   directoryFromContext,
   resolveFromDirectoryInsideWorkspace,
@@ -328,7 +328,11 @@ export default tool({
 
     let synthesizedScript = String(args.script || "")
     if (!synthesizedScript && args.pythonInline) {
-      synthesizedScript = `python3 - <<'PY'\n${args.pythonInline}\nPY`
+      const pythonScriptRel = `work/docker_python_inline_${Date.now()}.py`
+      const pythonScriptAbs = resolveInsideWorkspace(workspace, pythonScriptRel)
+      await mkdir(path.dirname(pythonScriptAbs), { recursive: true })
+      await writeFile(pythonScriptAbs, `${args.pythonInline}\n`, "utf8")
+      synthesizedScript = `python3 /work/${pythonScriptRel.replace(/\\/g, "/")}`
     }
     if (!synthesizedScript && args.gdbInline) {
       if (!args.gdbTarget) throw new Error("gdbInline requires gdbTarget")
