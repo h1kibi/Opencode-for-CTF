@@ -73,9 +73,6 @@ export async function atomicUpdateJsonFile<T>(
       // owner.
       await lease.assertOwned()
       await saveJsonFile(file, next)
-      // Keep the post-commit fence as a diagnostic/safety boundary for
-      // callers that continue their transaction after this function returns.
-      await lease.assertOwned()
       return next
     },
     lockOptions,

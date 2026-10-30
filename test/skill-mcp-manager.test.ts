@@ -32,12 +32,8 @@ describe("toSdkConfig", () => {
     expect(result.timeout).toBe(30_000)
   })
 
-  it("fills defaults for local config with missing fields", () => {
-    const result = toSdkConfig({ type: "local" })
-    expect(result.type).toBe("local")
-    expect(result.command).toEqual([])
-    expect(result.environment).toEqual({})
-    expect(result.timeout).toBeUndefined()
+  it("rejects a local config without a command", () => {
+    expect(() => toSdkConfig({ type: "local" })).toThrow("requires a command")
   })
 
   it("converts a remote config", () => {
@@ -53,12 +49,8 @@ describe("toSdkConfig", () => {
     expect(result.timeout).toBe(15_000)
   })
 
-  it("fills defaults for remote config with missing fields", () => {
-    const result = toSdkConfig({ type: "remote" })
-    expect(result.type).toBe("remote")
-    expect(result.url).toBe("")
-    expect(result.headers).toEqual({})
-    expect(result.timeout).toBeUndefined()
+  it("rejects a remote config without a url", () => {
+    expect(() => toSdkConfig({ type: "remote" })).toThrow("requires a url")
   })
 })
 

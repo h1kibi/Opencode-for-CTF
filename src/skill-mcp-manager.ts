@@ -30,23 +30,19 @@ async function loadState(worktree: string) {
 /** @visibleForTesting */
 export function toSdkConfig(config: RuntimeMcpConfig) {
   if (config.type === "local") {
-    if (!config.command) {
-      console.warn("[skill-mcp] toSdkConfig: local MCP config has no command; defaulting to empty array")
-    }
+    if (!config.command?.length) throw new Error("local MCP config requires a command")
     return {
       type: "local" as const,
-      command: config.command ?? [],
+      command: config.command,
       environment: config.environment ?? {},
       timeout: config.timeout,
     }
   }
 
-  if (!config.url) {
-    console.warn("[skill-mcp] toSdkConfig: remote MCP config has no url; defaulting to empty string")
-  }
+  if (!config.url) throw new Error("remote MCP config requires a url")
   return {
     type: "remote" as const,
-    url: config.url ?? "",
+    url: config.url,
     headers: config.headers ?? {},
     timeout: config.timeout,
   }

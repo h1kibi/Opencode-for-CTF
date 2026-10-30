@@ -105,51 +105,51 @@ export type ToolLoadReport = {
   criticalMissing: string[]
 }
 
-let criticalToolCache: Set<string> | null = null
-let registeredToolsCache: Set<string> | null = null
-
-/** Explicit registered-tool whitelist from ctf-agent.manifest.json (D5). */
-export async function registeredToolNames(): Promise<Set<string>> {
-  if (registeredToolsCache) return registeredToolsCache
-  const candidates = [
-    path.join(PLUGIN_ROOT, "ctf-agent.manifest.json"),
-    path.resolve(process.cwd(), "ctf-agent.manifest.json"),
-  ]
-  registeredToolsCache = new Set()
-  for (const manifestPath of candidates) {
-    try {
-      const raw = JSON.parse(await readFile(manifestPath, "utf8")) as { registered_tools?: string[] }
-      const list = raw.registered_tools
-      if (Array.isArray(list) && list.length) registeredToolsCache = new Set(list)
-      break
-    } catch {
-      // try next candidate
-    }
-  }
-  if (registeredToolsCache.size === 0) {
-    console.warn("[plugin] ctf-agent.manifest.json not found; registered_tools whitelist is disabled")
-  }
-  return registeredToolsCache
+type CtfToolManifest = {
+  registered_tools?: string[]
+  required_tools?: string[]
 }
 
-/** Critical tool names from ctf-agent.manifest.json (best effort). */
-export async function criticalToolNames(): Promise<Set<string>> {
-  if (criticalToolCache) return criticalToolCache
+let manifestCache: CtfToolManifest | null = null
+
+/**
+ * The manifest defines the product tool surface. A build without it would
+ * register every file on disk, which is the failure this whitelist exists to
+ * prevent, so a missing or malformed manifest is fatal instead of a warning.
+ */
+async function readManifest(): Promise<CtfToolManifest> {
+  if (manifestCache) return manifestCache
   const candidates = [
     path.join(PLUGIN_ROOT, "ctf-agent.manifest.json"),
     path.resolve(process.cwd(), "ctf-agent.manifest.json"),
   ]
-  criticalToolCache = new Set()
+  const failures: string[] = []
   for (const manifestPath of candidates) {
+    let raw: string
     try {
-      const raw = JSON.parse(await readFile(manifestPath, "utf8")) as { required_tools?: string[] }
-      criticalToolCache = new Set(raw.required_tools ?? [])
-      break
-    } catch {
-      // try next candidate
+      raw = await readFile(manifestPath, "utf8")
+    } catch (error) {
+      failures.push(`${manifestPath}: ${(error as NodeJS.ErrnoException).code ?? String(error)}`)
+      continue
     }
+    const parsed = JSON.parse(raw) as CtfToolManifest
+    if (!Array.isArray(parsed.registered_tools) || parsed.registered_tools.length === 0) {
+      throw new Error(`${manifestPath} has no registered_tools list`)
+    }
+    manifestCache = parsed
+    return parsed
   }
-  return criticalToolCache
+  throw new Error(`ctf-agent.manifest.json is required but unreadable (${failures.join("; ")})`)
+}
+
+/** Explicit registered-tool whitelist from ctf-agent.manifest.json. */
+export async function registeredToolNames(): Promise<Set<string>> {
+  return new Set((await readManifest()).registered_tools)
+}
+
+/** Tools whose absence makes a pack unusable. */
+export async function criticalToolNames(): Promise<Set<string>> {
+  return new Set((await readManifest()).required_tools ?? [])
 }
 
 async function manifestCriticalsApplyToRoot(toolRoot: string, explicitRoot?: string): Promise<boolean> {
@@ -175,11 +175,11 @@ export async function loadCtfToolsWithReport(
 
   const toolRoot = await resolveToolRoot(options.root)
   const enabled = options.all ? null : options.packs ? resolveEnabledPacks([...options.packs]) : resolveEnabledPacks()
-  // D5 explicit product surface: when the manifest declares registered_tools
-  // for this root, files outside the list stay unregistered (deferred as
-  // undeclared) — adding a file no longer auto-expands the agent tool surface.
-  const declaredTools = (await registeredToolNames()).size ? await registeredToolNames() : null
-  const enforceRegistered = declaredTools ? await manifestCriticalsApplyToRoot(toolRoot, options.root) : false
+  // The manifest defines the product surface: files outside registered_tools
+  // stay unregistered, so adding a file no longer expands the agent surface.
+  // Custom tool roots (tests, fixtures) opt out of that enforcement.
+  const declaredTools = await registeredToolNames()
+  const canonicalRoot = await manifestCriticalsApplyToRoot(toolRoot, options.root)
 
   const tools: Record<string, ToolDefinition> = {}
   const files = await discoverToolFiles(toolRoot)
@@ -187,16 +187,13 @@ export async function loadCtfToolsWithReport(
   const deferred: string[] = []
   const failed: ToolLoadFailure[] = []
   const critical = await criticalToolNames()
-  const enforceManifestCriticals = await manifestCriticalsApplyToRoot(toolRoot, options.root)
-  const criticalSurface = enforceManifestCriticals
-    ? critical
-    : new Set([...critical].filter((name) => discoveredNames.has(name)))
+  const criticalSurface = canonicalRoot ? critical : new Set([...critical].filter((name) => discoveredNames.has(name)))
   const activeCritical = new Set([...criticalSurface].filter((name) => !enabled || toolAllowedByPacks(name, enabled)))
 
   const undeclared: string[] = []
   for (const file of files) {
     const name = file.name
-    if (enforceRegistered && declaredTools && !declaredTools.has(name)) {
+    if (canonicalRoot && !declaredTools.has(name)) {
       undeclared.push(name)
       continue
     }

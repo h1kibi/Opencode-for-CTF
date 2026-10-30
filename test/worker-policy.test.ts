@@ -55,12 +55,12 @@ describe("worker runtime policy", () => {
     expect(evaluateWorkerToolPolicy(context, "ctf-team-new-control-plane-action").allowed).toBe(false)
   })
 
-  it("recursively scans nested arrays and JSON-encoded argument objects", () => {
+  it("recursively scans nested arrays and argument objects", () => {
     const scanned = scanWorkerArguments({
       envelope: {
         commands: [{ scriptPath: "runtime/state/worker.py" }],
       },
-      encoded: JSON.stringify({ payload: { outputPath: "work/ctf-evidence/demo/Evidence.md" } }),
+      options: [{ outputPath: "work/ctf-evidence/demo/Evidence.md" }],
     })
     expect(scanned.some((entry) => entry.value === "runtime/state/worker.py")).toBe(true)
     expect(scanned.some((entry) => entry.value === "work/ctf-evidence/demo/Evidence.md")).toBe(true)

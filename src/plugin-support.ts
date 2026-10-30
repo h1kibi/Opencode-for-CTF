@@ -9,7 +9,6 @@ import { lookupMcpServer } from "./mcp-server-registry.ts"
 import { explainToolVisibility } from "./capabilities/tool-visibility.ts"
 import { toolMetadata } from "./tool-metadata.ts"
 import { packForTool, toolAllowedForAgent } from "./tool-packs.ts"
-import type { ToolPackLookup } from "./tool-packs.ts"
 
 export interface HashTag {
   lineNum: number
@@ -448,17 +447,6 @@ export function classifyCtfPermission(permission: { type: string; title: string 
 export function isCtfSafePermission(permission: { type: string; title: string }): boolean {
   return classifyCtfPermission(permission).autoAllow
 }
-export function titleMatchesSkill(title: string, skillName: string) {
-  if (!title || !skillName) return false
-  const normalizedTitle = title.toLowerCase()
-  const normalizedSkill = skillName.toLowerCase()
-  if (normalizedTitle === normalizedSkill) return true
-  const prefixes = [`${normalizedSkill} - `, `${normalizedSkill}: `, `${normalizedSkill} — `, `${normalizedSkill} – `]
-  for (const prefix of prefixes) {
-    if (normalizedTitle.startsWith(prefix)) return true
-  }
-  return false
-}
 
 export function listExpectedSkillNames(baseDir?: string) {
   const candidates = [
@@ -601,8 +589,4 @@ export function summarizeRuntimeToolRegistry(input: {
     skillFilesPresent: input.skillFilesPresent,
     expectedSkillNames,
   }
-}
-
-export function normalizeToolPackId(value: string): ToolPackLookup {
-  return packForTool(value)
 }

@@ -119,10 +119,9 @@ export type WorkerArgumentString = {
 }
 
 /**
- * Flatten tool arguments, including nested objects/arrays and JSON-encoded
- * argument values. Tool adapters are not uniform: some pass `{command}`
- * directly, while others wrap the same payload in `input` or serialize it as
- * a JSON string. A shallow check therefore creates a real policy bypass.
+ * Flatten tool arguments, including nested objects and arrays. Tool adapters
+ * are not uniform: some pass `{command}` directly, while others wrap the same
+ * payload in `input`. A shallow check therefore creates a real policy bypass.
  */
 export function scanWorkerArguments(args: unknown): WorkerArgumentString[] {
   const result: WorkerArgumentString[] = []
@@ -133,15 +132,6 @@ export function scanWorkerArguments(args: unknown): WorkerArgumentString[] {
 
     if (typeof value === "string") {
       result.push({ keyPath, value })
-      const trimmed = value.trim()
-      if (trimmed.length < 2 || trimmed.length > 256_000) return
-      if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) return
-      try {
-        const decoded: unknown = JSON.parse(trimmed)
-        if (decoded && typeof decoded === "object") visit(decoded, `${keyPath}::json`, depth + 1)
-      } catch {
-        // Ordinary source code and shell commands are strings, not JSON.
-      }
       return
     }
 
