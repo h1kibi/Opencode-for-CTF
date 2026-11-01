@@ -303,6 +303,12 @@ export default tool({
     }
 
     if (operation === "gate") {
+      const target = firstString(finding.id, finding.title, finding.vulnerability_type)
+      if (!target) {
+        return args.jsonOnly
+          ? JSON.stringify({ verdict: "blocked", reason: "gate requires a finding" }, null, 2)
+          : "BLOCK: gate requires a finding with an id, title, or vulnerability_type"
+      }
       const result = await evidenceGate(workspace, directory, finding, gate)
       const enriched = { ...finding, evidence_gate: result, verdict: result.verdict }
       upsert(state.candidate_findings, enriched)
