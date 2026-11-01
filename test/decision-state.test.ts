@@ -182,4 +182,47 @@ describe("ctf-decision-state", () => {
       expect(typeof state.updatedAt).toBe("string")
     })
   })
+
+  it("refuses a closure gate that names no primitive or probe", async () => {
+    await withWorkspace("ctf-decision-closure-gate", async (workspace) => {
+      const module = await import("../tools/core/ctf-decision-state.ts")
+      const execute = module.default.execute as Execute
+      const context = { directory: workspace, worktree: workspace }
+      await execute({ operation: "init", hypothesesJson: JSON.stringify(HYPOTHESES) }, context)
+
+      const text = await execute({ operation: "gate", gate: "closure", gateJson: JSON.stringify({}) }, context)
+
+      expect(text).toContain("BLOCK: closure gate")
+      expect(text).toContain("missing primitive")
+      expect(text).toContain("missing closureOwner")
+      expect(text).toContain("closure gate requires at least one ordered closure probe")
+      expect(field(text, "closure_gate_passed")).toBe("no")
+    })
+  })
+
+  it("refuses a zero-hit knowledge gate that was never queried", async () => {
+    await withWorkspace("ctf-decision-knowledge-gate", async (workspace) => {
+      const module = await import("../tools/core/ctf-decision-state.ts")
+      const execute = module.default.execute as Execute
+      const context = { directory: workspace, worktree: workspace }
+      await execute({ operation: "init", hypothesesJson: JSON.stringify(HYPOTHESES) }, context)
+
+      const text = await execute(
+        {
+          operation: "gate",
+          gate: "knowledge",
+          gateJson: JSON.stringify({
+            knowledgeMode: "no_match",
+            matchedSegments: 0,
+            noMatchReason: "corpus has no match",
+          }),
+        },
+        context,
+      )
+
+      expect(text).toContain("BLOCK: knowledge gate")
+      expect(text).toContain("queryRun must be true")
+      expect(text).toContain("zero-hit knowledge gate requires nextModelHypothesis")
+    })
+  })
 })

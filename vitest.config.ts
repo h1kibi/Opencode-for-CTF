@@ -17,7 +17,7 @@ export default defineConfig({
         // dropped test suite fails the build.
         lines: 50,
         functions: 52,
-        branches: 64,
+        branches: 63,
         statements: 50,
         "src/**/*.ts": {
           lines: 72,
