@@ -225,4 +225,89 @@ describe("ctf-decision-state", () => {
       expect(text).toContain("zero-hit knowledge gate requires nextModelHypothesis")
     })
   })
+
+  it("accepts a complete probe contract and asks for the observation next", async () => {
+    await withWorkspace("ctf-decision-probe-pass", async (workspace) => {
+      const module = await import("../tools/core/ctf-decision-state.ts")
+      const execute = module.default.execute as Execute
+      const context = { directory: workspace, worktree: workspace }
+      await execute({ operation: "init", hypothesesJson: JSON.stringify(HYPOTHESES) }, context)
+
+      const text = await execute(
+        {
+          operation: "probe",
+          probeJson: JSON.stringify({
+            hypothesisId: "H1",
+            family: "fmt",
+            variable: "offset",
+            confirm: "stable %p",
+            falsify: "garbage echo",
+            distinguish: "compare two offsets",
+          }),
+        },
+        context,
+      )
+
+      expect(text).toContain("PASS: probe contract accepted")
+      expect(text).toContain("then call observe with the result before another same-family probe")
+    })
+  })
+
+  it("locks a hypothesis only when the observation confirms it", async () => {
+    await withWorkspace("ctf-decision-observe", async (workspace) => {
+      const module = await import("../tools/core/ctf-decision-state.ts")
+      const execute = module.default.execute as Execute
+      const context = { directory: workspace, worktree: workspace }
+      await execute({ operation: "init", hypothesesJson: JSON.stringify(HYPOTHESES) }, context)
+
+      const text = await execute(
+        { operation: "observe", observationJson: JSON.stringify({ hypothesisId: "H1", confirmed: true }) },
+        context,
+      )
+
+      expect(text).toContain("operation: observe")
+      const state = JSON.parse(await readFile(path.join(workspace, ".ctf-decision-state.json"), "utf8"))
+      const h1 = state.hypotheses.find((entry: { id: string }) => entry.id === "H1")
+      expect(h1.status).toBe("locked")
+      expect(state.history.some((entry: { kind: string }) => entry.kind === "observation")).toBe(true)
+    })
+  })
+
+  it("refuses to lock a blind hypothesis without oracle evidence", async () => {
+    await withWorkspace("ctf-decision-blind", async (workspace) => {
+      const module = await import("../tools/core/ctf-decision-state.ts")
+      const execute = module.default.execute as Execute
+      const context = { directory: workspace, worktree: workspace }
+      await execute(
+        {
+          operation: "init",
+          hypothesesJson: JSON.stringify([{ ...HYPOTHESES[0], blindOrOob: true }]),
+        },
+        context,
+      )
+
+      const blocked = await execute(
+        { operation: "observe", observationJson: JSON.stringify({ hypothesisId: "H1", confirmed: true }) },
+        context,
+      )
+      expect(blocked).toContain("BLOCK: blind/OOB hypothesis 'H1' cannot be locked without oracleEvidence")
+
+      const accepted = await execute(
+        {
+          operation: "observe",
+          observationJson: JSON.stringify({
+            hypothesisId: "H1",
+            confirmed: true,
+            oracleEvidence: "flag read back from server",
+          }),
+        },
+        context,
+      )
+      expect(accepted).not.toContain("BLOCK")
+      const state = JSON.parse(await readFile(path.join(workspace, ".ctf-decision-state.json"), "utf8"))
+      const h1 = state.hypotheses.find((entry: { id: string }) => entry.id === "H1")
+      expect(h1.status).toBe("locked")
+      expect(h1.oracleEvidence).toBe("flag read back from server")
+    })
+  })
 })
