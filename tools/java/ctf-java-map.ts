@@ -58,6 +58,20 @@ function methodNameNear(content: string, index: number) {
   return after.match(/(?:public|private|protected)?\s*(?:[\w<>\[\], ?]+)\s+(\w+)\s*\(/)?.[1] ?? "<unknown-method>"
 }
 
+/**
+ * The method a parameter annotation sits inside. Annotations on a route are
+ * followed by their method, but an annotation inside a parameter list belongs
+ * to the declaration that precedes it.
+ */
+function enclosingMethodName(content: string, index: number) {
+  const calls = [...content.slice(0, index).matchAll(/([A-Za-z_]\w*)\s*\(/g)]
+  for (let i = calls.length - 1; i >= 0; i -= 1) {
+    const name = calls[i][1]
+    if (!/^(if|for|while|switch|catch|return|new|synchronized|throw)$/.test(name)) return name
+  }
+  return "<unknown-method>"
+}
+
 function classLevelPath(content: string) {
   const annotations = content.slice(0, 2000)
   const rm = annotations.match(/@RequestMapping\s*\(([^)]*)\)/)
@@ -158,7 +172,9 @@ export default tool({
               const re = new RegExp(`@?${input}(?:\\([^)]*\\))?\\s+(?:[\\w<>?, ]+\\s+)?(\\w+)?`, "g")
               for (const m of content.matchAll(re)) {
                 const name = m[1] ?? "<unknown>"
-                findings.push(`input: @${input} ${name} in ${klass}.${methodNameNear(content, m.index ?? 0)} (${rel})`)
+                findings.push(
+                  `input: @${input} ${name} in ${klass}.${enclosingMethodName(content, m.index ?? 0)} (${rel})`,
+                )
               }
             }
 
