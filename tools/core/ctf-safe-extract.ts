@@ -1,7 +1,7 @@
 ﻿import { tool } from "@opencode-ai/plugin"
 import { access, lstat, mkdir, open, readdir, rm, stat } from "node:fs/promises"
 import path from "node:path"
-import { constants as fsConstants } from "node:fs"
+import { constants as fsConstants, existsSync } from "node:fs"
 import { safeExec } from "../lib/exec-utils.ts"
 import {
   directoryFromContext,
@@ -40,6 +40,19 @@ async function exists(cmd: string) {
     maxBuffer: 64 * 1024,
   })
   return r.ok
+}
+
+/**
+ * Git for Windows ships an MSYS tar that reads `C:\path` as a remote host and
+ * fails with "Cannot connect to C". The tar bundled with Windows handles
+ * Windows paths, so prefer it when present.
+ */
+async function tarCommand(): Promise<string | null> {
+  if (process.platform === "win32") {
+    const systemTar = path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe")
+    if (existsSync(systemTar)) return systemTar
+  }
+  return (await exists("tar")) ? "tar" : null
 }
 
 async function find7z() {
@@ -122,8 +135,9 @@ async function listArchive(target: string, kind: ArchiveKind) {
     const result = await safeExec("jar", ["tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
     if (result.ok) return parse(result.output)
   }
-  if (kind === "tar" && (await exists("tar"))) {
-    const result = await safeExec("tar", ["-tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+  const tar = await tarCommand()
+  if (kind === "tar" && tar) {
+    const result = await safeExec(tar, ["-tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
     if (result.ok) return parse(result.output)
   }
   throw new Error(`no supported external listing backend for archive kind ${kind}`)
@@ -153,8 +167,12 @@ async function extractArchive(target: string, kind: ArchiveKind, outDir: string)
     const result = await safeExec("jar", ["xf", target], { cwd: outDir, timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
     if (result.ok) return "jar"
   }
-  if (kind === "tar" && (await exists("tar"))) {
-    const result = await safeExec("tar", ["-xf", target, "-C", outDir], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
+  const tar = await tarCommand()
+  if (kind === "tar" && tar) {
+    const result = await safeExec(tar, ["-xf", target, "-C", outDir], {
+      timeoutMs: 120000,
+      maxBuffer: MAX_OUTPUT,
+    })
     if (result.ok) return "tar"
   }
   throw new Error(`no supported external extraction backend for archive kind ${kind}`)
