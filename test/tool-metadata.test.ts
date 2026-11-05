@@ -3,24 +3,13 @@ import { join } from "node:path"
 import { makeTestWorkspace } from "./support/test-workspace.ts"
 import { describe, expect, it } from "vitest"
 import { listToolNames } from "../src/ctf-tools.js"
-import { compatAliasTarget, summarizeToolMetadata, toolMetadata, toolRequires, toolTier } from "../src/tool-metadata.js"
-import { FAST_TOOL_ALLOWLIST } from "../src/tool-packs.js"
+import { summarizeToolMetadata, toolMetadata, toolRequires, toolTier } from "../src/tool-metadata.js"
+import { FAST_TOOL_ALLOWLIST } from "../src/agent-equipment-policy.js"
 
 describe("tool metadata", () => {
-  it("classifies compatibility aliases explicitly", () => {
-    expect(toolTier("archive-safe-extract")).toBe("compat")
-    expect(compatAliasTarget("archive-safe-extract")).toBe("ctf-safe-extract")
-    expect(toolTier("ctf-java-analyze-pack")).toBe("compat")
-    expect(compatAliasTarget("ctf-java-analyze-pack")).toBe("ctf-java-analyze")
-    expect(toolTier("ctf-pwn-remote-check")).toBe("compat")
-    expect(compatAliasTarget("ctf-pwn-remote-check")).toBe("ctf-pwn-remote-fingerprint")
-    expect(toolTier("ctf-web-recon-pack")).toBe("compat")
-    expect(compatAliasTarget("ctf-web-recon-pack")).toBe("ctf-web-analyze")
-  })
-
-  it("keeps fast allowlisted tools documented as light or compat", () => {
+  it("keeps fast allowlisted tools documented as light", () => {
     for (const toolName of FAST_TOOL_ALLOWLIST) {
-      expect(["light", "compat"]).toContain(toolTier(toolName))
+      expect(toolTier(toolName), toolName).toBe("light")
     }
   })
 
@@ -85,23 +74,6 @@ describe("tool metadata", () => {
     expect(missing).toEqual([])
   })
 
-  it("keeps compatibility aliases from mutating their target tool definition", async () => {
-    const alias = await import("../tools/pwn/ctf-pwn-remote-check.js")
-    const target = await import("../tools/pwn/ctf-pwn-remote-fingerprint.js")
-    const javaAlias = await import("../tools/java/ctf-java-analyze-pack.js")
-    const javaFacade = await import("../tools/java/ctf-java-analyze.js")
-    const webAlias = await import("../tools/web/ctf-web-recon-pack.js")
-    const webFacade = await import("../tools/web/ctf-web-analyze.js")
-
-    expect(alias.default).not.toBe(target.default)
-    expect(alias.default.description).toContain("Compatibility alias")
-    expect(target.default.description).not.toContain("Compatibility alias")
-    expect(javaFacade.default).not.toBe(javaAlias.default)
-    expect(javaFacade.default.description).toContain("Stable facade")
-    expect(webFacade.default).not.toBe(webAlias.default)
-    expect(webFacade.default.description).toContain("Stable facade")
-  })
-
   it("summarizes every registered source tool into a tier", async () => {
     const names = await listToolNames()
     const summary = summarizeToolMetadata(names)
@@ -109,21 +81,17 @@ describe("tool metadata", () => {
     expect(total).toBe(names.length)
     expect(summary.light.length).toBeGreaterThan(20)
     expect(summary.advanced).toContain("ctf-pwn-docker-runner")
-    expect(summary.compat).toContain("ctf-java-analyze-pack")
-    expect(summary.compat).toContain("ctf-pwn-remote-check")
-    expect(summary.compat).toContain("ctf-web-recon-pack")
   })
 
-  it("shows tier, effects, requirements, and alias target in tool-pack diagnostics", async () => {
+  it("shows tier, effects, and requirements in tool-pack diagnostics", async () => {
     const mod = await import("../tools/core/ctf-tool-packs.js")
-    const text = await mod.default.execute({ toolName: "ctf-pwn-remote-check" }, {} as never)
+    const text = await mod.default.execute({ toolName: "ctf-pwn-remote-fingerprint" }, {} as never)
 
     expect(text).toContain("tiers:")
-    expect(text).toContain("compat_aliases:")
-    expect(text).toContain("tool ctf-pwn-remote-check -> pack pwn-heavy")
-    expect(text).toContain("tier: compat")
+    expect(text).not.toContain("compat_aliases:")
+    expect(text).toContain("tool ctf-pwn-remote-fingerprint -> pack pwn")
+    expect(text).toContain("tier: light")
     expect(text).toContain("requires: python, pwntools?")
-    expect(text).toContain("alias_of: ctf-pwn-remote-fingerprint")
   }, 60_000)
 
   it("uses context.directory for config and local skill diagnostics instead of process cwd", async () => {

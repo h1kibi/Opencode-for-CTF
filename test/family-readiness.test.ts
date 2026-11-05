@@ -7,7 +7,7 @@ import {
   summarizeStartupEnvironment,
 } from "../src/family-readiness.js"
 import { FAMILY_CAPABILITY_CONTRACTS } from "../src/family-capability-contracts.js"
-import { AGENT_MCP_DEFAULTS } from "../src/agent-mcp-profiles.js"
+import { AGENT_MCP_DEFAULTS } from "../src/agent-equipment-policy.js"
 
 function registeredFor(family: keyof typeof FAMILY_CAPABILITY_CONTRACTS): string[] {
   const contract = FAMILY_CAPABILITY_CONTRACTS[family]

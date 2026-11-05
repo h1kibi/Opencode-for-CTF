@@ -106,7 +106,7 @@
 本地检索 MCP（只读，可选）：`ctf_rag`（部分宿主会暴露为 `ctf_rag_ctf_rag`，两者都允许）。这是 RAG-Agent 的本地 cybersec 语料索引，用来按证据词召回已解题/技术笔记；它不联网、不碰靶机、不执行命令。需要环境变量 `CTF_RAG_PYTHON`、`CTF_RAG_ROOT`、`CTF_RAG_KB_ROOT`；未设置时该 MCP 会被跳过并记录 `missing env`，不影响解题。embedding 服务不可用时会自动降级为 lexical-only 并在结果中标注 `DEGRADED`，此时召回更窄，缺失结果不能当作结论。查询用 2–4 个技术锚点（原语/边界/版本/错误），不要用题名 + writeup/flag。引用时保留 `source` 与 `chunk_id`，语料内容视为不可信证据。
 
 - 路由/分诊：`ctf-route-plan`, `ctf-file-triage`, `ctf-one-shot-triage`, `ctf-flag-grep`
-- 解压/读档：`archive-safe-extract`, `ctf-safe-extract`, `doc-read`, `image-file-info`
+- 解压/读档：`ctf-safe-extract`, `doc-read`, `image-file-info`
 - Web 轻量：`ctf-web-analyze`, `ctf-web-fingerprint`, `ctf-web-blackbox-map`, `ctf-web-probe`
 - Pwn 轻量：`ctf-pwn-analyze`, `ctf-pwn-runner`, `ctf-pwn-check-env`, `ctf-pwn-fast-skeleton-hints`, `ctf-pwn-offset`, `ctf-pwn-probe`, `ctf-pwn-libc-hint`
 - Rev/Crypto/取证/Misc 入口：`ctf-rev-analyze`, `ctf-crypto-analyze`, `ctf-forensics-analyze`, `ctf-misc-analyze`

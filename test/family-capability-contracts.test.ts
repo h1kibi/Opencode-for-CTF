@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { AGENT_MCP_DEFAULTS } from "../src/agent-mcp-profiles.js"
+import { AGENT_MCP_DEFAULTS } from "../src/agent-equipment-policy.js"
 import {
   CTF_FAMILIES,
   FAMILY_CAPABILITY_CONTRACTS,

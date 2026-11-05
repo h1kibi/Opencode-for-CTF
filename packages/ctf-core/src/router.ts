@@ -31,8 +31,6 @@ export type RouteDecision = {
   category?: CtfCategory
   /** The only valid primary agents are ctf-fast and ctf-expert. */
   primaryAgent: "ctf-fast" | "ctf-expert"
-  /** @deprecated Use primaryAgent. Kept for adapter compatibility. */
-  agent: "ctf-fast" | "ctf-expert"
   /** Canonical slash command for humans / slash menus. */
   command: string
   /** Skills the agent should load first. */
@@ -297,7 +295,6 @@ export function decideRoute(input: RouteInput = {}): RouteDecision {
       lane: "expert",
       category: top.score > 0 ? top.category : undefined,
       primaryAgent: "ctf-expert",
-      agent: "ctf-expert",
       command: "/resume",
       skills: ["ctf-common", "ctf-expert"],
       toolPacks: [
@@ -326,7 +323,6 @@ export function decideRoute(input: RouteInput = {}): RouteDecision {
       lane: "fast",
       category,
       primaryAgent: "ctf-fast",
-      agent: "ctf-fast",
       command: "/ctf-fast",
       skills: CATEGORY_SKILLS[category],
       toolPacks: [...new Set<ToolPack>([...CATEGORY_PACKS[category], ...overlays.packs])],
@@ -345,7 +341,6 @@ export function decideRoute(input: RouteInput = {}): RouteDecision {
       lane: "expert",
       category: top.score > 0 ? top.category : undefined,
       primaryAgent: "ctf-expert",
-      agent: "ctf-expert",
       command: "/ctf-expert",
       skills: [
         "ctf-common",
@@ -381,7 +376,6 @@ export function decideRoute(input: RouteInput = {}): RouteDecision {
     lane: "fast",
     category: top.score > 0 ? top.category : undefined,
     primaryAgent: "ctf-fast",
-    agent: "ctf-fast",
     command: "/ctf-fast",
     skills: ["ctf-common", "ctf-terminal", "ctf-router"],
     toolPacks: [
@@ -492,7 +486,6 @@ export function formatRouteDecision(decision: RouteDecision): string {
     `mode: ${decision.mode}`,
     `lane: ${decision.lane}`,
     `primary_agent: ${decision.primaryAgent}`,
-    `agent: ${decision.primaryAgent}`,
     `command: ${decision.command}`,
     decision.category ? `category: ${decision.category}` : "category: unknown",
     `confidence: ${decision.confidence}`,

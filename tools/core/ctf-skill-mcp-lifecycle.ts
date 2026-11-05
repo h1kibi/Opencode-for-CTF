@@ -111,7 +111,7 @@ export default tool({
           `leases: ${state.leases.length}`,
           ...state.leases.map(
             (lease) =>
-              `- session=${lease.sessionID} skill=${lease.skillName} server=${lease.serverName} connected=${lease.connected} idle_release=${lease.disconnectWhenIdle ?? true}`,
+              `- session=${lease.sessionID} skill=${lease.skillName} server=${lease.serverName} status=${lease.status} idle_release=${lease.disconnectWhenIdle ?? true}`,
           ),
         ].join("\n")
   },

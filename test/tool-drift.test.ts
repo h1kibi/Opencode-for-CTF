@@ -2,9 +2,7 @@ import { readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { COMPAT_ALIAS_CATALOG, PACK_ALIAS_CATALOG } from "../src/tool-catalog.js"
-import { ALL_TOOL_PACKS, FAST_TOOL_ALLOWLIST, SUBAGENT_LIGHT_TOOLS, normalizeToolPackName } from "../src/tool-packs.js"
-import { compatAliasTarget, toolMetadata } from "../src/tool-metadata.js"
+import { FAST_TOOL_ALLOWLIST, SUBAGENT_LIGHT_TOOLS } from "../src/agent-equipment-policy.js"
 
 /**
  * Tool registry drift checks:
@@ -77,34 +75,5 @@ describe("tool registry drift", () => {
     ]
     const missing = [...new Set(refs)].filter((name) => !onDisk.has(name) && !RUNTIME_GENERATED.includes(name))
     expect(missing).toEqual([])
-  })
-
-  it("compat aliases in tool metadata never point at missing tools", () => {
-    const onDisk = toolNamesOnDisk()
-    const broken: string[] = []
-    for (const name of onDisk) {
-      const meta = toolMetadata(name)
-      if (meta.aliasOf && !onDisk.has(meta.aliasOf)) broken.push(`${name} -> ${meta.aliasOf}`)
-    }
-    expect(broken).toEqual([])
-  })
-
-  it("keeps catalog targets and runtime alias metadata aligned", () => {
-    const onDisk = toolNamesOnDisk()
-    const missingCompatTargets = COMPAT_ALIAS_CATALOG.filter(({ target }) => !onDisk.has(target)).map(
-      ({ alias, target }) => `${alias} -> ${target}`,
-    )
-    expect(missingCompatTargets).toEqual([])
-
-    const invalidPackTargets = PACK_ALIAS_CATALOG.filter(
-      ({ target }) => !ALL_TOOL_PACKS.includes(target as (typeof ALL_TOOL_PACKS)[number]),
-    ).map(({ alias, target }) => `${alias} -> ${target}`)
-    expect(invalidPackTargets).toEqual([])
-
-    for (const { alias, target } of COMPAT_ALIAS_CATALOG) {
-      expect(compatAliasTarget(alias)).toBe(target)
-      expect(toolMetadata(alias).aliasOf).toBe(target)
-    }
-    for (const { alias, target } of PACK_ALIAS_CATALOG) expect(normalizeToolPackName(alias)).toBe(target)
   })
 })

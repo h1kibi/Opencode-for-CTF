@@ -4,7 +4,6 @@ import { mkdirSync, readFileSync, rmSync, readdirSync, statSync } from "node:fs"
 import path from "node:path"
 import { randomUUID } from "node:crypto"
 import ctfSafeExtract from "../tools/core/ctf-safe-extract.ts"
-import archiveSafeExtract from "../tools/core/archive-safe-extract.ts"
 import pwnRemoteFingerprint from "../tools/pwn/ctf-pwn-remote-fingerprint.ts"
 
 type Ctx = { directory: string }
@@ -54,18 +53,6 @@ async function main() {
     ),
   )
 
-  lines.push(
-    await expectThrows(
-      "archive-safe-extract-missing-target",
-      () =>
-        archiveSafeExtract.execute(
-          { target: "", out: "extracted", maxFiles: 10, maxBytes: 1024 * 1024, overwrite: false },
-          context as any,
-        ),
-      /target is required/i,
-    ),
-  )
-
   const tempRoot = path.join(process.cwd(), "work", ".tmp", `opencode-tool-bug-${randomUUID()}`)
   mkdirSync(tempRoot, { recursive: true })
   try {
@@ -105,19 +92,6 @@ async function main() {
         zipContext as any,
       ),
     )
-    const archiveOut = String(
-      await archiveSafeExtract.execute(
-        {
-          target: "single-file.zip",
-          out: "out",
-          maxFiles: 50,
-          maxBytes: 1024 * 1024,
-          overwrite: true,
-        },
-        zipContext as any,
-      ),
-    )
-
     const extractedPath = findFile(path.join(extractRoot, "single-file"), "flag.txt")
     assert(
       extractedPath,
@@ -131,18 +105,13 @@ async function main() {
         `expected=${JSON.stringify(payloadText)}`,
         `actual=${JSON.stringify(extractedText)}`,
         `ctfOut=${JSON.stringify(ctfOut)}`,
-        `archiveOut=${JSON.stringify(archiveOut)}`,
       ].join(" | "),
     )
     assert(
       /status: extracted|verdict: direct_flag|verdict: archive_extracted|verdict: flag_candidate/i.test(ctfOut),
       `ctf-safe-extract unexpected output: ${ctfOut}`,
     )
-    assert(
-      /status: extracted|verdict: direct_flag|verdict: archive_extracted|verdict: flag_candidate/i.test(archiveOut),
-      `archive-safe-extract unexpected output: ${archiveOut}`,
-    )
-    lines.push("zip-root-single-file-extraction: PASS (ctf-safe-extract + archive-safe-extract)")
+    lines.push("zip-root-single-file-extraction: PASS (ctf-safe-extract)")
   } finally {
     rmSync(tempRoot, { recursive: true, force: true })
   }

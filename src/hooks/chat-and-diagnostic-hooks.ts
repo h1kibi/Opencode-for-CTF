@@ -30,7 +30,6 @@ export const EXPLORER_AGENTS = new Set([
   "ctf-forensics",
   "ctf-misc",
   "ctf-aisec",
-  "ctf-pwn-fast",
   "ctf-scout",
 ])
 

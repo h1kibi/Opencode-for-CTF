@@ -4,9 +4,9 @@ import { mkdir, writeFile, rm } from "node:fs/promises"
 import path from "node:path"
 import { workspaceRootFromContext } from "../lib/workspace-path.ts"
 import { safeExecWithStreams } from "../lib/exec-utils.ts"
-import { extractFlagCandidates, FLAG_REGEX } from "ctf-core"
+import { extractFlagCandidates, HIGH_CONFIDENCE_FLAG_REGEX } from "ctf-core"
 
-const DEFAULT_FLAG_RE = FLAG_REGEX
+const DEFAULT_FLAG_RE = HIGH_CONFIDENCE_FLAG_REGEX
 
 function collectFlagCandidates(text: string, customPattern?: string) {
   if (customPattern) {

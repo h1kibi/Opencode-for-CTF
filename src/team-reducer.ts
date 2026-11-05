@@ -71,9 +71,8 @@ export function transitionTeamJobChecked<T extends { status: TeamJobStatus; erro
 }
 
 /**
- * Compatibility wrapper: mutates the job and returns it (legacy contract).
- * Illegal transitions now log a warning instead of failing silently, which
- * makes state-machine bugs visible in team-mode logs.
+ * Best-effort mutating variant: logs an illegal transition and returns the
+ * job. Callers that must branch on failure use transitionTeamJobChecked.
  */
 export function transitionTeamJob<T extends { status: TeamJobStatus; error?: string }>(
   job: T,

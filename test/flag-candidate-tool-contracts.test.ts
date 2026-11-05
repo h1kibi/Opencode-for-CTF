@@ -71,7 +71,7 @@ describe("flag candidate tool contracts", () => {
       "tools/forensics/ctf-stego-probe.ts",
       "tools/forensics/ctf-stego-triage.ts",
       "tools/core/ctf-binary-probe.ts",
-      "tools/web/ctf-web-recon-pack.ts",
+      "tools/web/ctf-web-analyze.ts",
       "tools/pwn/ctf-pwn-expect-runner.ts",
       "tools/pwn/ctf-pwn-runner.ts",
       "tools/pwn/ctf-pwn-playbook-router.ts",
@@ -85,7 +85,7 @@ describe("flag candidate tool contracts", () => {
       expect(source, file).not.toMatch(/verdict[^\n]*direct_flag(?!_candidate)/)
       expect(source, file).not.toMatch(/direct_solve:\s*\$\{[^}]*flag/)
       if (
-        /ctf-pcap-carve|ctf-stego-triage|ctf-binary-probe|ctf-web-recon-pack|ctf-pwn-runner|ctf-pwn-playbook-router|ctf-apk-triage|ctf-rev-closure-ladder/.test(
+        /ctf-pcap-carve|ctf-stego-triage|ctf-binary-probe|ctf-web-analyze|ctf-pwn-runner|ctf-pwn-playbook-router|ctf-apk-triage|ctf-rev-closure-ladder/.test(
           file,
         )
       ) {

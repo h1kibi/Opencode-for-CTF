@@ -7,7 +7,7 @@ import {
   listRecentActivationIssues,
   listAllRequests,
   listPendingRequests,
-} from "../../src/dynamic-mcp-manager.ts"
+} from "../../src/mcp/mcp-runtime-adapter.ts"
 import { lookupMcpServer } from "../../src/mcp-server-registry.ts"
 
 /**

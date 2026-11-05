@@ -101,7 +101,7 @@ describe("team reducer", () => {
     expect(result.reason).toContain("starting -> running")
   })
 
-  it("keeps the legacy wrapper contract and preserves illegal state", () => {
+  it("keeps the best-effort wrapper contract and preserves illegal state", () => {
     const job = { status: "completed" as const }
     const out = transitionTeamJob(job, "running")
     expect(out).toBe(job)

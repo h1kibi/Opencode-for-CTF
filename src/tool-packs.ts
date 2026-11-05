@@ -1,5 +1,3 @@
-import { PACK_ALIAS_TARGETS } from "./tool-catalog.ts"
-
 /**
  * Tool pack classification and selection.
  *
@@ -7,21 +5,9 @@ import { PACK_ALIAS_TARGETS } from "./tool-catalog.ts"
  * imported/registered at plugin startup. Category packs follow tool name
  * prefixes; rare packs (android/godot) stay opt-in.
  *
- * Agent equipment (tool authorization, MCP defaults) moved to agent-equipment-policy.ts.
+ * Agent equipment (tool authorization, MCP defaults) lives in
+ * agent-equipment-policy.ts.
  */
-
-// Re-export agent equipment functions for existing consumers
-export {
-  FAST_TOOL_ALLOWLIST,
-  FAST_MCP_SERVER_PREFIXES,
-  FAST_MCP_TOOL_NAMES,
-  toolAllowedForAgent,
-  toolAllowedForSubagent,
-  isFastToolAgent,
-  isCtfSubagent,
-  subagentLightToolSample,
-  SUBAGENT_LIGHT_TOOLS,
-} from "./agent-equipment-policy.ts"
 
 export type ToolPackId =
   | "core"
@@ -61,14 +47,11 @@ export const ALL_TOOL_PACKS: ToolPackId[] = [
   "forensics-heavy",
 ]
 
-const TOOL_PACK_ALIASES = PACK_ALIAS_TARGETS
-
 /** Default packs registered without user config (main CTF categories, not rare specialists). */
 export const DEFAULT_TOOL_PACKS: ToolPackId[] = ["core", "web", "pwn", "rev", "crypto", "forensics", "misc", "aisec"]
 
 /** Always-on tools regardless of category. */
 const CORE_EXACT = new Set([
-  "archive-safe-extract",
   "ctf-safe-extract",
   "ctf-binary-probe",
   "ctf-elf-slice",
@@ -137,7 +120,6 @@ const PWN_HEAVY_EXACT = new Set([
   "ctf-pwn-post-shell-runner",
   "ctf-pwn-primitive-compressor",
   "ctf-pwn-redflag-panel",
-  "ctf-pwn-remote-check",
   "ctf-pwn-remote-drift-check",
   "ctf-pwn-ret2csu-check",
   "ctf-pwn-rop-summary",
@@ -159,7 +141,6 @@ const WEB_HEAVY_EXACT = new Set([
   "ctf-source-first-pack",
   "ctf-source-map-read",
   "ctf-waf-bypass-plan",
-  "ctf-web-recon-pack",
   "ctf-web-authz-matrix",
   "ctf-web-diff-probe",
   "ctf-web-fuzz-plan",
@@ -205,7 +186,6 @@ const REV_EXACT = new Set([
 ])
 
 const JAVA_EXACT = new Set([
-  "ctf-java-analyze-pack",
   "ctf-java-archive-map",
   "ctf-java-bytecode-hints",
   "ctf-java-chain-planner",
@@ -287,8 +267,7 @@ export function isToolPackId(value: string): value is ToolPackId {
 
 export function normalizeToolPackName(value: string): ToolPackId | undefined {
   const token = value.trim().toLowerCase()
-  if (isToolPackId(token)) return token
-  return TOOL_PACK_ALIASES[token]
+  return isToolPackId(token) ? token : undefined
 }
 
 /**

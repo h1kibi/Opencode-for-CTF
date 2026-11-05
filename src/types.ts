@@ -38,7 +38,6 @@ export type ContinuationInterruptMarker = {
  *   connected     — server usable by this session (we may or may not own it)
  *   disconnecting — we are performing the external disconnect
  *   unknown       — external state could not be confirmed (compensation queue)
- * `connected` (boolean) stays in sync for legacy readers.
  */
 export type SkillMcpLeaseStatus = "pending" | "connecting" | "connected" | "disconnecting" | "unknown"
 
@@ -46,10 +45,8 @@ export type SkillMcpLease = {
   skillName: string
   sessionID: string
   serverName: string
-  /** Legacy boolean — kept in sync with `status` for older readers. */
-  connected: boolean
-  /** Lifecycle state; absent on legacy leases (infer from `connected`). */
-  status?: SkillMcpLeaseStatus
+  /** Lifecycle state. */
+  status: SkillMcpLeaseStatus
   /** ISO timestamp when the current status was entered (stale takeover window). */
   transitionAt?: string
   /** Per-attempt fencing token; only the holder may finalize the transition. */

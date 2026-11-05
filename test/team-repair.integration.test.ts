@@ -1,7 +1,8 @@
 import { rm, writeFile } from "node:fs/promises"
 import path from "node:path"
+import type { OpencodeClient } from "@opencode-ai/sdk"
 import { describe, expect, it } from "vitest"
-import { createTeamTools } from "../src/team-runtime.ts"
+import { createTeamTools } from "../src/team/team-runtime-core.ts"
 import { readTeamState } from "../src/team/team-state.ts"
 import { makeTestWorkspace } from "./support/test-workspace.ts"
 
@@ -10,8 +11,9 @@ function client(
   promptCalls?: unknown[],
   abortResults?: unknown[],
   abortCalls?: string[],
-) {
+): OpencodeClient {
   let created = 0
+  // Test double: only session/mcp endpoints used by Team Mode are implemented.
   return {
     session: {
       abort: async ({ path: requestPath }: { path: { id: string } }) => {
@@ -55,7 +57,7 @@ function client(
       add: async () => ({ data: {} }),
       connect: async () => ({ data: {} }),
     },
-  }
+  } as unknown as OpencodeClient
 }
 
 async function seed(directory: string, agent = "ctf-web-removed") {
@@ -358,7 +360,7 @@ describe("Team repair runtime", () => {
             ...baseClient.session,
             get: async () => ({ data: null }),
           },
-        },
+        } as unknown as OpencodeClient,
         directory,
       )
       const result = JSON.parse(

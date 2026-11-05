@@ -4,14 +4,13 @@ import { describe, expect, it } from "vitest"
 import { loadCtfTools } from "../src/ctf-tools.js"
 import { FAMILY_CAPABILITY_CONTRACTS } from "../src/family-capability-contracts.js"
 import {
-  DEFAULT_TOOL_PACKS,
-  FAST_TOOL_ALLOWLIST,
-  SUBAGENT_LIGHT_TOOLS,
   ALL_TOOL_PACKS,
+  DEFAULT_TOOL_PACKS,
   packForTool,
   resolveEnabledPacks,
   toolAllowedByPacks,
 } from "../src/tool-packs.js"
+import { FAST_TOOL_ALLOWLIST, SUBAGENT_LIGHT_TOOLS } from "../src/agent-equipment-policy.js"
 
 describe("tool registration contract", () => {
   it("exports every ctf-fast allowlisted tool under default packs", async () => {

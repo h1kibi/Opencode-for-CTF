@@ -1,6 +1,6 @@
 ﻿import { tool } from "@opencode-ai/plugin"
 import { fetchWithTimeout, normalizeUrl, parseHeadersJson, readTextCapped, unique } from "../lib/web-http.ts"
-import { extractFlagCandidates, FLAG_REGEX_ONCE } from "ctf-core"
+import { extractFlagCandidates, HIGH_CONFIDENCE_FLAG_REGEX_ONCE } from "ctf-core"
 
 function safeMode(mode?: string) {
   const m = (mode || "light").trim().toLowerCase()
@@ -361,7 +361,7 @@ export default tool({
         if (hints.length) jsFindings.push(...hints.slice(0, 35).map((x) => `${u.pathname}: route_hint ${x}`))
         const maps = Array.from(text.matchAll(/sourceMappingURL=([^\s*]+)/g), (m) => m[1])
         if (maps.length) jsFindings.push(...maps.slice(0, 8).map((x) => `${u.pathname}: source_map_hint ${x}`))
-        if (FLAG_REGEX_ONCE.test(text)) jsFindings.push(`${u.pathname}: flag_like_js yes`)
+        if (HIGH_CONFIDENCE_FLAG_REGEX_ONCE.test(text)) jsFindings.push(`${u.pathname}: flag_like_js yes`)
         discoveredRoutes.push(...hints)
       } catch (err) {
         jsFindings.push(`${script}: fetch failed: ${err}`)

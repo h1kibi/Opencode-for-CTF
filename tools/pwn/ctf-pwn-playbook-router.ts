@@ -130,7 +130,7 @@ export default tool({
       text,
       /pwn_runner_summary:|script_ran_ok:|flag_detected:|candidate_detected:|shell_detected:/,
     )
-    // `flag_detected` is a legacy/candidate signal. Only an explicit oracle marker
+    // `flag_detected` is a candidate signal. Only an explicit oracle marker
     // may close the route as a solved challenge.
     const oracleVerified =
       has(text, /oracle_verified:\s*true|"oracle_verified"\s*:\s*true/) ||

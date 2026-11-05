@@ -1,8 +1,7 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { AGENT_MCP_DEFAULTS } from "../src/agent-mcp-profiles.js"
+import { AGENT_MCP_DEFAULTS, FAST_TOOL_ALLOWLIST, SUBAGENT_LIGHT_TOOLS } from "../src/agent-equipment-policy.js"
 import { CTF_FAMILIES, FAMILY_CAPABILITY_CONTRACTS } from "../src/family-capability-contracts.js"
-import { FAST_TOOL_ALLOWLIST, SUBAGENT_LIGHT_TOOLS } from "../src/tool-packs.js"
 import { toolTier } from "../src/tool-metadata.js"
 
 const rule = readFileSync("rules/agent-equipment.md", "utf8")
@@ -29,7 +28,7 @@ describe("agent equipment rule", () => {
     for (const source of [
       "src/tool-packs.ts",
       "src/family-capability-contracts.ts",
-      "src/agent-mcp-profiles.ts",
+      "src/agent-equipment-policy.ts",
       "src/mcp-server-registry.ts",
       "FAST_TOOL_ALLOWLIST",
       "tool_packs",
@@ -59,8 +58,8 @@ describe("agent equipment rule", () => {
     }
   })
 
-  it("keeps every fast-allowlist tool on a light or compatibility tier", () => {
-    const heavy = [...FAST_TOOL_ALLOWLIST].filter((toolName) => !["light", "compat"].includes(toolTier(toolName)))
+  it("keeps every fast-allowlist tool on a light tier", () => {
+    const heavy = [...FAST_TOOL_ALLOWLIST].filter((toolName) => toolTier(toolName) !== "light")
     expect(heavy).toEqual([])
   })
 

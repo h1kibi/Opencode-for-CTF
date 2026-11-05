@@ -22,8 +22,6 @@ Profiles:
 
 Environment:
   OPENCODE_CONFIG_DIR                 Override OpenCode config directory
-  OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS=1
-                                      Copy external SecKnowledge reference skill snapshot (large)
   OPENCODE_CTF_TOOL_PACKS             e.g. all  or  core,web,pwn
   OPENCODE_CTF_FORCE_BUILD=0          Skip rebuild when dist/ already exists
 

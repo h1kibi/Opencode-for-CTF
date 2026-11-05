@@ -5,20 +5,20 @@ import { summarizeFamilyCapabilityMatrix } from "../../src/capabilities/family-c
 import { buildRuntimeCapabilitySummary } from "../../src/capabilities/runtime-capability-summary.ts"
 import { PLUGIN_ROOT } from "../../src/asset-paths.ts"
 import { listToolNames as discoverToolNames, loadCtfTools } from "../../src/ctf-tools.ts"
-import { compatAliasTarget, summarizeToolMetadata, toolMetadata } from "../../src/tool-metadata.ts"
+import { summarizeToolMetadata, toolMetadata } from "../../src/tool-metadata.ts"
 import { diagnoseToolVisibility, summarizeRuntimeToolRegistry } from "../../src/plugin-support.ts"
 import { directoryFromContext } from "../lib/workspace-path.ts"
 import { EXPERT_TEAM_RUNTIME_TOOLS } from "../../src/expert-readiness.ts"
 import { createRuntimeClient } from "../../src/sdk.ts"
-import { createTeamTools } from "../../src/team-runtime.ts"
+import { createTeamTools } from "../../src/team/team-runtime-core.ts"
 import {
   ALL_TOOL_PACKS,
   DEFAULT_TOOL_PACKS,
   packForTool,
   resolveEnabledPacks,
   summarizePacks,
-  toolAllowedForAgent,
 } from "../../src/tool-packs.ts"
+import { toolAllowedForAgent } from "../../src/agent-equipment-policy.ts"
 
 const FAST_LIGHT_PWN_TOOLS = [
   "ctf-binary-probe",
@@ -180,12 +180,6 @@ export default tool({
       lines.push(`  ${tier}: ${toolNames.length}`)
     }
 
-    const compat = names.filter((name) => compatAliasTarget(name))
-    if (compat.length) {
-      lines.push("", "compat_aliases:")
-      for (const name of compat) lines.push(`  ${name} -> ${compatAliasTarget(name)}`)
-    }
-
     if (args.toolName) {
       const name = args.toolName.replace(/\.(ts|js)$/, "")
       const agentName = args.agentName || "ctf-fast"
@@ -199,7 +193,6 @@ export default tool({
       lines.push(`tier: ${meta.tier}`)
       lines.push(`effects: ${meta.effects.length ? meta.effects.join(", ") : "(none)"}`)
       lines.push(`requires: ${meta.requires.length ? meta.requires.join(", ") : "(none)"}`)
-      if (meta.aliasOf) lines.push(`alias_of: ${meta.aliasOf}`)
       lines.push(`registered this session: ${enabled.has(packForTool(name)) ? "yes" : "no (enable pack + restart)"}`)
       lines.push(`exported in plugin registry: ${exportedNames.includes(name) ? "yes" : "no"}`)
       lines.push(`visible on ctf-fast: ${fastVisible.includes(name) ? "yes" : "no"}`)

@@ -1,6 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
 import { envPrerequisitesSatisfied } from "../../src/mcp-server-registry.ts"
-import { getAgentMcpState, listRecentActivationIssues, requestMcp } from "../../src/dynamic-mcp-manager.ts"
+import { getAgentMcpState, listRecentActivationIssues, requestMcp } from "../../src/mcp/mcp-runtime-adapter.ts"
 
 export default tool({
   description:

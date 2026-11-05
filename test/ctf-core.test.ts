@@ -64,13 +64,12 @@ describe("decideRoute", () => {
     expect(d.mode).toBe("resume")
     expect(d.command).toBe("/resume")
     expect(d.primaryAgent).toBe("ctf-expert")
-    expect(d.agent).toBe("ctf-expert")
   })
 
   it("forces expert mode when requested", () => {
     const d = decideRoute({ text: "simple xor", mode: "expert" })
     expect(d.mode).toBe("expert")
-    expect(d.agent).toBe("ctf-expert")
+    expect(d.primaryAgent).toBe("ctf-expert")
   })
 
   it("routes strong pwn signals toward pwn or fast lane", () => {

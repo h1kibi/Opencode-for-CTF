@@ -302,7 +302,7 @@ export async function activateAgentDefaults(args: {
 }) {
   const { activateAgentProfile } = await import("./mcp-activation-coordinator.ts")
   const result = await activateAgentProfile(args)
-  // Merge activated and shared for backward compatibility
+  // Shared servers are already connected; report them alongside new activations.
   return {
     activated: [...result.activated, ...result.shared],
     skipped: result.skipped,

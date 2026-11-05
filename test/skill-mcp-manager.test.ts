@@ -63,7 +63,7 @@ describe("sameLease", () => {
     skillName: "ctf-web",
     sessionID: "session-1",
     serverName: "browser",
-    connected: true,
+    status: "connected",
     disconnectWhenIdle: true,
     config: {},
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -96,7 +96,7 @@ describe("otherConnectedLease", () => {
     skillName: "ctf-web",
     sessionID: "session-1",
     serverName: "filesystem",
-    connected: true,
+    status: "connected",
     disconnectWhenIdle: false,
     config: {},
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -122,7 +122,7 @@ describe("otherConnectedLease", () => {
   })
 
   it("returns false when other session has same server but disconnected", () => {
-    const state = makeState([{ ...baseLease }, { ...baseLease, sessionID: "session-2", connected: false }])
+    const state = makeState([{ ...baseLease }, { ...baseLease, sessionID: "session-2", status: "unknown" }])
     expect(otherConnectedLease(state, { sessionID: "session-1", skillName: "ctf-web", serverName: "filesystem" })).toBe(
       false,
     )

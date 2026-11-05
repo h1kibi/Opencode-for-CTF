@@ -19,7 +19,7 @@ prettier.config.*
 tsconfig*.json
 vitest.config.*
 
-# External skills are opt-in (fetch-skills + OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS)
+# Retired external skills tree; kept ignored so an old checkout cannot re-add it.
 skills-external/
 
 # Non-runtime repo assets (also omitted from package.json files)

@@ -54,7 +54,7 @@ describe("mergePluginConfig", () => {
 
   it("filters unknown tool pack names", () => {
     const cfg = mergePluginConfig({
-      tool_packs: ["CORE", "web", "java-heavy", "not-a-pack"],
+      tool_packs: ["CORE", "web", "java", "not-a-pack"],
       expert_tool_packs: ["android", "bogus", "all"],
     })
     expect(cfg.tool_packs).toEqual(["core", "web", "java"])

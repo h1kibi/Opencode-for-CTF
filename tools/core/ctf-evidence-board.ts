@@ -1031,7 +1031,7 @@ export default tool({
         }
 
         case "close-path": {
-          // compatibility with older skill text
+          // Accept either the route id or a specific evidence entry id.
           if (!args.entryId && !args.routeId) return "ERROR: close-path requires routeId or entryId"
           if (args.routeId) {
             const board = await loadBoard(boardPath)

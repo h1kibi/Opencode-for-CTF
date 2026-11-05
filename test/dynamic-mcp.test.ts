@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { AGENT_MCP_DEFAULTS, COMMON_LIGHT_MCPS, KNOWN_AGENTS, getAgentDefaults } from "../src/agent-mcp-profiles.js"
+import {
+  AGENT_MCP_DEFAULTS,
+  COMMON_LIGHT_MCPS,
+  KNOWN_AGENTS,
+  getAgentMcpDefaults,
+} from "../src/agent-equipment-policy.js"
 import {
   MCP_SERVER_REGISTRY,
   lookupMcpServer,
@@ -19,12 +24,12 @@ import {
   recordMcpActivationIssue,
   releaseSessionMcps,
   requestMcp,
-} from "../src/dynamic-mcp-manager.js"
+} from "../src/mcp/mcp-runtime-adapter.js"
 import { atomicUpdateJsonFile, loadJsonFile } from "../src/state-store.js"
 import type { AgentMcpState, AgentMcpRequest } from "../src/types.js"
 import { agentMcpStateFile } from "../src/paths.js"
 import { makeTestWorkspace } from "./support/test-workspace.ts"
-describe("agent-mcp-profiles", () => {
+describe("agent MCP defaults", () => {
   it("COMMON_LIGHT_MCPS includes the four baseline servers", () => {
     expect(COMMON_LIGHT_MCPS).toContain("filesystem")
     expect(COMMON_LIGHT_MCPS).toContain("context7")
@@ -94,12 +99,12 @@ describe("agent-mcp-profiles", () => {
     expect(AGENT_MCP_DEFAULTS["ctf-librarian"]).toContain("ctf_rag")
   })
 
-  it("getAgentDefaults returns common light for unknown agents", () => {
-    expect(getAgentDefaults("unknown-agent")).toEqual([...COMMON_LIGHT_MCPS])
+  it("getAgentMcpDefaults returns common light for unknown agents", () => {
+    expect(getAgentMcpDefaults("unknown-agent")).toEqual([...COMMON_LIGHT_MCPS])
   })
 
-  it("getAgentDefaults returns the correct list for known agents", () => {
-    expect(getAgentDefaults("ctf-web")).toBe(AGENT_MCP_DEFAULTS["ctf-web"])
+  it("getAgentMcpDefaults returns the correct list for known agents", () => {
+    expect(getAgentMcpDefaults("ctf-web")).toBe(AGENT_MCP_DEFAULTS["ctf-web"])
   })
 })
 

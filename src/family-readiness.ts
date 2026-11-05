@@ -1,5 +1,5 @@
 import type { CtfFamily } from "./types.ts"
-import { getAgentDefaults } from "./agent-mcp-profiles.ts"
+import { getAgentMcpDefaults } from "./agent-equipment-policy.ts"
 import {
   CTF_FAMILIES,
   FAMILY_CAPABILITY_CONTRACTS,
@@ -183,7 +183,7 @@ export function evaluateFamilyReadiness(input: FamilyReadinessInput): FamilyRead
     })
   }
 
-  const agentDefaults = getAgentDefaults(familyAgentName(input.family))
+  const agentDefaults = getAgentMcpDefaults(familyAgentName(input.family))
   const missingDefaultMcps = contract.defaultMcps.filter((serverId) => !agentDefaults.includes(serverId))
   for (const serverId of contract.defaultMcps) {
     const ok = agentDefaults.includes(serverId)

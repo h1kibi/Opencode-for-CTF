@@ -53,7 +53,7 @@ const checks: Check[] = [
     needles: ["mode", "api_candidates", "attack_queue_seed"],
   },
   {
-    file: "tools/web/ctf-web-recon-pack.ts",
+    file: "tools/web/ctf-web-analyze.ts",
     needles: ["ctf-web-blackbox-map", "next_tool", "decision_contract"],
   },
   {

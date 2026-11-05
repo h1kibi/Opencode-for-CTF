@@ -5,7 +5,7 @@ import {
   getSessionSurface,
   surfaceAgentForTools,
 } from "../src/session-surface.ts"
-import { FAST_TOOL_ALLOWLIST, toolAllowedForAgent } from "../src/tool-packs.ts"
+import { FAST_TOOL_ALLOWLIST, toolAllowedForAgent } from "../src/agent-equipment-policy.ts"
 
 describe("problem fixes integration", () => {
   it("1. session surface promotes /ctf-as-fast to expert tools", () => {

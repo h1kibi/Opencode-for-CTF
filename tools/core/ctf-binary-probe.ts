@@ -16,7 +16,7 @@ import {
 } from "../lib/workspace-path.ts"
 import { safeExec, safeExecDocker, shellQuote } from "../lib/exec-utils.ts"
 import { pwnImage } from "../lib/docker-config.ts"
-import { extractFlagCandidates, FLAG_REGEX_ONCE } from "ctf-core"
+import { extractFlagCandidates, HIGH_CONFIDENCE_FLAG_REGEX_ONCE } from "ctf-core"
 
 const INTERESTING_RE =
   /\b(win|flag|shell|system|execve|gets|scanf|printf|puts|read|write|open|openat|sendfile|strcpy|strcat|sprintf|memcpy|malloc|free|realloc|mprotect|mmap|seccomp|canary|libc|\/bin\/sh)\b/i
@@ -243,7 +243,7 @@ export default tool({
     const strings = printableStrings(sample)
     const maxStrings = Math.max(10, Math.min(args.maxStrings ?? 60, 200))
     const interestingStrings = strings
-      .filter((s) => INTERESTING_RE.test(s) || FLAG_REGEX_ONCE.test(s))
+      .filter((s) => INTERESTING_RE.test(s) || HIGH_CONFIDENCE_FLAG_REGEX_ONCE.test(s))
       .slice(0, maxStrings)
 
     let fileR = await safeExec("file", [target], cwd)

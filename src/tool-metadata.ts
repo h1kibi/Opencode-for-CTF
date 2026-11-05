@@ -1,7 +1,6 @@
-import { COMPAT_ALIAS_TARGETS } from "./tool-catalog.ts"
 import { packForTool, type ToolPackLookup } from "./tool-packs.ts"
 
-export type ToolTier = "light" | "default" | "advanced" | "compat" | "maintenance"
+export type ToolTier = "light" | "default" | "advanced" | "maintenance"
 export type ToolEffect = "read" | "write" | "execute" | "network" | "state"
 
 export type ToolMetadata = {
@@ -10,13 +9,9 @@ export type ToolMetadata = {
   tier: ToolTier
   effects: ToolEffect[]
   requires: string[]
-  aliasOf?: string
 }
 
-const COMPAT_ALIASES = COMPAT_ALIAS_TARGETS
-
 const MAINTENANCE_TOOLS = new Set([
-  "archive-safe-extract",
   "ctf-background-job",
   "ctf-python-parallel",
   "ctf-runtime-selftest",
@@ -102,14 +97,12 @@ const ADVANCED_PREFIXES = [
 ]
 
 const TOOL_REQUIRES: Record<string, string[]> = {
-  "archive-safe-extract": ["unzip|7z|jar|tar|powershell"],
   "ctf-safe-extract": ["unzip|7z|jar|tar|powershell"],
   "ctf-binary-probe": ["file", "readelf", "nm", "checksec", "docker?"],
   "ctf-elf-slice": ["file", "readelf", "objdump", "nm", "docker?"],
   "ctf-pwn-analyze": ["python?", "pwntools?", "file?", "readelf?", "nm?", "checksec?", "docker?"],
   "ctf-pwn-runner": ["python", "pwntools?"],
   "ctf-pwn-remote-fingerprint": ["python", "pwntools?"],
-  "ctf-pwn-remote-check": ["python", "pwntools?"],
   "ctf-pwn-docker-runner": ["docker"],
   "ctf-pwn-docker-harness": ["docker?", "file"],
   "ctf-pwn-gdb-snapshot": ["gdb", "docker?"],
@@ -198,7 +191,6 @@ function unique<T>(items: T[]): T[] {
 }
 
 export function toolTier(toolName: string): ToolTier {
-  if (COMPAT_ALIASES[toolName]) return "compat"
   if (MAINTENANCE_TOOLS.has(toolName)) return "maintenance"
   if (LIGHT_TOOLS.has(toolName)) return "light"
   if (ADVANCED_PREFIXES.some((prefix) => toolName === prefix || toolName.startsWith(prefix))) return "advanced"
@@ -258,7 +250,6 @@ export function toolMetadata(toolName: string): ToolMetadata {
     tier: toolTier(toolName),
     effects: toolEffects(toolName),
     requires: toolRequires(toolName),
-    aliasOf: COMPAT_ALIASES[toolName],
   }
 }
 
@@ -267,18 +258,9 @@ export function summarizeToolMetadata(toolNames: string[]): Record<ToolTier, str
     light: [],
     default: [],
     advanced: [],
-    compat: [],
     maintenance: [],
   }
   for (const name of toolNames) out[toolTier(name)].push(name)
   for (const tier of Object.keys(out) as ToolTier[]) out[tier].sort()
   return out
-}
-
-export function isCompatToolAlias(toolName: string): boolean {
-  return Boolean(COMPAT_ALIASES[toolName])
-}
-
-export function compatAliasTarget(toolName: string): string | undefined {
-  return COMPAT_ALIASES[toolName]
 }

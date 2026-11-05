@@ -2,7 +2,7 @@
 import { formatOpenCodeCompatibilityDiagnostic } from "./opencode-compatibility.ts"
 import path from "node:path"
 import { loadCtfToolsWithReport } from "./ctf-tools.ts"
-import { createTeamTools, initializeTeamRuntime } from "./team-runtime.ts"
+import { createTeamTools, initializeTeamRuntime } from "./team/team-runtime-core.ts"
 import { isHookEnabled, loadPluginConfigWithPath, type PluginUserConfig } from "./plugin-config.ts"
 import { resolveEnabledPacks } from "./tool-packs.ts"
 import { persistSessionSurface, rememberSessionSurface, restoreSessionSurfaces } from "./session-surface.ts"

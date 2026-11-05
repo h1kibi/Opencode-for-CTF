@@ -64,7 +64,6 @@ async function packInstallSmoke() {
       env: {
         ...env,
         OPENCODE_CONFIG_DIR: configDir,
-        OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS: "0",
       },
     })
     if (install.status !== 0) {

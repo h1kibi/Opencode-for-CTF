@@ -1,6 +1,6 @@
 import { isTerminalTeamJob } from "./team-reducer.ts"
 import { readTeamState } from "./team/team-state.ts"
-import { isCtfSubagent } from "./tool-packs.ts"
+import { isCtfSubagent } from "./agent-equipment-policy.ts"
 import type { TeamJobStatus } from "./team/team-types.ts"
 
 export type WorkerContext = {

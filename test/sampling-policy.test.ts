@@ -72,7 +72,6 @@ describe("sampling policy contract (frontmatter <-> hook)", () => {
       "ctf-forensics": { temperature: 0.8, top_p: 0.95 },
       "ctf-misc": { temperature: 0.8, top_p: 0.95 },
       "ctf-aisec": { temperature: 0.8, top_p: 0.95 },
-      "ctf-pwn-fast": { temperature: 0.8, top_p: 0.95 },
       "ctf-scout": { temperature: 0.8, top_p: 0.95 },
     }
     for (const [agent, values] of Object.entries(expectedDeclared)) {

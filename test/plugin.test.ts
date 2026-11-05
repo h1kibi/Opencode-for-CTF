@@ -303,7 +303,6 @@ describe("RuntimePlugin startup export", () => {
     expect(tools["ctf-pwn-runner"]).toBeDefined()
     expect(tools["ctf-pwn-offset"]).toBeDefined()
     expect(tools["ctf-pwn-remote-fingerprint"]).toBeDefined()
-    expect(tools["ctf-pwn-remote-check"]).toBeUndefined()
     expect(tools["ctf-python-inline"]).toBeDefined()
     const summary = summarizeRuntimeToolRegistry({
       configPath: null,
@@ -317,7 +316,6 @@ describe("RuntimePlugin startup export", () => {
     expect(summary.fastVisibleToolNames).toContain("ctf-pwn-runner")
     expect(summary.fastVisibleToolNames).toContain("ctf-pwn-offset")
     expect(summary.fastVisibleToolNames).toContain("ctf-pwn-remote-fingerprint")
-    expect(summary.fastVisibleToolNames).not.toContain("ctf-pwn-remote-check")
     expect(summary.fastVisibleToolNames).toContain("ctf-python-inline")
   }, 60_000)
 

@@ -162,7 +162,7 @@ export type TeamJob = {
   result?: string
   /** Cursor: last collected message id/digest so collect extracts incrementally. */
   lastCollectedMessageId?: string
-  /** Short compatibility summary for existing renderers/consumers. */
+  /** Short human-readable failure summary; structured detail is in errorDetails. */
   error?: string
   /** Structured lifecycle diagnostic; never rely on UnknownError alone. */
   errorDetails?: TeamJobError

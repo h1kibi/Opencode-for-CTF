@@ -5,7 +5,7 @@ Runtime facts are owned by code:
 
 - Tool packs and allowlists: `src/tool-packs.ts`
 - Family capability contracts: `src/family-capability-contracts.ts`
-- Agent MCP defaults: `src/agent-mcp-profiles.ts`
+- Agent MCP defaults: `src/agent-equipment-policy.ts`
 - MCP registry and environment variables: `src/mcp-server-registry.ts`
 
 If this rule conflicts with those files, update the code and this rule together.
@@ -34,7 +34,7 @@ Common lightweight tools for subagents:
 - Routing/triage: `ctf-route-plan`, `ctf-file-triage`, `ctf-one-shot-triage`, `ctf-flag-grep`
 - Facade routers: `ctf-web-analyze`, `ctf-pwn-analyze`, `ctf-rev-analyze`, `ctf-crypto-analyze`, `ctf-forensics-analyze`, `ctf-misc-analyze`, `ctf-encoding-chain`, `ctf-multimodal-triage`
 - Focused fallback probes: `ctf-binary-probe`, `ctf-rsa-probe`, `ctf-pcap-probe`, `ctf-stego-probe`
-- Artifact helpers: `archive-safe-extract`, `ctf-safe-extract`, `doc-read`, `image-file-info`, `ctf-artifact-analyze`
+- Artifact helpers: `ctf-safe-extract`, `doc-read`, `image-file-info`, `ctf-artifact-analyze`
 - State/knowledge: `ctf-evidence-board`, `ctf-decision-state`
 - Execution helpers: `ctf-python-inline`, `ctf-ensure-dir`, `ctf-env-check`
 - Escalation/control: `ctf-tool-packs`, `ctf-dynamic-mcp-advisor`, `ctf-mcp-control`
@@ -54,7 +54,7 @@ Tool surface:
 
 Key allowed tools include (prefer the facade tools first; direct probes are focused fallbacks after the route is known):
 
-- Core: `ctf-route-plan`, `ctf-tool-packs`, `ctf-evidence-board`, `ctf-file-triage`, `ctf-one-shot-triage`, `ctf-flag-grep`, `archive-safe-extract`, `ctf-safe-extract`, `doc-read`, `image-file-info`
+- Core: `ctf-route-plan`, `ctf-tool-packs`, `ctf-evidence-board`, `ctf-file-triage`, `ctf-one-shot-triage`, `ctf-flag-grep`, `ctf-safe-extract`, `doc-read`, `image-file-info`
 - Web light: `ctf-web-analyze`, `ctf-web-fingerprint`, `ctf-web-blackbox-map`, `ctf-web-probe`
 - PWN light: `ctf-pwn-analyze`, `ctf-pwn-runner`, `ctf-pwn-check-env`, `ctf-pwn-offset`, `ctf-pwn-remote-fingerprint`, `ctf-pwn-probe`, `ctf-pwn-libc-hint`, `ctf-proto-probe`
 - Rev/crypto/forensics light: `ctf-rev-analyze`, `ctf-crypto-analyze`, `ctf-forensics-analyze`, `ctf-misc-analyze`, `ctf-encoding-chain`, `ctf-multimodal-triage`

@@ -1,5 +1,5 @@
 import { activateSkillMcps } from "../mcp/mcp-activation-coordinator.ts"
-import { recordMcpActivationIssue } from "../dynamic-mcp-manager.ts"
+import { recordMcpActivationIssue } from "../mcp/mcp-runtime-adapter.ts"
 import { bindingsForSkill } from "../skill-mcp-registry.ts"
 import {
   activateAgentDefaultsOnce,
@@ -12,7 +12,12 @@ import {
   skillToAgent,
   stripHashTags,
 } from "../plugin-support.ts"
-import { isCtfSubagent, subagentLightToolSample, toolAllowedForAgent, toolAllowedForSubagent } from "../tool-packs.ts"
+import {
+  isCtfSubagent,
+  subagentLightToolSample,
+  toolAllowedForAgent,
+  toolAllowedForSubagent,
+} from "../agent-equipment-policy.ts"
 import { surfaceAgentForTools } from "../session-surface.ts"
 import { enforceExpertToolPolicy } from "../expert-policy.ts"
 import { enforceWorkerToolPolicy } from "../worker-policy.ts"

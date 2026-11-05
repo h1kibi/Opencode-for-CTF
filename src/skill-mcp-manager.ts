@@ -23,8 +23,22 @@ function statePath(worktree: string) {
   return skillMcpStateFile(worktree)
 }
 
-async function loadState(worktree: string) {
-  return loadJsonFile<SkillMcpState>(statePath(worktree), initialState())
+type StoredSkillMcpLease = Omit<SkillMcpLease, "status"> & {
+  status?: SkillMcpLeaseStatus
+  /** Pre-status state files encoded connectivity as a boolean. */
+  connected?: boolean
+}
+type StoredSkillMcpState = Omit<SkillMcpState, "leases"> & { leases: StoredSkillMcpLease[] }
+
+async function loadState(worktree: string): Promise<SkillMcpState> {
+  const state = await loadJsonFile<StoredSkillMcpState>(statePath(worktree), initialState())
+  return {
+    ...state,
+    leases: state.leases.map((lease) => ({
+      ...lease,
+      status: lease.status ?? (lease.connected ? "connected" : "unknown"),
+    })),
+  }
 }
 
 /** @visibleForTesting */
@@ -67,10 +81,8 @@ export function otherConnectedLease(
 // Lease lifecycle helpers
 // ---------------------------------------------------------------------------
 
-/** A lease counts as connected when status says so (legacy: the boolean). */
 export function leaseIsConnected(lease: SkillMcpLease): boolean {
-  if (lease.status) return lease.status === "connected"
-  return lease.connected
+  return lease.status === "connected"
 }
 
 /** Stale window before a `connecting` lease may be taken over (owner crashed). */
@@ -93,10 +105,8 @@ function isFreshDisconnecting(lease: SkillMcpLease): boolean {
   return Number.isFinite(age) && age < DISCONNECTING_STALE_MS
 }
 
-/** Mutate a lease's lifecycle status and keep the legacy boolean in sync. */
 export function setLeaseStatus(lease: SkillMcpLease, status: SkillMcpLeaseStatus, ownerToken?: string): void {
   lease.status = status
-  lease.connected = status === "connected"
   lease.transitionAt = nowIso()
   if (ownerToken !== undefined) lease.ownerToken = ownerToken
   lease.updatedAt = nowIso()
@@ -112,7 +122,7 @@ function makeLease(
     skillName: args.skillName,
     sessionID: args.sessionID,
     serverName: args.serverName,
-    connected: status === "connected",
+    status,
     disconnectWhenIdle: args.disconnectWhenIdle,
     config: args.config as Record<string, unknown>,
     createdAt: ts,

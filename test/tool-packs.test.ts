@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest"
+import { packForTool, resolveEnabledPacks, summarizePacks } from "../src/tool-packs.ts"
 import {
-  packForTool,
-  resolveEnabledPacks,
-  summarizePacks,
-  toolAllowedForAgent,
-  toolAllowedForSubagent,
   FAST_TOOL_ALLOWLIST,
   isFastToolAgent,
-} from "../src/tool-packs.ts"
+  toolAllowedForAgent,
+  toolAllowedForSubagent,
+} from "../src/agent-equipment-policy.ts"
 
 const FAST_LIGHT_WEB_TOOLS = [
   "ctf-web-analyze",
@@ -58,8 +56,8 @@ describe("resolveEnabledPacks env isolation", () => {
     expect([...resolveEnabledPacks(["typo-pack"])].sort()).toEqual(["core"])
   })
 
-  it("normalizes legacy java-heavy pack name to java", () => {
-    expect([...resolveEnabledPacks(["java-heavy"])].sort()).toEqual(["core", "java"])
+  it("rejects the retired java-heavy pack name", () => {
+    expect([...resolveEnabledPacks(["java-heavy"])].sort()).toEqual(["core"])
   })
 })
 
@@ -99,7 +97,6 @@ describe("fast tool surface", () => {
     expect(FAST_TOOL_ALLOWLIST.has("ctf-pwn-fast-skeleton-hints")).toBe(true)
     expect(FAST_TOOL_ALLOWLIST.has("ctf-pwn-offset")).toBe(true)
     expect(FAST_TOOL_ALLOWLIST.has("ctf-pwn-remote-fingerprint")).toBe(true)
-    expect(FAST_TOOL_ALLOWLIST.has("ctf-pwn-remote-check")).toBe(false)
     expect(FAST_TOOL_ALLOWLIST.has("ctf-proto-probe")).toBe(true)
     expect(FAST_TOOL_ALLOWLIST.has("ctf-pwn-probe")).toBe(true)
     expect(FAST_TOOL_ALLOWLIST.has("ctf-pwn-libc-hint")).toBe(true)

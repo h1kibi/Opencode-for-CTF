@@ -6,7 +6,6 @@
  *   commands, skills, rules, templates, mcp-server)
  * - local knowledge retrieval is NOT bundled: it is served by the external
  *   `ctf_rag` MCP server, so no corpus, card index, or lesson/retro store ships
- * - external skills stay opt-in via OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS
  */
 
 /** Normalize to posix-ish relative path for matching. */

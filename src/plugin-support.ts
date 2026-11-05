@@ -2,13 +2,14 @@ import { existsSync, readdirSync } from "node:fs"
 import path from "node:path"
 import type { OpencodeClient } from "@opencode-ai/sdk"
 import { PLUGIN_ROOT } from "./asset-paths.ts"
-import { getAgentDefaults } from "./agent-mcp-profiles.ts"
-import { activateAgentDefaults } from "./dynamic-mcp-manager.ts"
-import { recordMcpActivationIssue } from "./dynamic-mcp-manager.ts"
+import { getAgentMcpDefaults } from "./agent-equipment-policy.ts"
+import { activateAgentDefaults } from "./mcp/mcp-runtime-adapter.ts"
+import { recordMcpActivationIssue } from "./mcp/mcp-runtime-adapter.ts"
 import { lookupMcpServer } from "./mcp-server-registry.ts"
 import { explainToolVisibility } from "./capabilities/tool-visibility.ts"
 import { toolMetadata } from "./tool-metadata.ts"
-import { packForTool, toolAllowedForAgent } from "./tool-packs.ts"
+import { packForTool } from "./tool-packs.ts"
+import { toolAllowedForAgent } from "./agent-equipment-policy.ts"
 
 export interface HashTag {
   lineNum: number
@@ -312,7 +313,7 @@ export async function activateAgentDefaultsOnce(args: {
     return { activated: result.activated, skipped: result.skipped, failed, attempted: true }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    for (const serverName of getAgentDefaults(args.agentName).filter(
+    for (const serverName of getAgentMcpDefaults(args.agentName).filter(
       (name) => lookupMcpServer(name)?.weight !== "heavy",
     )) {
       await recordMcpActivationIssue({
@@ -452,9 +453,9 @@ export function listExpectedSkillNames(baseDir?: string) {
   const candidates = [
     baseDir ? path.resolve(baseDir, "skills") : "",
     path.join(PLUGIN_ROOT, "skills"),
-    // Last-resort source-checkout fallback for legacy callers that have not
-    // been threaded with an OpenCode context yet. Runtime/plugin entrypoints
-    // should pass their workspace directory explicitly.
+    // Last-resort source-checkout fallback for callers without an OpenCode
+    // context yet. Runtime/plugin entrypoints should pass their workspace
+    // directory explicitly.
     baseDir ? "" : path.resolve(process.cwd(), "skills"),
   ].filter(Boolean)
 

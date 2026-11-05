@@ -7,11 +7,11 @@ import {
   markDirectoryContinuationInterruptedByUser,
   noteContinuationSessionStatus,
 } from "../continuation-manager.ts"
-import { processPendingRequests, releaseSessionMcps } from "../dynamic-mcp-manager.ts"
+import { processPendingRequests, releaseSessionMcps } from "../mcp/mcp-runtime-adapter.ts"
 import { releaseSkillMcpLeases } from "../skill-mcp-manager.ts"
 import { clearActivatedDefaults, propObject, propString, trimActivatedDefaults } from "../plugin-support.ts"
 import { clearSessionSurface, removePersistedSessionSurface, surfaceAgentForStatus } from "../session-surface.ts"
-import { handleTeamEvent } from "../team-runtime.ts"
+import { handleTeamEvent } from "../team/team-runtime-core.ts"
 import { inspectExpertRuntime } from "../expert-watchdog.ts"
 
 function firstNonEmptyString(...values: string[]) {

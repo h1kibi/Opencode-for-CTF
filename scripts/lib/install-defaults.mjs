@@ -131,9 +131,8 @@ export const TOOL_MANIFEST_SOURCE = "ctf-agent.manifest.json"
 
 export function managedAssetMappings() {
   // Local knowledge retrieval is served by the external `ctf_rag` MCP server, so
-  // no corpus is copied into the managed install any more. The external
-  // SecKnowledge snapshot is retired with it (the OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS
-  // switch is accepted for backwards compatibility but no longer maps anything).
+  // no corpus is copied into the managed install. The external SecKnowledge
+  // snapshot is retired and has no install switch.
   return [
     { source: "agents", target: "agents" },
     { source: "commands", target: "commands" },

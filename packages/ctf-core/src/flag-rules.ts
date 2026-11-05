@@ -39,10 +39,9 @@ export const DEFAULT_FLAG_PATTERN = `(?:${HIGH_CONFIDENCE_FLAG_PATTERN}|${UUID_F
 export const DEFAULT_FLAG_REGEX = new RegExp(DEFAULT_FLAG_PATTERN, "gi")
 export const BARE_HASH_REGEX = new RegExp(`(?<![A-Fa-f0-9])${BARE_HASH_PATTERN}(?![A-Fa-f0-9])`, "gi")
 
-/** Backward-compatible aliases used by existing tool code. */
-export const FLAG_PATTERN = HIGH_CONFIDENCE_FLAG_PATTERN
-export const FLAG_REGEX = new RegExp(FLAG_PATTERN, "g")
-export const FLAG_REGEX_ONCE = new RegExp(FLAG_PATTERN)
+/** Global and single-match forms of the default high-confidence flag pattern. */
+export const HIGH_CONFIDENCE_FLAG_REGEX = new RegExp(HIGH_CONFIDENCE_FLAG_PATTERN, "g")
+export const HIGH_CONFIDENCE_FLAG_REGEX_ONCE = new RegExp(HIGH_CONFIDENCE_FLAG_PATTERN)
 
 const FLAG_SOURCE_RE = /(?:^|[\\/])(?:\.flag|flag(?:\.txt)?|readflag|getflag)(?=$|[\\/:#\s\\])/i
 const FLAG_NAME_RE = /(?:^|[\s"'`])(?:\.flag|flag(?:\.txt)?|readflag|getflag)(?=$|[\s"'`:#\\])/i

@@ -2,8 +2,8 @@ import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import type { OpencodeClient } from "@opencode-ai/sdk"
 import { randomUUID } from "node:crypto"
 import { appendCaseEvent } from "../case-state.ts"
-import { activateAgentDefaults } from "../dynamic-mcp-manager.ts"
-import { listPendingRequests } from "../dynamic-mcp-manager.ts"
+import { activateAgentDefaults } from "../mcp/mcp-runtime-adapter.ts"
+import { listPendingRequests } from "../mcp/mcp-runtime-adapter.ts"
 import { getSessionSurface } from "../session-surface.ts"
 import { readCurrentEvidenceSlug } from "../../scripts/evidence-helper.ts"
 import {
@@ -2085,4 +2085,35 @@ export function createTeamRuntimeCore(
     handleTeamEvent: handleTeamEventBridge,
     initialize,
   }
+}
+
+/** Register the Team Mode tool surface for one OpenCode session. */
+export function createTeamTools(
+  client: OpencodeClient,
+  directory: string,
+  worktree = directory,
+  options: CreateTeamToolsOptions = {},
+): Record<string, ToolDefinition> {
+  return createTeamRuntimeCore(client, directory, worktree, options).tools
+}
+
+/** Route one OpenCode event into the Team Mode lifecycle. */
+export async function handleTeamEvent(
+  event: { type: string; properties?: Record<string, unknown> },
+  client: OpencodeClient,
+  directory: string,
+  worktree = directory,
+  options: CreateTeamToolsOptions = {},
+): Promise<void> {
+  await createTeamRuntimeCore(client, directory, worktree, options).handleTeamEvent(event)
+}
+
+/** Run startup recovery for persisted Team Mode state. */
+export async function initializeTeamRuntime(
+  client: OpencodeClient,
+  directory: string,
+  worktree = directory,
+  options: CreateTeamToolsOptions = {},
+): Promise<void> {
+  await createTeamRuntimeCore(client, directory, worktree, options).initialize()
 }

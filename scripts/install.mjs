@@ -41,7 +41,6 @@ try {
     version: await projectVersion(),
     installedAt: new Date().toISOString(),
     profile,
-    externalSkills: process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS === "1",
     config: file,
     backup,
     ...resources,

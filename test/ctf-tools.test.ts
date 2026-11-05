@@ -47,12 +47,12 @@ describe("packForTool", () => {
   it("classifies category prefixes", () => {
     expect(packForTool("ctf-web-probe")).toBe("web")
     expect(packForTool("ctf-web-analyze")).toBe("web")
-    expect(packForTool("ctf-web-recon-pack")).toBe("web-heavy")
+    expect(packForTool("ctf-web-runtime-map")).toBe("web-heavy")
     expect(packForTool("ctf-pwn-runner")).toBe("pwn")
     expect(packForTool("ctf-pwn-analyze")).toBe("pwn")
     expect(packForTool("ctf-pwn-offset")).toBe("pwn")
     expect(packForTool("ctf-pwn-remote-fingerprint")).toBe("pwn")
-    expect(packForTool("ctf-pwn-remote-check")).toBe("pwn-heavy")
+    expect(packForTool("ctf-pwn-remote-drift-check")).toBe("pwn-heavy")
     expect(packForTool("ctf-pwn-stage-harness")).toBe("pwn-heavy")
     expect(packForTool("ctf-proto-probe")).toBe("core")
     expect(packForTool("ctf-binary-probe")).toBe("core")
@@ -68,7 +68,7 @@ describe("packForTool", () => {
     expect(packForTool("ctf-pcap-probe")).toBe("forensics")
     expect(packForTool("ctf-java-map")).toBe("java")
     expect(packForTool("ctf-java-analyze")).toBe("core")
-    expect(packForTool("ctf-java-analyze-pack")).toBe("java")
+    expect(packForTool("ctf-java-archive-map")).toBe("java")
     expect(packForTool("ctf-android-analyze")).toBe("android")
     expect(packForTool("ctf-android-dynamic-macro")).toBe("android-dynamic")
     expect(packForTool("ctf-android-runtime-check")).toBe("android")
@@ -175,7 +175,7 @@ describe("loadCtfTools packs", () => {
       expect(toolAllowedByPacks(toolName, resolveEnabledPacks(["core", "pwn"]))).toBe(true)
     }
     expect(tools["ctf-web-probe"]).toBeUndefined()
-    expect(tools["ctf-pwn-remote-check"]).toBeUndefined()
+    expect(tools["ctf-pwn-remote-drift-check"]).toBeUndefined()
     expect(tools["ctf-pwn-stage-harness"]).toBeUndefined()
   }, 60_000)
 
@@ -211,7 +211,7 @@ describe("loadCtfTools packs", () => {
 
   it("loads deep PWN helpers only when pwn-heavy is enabled", async () => {
     const tools = await loadCtfTools({ packs: ["core", "pwn", "pwn-heavy"] })
-    expect(tools["ctf-pwn-remote-check"]).toBeDefined()
+    expect(tools["ctf-pwn-remote-drift-check"]).toBeDefined()
     expect(tools["ctf-pwn-stage-harness"]).toBeDefined()
     expect(toolAllowedByPacks("ctf-pwn-stage-harness", resolveEnabledPacks(["core", "pwn", "pwn-heavy"]))).toBe(true)
   }, 60_000)
@@ -228,11 +228,11 @@ describe("loadCtfTools packs", () => {
 
   it("loads every opt-in pack with representative tools when explicitly enabled", async () => {
     const cases: Array<[string, string[]]> = [
-      ["maintenance", ["archive-safe-extract", "ctf-background-job"]],
+      ["maintenance", ["ctf-python-parallel", "ctf-background-job"]],
       ["pwn-heavy", ["ctf-pwn-stage-harness", "ctf-pwn-container-probe"]],
-      ["web-heavy", ["ctf-web-runtime-map", "ctf-web-recon-pack"]],
+      ["web-heavy", ["ctf-web-runtime-map", "ctf-web-pattern-search"]],
       ["rev-heavy", ["ctf-rev-unicorn-helper", "ctf-rev-unicorn-replay-builder"]],
-      ["java", ["ctf-java-map", "ctf-java-analyze-pack"]],
+      ["java", ["ctf-java-map", "ctf-java-bytecode-hints"]],
       ["forensics-heavy", ["ctf-pcap-carve", "ctf-artifact-page"]],
       ["android", ["ctf-android-analyze", "ctf-apk-triage"]],
       ["android-dynamic", ["ctf-android-dynamic-macro"]],

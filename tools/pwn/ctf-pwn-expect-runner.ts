@@ -10,8 +10,8 @@ import {
   resolveInsideWorkspace,
   workspaceRootFromContext,
 } from "../lib/workspace-path.ts"
-import { extractFlagCandidates, FLAG_REGEX } from "ctf-core"
-const FLAG_RE = FLAG_REGEX
+import { extractFlagCandidates, HIGH_CONFIDENCE_FLAG_REGEX } from "ctf-core"
+const FLAG_RE = HIGH_CONFIDENCE_FLAG_REGEX
 
 function collectFlagCandidates(text: string, customPattern?: string) {
   if (customPattern) {

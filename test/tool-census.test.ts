@@ -1,7 +1,8 @@
 import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
+import type { OpencodeClient } from "@opencode-ai/sdk"
 import { describe, expect, it } from "vitest"
-import { createTeamTools } from "../src/team-runtime.ts"
+import { createTeamTools } from "../src/team/team-runtime-core.ts"
 import { packForTool, resolveEnabledPacks, toolAllowedByPacks } from "../src/tool-packs.ts"
 
 const root = process.cwd()
@@ -14,7 +15,10 @@ const manifest = JSON.parse(readFileSync(join(root, "ctf-agent.manifest.json"), 
 }
 
 /** Tools created by Team Mode at runtime; they have no file under tools/. */
-const runtimeToolNames = Object.keys(createTeamTools({}, root)).sort()
+const runtimeToolNames = Object.keys(
+  // Registry enumeration only: creation stores the client without calling it.
+  createTeamTools({} as unknown as OpencodeClient, root),
+).sort()
 
 /** Underscore MCP namespace injected at runtime (ctf_rag_*, ctf_filesystem_*). */
 const UNDERSCORE_MCP_TOOLS = ["ctf_rag", "ctf_rag_ctf_rag", "ctf_filesystem_read_file", "ctf_filesystem_list_directory"]

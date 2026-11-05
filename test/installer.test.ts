@@ -37,7 +37,6 @@ async function temporaryDir(prefix: string) {
 }
 
 afterEach(async () => {
-  delete process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS
   await Promise.all(temporaryDirs.splice(0).map((directory) => rm(directory, { recursive: true, force: true })))
 })
 
@@ -341,24 +340,15 @@ describe.sequential("managed installer", () => {
     expect(paths.join(" ")).not.toContain("skills-external/secknowledge-skill")
   })
 
-  it("copies no retired corpus, with or without the external-skills switch", async () => {
+  it("copies no retired corpus", async () => {
     const configDir = await temporaryDir("ctf-installer-no-retired-corpus-")
-    delete process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS
     const installed = await copyManagedFiles(configDir)
     const installedPaths = installed.copied.map((entry: { path: string }) => String(entry.path).replace(/\\/g, "/"))
     // ABSENT-BY-DESIGN: `rag/` and `skills-external/` are retired trees; a
     // managed install must never copy them back.
     expect(installedPaths.filter((rel: string) => rel.includes("skills-external"))).toEqual([])
-    await removeManagedFiles(configDir, installed)
-
-    // ABSENT-BY-DESIGN: the opt-in switch maps nothing, so the copied set is
-    // unchanged and still contains no retired corpus.
-    process.env.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS = "1"
-    const withSwitch = await copyManagedFiles(configDir)
-    const switchedPaths = withSwitch.copied.map((entry: { path: string }) => String(entry.path).replace(/\\/g, "/"))
-    expect(switchedPaths.filter((rel: string) => rel.includes("skills-external"))).toEqual([])
-    expect([...switchedPaths].sort()).toEqual([...installedPaths].sort())
     expect(existsSync(path.join(configDir, "opencode-for-ctf", "rag"))).toBe(false)
+    await removeManagedFiles(configDir, installed)
   }, 60_000)
 
   it("runs the managed CLI lifecycle in an isolated config directory", async () => {
@@ -366,7 +356,6 @@ describe.sequential("managed installer", () => {
     const file = configPath(configDir)
     await writeFile(file, '{\n  // retained by the lifecycle\n  "default_agent": "user-agent"\n}\n')
     const environment: NodeJS.ProcessEnv = { ...process.env, OPENCODE_CONFIG_DIR: configDir }
-    delete environment.OPENCODE_CTF_INCLUDE_EXTERNAL_SKILLS
     const run = (script: string, args: string[] = []) =>
       spawnSync(process.execPath, [path.resolve("scripts", script), ...args], {
         cwd: path.resolve("."),

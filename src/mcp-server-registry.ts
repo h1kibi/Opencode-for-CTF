@@ -6,8 +6,8 @@
  *
  * This registry decouples MCP definitions from both the static opencode.jsonc
  * config and the runtime skill-mcp bindings. It drives:
- *   - agent-mcp-profiles.ts → which servers each agent gets by default
- *   - dynamic-mcp-manager.ts → on-demand request/approve lifecycle
+ *   - agent-equipment-policy.ts → which servers each agent gets by default
+ *   - mcp/mcp-runtime-adapter.ts → on-demand request/approve lifecycle
  */
 
 import type { McpServerMeta } from "./types.ts"

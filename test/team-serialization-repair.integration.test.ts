@@ -2,7 +2,7 @@ import { createServer, type Server } from "node:http"
 import { writeFile } from "node:fs/promises"
 import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk"
 import { afterEach, describe, expect, it } from "vitest"
-import { createTeamTools } from "../src/team-runtime.ts"
+import { createTeamTools } from "../src/team/team-runtime-core.ts"
 import { readTeamState } from "../src/team/team-state.ts"
 
 import { makeTestWorkspace } from "./support/test-workspace.ts"

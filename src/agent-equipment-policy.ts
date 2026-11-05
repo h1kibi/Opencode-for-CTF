@@ -2,8 +2,8 @@
  * Agent Equipment Policy — single source of truth for tool and MCP authorization.
  *
  * This module consolidates all agent → {tools, MCPs, restrictions} mappings
- * that were previously scattered across tool-packs.ts, agent-mcp-profiles.ts,
- * and family-capability-contracts.ts.
+ * that were previously scattered across tool-packs.ts and
+ * family-capability-contracts.ts.
  *
  * Query interface:
  *   - isToolAuthorizedForAgent(tool, agent, context) → boolean
@@ -34,7 +34,6 @@ const SUBAGENT_CORE_TOOLS: Record<string, true> = {
   "ctf-evidence-board": true,
   "ctf-decision-state": true,
   "ctf-artifact-analyze": true,
-  "archive-safe-extract": true,
   "ctf-safe-extract": true,
   "doc-read": true,
   "image-file-info": true,
@@ -143,7 +142,6 @@ const WEB_LIGHT: Record<string, true> = {
   "ctf-api-map": true,
   "ctf-proto-probe": true,
   "ctf-java-analyze": true,
-  "archive-safe-extract": true,
 }
 
 /** ctf-pwn lightweight: probe, check-env, disasm analysis. No docker/exploit. */

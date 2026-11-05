@@ -19,9 +19,9 @@
 import type { OpencodeClient } from "@opencode-ai/sdk"
 import type { RuntimeMcpConfig } from "../skill-mcp-registry.ts"
 import { bindingsForSkill } from "../skill-mcp-registry.ts"
-import { getAgentDefaults } from "../agent-mcp-profiles.ts"
+import { getAgentMcpDefaults } from "../agent-equipment-policy.ts"
 import { ensureSkillBindingLease, ensureNamedServerLeases, releaseSkillMcpLeases } from "../skill-mcp-manager.ts"
-import { clearMcpActivationIssues, recordMcpActivationIssue, metaToRuntimeConfig } from "../dynamic-mcp-manager.ts"
+import { clearMcpActivationIssues, recordMcpActivationIssue, metaToRuntimeConfig } from "./mcp-runtime-adapter.ts"
 import { lookupMcpServer, envPrerequisitesSatisfied } from "../mcp-server-registry.ts"
 
 // ============================================================================
@@ -230,7 +230,7 @@ export async function activateNamedServers(request: ServerActivationRequest): Pr
  * This is the primary entry point for agent-driven activation in tool-hooks.
  */
 export async function activateAgentProfile(request: Omit<ActivationRequest, "mode">): Promise<ActivationResult> {
-  const serverNames = getAgentDefaults(request.agentName)
+  const serverNames = getAgentMcpDefaults(request.agentName)
 
   const servers: Array<{
     serverName: string

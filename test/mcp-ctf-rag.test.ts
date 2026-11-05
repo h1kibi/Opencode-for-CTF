@@ -1,14 +1,16 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { AGENT_MCP_DEFAULTS, COMMON_LIGHT_MCPS, getAgentDefaults } from "../src/agent-mcp-profiles.ts"
-import { envPrerequisitesSatisfied, lookupMcpServer } from "../src/mcp-server-registry.ts"
-import { metaToRuntimeConfig } from "../src/mcp/mcp-runtime-adapter.ts"
 import {
+  AGENT_MCP_DEFAULTS,
+  COMMON_LIGHT_MCPS,
   FAST_MCP_SERVER_PREFIXES,
   FAST_MCP_TOOL_NAMES,
   FAST_TOOL_ALLOWLIST,
+  getAgentMcpDefaults,
   toolAllowedForAgent,
-} from "../src/tool-packs.ts"
+} from "../src/agent-equipment-policy.ts"
+import { envPrerequisitesSatisfied, lookupMcpServer } from "../src/mcp-server-registry.ts"
+import { metaToRuntimeConfig } from "../src/mcp/mcp-runtime-adapter.ts"
 
 const SERVER_ID = "ctf_rag"
 const REQUIRED_ENV = ["CTF_RAG_PYTHON", "CTF_RAG_ROOT", "CTF_RAG_KB_ROOT"] as const
@@ -90,7 +92,7 @@ describe("ctf_rag MCP registration", () => {
 describe("ctf-fast default MCP profile", () => {
   it("adds local retrieval to the fast defaults on top of the common baseline", () => {
     expect(AGENT_MCP_DEFAULTS["ctf-fast"]).toEqual([...COMMON_LIGHT_MCPS, SERVER_ID])
-    expect(getAgentDefaults("ctf-fast")).toContain(SERVER_ID)
+    expect(getAgentMcpDefaults("ctf-fast")).toContain(SERVER_ID)
   })
 })
 

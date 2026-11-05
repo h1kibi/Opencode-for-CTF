@@ -33,7 +33,7 @@ describe("planRoute + default_mode", () => {
   it("forces expert lane when config default_mode is expert", () => {
     const d = planRoute({ text: "simple xor cipher baby", mode: "auto" }, "expert")
     expect(d.mode).toBe("expert")
-    expect(d.agent).toBe("ctf-expert")
+    expect(d.primaryAgent).toBe("ctf-expert")
   })
 
   it("can still resume on evidence branch even with default fast", () => {
@@ -46,7 +46,6 @@ describe("planRoute + default_mode", () => {
     const d = planRoute({ text: "http://127.0.0.1:8000 flask xss admin bot", mode: "auto" }, "auto")
     expect(d.category).toBe("web")
     expect(d.primaryAgent).toBe("ctf-fast")
-    expect(d.agent).toBe("ctf-fast")
   })
 })
 

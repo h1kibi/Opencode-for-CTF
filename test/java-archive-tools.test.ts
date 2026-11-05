@@ -72,7 +72,7 @@ describe.skipIf(!hasJdk || !hasJar)("java archive tools", () => {
   })
 
   it("classifies a jar as an artifact and points at the archive map first", async () => {
-    const module = await import("../tools/java/ctf-java-analyze-pack.ts")
+    const module = await import("../tools/java/ctf-java-analyze.ts")
     const execute = module.default.execute as Execute
 
     const text = await execute({ target: "admin.jar" }, context())

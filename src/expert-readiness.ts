@@ -67,7 +67,7 @@ export type ExpertReadinessInput = {
 export type ExpertReadinessStatus = "ready" | "degraded" | "blocked"
 
 export type ExpertReadinessReport = {
-  /** Backward-compatible boolean: true means hard dependencies are usable. */
+  /** Convenience boolean: true when all hard dependencies are usable. */
   ready: boolean
   status: ExpertReadinessStatus
   reasons: string[]

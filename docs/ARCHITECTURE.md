@@ -102,7 +102,7 @@ The independent flag oracle remains separate from these lifecycle controls. A su
 
 The tool registry discovers files under `tools/`, excludes `tools/lib` helpers, applies pack filtering, and uses `ctf-agent.manifest.json` `registered_tools` as the explicit product whitelist when the manifest is available. Files present on disk but outside that list are reported as undeclared and are not registered. Team lifecycle tools are runtime tools and are listed separately from disk-backed tools in the manifest.
 
-Tool metadata distinguishes ordinary tools, specialist tools, maintenance tools, and compatibility aliases. `ctf-safe-extract` is the canonical archive implementation; the older archive name remains a compatibility facade in the current source and is not a second implementation. The registry report records registered, deferred, undeclared, quarantined, and failed entries.
+Tool metadata distinguishes ordinary tools, specialist tools, and maintenance tools. Each tool has one canonical name: compatibility aliases and facades are not part of the registered surface. `ctf-safe-extract` is the archive implementation. The registry report records registered, deferred, undeclared, quarantined, and failed entries.
 
 ## 6. Testing and benchmarks
 
@@ -129,4 +129,4 @@ The `OPENCODE_VERSION` environment variable is not used as host-version proof.
 Deployments may record an explicit version hint outside the plugin, but the
 plugin does not infer compatibility from undocumented environment variables.
 
-Some tests, helper metadata, and compatibility paths may still contain historical names. They do not define the canonical Team runtime documented here; the runtime contract is the explicit Probe/Job state and `ctf.team.probe.v1` collection path.
+The runtime contract is the explicit Probe/Job state and `ctf.team.probe.v1` collection path. Historical tool aliases, deprecated agents, and compatibility façade modules have been removed; new code imports the canonical module or tool directly.
