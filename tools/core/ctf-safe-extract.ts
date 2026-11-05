@@ -126,6 +126,13 @@ async function listArchive(target: string, kind: ArchiveKind) {
     const result = await safeExec("unzip", ["-Z", "-1", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
     if (result.ok) return parse(result.output)
   }
+  if (kind === "tar") {
+    const tar = await tarCommand()
+    if (tar) {
+      const result = await safeExec(tar, ["-tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
+      if (result.ok) return parse(result.output)
+    }
+  }
   const sevenZip = await find7z()
   if (sevenZip) {
     const result = await safeExec(sevenZip, ["l", "-ba", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
@@ -133,11 +140,6 @@ async function listArchive(target: string, kind: ArchiveKind) {
   }
   if (kind === "zip" && (await exists("jar"))) {
     const result = await safeExec("jar", ["tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
-    if (result.ok) return parse(result.output)
-  }
-  const tar = await tarCommand()
-  if (kind === "tar" && tar) {
-    const result = await safeExec(tar, ["-tf", target], { timeoutMs: 30000, maxBuffer: MAX_OUTPUT })
     if (result.ok) return parse(result.output)
   }
   throw new Error(`no supported external listing backend for archive kind ${kind}`)
@@ -155,6 +157,16 @@ async function extractArchive(target: string, kind: ArchiveKind, outDir: string)
     const result = await safeExec("unzip", ["-q", target, "-d", outDir], { timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
     if (result.ok) return "unzip"
   }
+  if (kind === "tar") {
+    const tar = await tarCommand()
+    if (tar) {
+      const result = await safeExec(tar, ["-xf", target, "-C", outDir], {
+        timeoutMs: 120000,
+        maxBuffer: MAX_OUTPUT,
+      })
+      if (result.ok) return "tar"
+    }
+  }
   const sevenZip = await find7z()
   if (sevenZip) {
     const result = await safeExec(sevenZip, ["x", target, `-o${outDir}`, "-y"], {
@@ -166,14 +178,6 @@ async function extractArchive(target: string, kind: ArchiveKind, outDir: string)
   if ((kind === "zip" || kind === "unknown") && (await exists("jar"))) {
     const result = await safeExec("jar", ["xf", target], { cwd: outDir, timeoutMs: 120000, maxBuffer: MAX_OUTPUT })
     if (result.ok) return "jar"
-  }
-  const tar = await tarCommand()
-  if (kind === "tar" && tar) {
-    const result = await safeExec(tar, ["-xf", target, "-C", outDir], {
-      timeoutMs: 120000,
-      maxBuffer: MAX_OUTPUT,
-    })
-    if (result.ok) return "tar"
   }
   throw new Error(`no supported external extraction backend for archive kind ${kind}`)
 }

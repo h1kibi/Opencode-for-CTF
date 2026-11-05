@@ -21,23 +21,31 @@ describe("tools that depend on an external runtime", () => {
     expect(payload.recommendedPath).toBeTypeOf("string")
   }, 60_000)
 
-  it("returns an empty window list when no process matches the filter", async () => {
-    const module = await import("../tools/rev/ctf-windows-gui-inspect.ts")
-    const execute = module.default.execute as Execute
+  it.skipIf(process.platform !== "win32")(
+    "returns an empty window list when no process matches the filter",
+    async () => {
+      const module = await import("../tools/rev/ctf-windows-gui-inspect.ts")
+      const execute = module.default.execute as Execute
 
-    const text = await execute({ processName: "ctf-no-such-process-9f3a", jsonOnly: true }, context)
+      const text = await execute({ processName: "ctf-no-such-process-9f3a", jsonOnly: true }, context)
 
-    expect(Array.isArray(JSON.parse(text))).toBe(true)
-  }, 90_000)
+      expect(Array.isArray(JSON.parse(text))).toBe(true)
+    },
+    90_000,
+  )
 
-  it("explains the next step when the window list is empty", async () => {
-    const module = await import("../tools/rev/ctf-windows-gui-inspect.ts")
-    const execute = module.default.execute as Execute
+  it.skipIf(process.platform !== "win32")(
+    "explains the next step when the window list is empty",
+    async () => {
+      const module = await import("../tools/rev/ctf-windows-gui-inspect.ts")
+      const execute = module.default.execute as Execute
 
-    const text = await execute({ processName: "ctf-no-such-process-9f3a", windowTitle: "ctf-none" }, context)
+      const text = await execute({ processName: "ctf-no-such-process-9f3a", windowTitle: "ctf-none" }, context)
 
-    expect(text).toContain("CTF_WINDOWS_GUI_INSPECT")
-    expect(text).toContain("windows: 0")
-    expect(text).toContain("launch_template")
-  }, 90_000)
+      expect(text).toContain("CTF_WINDOWS_GUI_INSPECT")
+      expect(text).toContain("windows: 0")
+      expect(text).toContain("launch_template")
+    },
+    90_000,
+  )
 })
